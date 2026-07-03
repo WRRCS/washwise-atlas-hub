@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { listMyJobs, clockIn, listMyTimeEntries, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
+import { listInventory, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
