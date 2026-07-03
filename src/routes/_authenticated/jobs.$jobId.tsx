@@ -6,6 +6,7 @@ import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SopViewer } from "@/components/sop-viewer";
 import { format } from "date-fns";
 import { Check, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -74,6 +75,7 @@ function JobDetail() {
           <Tabs defaultValue="sop">
             <TabsList>
               <TabsTrigger value="sop">SOP Checklist</TabsTrigger>
+              <TabsTrigger value="sop-doc">SOP</TabsTrigger>
               <TabsTrigger value="photos">Photos</TabsTrigger>
             </TabsList>
             <TabsContent value="sop" className="mt-4">
@@ -100,6 +102,9 @@ function JobDetail() {
                   ))}
                 </ul>
               )}
+            </TabsContent>
+            <TabsContent value="sop-doc" className="mt-4">
+              <SopViewer serviceTypeId={job.service?.id ?? null} />
             </TabsContent>
             <TabsContent value="photos" className="mt-4">
               <PhotosTab jobId={jobId} />

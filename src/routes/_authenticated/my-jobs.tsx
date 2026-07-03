@@ -7,7 +7,9 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { listMyJobs, clockIn, listMyTimeEntries, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon } from "lucide-react";
+import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SopViewer } from "@/components/sop-viewer";
 
 export const Route = createFileRoute("/_authenticated/my-jobs")({
   component: MyJobsPage,
@@ -95,6 +97,7 @@ function TodayView() {
   });
 
   const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null } | null>(null);
+  const [sopFor, setSopFor] = useState<{ jobId: string; serviceTypeId: string | null; label: string } | null>(null);
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (q.error) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>;
@@ -143,6 +146,13 @@ function TodayView() {
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
                       </p>
                       {j.notes && <p className="text-sm mt-2 text-muted-foreground italic">{j.notes}</p>}
+                      <button
+                        type="button"
+                        onClick={() => setSopFor({ jobId: j.id, serviceTypeId: j.service?.id ?? null, label: j.service?.name ?? "SOP" })}
+                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                      >
+                        <BookOpen className="size-3.5" /> View SOP
+                      </button>
                     </div>
                     <div className="shrink-0 flex flex-col gap-2">
                       {j.open_entry ? (
@@ -199,6 +209,16 @@ function TodayView() {
             setCompleteFor(null);
           }}
         />
+      )}
+      {sopFor && (
+        <Dialog open onOpenChange={(v) => !v && setSopFor(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>SOP · {sopFor.label}</DialogTitle>
+            </DialogHeader>
+            <SopViewer serviceTypeId={sopFor.serviceTypeId} jobId={sopFor.jobId} allowMarkReviewed />
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );
