@@ -71,29 +71,40 @@ function JobDetail() {
 
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-8 grid md:grid-cols-3 gap-8">
         <section className="md:col-span-2 bg-card p-6 rounded-xl ring-1 ring-black/5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-semibold">SOP Checklist</h3>
-            <span className="text-xs text-muted-foreground">{done} / {sop.length} complete</span>
-          </div>
-          {sop.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No checklist items for this service.</p>
-          ) : (
-            <ul className="space-y-3">
-              {sop.map((s) => (
-                <li key={s.id} className="flex items-start gap-3">
-                  <button
-                    onClick={() => onToggle(s.id, !s.completed)}
-                    className={`size-4 mt-0.5 rounded border-2 shrink-0 grid place-items-center transition-colors ${
-                      s.completed ? "border-brand bg-brand" : "border-input hover:border-brand/50"
-                    }`}
-                  >
-                    {s.completed && <Check className="size-3 text-brand-foreground" strokeWidth={3} />}
-                  </button>
-                  <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>{s.label}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <Tabs defaultValue="sop">
+            <TabsList>
+              <TabsTrigger value="sop">SOP Checklist</TabsTrigger>
+              <TabsTrigger value="photos">Photos</TabsTrigger>
+            </TabsList>
+            <TabsContent value="sop" className="mt-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-semibold">SOP Checklist</h3>
+                <span className="text-xs text-muted-foreground">{done} / {sop.length} complete</span>
+              </div>
+              {sop.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No checklist items for this service.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {sop.map((s) => (
+                    <li key={s.id} className="flex items-start gap-3">
+                      <button
+                        onClick={() => onToggle(s.id, !s.completed)}
+                        className={`size-4 mt-0.5 rounded border-2 shrink-0 grid place-items-center transition-colors ${
+                          s.completed ? "border-brand bg-brand" : "border-input hover:border-brand/50"
+                        }`}
+                      >
+                        {s.completed && <Check className="size-3 text-brand-foreground" strokeWidth={3} />}
+                      </button>
+                      <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>{s.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+            <TabsContent value="photos" className="mt-4">
+              <PhotosTab jobId={jobId} />
+            </TabsContent>
+          </Tabs>
         </section>
         <aside className="space-y-6">
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
