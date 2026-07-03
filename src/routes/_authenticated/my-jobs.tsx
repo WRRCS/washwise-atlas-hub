@@ -67,7 +67,6 @@ function TodayView() {
   const qc = useQueryClient();
   const list = useServerFn(listMyJobs);
   const doClockIn = useServerFn(clockIn);
-  const doClockOut = useServerFn(clockOut);
 
   const from = useMemo(() => {
     const d = new Date();
@@ -95,14 +94,13 @@ function TodayView() {
     onError: (e: any) => toast.error(e.message ?? "Failed to clock in"),
   });
 
-  const [outFor, setOutFor] = useState<{ entryId: string; startedAt: string } | null>(null);
+  const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null } | null>(null);
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (q.error) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>;
   const jobs = q.data ?? [];
   if (!jobs.length) return <p className="text-sm text-muted-foreground">No upcoming jobs assigned to you.</p>;
 
-  // Group by day
   const groups = new Map<string, MyJobRow[]>();
   for (const j of jobs) {
     const key = new Date(j.scheduled_start).toDateString();
@@ -146,24 +144,36 @@ function TodayView() {
                       </p>
                       {j.notes && <p className="text-sm mt-2 text-muted-foreground italic">{j.notes}</p>}
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex flex-col gap-2">
                       {j.open_entry ? (
                         <button
                           onClick={() =>
-                            setOutFor({ entryId: j.open_entry!.id, startedAt: j.open_entry!.started_at })
+                            setCompleteFor({
+                              jobId: j.id,
+                              entryId: j.open_entry!.id,
+                              startedAt: j.open_entry!.started_at,
+                            })
                           }
                           className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
                         >
                           <Square className="size-4" /> Clock out
                         </button>
                       ) : j.status === "scheduled" || j.status === "in_progress" ? (
-                        <button
-                          onClick={() => inM.mutate(j.id)}
-                          disabled={inM.isPending}
-                          className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
-                        >
-                          <Play className="size-4" /> Clock in
-                        </button>
+                        <>
+                          <button
+                            onClick={() => inM.mutate(j.id)}
+                            disabled={inM.isPending}
+                            className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
+                          >
+                            <Play className="size-4" /> Clock in
+                          </button>
+                          <button
+                            onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null })}
+                            className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            <Camera className="size-3" /> Complete with photos
+                          </button>
+                        </>
                       ) : (
                         <span className="text-xs text-muted-foreground">Done</span>
                       )}
@@ -175,21 +185,18 @@ function TodayView() {
           </section>
         ))}
       </div>
-      {outFor && (
-        <ClockOutDialog
-          entryId={outFor.entryId}
-          startedAt={outFor.startedAt}
-          onClose={() => setOutFor(null)}
-          onDone={async (notes) => {
-            try {
-              await doClockOut({ data: { entry_id: outFor.entryId, notes } });
-              toast.success("Clocked out");
-              qc.invalidateQueries({ queryKey: ["my-jobs"] });
-              qc.invalidateQueries({ queryKey: ["my-timesheet"] });
-              setOutFor(null);
-            } catch (e: any) {
-              toast.error(e.message ?? "Failed to clock out");
-            }
+      {completeFor && (
+        <CompleteJobDialog
+          jobId={completeFor.jobId}
+          entryId={completeFor.entryId}
+          startedAt={completeFor.startedAt}
+          onClose={() => setCompleteFor(null)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["my-jobs"] });
+            qc.invalidateQueries({ queryKey: ["my-timesheet"] });
+            qc.invalidateQueries({ queryKey: ["jobs"] });
+            qc.invalidateQueries({ queryKey: ["job", completeFor.jobId] });
+            setCompleteFor(null);
           }}
         />
       )}
@@ -197,27 +204,186 @@ function TodayView() {
   );
 }
 
-function ClockOutDialog({
-  entryId: _entryId,
+type Pending = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  caption: string;
+  photo_type: PhotoType;
+};
+
+function CompleteJobDialog({
+  jobId,
+  entryId,
   startedAt,
   onClose,
   onDone,
 }: {
-  entryId: string;
-  startedAt: string;
+  jobId: string;
+  entryId: string | null;
+  startedAt: string | null;
   onClose: () => void;
-  onDone: (notes: string) => Promise<void>;
+  onDone: () => void;
 }) {
+  const createUploadUrl = useServerFn(createJobPhotoUploadUrl);
+  const complete = useServerFn(completeJobWithPhotos);
   const [notes, setNotes] = useState("");
+  const [items, setItems] = useState<Pending[]>([]);
   const [saving, setSaving] = useState(false);
-  const hours = hoursBetween(startedAt, new Date().toISOString());
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const hours = startedAt ? hoursBetween(startedAt, new Date().toISOString()) : null;
+
+  const addFiles = (files: FileList | null) => {
+    if (!files) return;
+    const next: Pending[] = [];
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) continue;
+      next.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        caption: "",
+        photo_type: "after",
+      });
+    }
+    setItems((prev) => [...prev, ...next]);
+  };
+
+  const removeItem = (id: string) => {
+    setItems((prev) => {
+      const item = prev.find((x) => x.id === id);
+      if (item) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((x) => x.id !== id);
+    });
+  };
+
+  const update = (id: string, patch: Partial<Pending>) =>
+    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+
+  const onSubmit = async () => {
+    setSaving(true);
+    try {
+      const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
+      for (const it of items) {
+        const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });
+        const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, it.file, {
+          contentType: it.file.type,
+        });
+        if (error) throw new Error(error.message);
+        uploaded.push({ storage_path: path, caption: it.caption || undefined, photo_type: it.photo_type });
+      }
+      await complete({
+        data: {
+          job_id: jobId,
+          photos: uploaded,
+          entry_id: entryId ?? undefined,
+          notes: notes || undefined,
+        },
+      });
+      toast.success("Job completed");
+      items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to complete job");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4" onClick={onClose}>
-      <div className="bg-clay-50 rounded-xl border border-border/60 w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-medium mb-1">Clock out</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          You worked <strong className="text-foreground">{hours.toFixed(2)} hours</strong> (since {fmtTime(startedAt)}).
-        </p>
+    <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4 overflow-y-auto" onClick={onClose}>
+      <div
+        className="bg-clay-50 rounded-xl border border-border/60 w-full max-w-xl p-6 my-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-medium mb-1">Complete job</h3>
+        {hours !== null ? (
+          <p className="text-sm text-muted-foreground mb-4">
+            You worked <strong className="text-foreground">{hours.toFixed(2)} hours</strong> (since {fmtTime(startedAt!)}).
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground mb-4">Attach any before/after photos before marking complete.</p>
+        )}
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Photos</label>
+          <div className="flex gap-2 mb-3">
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              hidden
+              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+            />
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+            />
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
+            >
+              <Camera className="size-4" /> Take photo
+            </button>
+            <button
+              type="button"
+              onClick={() => galleryRef.current?.click()}
+              className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2 hover:bg-clay-100"
+            >
+              <UploadIcon className="size-4" /> Upload
+            </button>
+          </div>
+          {items.length > 0 && (
+            <div className="space-y-3">
+              {items.map((it) => (
+                <div key={it.id} className="flex gap-3 bg-clay-100 rounded-lg p-2">
+                  <img src={it.previewUrl} alt="" className="size-20 rounded object-cover shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex gap-1">
+                      {(["before", "after", "other"] as PhotoType[]).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => update(it.id, { photo_type: t })}
+                          className={`text-[11px] uppercase tracking-wider px-2 py-1 rounded font-medium ${
+                            it.photo_type === t
+                              ? "bg-brand text-brand-foreground"
+                              : "bg-clay-50 text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={it.caption}
+                      onChange={(e) => update(it.id, { caption: e.target.value })}
+                      placeholder="Caption (optional)"
+                      className="w-full text-sm border border-border rounded px-2 py-1 bg-clay-50"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(it.id)}
+                    className="shrink-0 self-start p-1 text-muted-foreground hover:text-destructive"
+                    aria-label="Remove"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <label className="block text-sm font-medium mb-1">Notes (optional)</label>
         <textarea
           value={notes}
@@ -226,18 +392,15 @@ function ClockOutDialog({
           className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-clay-50"
           placeholder="Anything worth noting?"
         />
-        <div className="flex justify-end gap-2 mt-4">
+
+        <div className="flex justify-end gap-2 mt-5">
           <button onClick={onClose} className="px-3 py-2 text-sm rounded-lg hover:bg-clay-100">Cancel</button>
           <button
             disabled={saving}
-            onClick={async () => {
-              setSaving(true);
-              await onDone(notes);
-              setSaving(false);
-            }}
-            className="px-3 py-2 text-sm font-medium rounded-lg bg-brand text-brand-foreground disabled:opacity-50"
+            onClick={onSubmit}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-brand text-brand-foreground disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Confirm"}
+            {saving ? "Uploading…" : "Mark complete"}
           </button>
         </div>
       </div>
