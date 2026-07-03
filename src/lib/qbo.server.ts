@@ -9,7 +9,7 @@ const REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 const SCOPE = "com.intuit.quickbooks.accounting";
 
 export function qboEnv() {
-  const env = (process.env.QBO_ENVIRONMENT ?? "sandbox").toLowerCase();
+  const env = cleanEnv(process.env.QBO_ENVIRONMENT ?? "sandbox").toLowerCase();
   return env === "production" ? "production" : "sandbox";
 }
 
@@ -20,19 +20,30 @@ export function qboApiBase() {
 }
 
 export function qboClientId() {
-  const v = process.env.QBO_CLIENT_ID;
+  const v = cleanEnv(process.env.QBO_CLIENT_ID);
   if (!v) throw new Error("QBO_CLIENT_ID is not configured");
   return v;
 }
 export function qboClientSecret() {
-  const v = process.env.QBO_CLIENT_SECRET;
+  const v = cleanEnv(process.env.QBO_CLIENT_SECRET);
   if (!v) throw new Error("QBO_CLIENT_SECRET is not configured");
   return v;
 }
 export function qboRedirectUri() {
-  const v = process.env.QBO_REDIRECT_URI;
+  const v = cleanEnv(process.env.QBO_REDIRECT_URI);
   if (!v) throw new Error("QBO_REDIRECT_URI is not configured");
   return v;
+}
+
+function cleanEnv(value: string | undefined) {
+  const trimmed = (value ?? "").trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
 }
 
 // --- state signing ---
