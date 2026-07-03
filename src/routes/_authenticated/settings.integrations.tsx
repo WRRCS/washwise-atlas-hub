@@ -140,7 +140,7 @@ function QuickBooksSection() {
   const connect = async () => {
     setBusy(true);
     try {
-      const { url } = await authFn();
+      const { url } = await authFn({ data: { origin: window.location.origin } });
       window.location.href = url;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
