@@ -97,6 +97,7 @@ function TodayView() {
   });
 
   const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null } | null>(null);
+  const [sopFor, setSopFor] = useState<{ jobId: string; serviceTypeId: string | null; label: string } | null>(null);
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (q.error) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>;
