@@ -517,6 +517,106 @@ export type Database = {
           },
         ]
       }
+      notification_templates: {
+        Row: {
+          body: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          subject: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          subject?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          subject?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at: string
+          error: string | null
+          id: string
+          payload: Json
+          recipient_id: string
+          recipient_type: Database["public"]["Enums"]["notification_recipient_type"]
+          scheduled_for: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_status"]
+          template_name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          recipient_id: string
+          recipient_type: Database["public"]["Enums"]["notification_recipient_type"]
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          template_name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["notification_channel"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          recipient_id?: string
+          recipient_type?: Database["public"]["Enums"]["notification_recipient_type"]
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          template_name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photo_share_log: {
         Row: {
           created_at: string
@@ -724,18 +824,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          reminder_lead_hours: number
           slug: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          reminder_lead_hours?: number
           slug: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          reminder_lead_hours?: number
           slug?: string
         }
         Relationships: []
@@ -820,6 +923,18 @@ export type Database = {
     }
     Functions: {
       current_tenant_id: { Args: never; Returns: string }
+      enqueue_notification: {
+        Args: {
+          _channel: Database["public"]["Enums"]["notification_channel"]
+          _payload: Json
+          _recipient_id: string
+          _recipient_type: Database["public"]["Enums"]["notification_recipient_type"]
+          _scheduled_for?: string
+          _template_name: string
+          _tenant: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -840,6 +955,9 @@ export type Database = {
         | "overdue"
         | "cancelled"
       job_status: "scheduled" | "in_progress" | "completed" | "canceled"
+      notification_channel: "sms" | "email"
+      notification_recipient_type: "client" | "employee" | "owner"
+      notification_status: "pending" | "sent" | "failed"
       photo_type: "before" | "after" | "other"
       service_kind:
         | "airbnb_turnover"
@@ -979,6 +1097,9 @@ export const Constants = {
       app_role: ["owner", "employee"],
       invoice_status: ["draft", "sent", "paid", "void", "overdue", "cancelled"],
       job_status: ["scheduled", "in_progress", "completed", "canceled"],
+      notification_channel: ["sms", "email"],
+      notification_recipient_type: ["client", "employee", "owner"],
+      notification_status: ["pending", "sent", "failed"],
       photo_type: ["before", "after", "other"],
       service_kind: [
         "airbnb_turnover",
