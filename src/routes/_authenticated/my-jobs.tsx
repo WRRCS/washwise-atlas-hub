@@ -411,6 +411,12 @@ function CompleteJobDialog({
           )}
         </div>
 
+        <SuppliesUsedSection
+          items={inventoryQ.data ?? []}
+          selected={supplies}
+          onChange={setSupplies}
+        />
+
         <label className="block text-sm font-medium mb-1">Notes (optional)</label>
         <textarea
           value={notes}
