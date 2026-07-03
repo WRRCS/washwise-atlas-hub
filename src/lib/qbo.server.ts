@@ -1,5 +1,6 @@
 // QuickBooks Online API helpers — server-only.
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 
 const AUTH_BASE = "https://appcenter.intuit.com/connect/oauth2";
