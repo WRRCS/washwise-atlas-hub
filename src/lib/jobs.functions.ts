@@ -10,8 +10,7 @@ export type JobRow = {
   price_cents: number;
   assigned_to: string | null;
   notes: string | null;
-  client: { id: string; name: string } | null;
-  property: { id: string; address_line1: string; address_line2: string | null; city: string | null } | null;
+  client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   service: { id: string; kind: string; name: string } | null;
   assignee: { full_name: string | null } | null;
 };
@@ -22,7 +21,7 @@ export const listJobs = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<JobRow[]> => {
     let q = context.supabase
       .from("jobs")
-      .select("id, status, scheduled_start, scheduled_end, price_cents, assigned_to, notes, client:clients(id,name), property:properties(id,address_line1,address_line2,city), service:service_types(id,kind,name)")
+      .select("id, status, scheduled_start, scheduled_end, price_cents, assigned_to, notes, client:clients(id,first_name,last_name,service_address), service:service_types(id,kind,name)")
       .order("scheduled_start", { ascending: true });
     if (data.from) q = q.gte("scheduled_start", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);
@@ -44,7 +43,6 @@ export const listJobs = createServerFn({ method: "POST" })
 
 const createJobSchema = z.object({
   client_id: z.string().uuid(),
-  property_id: z.string().uuid(),
   service_type_id: z.string().uuid(),
   scheduled_start: z.string(),
   scheduled_end: z.string(),
@@ -64,7 +62,6 @@ export const createJob = createServerFn({ method: "POST" })
       .insert({
         tenant_id: prof.tenant_id,
         client_id: data.client_id,
-        property_id: data.property_id,
         service_type_id: data.service_type_id,
         scheduled_start: data.scheduled_start,
         scheduled_end: data.scheduled_end,
@@ -106,7 +103,7 @@ export const getJob = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: job, error } = await context.supabase
       .from("jobs")
-      .select("*, client:clients(*), property:properties(*), service:service_types(*), sop:job_sop_items(*)")
+      .select("*, client:clients(*), service:service_types(*), sop:job_sop_items(*)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
