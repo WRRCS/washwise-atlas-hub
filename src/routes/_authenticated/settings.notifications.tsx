@@ -47,9 +47,9 @@ function NotificationsSettings() {
   const setLeadFn = useServerFn(setReminderLead);
   const logsFn = useServerFn(listRecentNotifications);
 
-  const templates = useQuery({ queryKey: ["notification-templates"], queryFn: () => listFn() });
-  const lead = useQuery({ queryKey: ["reminder-lead"], queryFn: () => leadFn() });
-  const logs = useQuery({ queryKey: ["notifications-recent"], queryFn: () => logsFn() });
+  const templates = useQuery<NotificationTemplate[]>({ queryKey: ["notification-templates"], queryFn: () => listFn() });
+  const lead = useQuery<{ reminder_lead_hours: number }>({ queryKey: ["reminder-lead"], queryFn: () => leadFn() });
+  const logs = useQuery<Array<{ id: string; template_name: string; channel: string; scheduled_for: string; status: string }>>({ queryKey: ["notifications-recent"], queryFn: () => logsFn() });
 
   return (
     <>

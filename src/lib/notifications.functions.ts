@@ -19,7 +19,6 @@ export type NotificationRow = {
   recipient_id: string;
   channel: "sms" | "email";
   template_name: string;
-  payload: Record<string, unknown>;
   scheduled_for: string;
   sent_at: string | null;
   status: "pending" | "sent" | "failed";
@@ -49,7 +48,7 @@ export const updateTemplate = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: { subject?: string | null; body?: string; is_active?: boolean } = {};
     if (data.subject !== undefined) patch.subject = data.subject;
     if (data.body !== undefined) patch.body = data.body;
     if (data.is_active !== undefined) patch.is_active = data.is_active;
@@ -103,7 +102,7 @@ export const listRecentNotifications = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<NotificationRow[]> => {
     const { data, error } = await context.supabase
       .from("notifications")
-      .select("*")
+      .select("id, recipient_type, recipient_id, channel, template_name, scheduled_for, sent_at, status, error, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
