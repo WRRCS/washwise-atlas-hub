@@ -303,6 +303,9 @@ function CompleteJobDialog({
           photos: uploaded,
           entry_id: entryId ?? undefined,
           notes: notes || undefined,
+          supplies_used: Object.entries(supplies)
+            .filter(([, qty]) => qty > 0)
+            .map(([item_id, quantity]) => ({ item_id, quantity })),
         },
       });
       toast.success("Job completed");
