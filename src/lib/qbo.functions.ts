@@ -10,11 +10,13 @@ async function getTenantId(supabase: any, userId: string): Promise<string> {
 
 export const getQboAuthUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: unknown) => z.object({ origin: z.string().url().optional() }).parse(input ?? {}))
+  .handler(async ({ data, context }) => {
     const tenantId = await getTenantId(context.supabase, context.userId);
-    const { signState, buildAuthUrl, qboEnv } = await import("./qbo.server");
-    const state = await signState(tenantId);
-    return { url: buildAuthUrl(state), env: qboEnv() };
+    const { signState, buildAuthUrl, qboCallbackUri, qboEnv } = await import("./qbo.server");
+    const redirectUri = data.origin ? qboCallbackUri(data.origin) : undefined;
+    const state = await signState(tenantId, redirectUri);
+    return { url: buildAuthUrl(state, redirectUri), env: qboEnv() };
   });
 
 export const getQboStatus = createServerFn({ method: "GET" })

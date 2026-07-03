@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/public/qbo/callback")({
 
         let tokens;
         try {
-          tokens = await exchangeCode(code);
+          tokens = await exchangeCode(code, v.redirectUri);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error("[qbo callback] token exchange failed:", msg);
