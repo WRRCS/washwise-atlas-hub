@@ -107,9 +107,12 @@ function JobDetail() {
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Assignment</h4>
-            <p className="text-sm">{job.assignee?.full_name ?? "Unassigned"}</p>
+            {job.assignees && job.assignees.length ? (
+              <ul className="space-y-1">{job.assignees.map((a: any) => <li key={a.id} className="text-sm">{a.full_name ?? "—"}</li>)}</ul>
+            ) : <p className="text-sm text-muted-foreground">Unassigned</p>}
             <p className="text-xs text-muted-foreground tabular-nums">Price · {fmtCents(job.price_cents)}</p>
           </div>
+
           {job.notes && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5">
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Notes</h4>
