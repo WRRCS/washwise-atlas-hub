@@ -1,5 +1,6 @@
 // QuickBooks Online API helpers — server-only.
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 
 const AUTH_BASE = "https://appcenter.intuit.com/connect/oauth2";
@@ -126,11 +127,7 @@ export async function revokeToken(token: string) {
 
 // ---- Admin supabase client (server-only) ----
 export function admin(): SupabaseClient<Database> {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+  return supabaseAdmin as SupabaseClient<Database>;
 }
 
 type IntegRow = {
