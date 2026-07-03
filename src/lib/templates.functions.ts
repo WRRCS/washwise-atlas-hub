@@ -169,7 +169,7 @@ export const saveEmailTemplate = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: { name?: string; subject?: string; body_html?: string; is_active?: boolean } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.subject !== undefined) patch.subject = data.subject;
     if (data.body_html !== undefined) patch.body_html = data.body_html;
