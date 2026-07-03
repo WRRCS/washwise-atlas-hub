@@ -425,11 +425,12 @@ export const updateEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: isOwner } = await context.supabase.rpc("is_owner");
     if (!isOwner) throw new Error("Only owners can edit employees");
-    const patch: Record<string, unknown> = {};
+    const patch: { phone?: string | null; is_active?: boolean; full_name?: string | null } = {};
     if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.is_active !== undefined) patch.is_active = data.is_active;
     if (data.full_name !== undefined) patch.full_name = data.full_name;
     const { error } = await context.supabase.from("profiles").update(patch).eq("id", data.id);
+
     if (error) throw new Error(error.message);
     return { ok: true };
   });
