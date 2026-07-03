@@ -228,6 +228,123 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          cost_per_unit_cents: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          quantity_on_hand: number
+          reorder_threshold: number
+          sku: string | null
+          tenant_id: string
+          unit: string
+          updated_at: string
+          vendor_name: string | null
+          vendor_sku: string | null
+        }
+        Insert: {
+          cost_per_unit_cents?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          quantity_on_hand?: number
+          reorder_threshold?: number
+          sku?: string | null
+          tenant_id: string
+          unit?: string
+          updated_at?: string
+          vendor_name?: string | null
+          vendor_sku?: string | null
+        }
+        Update: {
+          cost_per_unit_cents?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          quantity_on_hand?: number
+          reorder_threshold?: number
+          sku?: string | null
+          tenant_id?: string
+          unit?: string
+          updated_at?: string
+          vendor_name?: string | null
+          vendor_sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_transactions: {
+        Row: {
+          change_amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          job_id: string | null
+          notes: string | null
+          reason: string
+          tenant_id: string
+        }
+        Insert: {
+          change_amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          job_id?: string | null
+          notes?: string | null
+          reason?: string
+          tenant_id: string
+        }
+        Update: {
+          change_amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          job_id?: string | null
+          notes?: string | null
+          reason?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line_items: {
         Row: {
           created_at: string
