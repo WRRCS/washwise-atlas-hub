@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { listMyJobs, clockIn, listMyTimeEntries, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
+import { listInventory, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -247,8 +248,11 @@ function CompleteJobDialog({
 }) {
   const createUploadUrl = useServerFn(createJobPhotoUploadUrl);
   const complete = useServerFn(completeJobWithPhotos);
+  const fetchInventory = useServerFn(listInventory);
+  const inventoryQ = useQuery<InventoryItem[]>({ queryKey: ["inventory-for-complete"], queryFn: () => fetchInventory() });
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<Pending[]>([]);
+  const [supplies, setSupplies] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -299,6 +303,9 @@ function CompleteJobDialog({
           photos: uploaded,
           entry_id: entryId ?? undefined,
           notes: notes || undefined,
+          supplies_used: Object.entries(supplies)
+            .filter(([, qty]) => qty > 0)
+            .map(([item_id, quantity]) => ({ item_id, quantity })),
         },
       });
       toast.success("Job completed");
@@ -404,6 +411,12 @@ function CompleteJobDialog({
           )}
         </div>
 
+        <SuppliesUsedSection
+          items={inventoryQ.data ?? []}
+          selected={supplies}
+          onChange={setSupplies}
+        />
+
         <label className="block text-sm font-medium mb-1">Notes (optional)</label>
         <textarea
           value={notes}
@@ -423,6 +436,61 @@ function CompleteJobDialog({
             {saving ? "Uploading…" : "Mark complete"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SuppliesUsedSection({
+  items,
+  selected,
+  onChange,
+}: {
+  items: InventoryItem[];
+  selected: Record<string, number>;
+  onChange: (v: Record<string, number>) => void;
+}) {
+  const toggle = (id: string) => {
+    const next = { ...selected };
+    if (id in next) delete next[id];
+    else next[id] = 1;
+    onChange(next);
+  };
+  const setQty = (id: string, qty: number) => {
+    onChange({ ...selected, [id]: qty });
+  };
+  if (!items.length) return null;
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium mb-2">Log supplies used (optional)</label>
+      <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60 bg-clay-50 divide-y divide-border/60">
+        {items.map((it) => {
+          const checked = it.id in selected;
+          return (
+            <div key={it.id} className="flex items-center gap-3 px-3 py-2">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggle(it.id)}
+                className="size-4 accent-current"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm truncate">{it.name}</p>
+                <p className="text-[11px] text-muted-foreground">{it.quantity_on_hand} {it.unit} on hand</p>
+              </div>
+              {checked && (
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={selected[it.id]}
+                  onChange={(e) => setQty(it.id, Number(e.target.value))}
+                  className="w-20 text-sm border border-border rounded px-2 py-1 bg-white text-right tabular-nums"
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

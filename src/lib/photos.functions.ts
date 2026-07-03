@@ -81,6 +81,10 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       })).default([]),
       entry_id: z.string().uuid().optional(),
       notes: z.string().trim().max(2000).optional(),
+      supplies_used: z.array(z.object({
+        item_id: z.string().uuid(),
+        quantity: z.coerce.number().positive(),
+      })).default([]),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -111,6 +115,19 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       if (te) throw new Error(te.message);
     }
 
+    if (data.supplies_used.length) {
+      const rows = data.supplies_used.map((s) => ({
+        tenant_id: prof.tenant_id,
+        item_id: s.item_id,
+        change_amount: -Math.abs(s.quantity),
+        reason: "job_usage",
+        job_id: data.job_id,
+        created_by: context.userId,
+      }));
+      const { error: se } = await context.supabase.from("inventory_transactions").insert(rows);
+      if (se) throw new Error(se.message);
+    }
+
     const { error: je } = await context.supabase
       .from("jobs")
       .update({ status: "completed", actual_end: endedAt })
@@ -119,6 +136,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
 
 export const listJobPhotos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
