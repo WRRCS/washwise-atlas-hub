@@ -1,0 +1,1 @@
+ALTER TABLE public.jobs ALTER COLUMN property_id DROP NOT NULL;

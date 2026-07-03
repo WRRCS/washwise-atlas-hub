@@ -265,7 +265,7 @@ export type Database = {
           id: string
           notes: string | null
           price_cents: number
-          property_id: string
+          property_id: string | null
           scheduled_end: string
           scheduled_start: string
           service_type_id: string
@@ -282,7 +282,7 @@ export type Database = {
           id?: string
           notes?: string | null
           price_cents?: number
-          property_id: string
+          property_id?: string | null
           scheduled_end: string
           scheduled_start: string
           service_type_id: string
@@ -299,7 +299,7 @@ export type Database = {
           id?: string
           notes?: string | null
           price_cents?: number
-          property_id?: string
+          property_id?: string | null
           scheduled_end?: string
           scheduled_start?: string
           service_type_id?: string
