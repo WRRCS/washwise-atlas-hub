@@ -35,15 +35,15 @@ export function qboRedirectUri() {
   return v;
 }
 
-export function qboCallbackUri(origin: string) {
+export function qboReturnOrigin(origin: string) {
   const url = new URL(origin);
   const hostname = url.hostname.toLowerCase();
   const isAllowed =
     hostname === "localhost" ||
     hostname.endsWith(".lovable.app") ||
     hostname.endsWith(".lovableproject.com");
-  if (!isAllowed) return qboRedirectUri();
-  return `${url.origin}/api/public/qbo/callback`;
+  if (!isAllowed) return undefined;
+  return url.origin;
 }
 
 function cleanEnv(value: string | undefined) {
@@ -71,14 +71,14 @@ async function hmac(secret: string, msg: string) {
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
   return b64url(sig);
 }
-export async function signState(tenantId: string, redirectUri?: string) {
+export async function signState(tenantId: string, returnOrigin?: string) {
   const nonce = b64url(crypto.getRandomValues(new Uint8Array(12)));
-  const redirectPart = redirectUri ? `.${b64url(new TextEncoder().encode(redirectUri))}` : "";
+  const redirectPart = returnOrigin ? `.${b64url(new TextEncoder().encode(returnOrigin))}` : "";
   const payload = `${tenantId}.${nonce}${redirectPart}`;
   const sig = await hmac(qboClientSecret(), payload);
   return `${payload}.${sig}`;
 }
-export async function verifyState(state: string): Promise<{ tenantId: string; redirectUri?: string } | null> {
+export async function verifyState(state: string): Promise<{ tenantId: string; returnOrigin?: string } | null> {
   const parts = state.split(".");
   if (parts.length !== 3 && parts.length !== 4) return null;
   const sig = parts.at(-1)!;
@@ -86,11 +86,11 @@ export async function verifyState(state: string): Promise<{ tenantId: string; re
   const [tenantId] = parts;
   const expected = await hmac(qboClientSecret(), payload);
   if (expected !== sig) return null;
-  let redirectUri: string | undefined;
+  let returnOrigin: string | undefined;
   if (parts.length === 4) {
-    redirectUri = decodeB64urlText(parts[2]);
+    returnOrigin = qboReturnOrigin(decodeB64urlText(parts[2]));
   }
-  return { tenantId, redirectUri };
+  return { tenantId, returnOrigin };
 }
 
 function decodeB64urlText(value: string) {
