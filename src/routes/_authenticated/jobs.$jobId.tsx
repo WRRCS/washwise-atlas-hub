@@ -59,9 +59,13 @@ function JobDetail() {
             {job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={() => onStatus("completed")} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90">Complete</button>
             )}
+            {job.status !== "canceled" && job.status !== "completed" && (
+              <button onClick={() => onStatus("canceled")} className="text-sm font-medium border border-destructive/40 text-destructive rounded-lg px-3 py-2 hover:bg-destructive/5">Cancel job</button>
+            )}
           </div>
         }
       />
+
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-8 grid md:grid-cols-3 gap-8">
         <section className="md:col-span-2 bg-card p-6 rounded-xl ring-1 ring-black/5">
           <div className="flex justify-between items-center mb-4">
