@@ -13,10 +13,10 @@ export const getQboAuthUrl = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ origin: z.string().url().optional() }).parse(input ?? {}))
   .handler(async ({ data, context }) => {
     const tenantId = await getTenantId(context.supabase, context.userId);
-    const { signState, buildAuthUrl, qboCallbackUri, qboEnv } = await import("./qbo.server");
-    const redirectUri = data.origin ? qboCallbackUri(data.origin) : undefined;
-    const state = await signState(tenantId, redirectUri);
-    return { url: buildAuthUrl(state, redirectUri), env: qboEnv() };
+    const { signState, buildAuthUrl, qboReturnOrigin, qboEnv } = await import("./qbo.server");
+    const returnOrigin = data.origin ? qboReturnOrigin(data.origin) : undefined;
+    const state = await signState(tenantId, returnOrigin);
+    return { url: buildAuthUrl(state), env: qboEnv() };
   });
 
 export const getQboStatus = createServerFn({ method: "GET" })
