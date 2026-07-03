@@ -50,7 +50,7 @@ function CalendarView() {
                 {dayJobs.map((j) => (
                   <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} className="block p-2 rounded-md bg-clay-100 hover:bg-clay-200/70 text-xs">
                     <p className="font-medium truncate">{j.service?.name}</p>
-                    <p className="text-muted-foreground truncate">{format(new Date(j.scheduled_start), "h:mma")} · {j.property?.address_line1}</p>
+                    <p className="text-muted-foreground truncate">{format(new Date(j.scheduled_start), "h:mma")} · {j.client?.service_address ?? ""}</p>
                   </Link>
                 ))}
                 {dayJobs.length === 0 && <p className="text-[11px] text-muted-foreground">No jobs</p>}

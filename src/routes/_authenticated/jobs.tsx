@@ -21,9 +21,9 @@ const STATUS_STYLES: Record<string, { dot: string; label: string }> = {
   canceled: { dot: "bg-destructive", label: "Canceled" },
 };
 
-function fmtAddress(p: { address_line1: string; address_line2: string | null; city: string | null } | null) {
-  if (!p) return "—";
-  return [p.address_line1, p.address_line2].filter(Boolean).join(", ");
+function fmtClient(c: { first_name: string | null; last_name: string | null } | null) {
+  if (!c) return "—";
+  return [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
 }
 function fmtCents(c: number) {
   return `$${(c / 100).toFixed(2)}`;
@@ -101,9 +101,9 @@ function JobsPage() {
                       <span className="inline-block px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-medium uppercase tracking-wider mb-2">
                         {job.service?.name ?? "Service"}
                       </span>
-                      <h3 className="text-lg font-medium truncate">{fmtAddress(job.property)}</h3>
+                      <h3 className="text-lg font-medium truncate">{job.client?.service_address ?? "—"}</h3>
                       <p className="text-sm text-muted-foreground truncate">
-                        Client: {job.client?.name ?? "—"} · {format(new Date(job.scheduled_start), "h:mm a")} — {format(new Date(job.scheduled_end), "h:mm a")}
+                        Client: {fmtClient(job.client)} · {format(new Date(job.scheduled_start), "h:mm a")} — {format(new Date(job.scheduled_end), "h:mm a")}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
