@@ -137,51 +137,122 @@ export type Database = {
           },
         ]
       }
+      invoice_line_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          line_total_cents: number
+          quantity: number
+          service_date: string | null
+          sort_order: number
+          tenant_id: string
+          unit_price_cents: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          line_total_cents?: number
+          quantity?: number
+          service_date?: string | null
+          sort_order?: number
+          tenant_id: string
+          unit_price_cents?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          line_total_cents?: number
+          quantity?: number
+          service_date?: string | null
+          sort_order?: number
+          tenant_id?: string
+          unit_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_cents: number
+          bundle_month: string | null
+          card_surcharge: boolean
+          cleanings_count: number | null
           client_id: string
           created_at: string
           currency: string
           due_at: string | null
+          due_date: string | null
           id: string
+          issue_date: string
           job_id: string | null
           number: string
           paid_at: string | null
           pay_link: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
+          subtotal_cents: number
+          surcharge_cents: number
           tenant_id: string
+          total_cents: number
         }
         Insert: {
           amount_cents?: number
+          bundle_month?: string | null
+          card_surcharge?: boolean
+          cleanings_count?: number | null
           client_id: string
           created_at?: string
           currency?: string
           due_at?: string | null
+          due_date?: string | null
           id?: string
+          issue_date?: string
           job_id?: string | null
           number: string
           paid_at?: string | null
           pay_link?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal_cents?: number
+          surcharge_cents?: number
           tenant_id: string
+          total_cents?: number
         }
         Update: {
           amount_cents?: number
+          bundle_month?: string | null
+          card_surcharge?: boolean
+          cleanings_count?: number | null
           client_id?: string
           created_at?: string
           currency?: string
           due_at?: string | null
+          due_date?: string | null
           id?: string
+          issue_date?: string
           job_id?: string | null
           number?: string
           paid_at?: string | null
           pay_link?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal_cents?: number
+          surcharge_cents?: number
           tenant_id?: string
+          total_cents?: number
         }
         Relationships: [
           {
@@ -757,10 +828,17 @@ export type Database = {
         Returns: boolean
       }
       is_owner: { Args: never; Returns: boolean }
+      next_invoice_number: { Args: { _tenant: string }; Returns: string }
     }
     Enums: {
       app_role: "owner" | "employee"
-      invoice_status: "draft" | "sent" | "paid" | "void"
+      invoice_status:
+        | "draft"
+        | "sent"
+        | "paid"
+        | "void"
+        | "overdue"
+        | "cancelled"
       job_status: "scheduled" | "in_progress" | "completed" | "canceled"
       photo_type: "before" | "after" | "other"
       service_kind:
@@ -899,7 +977,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "employee"],
-      invoice_status: ["draft", "sent", "paid", "void"],
+      invoice_status: ["draft", "sent", "paid", "void", "overdue", "cancelled"],
       job_status: ["scheduled", "in_progress", "completed", "canceled"],
       photo_type: ["before", "after", "other"],
       service_kind: [
