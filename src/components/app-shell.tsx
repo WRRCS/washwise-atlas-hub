@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <nav className="flex-1 px-4 space-y-1">
-            {NAV.map((item) => {
+            {(profile?.role === "employee" ? EMPLOYEE_NAV : OWNER_NAV).map((item) => {
               const active = pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
