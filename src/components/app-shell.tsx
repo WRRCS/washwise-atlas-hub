@@ -3,16 +3,22 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList,
 } from "lucide-react";
 
-const NAV = [
+const OWNER_NAV = [
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/services", label: "Services", icon: Sparkles },
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/invoices", label: "Invoices", icon: Receipt },
+] as const;
+
+const EMPLOYEE_NAV = [
+  { to: "/my-jobs", label: "My jobs", icon: ClipboardList },
+  { to: "/calendar", label: "Schedule", icon: Calendar },
+  { to: "/clients", label: "Clients", icon: Users },
 ] as const;
 
 
@@ -57,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <nav className="flex-1 px-4 space-y-1">
-            {NAV.map((item) => {
+            {(profile?.role === "employee" ? EMPLOYEE_NAV : OWNER_NAV).map((item) => {
               const active = pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
@@ -109,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         {/* mobile bottom nav */}
         <div className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-clay-100 border-t border-border/60 flex">
-          {NAV.slice(0, 5).map((item) => {
+          {(profile?.role === "employee" ? EMPLOYEE_NAV : OWNER_NAV).slice(0, 5).map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
