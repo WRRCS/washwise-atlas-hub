@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/settings/integrations")({
 });
 
 const META: Record<IntegrationProvider, { name: string; icon: typeof Building2; description: string; phase: string }> = {
-  quickbooks: { name: "QuickBooks", icon: Building2, description: "Sync clients, invoices, and payments to your books.", phase: "Phase 2" },
+  quickbooks: { name: "QuickBooks Online", icon: Building2, description: "Sync clients, invoices, and payments to your QBO books.", phase: "Available now" },
   stripe: { name: "Stripe", icon: CreditCard, description: "Accept card and ACH payments on invoices.", phase: "Phase 2" },
   venmo: { name: "Venmo", icon: Wallet, description: "Send Venmo payment requests and auto-reconcile transfers.", phase: "Phase 2" },
   godaddy: { name: "GoDaddy website", icon: Globe, description: "Capture leads from your website contact form.", phase: "Available now" },
