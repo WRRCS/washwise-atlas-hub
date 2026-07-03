@@ -565,6 +565,7 @@ export type Database = {
           ended_at: string | null
           id: string
           job_id: string
+          notes: string | null
           started_at: string
           tenant_id: string
           user_id: string
@@ -573,6 +574,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           job_id: string
+          notes?: string | null
           started_at?: string
           tenant_id: string
           user_id: string
@@ -581,6 +583,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           job_id?: string
+          notes?: string | null
           started_at?: string
           tenant_id?: string
           user_id?: string
