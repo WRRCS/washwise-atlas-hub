@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import {
@@ -11,11 +11,19 @@ import {
   type IntegrationRow,
   type IntegrationProvider,
 } from "@/lib/integrations.functions";
+import {
+  getQboAuthUrl,
+  getQboStatus,
+  disconnectQbo,
+  listQboSyncErrors,
+  syncInvoiceToQbo,
+} from "@/lib/qbo.functions";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home } from "lucide-react";
+import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, AlertTriangle, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/integrations")({
   component: IntegrationsPage,
+  validateSearch: (s: Record<string, unknown>) => ({ qbo: typeof s.qbo === "string" ? s.qbo : undefined }),
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
 });
 
