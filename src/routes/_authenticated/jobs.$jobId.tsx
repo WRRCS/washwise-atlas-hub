@@ -139,3 +139,107 @@ function JobDetail() {
     </>
   );
 }
+
+function PhotosTab({ jobId }: { jobId: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listJobPhotos);
+  const shareFn = useServerFn(logPhotoShare);
+  const delFn = useServerFn(deleteJobPhoto);
+  const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
+
+  const { data: photos = [], isLoading } = useQuery({
+    queryKey: ["job-photos", jobId],
+    queryFn: () => listFn({ data: { job_id: jobId } }),
+  });
+
+  const onShare = async (p: JobPhotoRow) => {
+    try {
+      await shareFn({ data: { photo_id: p.id } });
+      toast.success("Share logged — email will send once wired up");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+  const onDelete = async (p: JobPhotoRow) => {
+    if (!confirm("Delete this photo?")) return;
+    try {
+      await delFn({ data: { id: p.id } });
+      qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
+      toast.success("Deleted");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (!photos.length) return <p className="text-sm text-muted-foreground">No photos yet.</p>;
+
+  const typeBadge: Record<string, string> = {
+    before: "bg-blue-100 text-blue-800",
+    after: "bg-green-100 text-green-800",
+    other: "bg-clay-200 text-muted-foreground",
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {photos.map((p) => (
+          <div key={p.id} className="group relative rounded-lg overflow-hidden ring-1 ring-black/5 bg-clay-100">
+            <button
+              type="button"
+              onClick={() => setLightbox(p)}
+              className="block w-full aspect-square"
+            >
+              {p.url ? (
+                <img src={p.url} alt={p.caption ?? ""} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full grid place-items-center text-xs text-muted-foreground">No preview</div>
+              )}
+            </button>
+            <div className="p-2 space-y-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${typeBadge[p.photo_type]}`}>
+                  {p.photo_type}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => onShare(p)}
+                    className="text-[11px] inline-flex items-center gap-1 px-2 py-1 rounded bg-brand text-brand-foreground hover:opacity-90"
+                  >
+                    <Send className="size-3" /> Send to client
+                  </button>
+                  <button
+                    onClick={() => onDelete(p)}
+                    className="p-1 text-muted-foreground hover:text-destructive"
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+              {p.caption && <p className="text-xs text-muted-foreground truncate">{p.caption}</p>}
+              <p className="text-[10px] text-muted-foreground">
+                {p.uploader_name ?? "—"} · {format(new Date(p.uploaded_at), "MMM d, h:mma")}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/80 grid place-items-center p-4" onClick={() => setLightbox(null)}>
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="size-6" />
+          </button>
+          <div className="max-w-4xl max-h-full flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            {lightbox.url && <img src={lightbox.url} alt={lightbox.caption ?? ""} className="max-h-[80vh] rounded-lg" />}
+            {lightbox.caption && <p className="text-white text-sm text-center">{lightbox.caption}</p>}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
