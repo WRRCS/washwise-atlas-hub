@@ -186,10 +186,19 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
     }
     const toBundle = jobs; // include all jobs in the month once drafts cleared
 
-    // Next invoice number
-    const { data: numData, error: ne } = await context.supabase.rpc("next_invoice_number", { _tenant: prof.tenant_id });
-    if (ne) throw new Error(ne.message);
-    const number = numData as string;
+    // Next invoice number: WRR-YYYY-###
+    const year = new Date().getFullYear();
+    const prefix = `WRR-${year}-`;
+    const { data: existingNums } = await context.supabase
+      .from("invoices")
+      .select("number")
+      .eq("tenant_id", prof.tenant_id)
+      .like("number", `${prefix}%`);
+    const max = (existingNums ?? []).reduce((m, r) => {
+      const n = parseInt((r.number ?? "").slice(prefix.length), 10);
+      return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+    const number = `${prefix}${String(max + 1).padStart(3, "0")}`;
 
     const subtotal = toBundle.reduce((sum, j) => sum + (j.price_cents ?? 0), 0);
     const today = new Date().toISOString().slice(0, 10);
