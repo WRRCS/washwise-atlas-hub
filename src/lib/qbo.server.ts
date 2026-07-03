@@ -71,19 +71,34 @@ async function hmac(secret: string, msg: string) {
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
   return b64url(sig);
 }
-export async function signState(tenantId: string) {
+export async function signState(tenantId: string, redirectUri?: string) {
   const nonce = b64url(crypto.getRandomValues(new Uint8Array(12)));
-  const payload = `${tenantId}.${nonce}`;
+  const redirectPart = redirectUri ? `.${b64url(new TextEncoder().encode(redirectUri))}` : "";
+  const payload = `${tenantId}.${nonce}${redirectPart}`;
   const sig = await hmac(qboClientSecret(), payload);
   return `${payload}.${sig}`;
 }
-export async function verifyState(state: string): Promise<{ tenantId: string } | null> {
+export async function verifyState(state: string): Promise<{ tenantId: string; redirectUri?: string } | null> {
   const parts = state.split(".");
-  if (parts.length !== 3) return null;
-  const [tenantId, nonce, sig] = parts;
-  const expected = await hmac(qboClientSecret(), `${tenantId}.${nonce}`);
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const sig = parts.at(-1)!;
+  const payload = parts.slice(0, -1).join(".");
+  const [tenantId] = parts;
+  const expected = await hmac(qboClientSecret(), payload);
   if (expected !== sig) return null;
-  return { tenantId };
+  let redirectUri: string | undefined;
+  if (parts.length === 4) {
+    redirectUri = decodeB64urlText(parts[2]);
+  }
+  return { tenantId, redirectUri };
+}
+
+function decodeB64urlText(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 export function buildAuthUrl(state: string, redirectUri = qboRedirectUri()) {
