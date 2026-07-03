@@ -127,11 +127,7 @@ export async function revokeToken(token: string) {
 
 // ---- Admin supabase client (server-only) ----
 export function admin(): SupabaseClient<Database> {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+  return supabaseAdmin as SupabaseClient<Database>;
 }
 
 type IntegRow = {
