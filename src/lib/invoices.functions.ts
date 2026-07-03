@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { renderEmailForClientContext } from "@/lib/templates.functions";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
