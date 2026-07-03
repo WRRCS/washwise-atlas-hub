@@ -35,6 +35,17 @@ export function qboRedirectUri() {
   return v;
 }
 
+export function qboCallbackUri(origin: string) {
+  const url = new URL(origin);
+  const hostname = url.hostname.toLowerCase();
+  const isAllowed =
+    hostname === "localhost" ||
+    hostname.endsWith(".lovable.app") ||
+    hostname.endsWith(".lovableproject.com");
+  if (!isAllowed) return qboRedirectUri();
+  return `${url.origin}/api/public/qbo/callback`;
+}
+
 function cleanEnv(value: string | undefined) {
   const trimmed = (value ?? "").trim();
   if (
@@ -75,11 +86,11 @@ export async function verifyState(state: string): Promise<{ tenantId: string } |
   return { tenantId };
 }
 
-export function buildAuthUrl(state: string) {
+export function buildAuthUrl(state: string, redirectUri = qboRedirectUri()) {
   const params = new URLSearchParams({
     client_id: qboClientId(),
     scope: SCOPE,
-    redirect_uri: qboRedirectUri(),
+    redirect_uri: redirectUri,
     response_type: "code",
     state,
   });
@@ -109,11 +120,11 @@ async function tokenRequest(body: URLSearchParams): Promise<TokenResp> {
   return r.json() as Promise<TokenResp>;
 }
 
-export function exchangeCode(code: string) {
+export function exchangeCode(code: string, redirectUri = qboRedirectUri()) {
   return tokenRequest(new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: qboRedirectUri(),
+    redirect_uri: redirectUri,
   }));
 }
 export function refreshTokens(refreshToken: string) {
