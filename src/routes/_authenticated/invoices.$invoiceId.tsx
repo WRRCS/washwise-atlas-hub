@@ -13,7 +13,8 @@ import {
   getInvoice, sendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge,
 } from "@/lib/invoices.functions";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
-import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink } from "lucide-react";
+import { syncInvoiceToQbo } from "@/lib/qbo.functions";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, RefreshCw, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   component: InvoiceDetailPage,
