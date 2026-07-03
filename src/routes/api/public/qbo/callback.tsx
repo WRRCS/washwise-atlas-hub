@@ -69,7 +69,7 @@ export const Route = createFileRoute("/api/public/qbo/callback")({
 
         if (upErr) {
           console.error("[qbo callback] save failed:", upErr);
-          return back(`error:save_failed:${upErr.message.slice(0, 120)}`);
+          return back(`error:save_failed:${upErr.message.slice(0, 120)}`, v.returnOrigin);
         }
         if (!count) {
           // No integration row existed — insert one.
