@@ -79,8 +79,9 @@ function ClientDetail() {
             <TabsTrigger value="notes">Notes</TabsTrigger>
             <TabsTrigger value="photos">Photos</TabsTrigger>
           </TabsList>
-          <TabsContent value="profile" className="mt-6">
+          <TabsContent value="profile" className="mt-6 space-y-4">
             <ProfileTab client={client} onSaved={invalidate} />
+            <ClientTemplatesCard client={client} />
           </TabsContent>
           <TabsContent value="specs" className="mt-6">
             <SpecsTab clientId={clientId} spec={client.spec} onSaved={invalidate} />
