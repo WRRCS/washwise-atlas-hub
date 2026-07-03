@@ -1,0 +1,4 @@
+CREATE POLICY "Staff insert clients" ON public.clients FOR INSERT TO authenticated WITH CHECK (tenant_id = current_tenant_id());
+CREATE POLICY "Staff update clients" ON public.clients FOR UPDATE TO authenticated USING (tenant_id = current_tenant_id()) WITH CHECK (tenant_id = current_tenant_id());
+CREATE POLICY "Staff insert property_specs" ON public.property_specs FOR INSERT TO authenticated WITH CHECK (tenant_id = current_tenant_id());
+CREATE POLICY "Staff update property_specs" ON public.property_specs FOR UPDATE TO authenticated USING (tenant_id = current_tenant_id()) WITH CHECK (tenant_id = current_tenant_id());
