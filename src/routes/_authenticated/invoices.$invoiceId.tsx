@@ -1,16 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
   getInvoice, sendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge,
 } from "@/lib/invoices.functions";
-import { ArrowLeft, Send, Check, X } from "lucide-react";
+import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   component: InvoiceDetailPage,
@@ -198,6 +201,8 @@ function InvoiceDetailPage() {
           </div>
         </div>
 
+        <PaymentLinksCard invoiceId={inv.id} status={inv.status} onPaid={refresh} />
+
         {inv.job_id && (
           <div className="text-xs text-muted-foreground">
             Auto-generated from{" "}
@@ -208,6 +213,132 @@ function InvoiceDetailPage() {
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; status: string; onPaid: () => void }) {
+  const qc = useQueryClient();
+  const listPayFn = useServerFn(listInvoicePayments);
+  const manualFn = useServerFn(recordManualPayment);
+  const [placeholder, setPlaceholder] = useState<null | "venmo" | "card" | "ach">(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [method, setMethod] = useState<"cash" | "check" | "other">("cash");
+  const [note, setNote] = useState("");
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ["invoice-payments", invoiceId],
+    queryFn: () => listPayFn({ data: { invoice_id: invoiceId } }),
+  });
+
+  const isPaid = status === "paid";
+  const isCancelled = status === "cancelled";
+
+  const submitManual = async () => {
+    try {
+      await manualFn({ data: { invoice_id: invoiceId, method, note: note || undefined } });
+      toast.success("Payment recorded");
+      setManualOpen(false); setNote(""); setMethod("cash");
+      qc.invalidateQueries({ queryKey: ["invoice-payments", invoiceId] });
+      onPaid();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const providerCopy: Record<string, string> = {
+    venmo: "Venmo integration coming in Phase 2. We'll wire up the Venmo Business API to auto-generate payment requests and reconcile received transfers.",
+    card: "Card payments coming in Phase 2 — Stripe checkout with the optional 3% + $0.30 surcharge you already enabled per invoice.",
+    ach: "ACH payments coming in Phase 2 via Stripe Financial Connections for low-fee bank transfers.",
+  };
+
+  return (
+    <>
+      <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold">Payment links</h3>
+          <p className="text-xs text-muted-foreground">Send the client a way to pay, or record an offline payment.</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("venmo")}>
+            <Wallet className="size-4 mr-1.5" /> Venmo
+          </Button>
+          <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("card")}>
+            <CreditCard className="size-4 mr-1.5" /> Card
+          </Button>
+          <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("ach")}>
+            <Building2 className="size-4 mr-1.5" /> ACH
+          </Button>
+          <Button disabled={isPaid || isCancelled} onClick={() => setManualOpen(true)} className="bg-foreground text-background hover:opacity-90">
+            <HandCoins className="size-4 mr-1.5" /> Mark paid manually
+          </Button>
+        </div>
+
+        {payments.length > 0 && (
+          <div className="pt-3 border-t border-border/40">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Payment history</p>
+            <ul className="space-y-1.5">
+              {payments.map((p) => (
+                <li key={p.id} className="flex items-center justify-between text-sm">
+                  <span className="capitalize">{p.provider}{p.note ? ` · ${p.note}` : ""}</span>
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    ${(p.amount_cents / 100).toFixed(2)} · {p.status}
+                    {p.processed_at && ` · ${format(new Date(p.processed_at), "MMM d")}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <Dialog open={!!placeholder} onOpenChange={(o) => !o && setPlaceholder(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="capitalize">Pay with {placeholder}</DialogTitle>
+            <DialogDescription>{placeholder && providerCopy[placeholder]}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setPlaceholder(null)}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={manualOpen} onOpenChange={setManualOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record manual payment</DialogTitle>
+            <DialogDescription>Log an offline payment received via cash, check, or another method.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Method</Label>
+              <div className="flex gap-2 mt-1">
+                {(["cash", "check", "other"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMethod(m)}
+                    className={`text-sm px-3 py-1.5 rounded-lg border capitalize ${method === m ? "border-brand bg-brand/5 text-brand" : "border-border"}`}
+                  >{m}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Note (optional)</Label>
+              <input
+                value={note} onChange={(e) => setNote(e.target.value)}
+                placeholder="Check #1042"
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setManualOpen(false)}>Cancel</Button>
+            <Button onClick={submitManual} className="bg-brand text-brand-foreground hover:opacity-90">Record payment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
