@@ -435,6 +435,7 @@ export type Database = {
           created_at: string
           default_duration_minutes: number
           default_price_cents: number
+          description: string | null
           id: string
           kind: Database["public"]["Enums"]["service_kind"]
           name: string
@@ -447,6 +448,7 @@ export type Database = {
           created_at?: string
           default_duration_minutes?: number
           default_price_cents?: number
+          description?: string | null
           id?: string
           kind: Database["public"]["Enums"]["service_kind"]
           name: string
@@ -459,6 +461,7 @@ export type Database = {
           created_at?: string
           default_duration_minutes?: number
           default_price_cents?: number
+          description?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["service_kind"]
           name?: string
