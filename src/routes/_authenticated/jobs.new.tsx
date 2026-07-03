@@ -54,7 +54,7 @@ function NewJob() {
           service_type_id: serviceId,
           scheduled_start: startDate.toISOString(),
           scheduled_end: endDate.toISOString(),
-          assigned_to: assignee || null,
+          assigned_employee_ids: assignee ? [assignee] : [],
           notes: notes || undefined,
         },
       });
