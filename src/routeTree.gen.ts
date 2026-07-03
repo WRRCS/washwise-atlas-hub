@@ -31,6 +31,7 @@ import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedJobsJobIdRouteImport } from './routes/_authenticated/jobs.$jobId'
 import { Route as AuthenticatedInvoicesInvoiceIdRouteImport } from './routes/_authenticated/invoices.$invoiceId'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
+import { Route as ApiPublicQboCallbackRouteImport } from './routes/api/public/qbo/callback'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
 
@@ -148,6 +149,11 @@ const AuthenticatedClientsClientIdRoute =
     path: '/$clientId',
     getParentRoute: () => AuthenticatedClientsRoute,
   } as any)
+const ApiPublicQboCallbackRoute = ApiPublicQboCallbackRouteImport.update({
+  id: '/api/public/qbo/callback',
+  path: '/api/public/qbo/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRoutesByTo {
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRoutesById {
@@ -236,6 +244,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRouteTypes {
@@ -263,6 +272,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/templates'
     | '/api/public/payments/webhook'
+    | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/templates'
     | '/api/public/payments/webhook'
+    | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
   id:
     | '__root__'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/templates'
     | '/api/public/payments/webhook'
+    | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
   fileRoutesById: FileRoutesById
 }
@@ -324,6 +336,7 @@ export interface RootRouteChildren {
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiPublicQboCallbackRoute: typeof ApiPublicQboCallbackRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
 }
 
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
       parentRoute: typeof AuthenticatedClientsRoute
     }
+    '/api/public/qbo/callback': {
+      id: '/api/public/qbo/callback'
+      path: '/api/public/qbo/callback'
+      fullPath: '/api/public/qbo/callback'
+      preLoaderRoute: typeof ApiPublicQboCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -581,18 +601,9 @@ const rootRouteChildren: RootRouteChildren = {
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiPublicQboCallbackRoute: ApiPublicQboCallbackRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

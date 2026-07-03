@@ -50,7 +50,7 @@ export const getInvoice = createServerFn({ method: "POST" })
     const [{ data: inv, error }, { data: items, error: ie }] = await Promise.all([
       context.supabase
         .from("invoices")
-        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, email, phone, billing_address, service_address)")
+        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, bundle_month, job_id, client_id, qbo_id, qbo_synced_at, qbo_sync_error, client:clients(id, first_name, last_name, email, phone, billing_address, service_address)")
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
@@ -140,6 +140,13 @@ export const sendInvoice = createServerFn({ method: "POST" })
         scheduled_for: new Date().toISOString(),
       });
     }
+
+    // Fire-and-forget QBO sync (records error on the invoice if it fails).
+    try {
+      const { trySyncInvoice } = await import("./qbo.server");
+      await trySyncInvoice(data.id);
+    } catch { /* swallow */ }
+
     return { ok: true };
   });
 

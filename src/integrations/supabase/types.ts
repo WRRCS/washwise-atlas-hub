@@ -190,6 +190,7 @@ export type Database = {
           is_active: boolean
           last_name: string | null
           phone: string | null
+          qbo_customer_id: string | null
           service_address: string | null
           tenant_id: string
           updated_at: string
@@ -203,6 +204,7 @@ export type Database = {
           is_active?: boolean
           last_name?: string | null
           phone?: string | null
+          qbo_customer_id?: string | null
           service_address?: string | null
           tenant_id: string
           updated_at?: string
@@ -216,6 +218,7 @@ export type Database = {
           is_active?: boolean
           last_name?: string | null
           phone?: string | null
+          qbo_customer_id?: string | null
           service_address?: string | null
           tenant_id?: string
           updated_at?: string
@@ -505,6 +508,9 @@ export type Database = {
           number: string
           paid_at: string | null
           pay_link: string | null
+          qbo_id: string | null
+          qbo_sync_error: string | null
+          qbo_synced_at: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents: number
@@ -528,6 +534,9 @@ export type Database = {
           number: string
           paid_at?: string | null
           pay_link?: string | null
+          qbo_id?: string | null
+          qbo_sync_error?: string | null
+          qbo_synced_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents?: number
@@ -551,6 +560,9 @@ export type Database = {
           number?: string
           paid_at?: string | null
           pay_link?: string | null
+          qbo_id?: string | null
+          qbo_sync_error?: string | null
+          qbo_synced_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents?: number
