@@ -22,6 +22,7 @@ import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedSettingsTemplatesRouteImport } from './routes/_authenticated/settings.templates'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticated/jobs.new'
@@ -94,6 +95,12 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsTemplatesRoute =
+  AuthenticatedSettingsTemplatesRouteImport.update({
+    id: '/settings/templates',
+    path: '/settings/templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsNotificationsRoute =
   AuthenticatedSettingsNotificationsRouteImport.update({
     id: '/settings/notifications',
@@ -154,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRoutesByTo {
@@ -175,6 +183,7 @@ export interface FileRoutesByTo {
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRoutesById {
@@ -198,6 +207,7 @@ export interface FileRoutesById {
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRouteTypes {
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/settings/integrations'
     | '/settings/notifications'
+    | '/settings/templates'
     | '/api/public/hooks/lead/$tenantId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/settings/integrations'
     | '/settings/notifications'
+    | '/settings/templates'
     | '/api/public/hooks/lead/$tenantId'
   id:
     | '__root__'
@@ -264,6 +276,7 @@ export interface FileRouteTypes {
     | '/_authenticated/jobs/new'
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/notifications'
+    | '/_authenticated/settings/templates'
     | '/api/public/hooks/lead/$tenantId'
   fileRoutesById: FileRoutesById
 }
@@ -365,6 +378,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/templates': {
+      id: '/_authenticated/settings/templates'
+      path: '/settings/templates'
+      fullPath: '/settings/templates'
+      preLoaderRoute: typeof AuthenticatedSettingsTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings/notifications': {
@@ -469,6 +489,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSopsRoute: typeof AuthenticatedSopsRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
+  AuthenticatedSettingsTemplatesRoute: typeof AuthenticatedSettingsTemplatesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -486,6 +507,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedSettingsIntegrationsRoute,
   AuthenticatedSettingsNotificationsRoute:
     AuthenticatedSettingsNotificationsRoute,
+  AuthenticatedSettingsTemplatesRoute: AuthenticatedSettingsTemplatesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

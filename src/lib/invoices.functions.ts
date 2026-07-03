@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { renderEmailForClientContext } from "@/lib/templates.functions";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
@@ -101,11 +102,44 @@ export const sendInvoice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    const { data: inv, error: ge } = await context.supabase
+      .from("invoices")
+      .select("id, tenant_id, client_id, number, total_cents, client:clients(first_name, last_name)")
+      .eq("id", data.id).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!inv) throw new Error("Invoice not found");
+
     const { error } = await context.supabase
       .from("invoices")
       .update({ status: "sent", sent_at: new Date().toISOString() })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Render email via template + enqueue
+    const c = (inv.client as { first_name?: string; last_name?: string } | null);
+    const rendered = await renderEmailForClientContext({
+      supabase: context.supabase,
+      tenantId: inv.tenant_id,
+      event: "invoice_sent",
+      clientId: inv.client_id,
+      vars: {
+        client_name: [c?.first_name, c?.last_name].filter(Boolean).join(" ") || "there",
+        invoice_number: inv.number ?? "",
+        amount: `$${((inv.total_cents ?? 0) / 100).toFixed(2)}`,
+        date: new Date().toLocaleDateString(),
+      },
+    });
+    if (rendered && inv.client_id) {
+      await context.supabase.from("notifications").insert({
+        tenant_id: inv.tenant_id,
+        recipient_type: "client",
+        recipient_id: inv.client_id,
+        channel: "email",
+        template_name: rendered.template_name,
+        payload: { subject: rendered.subject, body_html: rendered.body_html, invoice_id: inv.id },
+        scheduled_for: new Date().toISOString(),
+      });
+    }
     return { ok: true };
   });
 

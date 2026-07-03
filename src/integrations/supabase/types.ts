@@ -128,6 +128,58 @@ export type Database = {
           },
         ]
       }
+      client_template_preferences: {
+        Row: {
+          client_id: string
+          created_at: string
+          email_template_overrides: Json
+          id: string
+          quote_template_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          email_template_overrides?: Json
+          id?: string
+          quote_template_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          email_template_overrides?: Json
+          id?: string
+          quote_template_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_template_preferences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_template_preferences_quote_template_id_fkey"
+            columns: ["quote_template_id"]
+            isOneToOne: false
+            referencedRelation: "quote_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_template_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           billing_address: string | null
@@ -171,6 +223,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          subject: string
+          tenant_id: string
+          trigger_event: Database["public"]["Enums"]["email_trigger_event"]
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          subject?: string
+          tenant_id: string
+          trigger_event: Database["public"]["Enums"]["email_trigger_event"]
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          subject?: string
+          tenant_id?: string
+          trigger_event?: Database["public"]["Enums"]["email_trigger_event"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1043,6 +1139,60 @@ export type Database = {
           },
         ]
       }
+      quote_templates: {
+        Row: {
+          body_html: string
+          created_at: string
+          footer_html: string
+          header_html: string
+          id: string
+          is_default: boolean
+          name: string
+          service_type_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          created_at?: string
+          footer_html?: string
+          header_html?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          service_type_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          footer_html?: string
+          header_html?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          service_type_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_templates_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           active: boolean
@@ -1415,6 +1565,13 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "employee"
+      email_trigger_event:
+        | "booking_confirmation"
+        | "appointment_reminder"
+        | "invoice_sent"
+        | "invoice_overdue"
+        | "job_completed_thankyou"
+        | "review_request"
       integration_provider:
         | "quickbooks"
         | "stripe"
@@ -1571,6 +1728,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "employee"],
+      email_trigger_event: [
+        "booking_confirmation",
+        "appointment_reminder",
+        "invoice_sent",
+        "invoice_overdue",
+        "job_completed_thankyou",
+        "review_request",
+      ],
       integration_provider: [
         "quickbooks",
         "stripe",

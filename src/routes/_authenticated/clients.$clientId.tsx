@@ -16,8 +16,9 @@ import {
   addClientNote, deleteClientNote,
   createPhotoUploadUrl, registerClientPhoto, deleteClientPhoto,
 } from "@/lib/entities.functions";
+import { listQuoteTemplates, listEmailTemplates, getClientPreference, setClientQuotePreference, sendClientEmail, renderTemplate, COMPANY_NAME } from "@/lib/templates.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Mail, Trash2, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
   component: ClientDetail,
@@ -78,8 +79,9 @@ function ClientDetail() {
             <TabsTrigger value="notes">Notes</TabsTrigger>
             <TabsTrigger value="photos">Photos</TabsTrigger>
           </TabsList>
-          <TabsContent value="profile" className="mt-6">
+          <TabsContent value="profile" className="mt-6 space-y-4">
             <ProfileTab client={client} onSaved={invalidate} />
+            <ClientTemplatesCard client={client} />
           </TabsContent>
           <TabsContent value="specs" className="mt-6">
             <SpecsTab clientId={clientId} spec={client.spec} onSaved={invalidate} />
@@ -401,6 +403,86 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+/* ---------------- Templates & email ---------------- */
+
+function ClientTemplatesCard({ client }: { client: { id: string; first_name: string | null; last_name: string | null; email: string | null } }) {
+  const qc = useQueryClient();
+  const listQuotes = useServerFn(listQuoteTemplates);
+  const listEmails = useServerFn(listEmailTemplates);
+  const getPref = useServerFn(getClientPreference);
+  const setPref = useServerFn(setClientQuotePreference);
+  const sendFn = useServerFn(sendClientEmail);
+
+  const { data: quotes } = useQuery({ queryKey: ["quote-templates"], queryFn: () => listQuotes() });
+  const { data: emails } = useQuery({ queryKey: ["email-templates"], queryFn: () => listEmails() });
+  const { data: pref } = useQuery({ queryKey: ["client-pref", client.id], queryFn: () => getPref({ data: { client_id: client.id } }) });
+
+  const [selectedEmail, setSelectedEmail] = useState<string>("");
+  const active = (emails ?? []).filter((e) => e.is_active);
+  const chosen = active.find((e) => e.id === selectedEmail);
+  const clientName = [client.first_name, client.last_name].filter(Boolean).join(" ") || "there";
+  const preview = chosen ? {
+    subject: renderTemplate(chosen.subject, { client_name: clientName, company_name: COMPANY_NAME, date: new Date().toLocaleDateString() }),
+    body: renderTemplate(chosen.body_html, { client_name: clientName, company_name: COMPANY_NAME, date: new Date().toLocaleDateString() }),
+  } : null;
+
+  const onPref = async (val: string) => {
+    try {
+      await setPref({ data: { client_id: client.id, quote_template_id: val || null } });
+      toast.success("Preference saved");
+      qc.invalidateQueries({ queryKey: ["client-pref", client.id] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  const onSend = async () => {
+    if (!selectedEmail) return toast.error("Pick a template");
+    if (!client.email) return toast.error("Client has no email on file");
+    try {
+      await sendFn({ data: { client_id: client.id, template_id: selectedEmail } });
+      toast.success("Email queued");
+      setSelectedEmail("");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  return (
+    <div className="bg-card p-6 rounded-xl ring-1 ring-black/5 space-y-5">
+      <div>
+        <h3 className="text-sm font-medium mb-2">Preferred quote template</h3>
+        <select
+          className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+          value={pref?.quote_template_id ?? ""}
+          onChange={(e) => onPref(e.target.value)}
+        >
+          <option value="">Use default for the service type</option>
+          {(quotes ?? []).map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
+        </select>
+      </div>
+      <div>
+        <h3 className="text-sm font-medium mb-2 flex items-center gap-2"><Mail className="size-4" /> Send a custom email</h3>
+        <select
+          className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm mb-3"
+          value={selectedEmail}
+          onChange={(e) => setSelectedEmail(e.target.value)}
+        >
+          <option value="">Pick a template…</option>
+          {active.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        {preview && (
+          <div className="border rounded-lg bg-white p-3 mb-3 text-sm">
+            <p className="font-medium mb-2">{preview.subject}</p>
+            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: preview.body }} />
+          </div>
+        )}
+        <div className="flex justify-end">
+          <Button size="sm" onClick={onSend} disabled={!selectedEmail} className="bg-brand text-brand-foreground hover:opacity-90">
+            Send to {client.email ?? "client"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
