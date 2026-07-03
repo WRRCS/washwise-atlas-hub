@@ -199,8 +199,34 @@ function InvoiceDetailPage() {
                 <X className="size-4 mr-1.5" /> Cancel
               </Button>
             )}
+            <QboSyncButton
+              invoiceId={inv.id}
+              qboId={(inv as any).qbo_id ?? null}
+              qboError={(inv as any).qbo_sync_error ?? null}
+              onDone={refresh}
+            />
           </div>
         </div>
+
+        {(inv as any).qbo_id && (
+          <div className="flex items-center gap-2 text-xs text-success">
+            <Check className="size-3.5" /> Synced to QuickBooks
+            {(inv as any).qbo_synced_at && (
+              <span className="text-muted-foreground">
+                · {format(new Date((inv as any).qbo_synced_at), "PPp")}
+              </span>
+            )}
+          </div>
+        )}
+        {(inv as any).qbo_sync_error && !(inv as any).qbo_id && (
+          <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/5 ring-1 ring-destructive/20 rounded-lg p-3">
+            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium">QuickBooks sync failed</p>
+              <p className="text-muted-foreground break-words">{(inv as any).qbo_sync_error}</p>
+            </div>
+          </div>
+        )}
 
         <PaymentLinksCard invoiceId={inv.id} status={inv.status} onPaid={refresh} />
 
