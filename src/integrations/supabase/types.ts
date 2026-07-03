@@ -253,6 +253,63 @@ export type Database = {
           },
         ]
       }
+      job_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          job_id: string
+          photo_type: Database["public"]["Enums"]["photo_type"]
+          storage_path: string
+          taken_at: string | null
+          tenant_id: string
+          updated_at: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          photo_type?: Database["public"]["Enums"]["photo_type"]
+          storage_path: string
+          taken_at?: string | null
+          tenant_id: string
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          photo_type?: Database["public"]["Enums"]["photo_type"]
+          storage_path?: string
+          taken_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_photos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_sop_items: {
         Row: {
           completed: boolean
@@ -382,6 +439,58 @@ export type Database = {
           },
           {
             foreignKeyName: "jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_share_log: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          photo_id: string
+          shared_at: string
+          shared_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          photo_id: string
+          shared_at?: string
+          shared_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          photo_id?: string
+          shared_at?: string
+          shared_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_share_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_share_log_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "job_photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_share_log_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -653,6 +762,7 @@ export type Database = {
       app_role: "owner" | "employee"
       invoice_status: "draft" | "sent" | "paid" | "void"
       job_status: "scheduled" | "in_progress" | "completed" | "canceled"
+      photo_type: "before" | "after" | "other"
       service_kind:
         | "airbnb_turnover"
         | "move_in"
@@ -791,6 +901,7 @@ export const Constants = {
       app_role: ["owner", "employee"],
       invoice_status: ["draft", "sent", "paid", "void"],
       job_status: ["scheduled", "in_progress", "completed", "canceled"],
+      photo_type: ["before", "after", "other"],
       service_kind: [
         "airbnb_turnover",
         "move_in",
