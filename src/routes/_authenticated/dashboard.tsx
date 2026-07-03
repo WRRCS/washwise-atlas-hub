@@ -8,7 +8,7 @@ import {
   getRecentActivity,
   type ActivityRow,
 } from "@/lib/dashboard.functions";
-import { listLowInventory, logInventoryTransaction } from "@/lib/inventory.functions";
+import { listLowInventory, logInventoryTransaction, type InventoryItem } from "@/lib/inventory.functions";
 import { toast } from "sonner";
 import {
   Calendar,
