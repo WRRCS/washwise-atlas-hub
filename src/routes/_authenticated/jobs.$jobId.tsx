@@ -1,10 +1,13 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
+import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { PageHeader } from "@/components/app-shell";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Check } from "lucide-react";
+import { Check, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
