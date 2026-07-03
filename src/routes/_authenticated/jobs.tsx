@@ -21,9 +21,9 @@ const STATUS_STYLES: Record<string, { dot: string; label: string }> = {
   canceled: { dot: "bg-destructive", label: "Canceled" },
 };
 
-function fmtAddress(p: { address_line1: string; address_line2: string | null; city: string | null } | null) {
-  if (!p) return "—";
-  return [p.address_line1, p.address_line2].filter(Boolean).join(", ");
+function fmtClient(c: { first_name: string | null; last_name: string | null } | null) {
+  if (!c) return "—";
+  return [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
 }
 function fmtCents(c: number) {
   return `$${(c / 100).toFixed(2)}`;
