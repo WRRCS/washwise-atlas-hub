@@ -248,8 +248,11 @@ function CompleteJobDialog({
 }) {
   const createUploadUrl = useServerFn(createJobPhotoUploadUrl);
   const complete = useServerFn(completeJobWithPhotos);
+  const fetchInventory = useServerFn(listInventory);
+  const inventoryQ = useQuery<InventoryItem[]>({ queryKey: ["inventory-for-complete"], queryFn: () => fetchInventory() });
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<Pending[]>([]);
+  const [supplies, setSupplies] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
