@@ -486,4 +486,3 @@ function ClientTemplatesCard({ client }: { client: { id: string; first_name: str
     </div>
   );
 }
-}
