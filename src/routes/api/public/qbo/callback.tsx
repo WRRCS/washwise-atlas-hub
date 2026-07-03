@@ -12,8 +12,11 @@ export const Route = createFileRoute("/api/public/qbo/callback")({
         const realmId = url.searchParams.get("realmId");
         const error = url.searchParams.get("error");
 
-        const back = (msg: string) =>
-          new Response(null, { status: 302, headers: { Location: `/settings/integrations?qbo=${encodeURIComponent(msg)}` } });
+        const back = (msg: string, origin?: string) =>
+          new Response(null, {
+            status: 302,
+            headers: { Location: `${origin ?? ""}/settings/integrations?qbo=${encodeURIComponent(msg)}` },
+          });
 
         if (error) return back(`error:${error}`);
         if (!code || !state || !realmId) return back("error:missing_params");
@@ -28,7 +31,7 @@ export const Route = createFileRoute("/api/public/qbo/callback")({
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error("[qbo callback] token exchange failed:", msg);
-          return back(`error:token_exchange:${msg.slice(0, 120)}`);
+          return back(`error:token_exchange:${msg.slice(0, 120)}`, v.returnOrigin);
         }
 
         // Best-effort: pull company name for display.
@@ -66,7 +69,7 @@ export const Route = createFileRoute("/api/public/qbo/callback")({
 
         if (upErr) {
           console.error("[qbo callback] save failed:", upErr);
-          return back(`error:save_failed:${upErr.message.slice(0, 120)}`);
+          return back(`error:save_failed:${upErr.message.slice(0, 120)}`, v.returnOrigin);
         }
         if (!count) {
           // No integration row existed — insert one.
@@ -82,10 +85,10 @@ export const Route = createFileRoute("/api/public/qbo/callback")({
           });
           if (insErr) {
             console.error("[qbo callback] insert failed:", insErr);
-            return back(`error:save_failed:${insErr.message.slice(0, 120)}`);
+            return back(`error:save_failed:${insErr.message.slice(0, 120)}`, v.returnOrigin);
           }
         }
-        return back("connected");
+        return back("connected", v.returnOrigin);
       },
     },
   },

@@ -9,7 +9,7 @@ const REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 const SCOPE = "com.intuit.quickbooks.accounting";
 
 export function qboEnv() {
-  const env = (process.env.QBO_ENVIRONMENT ?? "sandbox").toLowerCase();
+  const env = cleanEnv(process.env.QBO_ENVIRONMENT ?? "sandbox").toLowerCase();
   return env === "production" ? "production" : "sandbox";
 }
 
@@ -20,19 +20,41 @@ export function qboApiBase() {
 }
 
 export function qboClientId() {
-  const v = process.env.QBO_CLIENT_ID;
+  const v = cleanEnv(process.env.QBO_CLIENT_ID);
   if (!v) throw new Error("QBO_CLIENT_ID is not configured");
   return v;
 }
 export function qboClientSecret() {
-  const v = process.env.QBO_CLIENT_SECRET;
+  const v = cleanEnv(process.env.QBO_CLIENT_SECRET);
   if (!v) throw new Error("QBO_CLIENT_SECRET is not configured");
   return v;
 }
 export function qboRedirectUri() {
-  const v = process.env.QBO_REDIRECT_URI;
+  const v = cleanEnv(process.env.QBO_REDIRECT_URI);
   if (!v) throw new Error("QBO_REDIRECT_URI is not configured");
   return v;
+}
+
+export function qboReturnOrigin(origin: string) {
+  const url = new URL(origin);
+  const hostname = url.hostname.toLowerCase();
+  const isAllowed =
+    hostname === "localhost" ||
+    hostname.endsWith(".lovable.app") ||
+    hostname.endsWith(".lovableproject.com");
+  if (!isAllowed) return undefined;
+  return url.origin;
+}
+
+function cleanEnv(value: string | undefined) {
+  const trimmed = (value ?? "").trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
 }
 
 // --- state signing ---
@@ -49,26 +71,41 @@ async function hmac(secret: string, msg: string) {
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
   return b64url(sig);
 }
-export async function signState(tenantId: string) {
+export async function signState(tenantId: string, returnOrigin?: string) {
   const nonce = b64url(crypto.getRandomValues(new Uint8Array(12)));
-  const payload = `${tenantId}.${nonce}`;
+  const redirectPart = returnOrigin ? `.${b64url(new TextEncoder().encode(returnOrigin))}` : "";
+  const payload = `${tenantId}.${nonce}${redirectPart}`;
   const sig = await hmac(qboClientSecret(), payload);
   return `${payload}.${sig}`;
 }
-export async function verifyState(state: string): Promise<{ tenantId: string } | null> {
+export async function verifyState(state: string): Promise<{ tenantId: string; returnOrigin?: string } | null> {
   const parts = state.split(".");
-  if (parts.length !== 3) return null;
-  const [tenantId, nonce, sig] = parts;
-  const expected = await hmac(qboClientSecret(), `${tenantId}.${nonce}`);
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const sig = parts.at(-1)!;
+  const payload = parts.slice(0, -1).join(".");
+  const [tenantId] = parts;
+  const expected = await hmac(qboClientSecret(), payload);
   if (expected !== sig) return null;
-  return { tenantId };
+  let returnOrigin: string | undefined;
+  if (parts.length === 4) {
+    returnOrigin = qboReturnOrigin(decodeB64urlText(parts[2]));
+  }
+  return { tenantId, returnOrigin };
 }
 
-export function buildAuthUrl(state: string) {
+function decodeB64urlText(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+export function buildAuthUrl(state: string, redirectUri = qboRedirectUri()) {
   const params = new URLSearchParams({
     client_id: qboClientId(),
     scope: SCOPE,
-    redirect_uri: qboRedirectUri(),
+    redirect_uri: redirectUri,
     response_type: "code",
     state,
   });
@@ -98,11 +135,11 @@ async function tokenRequest(body: URLSearchParams): Promise<TokenResp> {
   return r.json() as Promise<TokenResp>;
 }
 
-export function exchangeCode(code: string) {
+export function exchangeCode(code: string, redirectUri = qboRedirectUri()) {
   return tokenRequest(new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: qboRedirectUri(),
+    redirect_uri: redirectUri,
   }));
 }
 export function refreshTokens(refreshToken: string) {
