@@ -431,6 +431,7 @@ export type Database = {
       service_types: {
         Row: {
           active: boolean
+          color: string
           created_at: string
           default_duration_minutes: number
           default_price_cents: number
@@ -442,6 +443,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          color?: string
           created_at?: string
           default_duration_minutes?: number
           default_price_cents?: number
@@ -453,6 +455,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          color?: string
           created_at?: string
           default_duration_minutes?: number
           default_price_cents?: number

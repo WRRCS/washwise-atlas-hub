@@ -1,0 +1,4 @@
+ALTER TABLE public.service_types ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT '#6366f1';
+CREATE POLICY "Staff insert service_types" ON public.service_types FOR INSERT TO authenticated WITH CHECK (tenant_id = current_tenant_id() AND is_owner());
+CREATE POLICY "Staff update service_types" ON public.service_types FOR UPDATE TO authenticated USING (tenant_id = current_tenant_id() AND is_owner()) WITH CHECK (tenant_id = current_tenant_id() AND is_owner());
+CREATE POLICY "Staff delete service_types" ON public.service_types FOR DELETE TO authenticated USING (tenant_id = current_tenant_id() AND is_owner());
