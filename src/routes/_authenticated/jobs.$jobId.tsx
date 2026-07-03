@@ -37,12 +37,14 @@ function JobDetail() {
     await toggle({ data: { id, completed } });
     qc.invalidateQueries({ queryKey: ["job", jobId] });
   };
-  const onStatus = async (status: "in_progress" | "completed") => {
+  const onStatus = async (status: "in_progress" | "completed" | "canceled") => {
+    if (status === "canceled" && !confirm("Cancel this job?")) return;
     await setStatus({ data: { id: jobId, status } });
-    toast.success(status === "completed" ? "Job completed" : "Job started");
+    toast.success(status === "completed" ? "Job completed" : status === "canceled" ? "Job canceled" : "Job started");
     qc.invalidateQueries({ queryKey: ["job", jobId] });
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
+
 
   return (
     <>
