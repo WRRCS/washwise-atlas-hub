@@ -146,6 +146,13 @@ function TodayView() {
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
                       </p>
                       {j.notes && <p className="text-sm mt-2 text-muted-foreground italic">{j.notes}</p>}
+                      <button
+                        type="button"
+                        onClick={() => setSopFor({ jobId: j.id, serviceTypeId: j.service?.id ?? null, label: j.service?.name ?? "SOP" })}
+                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                      >
+                        <BookOpen className="size-3.5" /> View SOP
+                      </button>
                     </div>
                     <div className="shrink-0 flex flex-col gap-2">
                       {j.open_entry ? (
