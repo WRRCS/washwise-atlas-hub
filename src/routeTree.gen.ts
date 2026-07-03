@@ -21,6 +21,7 @@ import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticated/jobs.new'
 import { Route as AuthenticatedJobsJobIdRouteImport } from './routes/_authenticated/jobs.$jobId'
+import { Route as AuthenticatedInvoicesInvoiceIdRouteImport } from './routes/_authenticated/invoices.$invoiceId'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -82,6 +83,12 @@ const AuthenticatedJobsJobIdRoute = AuthenticatedJobsJobIdRouteImport.update({
   path: '/$jobId',
   getParentRoute: () => AuthenticatedJobsRoute,
 } as any)
+const AuthenticatedInvoicesInvoiceIdRoute =
+  AuthenticatedInvoicesInvoiceIdRouteImport.update({
+    id: '/$invoiceId',
+    path: '/$invoiceId',
+    getParentRoute: () => AuthenticatedInvoicesRoute,
+  } as any)
 const AuthenticatedClientsClientIdRoute =
   AuthenticatedClientsClientIdRouteImport.update({
     id: '/$clientId',
@@ -95,11 +102,12 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/employees': typeof AuthenticatedEmployeesRoute
-  '/invoices': typeof AuthenticatedInvoicesRoute
+  '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
+  '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
 }
@@ -109,11 +117,12 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedCalendarRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/employees': typeof AuthenticatedEmployeesRoute
-  '/invoices': typeof AuthenticatedInvoicesRoute
+  '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
+  '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
 }
@@ -125,11 +134,12 @@ export interface FileRoutesById {
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
-  '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
+  '/_authenticated/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/_authenticated/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/_authenticated/my-jobs': typeof AuthenticatedMyJobsRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
+  '/_authenticated/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/_authenticated/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
 }
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/my-jobs'
     | '/services'
     | '/clients/$clientId'
+    | '/invoices/$invoiceId'
     | '/jobs/$jobId'
     | '/jobs/new'
   fileRoutesByTo: FileRoutesByTo
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/my-jobs'
     | '/services'
     | '/clients/$clientId'
+    | '/invoices/$invoiceId'
     | '/jobs/$jobId'
     | '/jobs/new'
   id:
@@ -175,6 +187,7 @@ export interface FileRouteTypes {
     | '/_authenticated/my-jobs'
     | '/_authenticated/services'
     | '/_authenticated/clients/$clientId'
+    | '/_authenticated/invoices/$invoiceId'
     | '/_authenticated/jobs/$jobId'
     | '/_authenticated/jobs/new'
   fileRoutesById: FileRoutesById
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedJobsJobIdRouteImport
       parentRoute: typeof AuthenticatedJobsRoute
     }
+    '/_authenticated/invoices/$invoiceId': {
+      id: '/_authenticated/invoices/$invoiceId'
+      path: '/$invoiceId'
+      fullPath: '/invoices/$invoiceId'
+      preLoaderRoute: typeof AuthenticatedInvoicesInvoiceIdRouteImport
+      parentRoute: typeof AuthenticatedInvoicesRoute
+    }
     '/_authenticated/clients/$clientId': {
       id: '/_authenticated/clients/$clientId'
       path: '/$clientId'
@@ -292,6 +312,19 @@ const AuthenticatedClientsRouteChildren: AuthenticatedClientsRouteChildren = {
 const AuthenticatedClientsRouteWithChildren =
   AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
 
+interface AuthenticatedInvoicesRouteChildren {
+  AuthenticatedInvoicesInvoiceIdRoute: typeof AuthenticatedInvoicesInvoiceIdRoute
+}
+
+const AuthenticatedInvoicesRouteChildren: AuthenticatedInvoicesRouteChildren = {
+  AuthenticatedInvoicesInvoiceIdRoute: AuthenticatedInvoicesInvoiceIdRoute,
+}
+
+const AuthenticatedInvoicesRouteWithChildren =
+  AuthenticatedInvoicesRoute._addFileChildren(
+    AuthenticatedInvoicesRouteChildren,
+  )
+
 interface AuthenticatedJobsRouteChildren {
   AuthenticatedJobsJobIdRoute: typeof AuthenticatedJobsJobIdRoute
   AuthenticatedJobsNewRoute: typeof AuthenticatedJobsNewRoute
@@ -309,7 +342,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
-  AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
+  AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRouteWithChildren
   AuthenticatedJobsRoute: typeof AuthenticatedJobsRouteWithChildren
   AuthenticatedMyJobsRoute: typeof AuthenticatedMyJobsRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
@@ -319,7 +352,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
-  AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
+  AuthenticatedInvoicesRoute: AuthenticatedInvoicesRouteWithChildren,
   AuthenticatedJobsRoute: AuthenticatedJobsRouteWithChildren,
   AuthenticatedMyJobsRoute: AuthenticatedMyJobsRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
