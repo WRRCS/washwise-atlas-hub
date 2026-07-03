@@ -3,14 +3,13 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, Building2, UserCog, Receipt, LogOut, Plus,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus,
 } from "lucide-react";
 
 const NAV = [
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/clients", label: "Clients", icon: Users },
-  { to: "/properties", label: "Properties", icon: Building2 },
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/invoices", label: "Invoices", icon: Receipt },
 ] as const;
