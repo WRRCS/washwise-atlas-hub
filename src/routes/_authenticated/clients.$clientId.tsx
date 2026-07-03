@@ -16,8 +16,9 @@ import {
   addClientNote, deleteClientNote,
   createPhotoUploadUrl, registerClientPhoto, deleteClientPhoto,
 } from "@/lib/entities.functions";
+import { listQuoteTemplates, listEmailTemplates, getClientPreference, setClientQuotePreference, sendClientEmail, renderTemplate, COMPANY_NAME } from "@/lib/templates.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Mail, Trash2, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
   component: ClientDetail,
