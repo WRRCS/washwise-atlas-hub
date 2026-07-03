@@ -10,7 +10,7 @@ export type IntegrationRow = {
   is_connected: boolean;
   connected_at: string | null;
   external_account_id: string | null;
-  settings: Record<string, unknown>;
+  webhook_token: string | null;
   updated_at: string;
 };
 
@@ -22,7 +22,15 @@ export const listIntegrations = createServerFn({ method: "GET" })
       .select("id, provider, is_connected, connected_at, external_account_id, settings, updated_at")
       .order("provider");
     if (error) throw new Error(error.message);
-    return (data ?? []) as IntegrationRow[];
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      provider: r.provider,
+      is_connected: r.is_connected,
+      connected_at: r.connected_at,
+      external_account_id: r.external_account_id,
+      webhook_token: (r.settings as { webhook_token?: string } | null)?.webhook_token ?? null,
+      updated_at: r.updated_at,
+    }));
   });
 
 export const setIntegrationConnected = createServerFn({ method: "POST" })
@@ -38,7 +46,13 @@ export const setIntegrationConnected = createServerFn({ method: "POST" })
     const { data: prof } = await context.supabase
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
-    const patch: Record<string, unknown> = {
+    const patch: {
+      is_connected: boolean;
+      connected_at: string | null;
+      external_account_id?: string | null;
+      access_token?: string | null;
+      refresh_token?: string | null;
+    } = {
       is_connected: data.connected,
       connected_at: data.connected ? new Date().toISOString() : null,
     };

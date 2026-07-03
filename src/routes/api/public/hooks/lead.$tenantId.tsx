@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/public/hooks/lead/$tenantId")({
           email: payload.email ? String(payload.email) : null,
           phone: payload.phone ? String(payload.phone) : null,
           notes: `Lead from GoDaddy website\n\n${JSON.stringify(payload, null, 2)}`,
-        });
+        } as never);
         if (error) return new Response(error.message, { status: 500 });
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json" },
