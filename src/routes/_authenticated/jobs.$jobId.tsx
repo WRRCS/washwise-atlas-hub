@@ -48,7 +48,7 @@ function JobDetail() {
     <>
       <PageHeader
         title={job.service?.name ?? "Job"}
-        subtitle={`${job.property?.address_line1}${job.property?.address_line2 ? ", " + job.property.address_line2 : ""} · ${format(new Date(job.scheduled_start), "PPp")}`}
+        subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={
           <div className="flex gap-2">
             {job.status === "scheduled" && (
@@ -90,17 +90,14 @@ function JobDetail() {
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Client</h4>
             <div>
-              <p className="text-sm font-medium">{job.client?.name}</p>
+              <p className="text-sm font-medium">{[job.client?.first_name, job.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
               <p className="text-xs text-muted-foreground">{job.client?.email ?? "—"}</p>
               <p className="text-xs text-muted-foreground">{job.client?.phone ?? "—"}</p>
             </div>
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
-            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Property</h4>
-            <p className="text-sm">{job.property?.address_line1}</p>
-            {job.property?.access_notes && (
-              <p className="text-xs text-muted-foreground">Access: {job.property.access_notes}</p>
-            )}
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service address</h4>
+            <p className="text-sm whitespace-pre-wrap">{job.client?.service_address ?? "—"}</p>
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Assignment</h4>
