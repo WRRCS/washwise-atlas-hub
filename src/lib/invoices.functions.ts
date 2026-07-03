@@ -187,8 +187,8 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
     const toBundle = jobs; // include all jobs in the month once drafts cleared
 
     // Next invoice number: WRR-YYYY-###
-    const year = new Date().getFullYear();
-    const prefix = `WRR-${year}-`;
+    const yr = new Date().getFullYear();
+    const prefix = `WRR-${yr}-`;
     const { data: existingNums } = await context.supabase
       .from("invoices")
       .select("number")
