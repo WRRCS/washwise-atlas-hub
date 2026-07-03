@@ -14,34 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_notes: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string
+          tenant_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note: string
+          tenant_id?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_photos: {
+        Row: {
+          caption: string | null
+          client_id: string
+          id: string
+          storage_path: string
+          tenant_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          caption?: string | null
+          client_id: string
+          id?: string
+          storage_path: string
+          tenant_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          caption?: string | null
+          client_id?: string
+          id?: string
+          storage_path?: string
+          tenant_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_photos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
+          billing_address: string | null
           created_at: string
           email: string | null
+          first_name: string | null
           id: string
-          name: string
-          notes: string | null
+          is_active: boolean
+          last_name: string | null
           phone: string | null
+          service_address: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          billing_address?: string | null
           created_at?: string
           email?: string | null
+          first_name?: string | null
           id?: string
-          name: string
-          notes?: string | null
+          is_active?: boolean
+          last_name?: string | null
           phone?: string | null
+          service_address?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          billing_address?: string | null
           created_at?: string
           email?: string | null
+          first_name?: string | null
           id?: string
-          name?: string
-          notes?: string | null
+          is_active?: boolean
+          last_name?: string | null
           phone?: string | null
+          service_address?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -234,13 +316,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "jobs_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "jobs_service_type_id_fkey"
             columns: ["service_type_id"]
             isOneToOne: false
@@ -297,68 +372,58 @@ export type Database = {
           },
         ]
       }
-      properties: {
+      property_specs: {
         Row: {
           access_notes: string | null
-          address_line1: string
-          address_line2: string | null
           bathrooms: number | null
           bedrooms: number | null
-          city: string | null
           client_id: string
           created_at: string
           id: string
-          nickname: string | null
-          postal_code: string | null
-          square_feet: number | null
-          state: string | null
+          key_location: string | null
+          parking_notes: string | null
+          pets: string | null
+          special_instructions: string | null
+          square_footage: number | null
           tenant_id: string
+          updated_at: string
         }
         Insert: {
           access_notes?: string | null
-          address_line1: string
-          address_line2?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
-          city?: string | null
           client_id: string
           created_at?: string
           id?: string
-          nickname?: string | null
-          postal_code?: string | null
-          square_feet?: number | null
-          state?: string | null
-          tenant_id: string
+          key_location?: string | null
+          parking_notes?: string | null
+          pets?: string | null
+          special_instructions?: string | null
+          square_footage?: number | null
+          tenant_id?: string
+          updated_at?: string
         }
         Update: {
           access_notes?: string | null
-          address_line1?: string
-          address_line2?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
-          city?: string | null
           client_id?: string
           created_at?: string
           id?: string
-          nickname?: string | null
-          postal_code?: string | null
-          square_feet?: number | null
-          state?: string | null
+          key_location?: string | null
+          parking_notes?: string | null
+          pets?: string | null
+          special_instructions?: string | null
+          square_footage?: number | null
           tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "properties_client_id_fkey"
+            foreignKeyName: "property_specs_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "properties_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
