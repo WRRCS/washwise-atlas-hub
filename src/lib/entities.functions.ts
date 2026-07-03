@@ -292,12 +292,70 @@ export const listServiceTypes = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("service_types")
-      .select("id, kind, name, default_duration_minutes, default_price_cents")
-      .eq("active", true)
+      .select("id, kind, name, default_duration_minutes, default_price_cents, description, color, active")
       .order("name");
     if (error) throw new Error(error.message);
     return data ?? [];
   });
+
+const serviceTypeSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  default_duration_minutes: z.coerce.number().int().positive().max(24 * 60),
+  default_price_cents: z.coerce.number().int().nonnegative(),
+  description: z.string().trim().max(500).optional(),
+  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).default("#6366f1"),
+});
+
+export const createServiceType = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => serviceTypeSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: prof } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (!prof) throw new Error("No profile");
+    const { data: row, error } = await context.supabase
+      .from("service_types")
+      .insert({
+        tenant_id: prof.tenant_id,
+        kind: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40),
+        name: data.name,
+        default_duration_minutes: data.default_duration_minutes,
+        default_price_cents: data.default_price_cents,
+        description: data.description || null,
+        color: data.color,
+        active: true,
+      })
+      .select("id").single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const updateServiceType = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => serviceTypeSchema.extend({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("service_types")
+      .update({
+        name: data.name,
+        default_duration_minutes: data.default_duration_minutes,
+        default_price_cents: data.default_price_cents,
+        description: data.description || null,
+        color: data.color,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteServiceType = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("service_types").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
