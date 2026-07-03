@@ -10,6 +10,7 @@ import { toast } from "sonner";
 type AuthSearch = { redirect?: string };
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   validateSearch: (s: Record<string, unknown>): AuthSearch => ({
     redirect: typeof s.redirect === "string" ? s.redirect : undefined,
   }),
