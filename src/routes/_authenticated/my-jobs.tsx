@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { listMyJobs, clockIn, clockOut, listMyTimeEntries, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
-import { Play, Square, MapPin, Clock } from "lucide-react";
+import { listMyJobs, clockIn, listMyTimeEntries, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
+import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/my-jobs")({
   component: MyJobsPage,
