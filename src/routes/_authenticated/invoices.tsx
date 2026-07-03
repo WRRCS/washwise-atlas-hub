@@ -38,7 +38,7 @@ function Invoices() {
               <div key={inv.id} className="bg-card p-5 rounded-xl ring-1 ring-black/5 flex justify-between items-center">
                 <div>
                   <p className="text-sm text-muted-foreground">#{inv.number}</p>
-                  <p className="text-base font-medium">{inv.client?.name}</p>
+                  <p className="text-base font-medium">{[inv.client?.first_name, inv.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
                   <p className="text-xs text-muted-foreground">
                     {inv.sent_at ? `Sent ${format(new Date(inv.sent_at), "PP")}` : "Not sent"}
                     {inv.paid_at && ` · Paid ${format(new Date(inv.paid_at), "PP")}`}
