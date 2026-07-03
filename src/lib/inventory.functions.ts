@@ -133,7 +133,7 @@ export const updateInventoryItem = createServerFn({ method: "POST" })
     const { id, ...patch } = data;
     const clean: Record<string, any> = {};
     for (const [k, v] of Object.entries(patch)) if (v !== undefined) clean[k] = v;
-    const { error } = await context.supabase.from("inventory_items").update(clean).eq("id", id);
+    const { error } = await (context.supabase.from("inventory_items") as any).update(clean).eq("id", id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
