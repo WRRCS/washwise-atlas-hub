@@ -249,7 +249,7 @@ function LowInventoryCard() {
   const fetchLow = useServerFn(listLowInventory);
   const { data: items = [], refetch } = useQuery({
     queryKey: ["dashboard-low-inventory"],
-    queryFn: () => fetchLow(),
+    queryFn: () => fetchLow() as ReturnType<typeof listLowInventory>,
   });
   const restock = useServerFn(logInventoryTransaction);
   const onRestock = async (id: string, name: string) => {
