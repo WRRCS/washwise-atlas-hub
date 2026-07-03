@@ -435,6 +435,3 @@ function TimesheetView() {
     </div>
   );
 }
-
-// suppress unused warning for useEffect (kept import minimal)
-void useEffect;
