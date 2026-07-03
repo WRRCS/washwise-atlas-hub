@@ -137,6 +137,56 @@ export type Database = {
           },
         ]
       }
+      integrations: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          created_at: string
+          external_account_id: string | null
+          id: string
+          is_connected: boolean
+          provider: Database["public"]["Enums"]["integration_provider"]
+          refresh_token: string | null
+          settings: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          created_at?: string
+          external_account_id?: string | null
+          id?: string
+          is_connected?: boolean
+          provider: Database["public"]["Enums"]["integration_provider"]
+          refresh_token?: string | null
+          settings?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          created_at?: string
+          external_account_id?: string | null
+          id?: string
+          is_connected?: boolean
+          provider?: Database["public"]["Enums"]["integration_provider"]
+          refresh_token?: string | null
+          settings?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line_items: {
         Row: {
           created_at: string
@@ -617,6 +667,72 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          external_transaction_id: string | null
+          id: string
+          invoice_id: string
+          net_to_business_cents: number
+          note: string | null
+          processed_at: string | null
+          provider: Database["public"]["Enums"]["payment_provider"]
+          recorded_by: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          surcharge_cents: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          external_transaction_id?: string | null
+          id?: string
+          invoice_id: string
+          net_to_business_cents: number
+          note?: string | null
+          processed_at?: string | null
+          provider: Database["public"]["Enums"]["payment_provider"]
+          recorded_by?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          surcharge_cents?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          external_transaction_id?: string | null
+          id?: string
+          invoice_id?: string
+          net_to_business_cents?: number
+          note?: string | null
+          processed_at?: string | null
+          provider?: Database["public"]["Enums"]["payment_provider"]
+          recorded_by?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          surcharge_cents?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photo_share_log: {
         Row: {
           created_at: string
@@ -947,6 +1063,12 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "employee"
+      integration_provider:
+        | "quickbooks"
+        | "stripe"
+        | "venmo"
+        | "godaddy"
+        | "turno"
       invoice_status:
         | "draft"
         | "sent"
@@ -958,6 +1080,8 @@ export type Database = {
       notification_channel: "sms" | "email"
       notification_recipient_type: "client" | "employee" | "owner"
       notification_status: "pending" | "sent" | "failed"
+      payment_provider: "venmo" | "card" | "ach" | "manual"
+      payment_status: "pending" | "succeeded" | "failed" | "refunded"
       photo_type: "before" | "after" | "other"
       service_kind:
         | "airbnb_turnover"
@@ -1095,11 +1219,20 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "employee"],
+      integration_provider: [
+        "quickbooks",
+        "stripe",
+        "venmo",
+        "godaddy",
+        "turno",
+      ],
       invoice_status: ["draft", "sent", "paid", "void", "overdue", "cancelled"],
       job_status: ["scheduled", "in_progress", "completed", "canceled"],
       notification_channel: ["sms", "email"],
       notification_recipient_type: ["client", "employee", "owner"],
       notification_status: ["pending", "sent", "failed"],
+      payment_provider: ["venmo", "card", "ach", "manual"],
+      payment_status: ["pending", "succeeded", "failed", "refunded"],
       photo_type: ["before", "after", "other"],
       service_kind: [
         "airbnb_turnover",
