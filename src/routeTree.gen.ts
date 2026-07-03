@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PayReturnRouteImport } from './routes/pay.return'
+import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as AuthenticatedSopsRouteImport } from './routes/_authenticated/sops'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedMyJobsRouteImport } from './routes/_authenticated/my-jobs'
@@ -29,6 +31,7 @@ import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedJobsJobIdRouteImport } from './routes/_authenticated/jobs.$jobId'
 import { Route as AuthenticatedInvoicesInvoiceIdRouteImport } from './routes/_authenticated/invoices.$invoiceId'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -43,6 +46,16 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayReturnRoute = PayReturnRouteImport.update({
+  id: '/pay/return',
+  path: '/pay/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayInvoiceIdRoute = PayInvoiceIdRouteImport.update({
+  id: '/pay/$invoiceId',
+  path: '/pay/$invoiceId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSopsRoute = AuthenticatedSopsRouteImport.update({
@@ -135,6 +148,12 @@ const AuthenticatedClientsClientIdRoute =
     path: '/$clientId',
     getParentRoute: () => AuthenticatedClientsRoute,
   } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksLeadTenantIdRoute =
   ApiPublicHooksLeadTenantIdRouteImport.update({
     id: '/api/public/hooks/lead/$tenantId',
@@ -155,6 +174,8 @@ export interface FileRoutesByFullPath {
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/sops': typeof AuthenticatedSopsRoute
+  '/pay/$invoiceId': typeof PayInvoiceIdRoute
+  '/pay/return': typeof PayReturnRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
@@ -162,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRoutesByTo {
@@ -177,6 +199,8 @@ export interface FileRoutesByTo {
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/sops': typeof AuthenticatedSopsRoute
+  '/pay/$invoiceId': typeof PayInvoiceIdRoute
+  '/pay/return': typeof PayReturnRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
@@ -184,6 +208,7 @@ export interface FileRoutesByTo {
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRoutesById {
@@ -201,6 +226,8 @@ export interface FileRoutesById {
   '/_authenticated/my-jobs': typeof AuthenticatedMyJobsRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/sops': typeof AuthenticatedSopsRoute
+  '/pay/$invoiceId': typeof PayInvoiceIdRoute
+  '/pay/return': typeof PayReturnRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
   '/_authenticated/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
@@ -208,6 +235,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
 }
 export interface FileRouteTypes {
@@ -225,6 +253,8 @@ export interface FileRouteTypes {
     | '/my-jobs'
     | '/services'
     | '/sops'
+    | '/pay/$invoiceId'
+    | '/pay/return'
     | '/clients/$clientId'
     | '/invoices/$invoiceId'
     | '/jobs/$jobId'
@@ -232,6 +262,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/templates'
+    | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -247,6 +278,8 @@ export interface FileRouteTypes {
     | '/my-jobs'
     | '/services'
     | '/sops'
+    | '/pay/$invoiceId'
+    | '/pay/return'
     | '/clients/$clientId'
     | '/invoices/$invoiceId'
     | '/jobs/$jobId'
@@ -254,6 +287,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/templates'
+    | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
   id:
     | '__root__'
@@ -270,6 +304,8 @@ export interface FileRouteTypes {
     | '/_authenticated/my-jobs'
     | '/_authenticated/services'
     | '/_authenticated/sops'
+    | '/pay/$invoiceId'
+    | '/pay/return'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/invoices/$invoiceId'
     | '/_authenticated/jobs/$jobId'
@@ -277,6 +313,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/templates'
+    | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
   fileRoutesById: FileRoutesById
 }
@@ -284,6 +321,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PayInvoiceIdRoute: typeof PayInvoiceIdRoute
+  PayReturnRoute: typeof PayReturnRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
 }
 
@@ -308,6 +348,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay/return': {
+      id: '/pay/return'
+      path: '/pay/return'
+      fullPath: '/pay/return'
+      preLoaderRoute: typeof PayReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay/$invoiceId': {
+      id: '/pay/$invoiceId'
+      path: '/pay/$invoiceId'
+      fullPath: '/pay/$invoiceId'
+      preLoaderRoute: typeof PayInvoiceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/sops': {
@@ -429,6 +483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
       parentRoute: typeof AuthenticatedClientsRoute
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/lead/$tenantId': {
       id: '/api/public/hooks/lead/$tenantId'
       path: '/api/public/hooks/lead/$tenantId'
@@ -517,6 +578,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PayInvoiceIdRoute: PayInvoiceIdRoute,
+  PayReturnRoute: PayReturnRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
 }
 export const routeTree = rootRouteImport
