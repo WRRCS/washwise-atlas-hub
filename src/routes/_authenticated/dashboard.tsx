@@ -237,24 +237,63 @@ function DashboardPage() {
           </section>
         </div>
 
-        {/* Low inventory placeholder */}
-        <section className="bg-card rounded-xl ring-1 ring-black/5 p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium flex items-center gap-2">
-              <Package className="size-4 text-muted-foreground" />
-              Low Inventory Alerts
-            </h2>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground bg-clay-200 px-2 py-0.5 rounded-full">
-              Phase 2
-            </span>
-          </div>
-          <div className="rounded-lg border border-dashed border-border py-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Inventory tracking coming soon — you'll see supply alerts here.
-            </p>
-          </div>
-        </section>
+        <LowInventoryCard />
       </div>
     </>
   );
 }
+
+function LowInventoryCard() {
+  const fetchLow = useServerFn(listLowInventory);
+  const { data: items = [], refetch } = useQuery({
+    queryKey: ["dashboard-low-inventory"],
+    queryFn: () => fetchLow(),
+  });
+  const restock = useServerFn(logInventoryTransaction);
+  const onRestock = async (id: string, name: string) => {
+    try {
+      await restock({ data: { item_id: id, change_amount: 1, reason: "restock" } });
+      toast.success(`+1 ${name}`);
+      refetch();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+  return (
+    <section className="bg-card rounded-xl ring-1 ring-black/5 p-4 sm:p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-medium flex items-center gap-2">
+          <Package className="size-4 text-muted-foreground" />
+          Low Inventory Alerts
+        </h2>
+        <Link to="/inventory" className="text-xs text-brand hover:underline">Manage inventory</Link>
+      </div>
+      {items.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border py-8 text-center">
+          <p className="text-sm text-muted-foreground">All supplies are stocked. 🎉</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border/60">
+          {items.map((it) => (
+            <li key={it.id} className="flex items-center justify-between py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{it.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {it.quantity_on_hand} {it.unit} on hand · reorder at {it.reorder_threshold}
+                </p>
+              </div>
+              <span className={`text-[10px] mr-3 px-1.5 py-0.5 rounded uppercase tracking-wider font-medium ${
+                it.status === "OUT" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"
+              }`}>{it.status}</span>
+              <button
+                onClick={() => onRestock(it.id, it.name)}
+                className="text-xs font-medium bg-clay-100 hover:bg-clay-200/70 transition-colors px-2.5 py-1.5 rounded-md"
+              >
+                +1 Restock
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
