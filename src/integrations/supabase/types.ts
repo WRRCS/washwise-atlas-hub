@@ -207,6 +207,52 @@ export type Database = {
           },
         ]
       }
+      job_employees: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          job_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          job_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          job_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_employees_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_employees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_sop_items: {
         Row: {
           completed: boolean
@@ -263,9 +309,13 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          is_recurring: boolean
           notes: string | null
           price_cents: number
           property_id: string | null
+          recurrence_end: string | null
+          recurrence_group_id: string | null
+          recurrence_rule: string | null
           scheduled_end: string
           scheduled_start: string
           service_type_id: string
@@ -280,9 +330,13 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          is_recurring?: boolean
           notes?: string | null
           price_cents?: number
           property_id?: string | null
+          recurrence_end?: string | null
+          recurrence_group_id?: string | null
+          recurrence_rule?: string | null
           scheduled_end: string
           scheduled_start: string
           service_type_id: string
@@ -297,9 +351,13 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          is_recurring?: boolean
           notes?: string | null
           price_cents?: number
           property_id?: string | null
+          recurrence_end?: string | null
+          recurrence_group_id?: string | null
+          recurrence_rule?: string | null
           scheduled_end?: string
           scheduled_start?: string
           service_type_id?: string

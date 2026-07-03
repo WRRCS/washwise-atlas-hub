@@ -8,12 +8,13 @@ import {
 
 const NAV = [
   { to: "/jobs", label: "Jobs", icon: Briefcase },
-  { to: "/calendar", label: "Calendar", icon: Calendar },
+  { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/services", label: "Services", icon: Sparkles },
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/invoices", label: "Invoices", icon: Receipt },
 ] as const;
+
 
 
 export function AppShell({ children }: { children: ReactNode }) {

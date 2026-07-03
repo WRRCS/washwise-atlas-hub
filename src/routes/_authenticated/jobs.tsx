@@ -109,12 +109,13 @@ function JobsPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="text-right mr-2">
                         <p className="text-xs text-muted-foreground">Cleaner</p>
-                        <p className="text-sm font-medium">{job.assignee?.full_name ?? "Unassigned"}</p>
+                        <p className="text-sm font-medium">{job.assignees.length ? job.assignees.map((a) => a.full_name).join(", ") : "Unassigned"}</p>
                       </div>
                       <div className="size-10 rounded-full bg-clay-200 grid place-items-center text-xs font-medium">
-                        {(job.assignee?.full_name ?? "?").slice(0, 1).toUpperCase()}
+                        {(job.assignees[0]?.full_name ?? "?").slice(0, 1).toUpperCase()}
                       </div>
                     </div>
+
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t border-border/60 text-xs">
                     <span className="flex items-center gap-1.5 text-muted-foreground">

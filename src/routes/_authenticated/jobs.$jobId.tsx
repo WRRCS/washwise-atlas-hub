@@ -37,12 +37,14 @@ function JobDetail() {
     await toggle({ data: { id, completed } });
     qc.invalidateQueries({ queryKey: ["job", jobId] });
   };
-  const onStatus = async (status: "in_progress" | "completed") => {
+  const onStatus = async (status: "in_progress" | "completed" | "canceled") => {
+    if (status === "canceled" && !confirm("Cancel this job?")) return;
     await setStatus({ data: { id: jobId, status } });
-    toast.success(status === "completed" ? "Job completed" : "Job started");
+    toast.success(status === "completed" ? "Job completed" : status === "canceled" ? "Job canceled" : "Job started");
     qc.invalidateQueries({ queryKey: ["job", jobId] });
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
+
 
   return (
     <>
@@ -57,9 +59,13 @@ function JobDetail() {
             {job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={() => onStatus("completed")} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90">Complete</button>
             )}
+            {job.status !== "canceled" && job.status !== "completed" && (
+              <button onClick={() => onStatus("canceled")} className="text-sm font-medium border border-destructive/40 text-destructive rounded-lg px-3 py-2 hover:bg-destructive/5">Cancel job</button>
+            )}
           </div>
         }
       />
+
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-8 grid md:grid-cols-3 gap-8">
         <section className="md:col-span-2 bg-card p-6 rounded-xl ring-1 ring-black/5">
           <div className="flex justify-between items-center mb-4">
@@ -101,9 +107,12 @@ function JobDetail() {
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Assignment</h4>
-            <p className="text-sm">{job.assignee?.full_name ?? "Unassigned"}</p>
+            {job.assignees && job.assignees.length ? (
+              <ul className="space-y-1">{job.assignees.map((a: any) => <li key={a.id} className="text-sm">{a.full_name ?? "—"}</li>)}</ul>
+            ) : <p className="text-sm text-muted-foreground">Unassigned</p>}
             <p className="text-xs text-muted-foreground tabular-nums">Price · {fmtCents(job.price_cents)}</p>
           </div>
+
           {job.notes && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5">
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Notes</h4>
