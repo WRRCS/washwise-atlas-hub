@@ -210,6 +210,16 @@ function TodayView() {
           }}
         />
       )}
+      {sopFor && (
+        <Dialog open onOpenChange={(v) => !v && setSopFor(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>SOP · {sopFor.label}</DialogTitle>
+            </DialogHeader>
+            <SopViewer serviceTypeId={sopFor.serviceTypeId} jobId={sopFor.jobId} allowMarkReviewed />
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
