@@ -13,7 +13,7 @@ import {
   getInvoice, sendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge,
 } from "@/lib/invoices.functions";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
-import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   component: InvoiceDetailPage,
@@ -221,7 +221,7 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
   const qc = useQueryClient();
   const listPayFn = useServerFn(listInvoicePayments);
   const manualFn = useServerFn(recordManualPayment);
-  const [placeholder, setPlaceholder] = useState<null | "venmo" | "card" | "ach">(null);
+  const [placeholder, setPlaceholder] = useState<null | "venmo" | "ach">(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [method, setMethod] = useState<"cash" | "check" | "other">("cash");
   const [note, setNote] = useState("");
@@ -233,6 +233,13 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
 
   const isPaid = status === "paid";
   const isCancelled = status === "cancelled";
+
+  const payUrl = typeof window !== "undefined" ? `${window.location.origin}/pay/${invoiceId}` : "";
+
+  const copyPayLink = async () => {
+    await navigator.clipboard.writeText(payUrl);
+    toast.success("Payment link copied");
+  };
 
   const submitManual = async () => {
     try {
@@ -248,7 +255,6 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
 
   const providerCopy: Record<string, string> = {
     venmo: "Venmo integration coming in Phase 2. We'll wire up the Venmo Business API to auto-generate payment requests and reconcile received transfers.",
-    card: "Card payments coming in Phase 2 — Stripe checkout with the optional 3% + $0.30 surcharge you already enabled per invoice.",
     ach: "ACH payments coming in Phase 2 via Stripe Financial Connections for low-fee bank transfers.",
   };
 
@@ -259,12 +265,27 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
           <h3 className="text-sm font-semibold">Payment links</h3>
           <p className="text-xs text-muted-foreground">Send the client a way to pay, or record an offline payment.</p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+
+        {!isPaid && !isCancelled && (
+          <div className="rounded-lg bg-clay-50 ring-1 ring-black/5 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <CreditCard className="size-4 text-brand" />
+              <p className="text-sm font-medium">Card payment link</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Send this secure link to your client — they can pay by card without signing in.
+            </p>
+            <div className="flex gap-2">
+              <input readOnly value={payUrl} className="flex-1 font-mono text-xs px-3 py-2 rounded-lg bg-background border border-input" />
+              <Button variant="outline" onClick={copyPayLink}><Copy className="size-4" /></Button>
+              <Button variant="outline" onClick={() => window.open(payUrl, "_blank")}><ExternalLink className="size-4" /></Button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("venmo")}>
             <Wallet className="size-4 mr-1.5" /> Venmo
-          </Button>
-          <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("card")}>
-            <CreditCard className="size-4 mr-1.5" /> Card
           </Button>
           <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("ach")}>
             <Building2 className="size-4 mr-1.5" /> ACH

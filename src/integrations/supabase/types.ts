@@ -930,10 +930,14 @@ export type Database = {
           invoice_id: string
           net_to_business_cents: number
           note: string | null
+          payment_method_details: Json | null
           processed_at: string | null
           provider: Database["public"]["Enums"]["payment_provider"]
           recorded_by: string | null
           status: Database["public"]["Enums"]["payment_status"]
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
           surcharge_cents: number
           tenant_id: string
           updated_at: string
@@ -946,10 +950,14 @@ export type Database = {
           invoice_id: string
           net_to_business_cents: number
           note?: string | null
+          payment_method_details?: Json | null
           processed_at?: string | null
           provider: Database["public"]["Enums"]["payment_provider"]
           recorded_by?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
           surcharge_cents?: number
           tenant_id: string
           updated_at?: string
@@ -962,10 +970,14 @@ export type Database = {
           invoice_id?: string
           net_to_business_cents?: number
           note?: string | null
+          payment_method_details?: Json | null
           processed_at?: string | null
           provider?: Database["public"]["Enums"]["payment_provider"]
           recorded_by?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
           surcharge_cents?: number
           tenant_id?: string
           updated_at?: string
