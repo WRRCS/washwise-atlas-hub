@@ -361,13 +361,100 @@ export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const [{ data: profs }, { data: roles }] = await Promise.all([
-      context.supabase.from("profiles").select("id, full_name, email, phone").order("full_name"),
+      context.supabase.from("profiles").select("id, full_name, email, phone, is_active").order("full_name"),
       context.supabase.from("user_roles").select("user_id, role"),
     ]);
     const rolesMap = new Map<string, string>();
     (roles ?? []).forEach((r) => rolesMap.set(r.user_id, r.role));
-    return (profs ?? []).map((p) => ({ ...p, role: rolesMap.get(p.id) ?? "employee" }));
+    const list = (profs ?? []).map((p) => ({ ...p, role: rolesMap.get(p.id) ?? "employee" }));
+
+    // Attach last_sign_in_at via admin (owner only; ignore errors for non-owners)
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) return list.map((p) => ({ ...p, last_sign_in_at: null as string | null }));
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const signMap = new Map<string, string | null>();
+      (users?.users ?? []).forEach((u) => signMap.set(u.id, u.last_sign_in_at ?? null));
+      return list.map((p) => ({ ...p, last_sign_in_at: signMap.get(p.id) ?? null }));
+    } catch {
+      return list.map((p) => ({ ...p, last_sign_in_at: null as string | null }));
+    }
   });
+
+export const inviteEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      email: z.string().trim().email(),
+      full_name: z.string().trim().min(1).max(120),
+      phone: z.string().trim().max(40).optional(),
+      redirect_to: z.string().url().optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) throw new Error("Only owners can invite employees");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
+      data: { full_name: data.full_name },
+      redirectTo: data.redirect_to,
+    });
+    if (error) throw new Error(error.message);
+    const userId = created.user?.id;
+    if (userId) {
+      // Trigger handle_new_user should have created profile + employee role.
+      await supabaseAdmin.from("profiles").update({
+        full_name: data.full_name,
+        phone: data.phone || null,
+      }).eq("id", userId);
+    }
+    return { ok: true };
+  });
+
+export const updateEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      phone: z.string().trim().max(40).optional(),
+      is_active: z.boolean().optional(),
+      full_name: z.string().trim().max(120).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) throw new Error("Only owners can edit employees");
+    const patch: { phone?: string | null; is_active?: boolean; full_name?: string | null } = {};
+    if (data.phone !== undefined) patch.phone = data.phone || null;
+    if (data.is_active !== undefined) patch.is_active = data.is_active;
+    if (data.full_name !== undefined) patch.full_name = data.full_name;
+    const { error } = await context.supabase.from("profiles").update(patch).eq("id", data.id);
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const impersonateEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ user_id: z.string().uuid(), redirect_to: z.string().url() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) throw new Error("Only owners can impersonate");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: prof } = await supabaseAdmin.from("profiles").select("email").eq("id", data.user_id).maybeSingle();
+    if (!prof?.email) throw new Error("Employee has no email");
+    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email: prof.email,
+      options: { redirectTo: data.redirect_to },
+    });
+    if (error) throw new Error(error.message);
+    return { url: link.properties?.action_link ?? null };
+  });
+
 
 export const setRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
