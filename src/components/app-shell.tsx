@@ -3,16 +3,18 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles,
 } from "lucide-react";
 
 const NAV = [
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/clients", label: "Clients", icon: Users },
+  { to: "/services", label: "Services", icon: Sparkles },
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/invoices", label: "Invoices", icon: Receipt },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

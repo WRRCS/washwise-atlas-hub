@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/jobs'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedServicesRoute = AuthenticatedServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedJobsRoute = AuthenticatedJobsRouteImport.update({
   id: '/jobs',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/jobs': typeof AuthenticatedJobsRouteWithChildren
+  '/services': typeof AuthenticatedServicesRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/employees': typeof AuthenticatedEmployeesRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/jobs': typeof AuthenticatedJobsRouteWithChildren
+  '/services': typeof AuthenticatedServicesRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
   '/_authenticated/jobs': typeof AuthenticatedJobsRouteWithChildren
+  '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/invoices'
     | '/jobs'
+    | '/services'
     | '/clients/$clientId'
     | '/jobs/$jobId'
     | '/jobs/new'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/invoices'
     | '/jobs'
+    | '/services'
     | '/clients/$clientId'
     | '/jobs/$jobId'
     | '/jobs/new'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/_authenticated/employees'
     | '/_authenticated/invoices'
     | '/_authenticated/jobs'
+    | '/_authenticated/services'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/jobs/$jobId'
     | '/_authenticated/jobs/new'
@@ -183,6 +195,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/services': {
+      id: '/_authenticated/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof AuthenticatedServicesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/jobs': {
       id: '/_authenticated/jobs'
@@ -273,6 +292,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
   AuthenticatedJobsRoute: typeof AuthenticatedJobsRouteWithChildren
+  AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -281,6 +301,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
   AuthenticatedJobsRoute: AuthenticatedJobsRouteWithChildren,
+  AuthenticatedServicesRoute: AuthenticatedServicesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
