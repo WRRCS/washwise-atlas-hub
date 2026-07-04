@@ -24,6 +24,7 @@ import {
   Activity as ActivityIcon,
   Briefcase,
   CircleDollarSign,
+  Inbox,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
