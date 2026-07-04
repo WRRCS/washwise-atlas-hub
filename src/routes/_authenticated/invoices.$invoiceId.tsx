@@ -271,10 +271,17 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
   const qc = useQueryClient();
   const listPayFn = useServerFn(listInvoicePayments);
   const manualFn = useServerFn(recordManualPayment);
-  const [placeholder, setPlaceholder] = useState<null | "venmo" | "ach">(null);
+  const venmoLinkFn = useServerFn(generateVenmoLink);
+  const venmoPaidFn = useServerFn(markVenmoPaymentReceived);
+  const [placeholder, setPlaceholder] = useState<null | "ach">(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [method, setMethod] = useState<"cash" | "check" | "other">("cash");
   const [note, setNote] = useState("");
+  const [venmoOpen, setVenmoOpen] = useState(false);
+  const [venmoLink, setVenmoLink] = useState<string | null>(null);
+  const [venmoTest, setVenmoTest] = useState(false);
+  const [venmoBusy, setVenmoBusy] = useState(false);
+  const [venmoNote, setVenmoNote] = useState("");
 
   const { data: payments = [] } = useQuery({
     queryKey: ["invoice-payments", invoiceId],
@@ -303,8 +310,37 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
     }
   };
 
+  const openVenmo = async () => {
+    setVenmoBusy(true);
+    try {
+      const r = await venmoLinkFn({ data: { invoice_id: invoiceId } });
+      setVenmoLink(r.link);
+      setVenmoTest(r.test_mode);
+      setVenmoOpen(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally { setVenmoBusy(false); }
+  };
+
+  const copyVenmoLink = async () => {
+    if (!venmoLink) return;
+    await navigator.clipboard.writeText(venmoLink);
+    toast.success("Venmo link copied");
+  };
+
+  const markVenmoReceived = async () => {
+    try {
+      await venmoPaidFn({ data: { invoice_id: invoiceId, note: venmoNote || undefined } });
+      toast.success("Venmo payment recorded");
+      setVenmoOpen(false); setVenmoNote("");
+      qc.invalidateQueries({ queryKey: ["invoice-payments", invoiceId] });
+      onPaid();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
   const providerCopy: Record<string, string> = {
-    venmo: "Venmo integration coming in Phase 2. We'll wire up the Venmo Business API to auto-generate payment requests and reconcile received transfers.",
     ach: "ACH payments coming in Phase 2 via Stripe Financial Connections for low-fee bank transfers.",
   };
 
@@ -334,8 +370,8 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
         )}
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("venmo")}>
-            <Wallet className="size-4 mr-1.5" /> Venmo
+          <Button variant="outline" disabled={isPaid || isCancelled || venmoBusy} onClick={openVenmo}>
+            <Wallet className="size-4 mr-1.5" /> {venmoBusy ? "…" : "Venmo"}
           </Button>
           <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("ach")}>
             <Building2 className="size-4 mr-1.5" /> ACH
@@ -344,6 +380,7 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
             <HandCoins className="size-4 mr-1.5" /> Mark paid manually
           </Button>
         </div>
+
 
         {payments.length > 0 && (
           <div className="pt-3 border-t border-border/40">
