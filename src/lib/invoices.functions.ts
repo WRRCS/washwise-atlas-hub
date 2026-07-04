@@ -115,6 +115,23 @@ export const sendInvoice = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
+    // Build Venmo pay link if the tenant has Venmo configured.
+    let venmoLink = "";
+    try {
+      const { data: venmoRow } = await context.supabase
+        .from("integrations")
+        .select("is_connected, settings")
+        .eq("tenant_id", inv.tenant_id).eq("provider", "venmo").maybeSingle();
+      const vs = (venmoRow?.settings as { handle?: string; test_mode?: boolean } | null) ?? {};
+      if (venmoRow?.is_connected && vs.handle) {
+        const handle = vs.handle.replace(/^@/, "");
+        const amount = ((inv.total_cents ?? 0) / 100).toFixed(2);
+        const note = vs.test_mode ? `[TEST] Invoice ${inv.number ?? ""}` : `Invoice ${inv.number ?? ""}`;
+        const params = new URLSearchParams({ txn: "pay", amount, note: note.trim() });
+        venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
+      }
+    } catch { /* non-fatal */ }
+
     // Render email via template + enqueue
     const c = (inv.client as { first_name?: string; last_name?: string } | null);
     const rendered = await renderEmailForClientContext({
@@ -127,6 +144,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
         invoice_number: inv.number ?? "",
         amount: `$${((inv.total_cents ?? 0) / 100).toFixed(2)}`,
         date: new Date().toLocaleDateString(),
+        venmo_link: venmoLink,
       },
     });
     if (rendered && inv.client_id) {
