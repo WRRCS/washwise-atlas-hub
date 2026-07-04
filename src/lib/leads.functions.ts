@@ -166,7 +166,7 @@ export const convertLeadToClient = createServerFn({ method: "POST" })
         email: p.email ? String(p.email) : null,
         phone: p.phone ? String(p.phone) : null,
         notes: lead.notes ?? null,
-      }).select("id").maybeSingle();
+      } as never).select("id").maybeSingle();
       if (ce) throw new Error(ce.message);
       clientId = c?.id ?? null;
     }
