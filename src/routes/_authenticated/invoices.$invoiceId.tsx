@@ -412,6 +412,41 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
         </DialogContent>
       </Dialog>
 
+      <Dialog open={venmoOpen} onOpenChange={setVenmoOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Venmo pay link
+              {venmoTest && <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">Test</span>}
+            </DialogTitle>
+            <DialogDescription>
+              Send this link to your client. Tapping it opens Venmo pre-filled with the invoice amount and number. When they pay you, come back here and click "Mark Venmo payment received".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input readOnly value={venmoLink ?? ""} className="flex-1 font-mono text-xs px-3 py-2 rounded-lg bg-background border border-input" />
+              <Button variant="outline" onClick={copyVenmoLink}><Copy className="size-4" /></Button>
+              <Button variant="outline" onClick={() => venmoLink && window.open(venmoLink, "_blank")}><ExternalLink className="size-4" /></Button>
+            </div>
+            <div>
+              <Label className="text-xs">Note (optional, e.g. Venmo transaction ID)</Label>
+              <input
+                value={venmoNote} onChange={(e) => setVenmoNote(e.target.value)}
+                placeholder="txn 1234567890"
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setVenmoOpen(false)}>Close</Button>
+            <Button onClick={markVenmoReceived} className="bg-brand text-brand-foreground hover:opacity-90">
+              <Check className="size-4 mr-1.5" /> Mark Venmo payment received
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={manualOpen} onOpenChange={setManualOpen}>
         <DialogContent>
           <DialogHeader>
