@@ -183,6 +183,34 @@ function DashboardPage() {
           </div>
         </div>
 
+        {/* New leads card */}
+        <Link
+          to="/leads"
+          search={{}}
+          className="flex items-center gap-4 bg-card rounded-xl ring-1 ring-black/5 p-4 sm:p-5 hover:ring-brand/40 transition-all group"
+        >
+          <div className="size-11 rounded-lg bg-brand/10 text-brand grid place-items-center shrink-0">
+            <Inbox className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-medium">New Leads</h2>
+              {newLeadsCount > 0 && (
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand text-brand-foreground font-medium">
+                  {newLeadsCount}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {newLeadsCount === 0
+                ? "No new website submissions."
+                : `${newLeadsCount} website submission${newLeadsCount === 1 ? "" : "s"} waiting to be reviewed.`}
+            </p>
+          </div>
+          <span className="text-xs text-brand group-hover:underline shrink-0">View all →</span>
+        </Link>
+
+
         {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Today's schedule */}
