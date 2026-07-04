@@ -14,6 +14,7 @@ import {
 } from "@/lib/invoices.functions";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
 import { syncInvoiceToQbo } from "@/lib/qbo.functions";
+import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functions";
 import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, RefreshCw, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
@@ -270,10 +271,17 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
   const qc = useQueryClient();
   const listPayFn = useServerFn(listInvoicePayments);
   const manualFn = useServerFn(recordManualPayment);
-  const [placeholder, setPlaceholder] = useState<null | "venmo" | "ach">(null);
+  const venmoLinkFn = useServerFn(generateVenmoLink);
+  const venmoPaidFn = useServerFn(markVenmoPaymentReceived);
+  const [placeholder, setPlaceholder] = useState<null | "ach">(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [method, setMethod] = useState<"cash" | "check" | "other">("cash");
   const [note, setNote] = useState("");
+  const [venmoOpen, setVenmoOpen] = useState(false);
+  const [venmoLink, setVenmoLink] = useState<string | null>(null);
+  const [venmoTest, setVenmoTest] = useState(false);
+  const [venmoBusy, setVenmoBusy] = useState(false);
+  const [venmoNote, setVenmoNote] = useState("");
 
   const { data: payments = [] } = useQuery({
     queryKey: ["invoice-payments", invoiceId],
@@ -302,8 +310,37 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
     }
   };
 
+  const openVenmo = async () => {
+    setVenmoBusy(true);
+    try {
+      const r = await venmoLinkFn({ data: { invoice_id: invoiceId } });
+      setVenmoLink(r.link);
+      setVenmoTest(r.test_mode);
+      setVenmoOpen(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally { setVenmoBusy(false); }
+  };
+
+  const copyVenmoLink = async () => {
+    if (!venmoLink) return;
+    await navigator.clipboard.writeText(venmoLink);
+    toast.success("Venmo link copied");
+  };
+
+  const markVenmoReceived = async () => {
+    try {
+      await venmoPaidFn({ data: { invoice_id: invoiceId, note: venmoNote || undefined } });
+      toast.success("Venmo payment recorded");
+      setVenmoOpen(false); setVenmoNote("");
+      qc.invalidateQueries({ queryKey: ["invoice-payments", invoiceId] });
+      onPaid();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
   const providerCopy: Record<string, string> = {
-    venmo: "Venmo integration coming in Phase 2. We'll wire up the Venmo Business API to auto-generate payment requests and reconcile received transfers.",
     ach: "ACH payments coming in Phase 2 via Stripe Financial Connections for low-fee bank transfers.",
   };
 
@@ -333,8 +370,8 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
         )}
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("venmo")}>
-            <Wallet className="size-4 mr-1.5" /> Venmo
+          <Button variant="outline" disabled={isPaid || isCancelled || venmoBusy} onClick={openVenmo}>
+            <Wallet className="size-4 mr-1.5" /> {venmoBusy ? "…" : "Venmo"}
           </Button>
           <Button variant="outline" disabled={isPaid || isCancelled} onClick={() => setPlaceholder("ach")}>
             <Building2 className="size-4 mr-1.5" /> ACH
@@ -343,6 +380,7 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
             <HandCoins className="size-4 mr-1.5" /> Mark paid manually
           </Button>
         </div>
+
 
         {payments.length > 0 && (
           <div className="pt-3 border-t border-border/40">
@@ -370,6 +408,41 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setPlaceholder(null)}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={venmoOpen} onOpenChange={setVenmoOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Venmo pay link
+              {venmoTest && <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">Test</span>}
+            </DialogTitle>
+            <DialogDescription>
+              Send this link to your client. Tapping it opens Venmo pre-filled with the invoice amount and number. When they pay you, come back here and click "Mark Venmo payment received".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input readOnly value={venmoLink ?? ""} className="flex-1 font-mono text-xs px-3 py-2 rounded-lg bg-background border border-input" />
+              <Button variant="outline" onClick={copyVenmoLink}><Copy className="size-4" /></Button>
+              <Button variant="outline" onClick={() => venmoLink && window.open(venmoLink, "_blank")}><ExternalLink className="size-4" /></Button>
+            </div>
+            <div>
+              <Label className="text-xs">Note (optional, e.g. Venmo transaction ID)</Label>
+              <input
+                value={venmoNote} onChange={(e) => setVenmoNote(e.target.value)}
+                placeholder="txn 1234567890"
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setVenmoOpen(false)}>Close</Button>
+            <Button onClick={markVenmoReceived} className="bg-brand text-brand-foreground hover:opacity-90">
+              <Check className="size-4 mr-1.5" /> Mark Venmo payment received
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

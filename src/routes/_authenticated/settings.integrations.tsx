@@ -18,7 +18,9 @@ import {
   listQboSyncErrors,
   syncInvoiceToQbo,
 } from "@/lib/qbo.functions";
+import { getVenmoSettings, saveVenmoSettings } from "@/lib/venmo.functions";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, AlertTriangle, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/integrations")({
@@ -30,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/settings/integrations")({
 const META: Record<IntegrationProvider, { name: string; icon: typeof Building2; description: string; phase: string }> = {
   quickbooks: { name: "QuickBooks Online", icon: Building2, description: "Sync clients, invoices, and payments to your QBO books.", phase: "Available now" },
   stripe: { name: "Stripe", icon: CreditCard, description: "Accept card and ACH payments on invoices.", phase: "Phase 2" },
-  venmo: { name: "Venmo", icon: Wallet, description: "Send Venmo payment requests and auto-reconcile transfers.", phase: "Phase 2" },
+  venmo: { name: "Venmo", icon: Wallet, description: "Send Venmo payment requests via pay-link deep links on invoices.", phase: "Available now" },
   godaddy: { name: "GoDaddy website", icon: Globe, description: "Capture leads from your website contact form.", phase: "Available now" },
   turno: { name: "Turno", icon: Home, description: "Sync Airbnb turnovers automatically from Turno.", phase: "Phase 3" },
 };
@@ -99,6 +101,7 @@ function IntegrationsPage() {
                   <p className="text-sm text-muted-foreground mt-1">{meta.description}</p>
 
                   {isQbo && <QuickBooksSection />}
+                  {p === "venmo" && <VenmoSection onChanged={() => qc.invalidateQueries({ queryKey: ["integrations"] })} />}
                   {p === "godaddy" && row && (
                     <GodaddySection row={row} onChanged={() => qc.invalidateQueries({ queryKey: ["integrations"] })} />
                   )}
@@ -107,7 +110,7 @@ function IntegrationsPage() {
                   )}
                 </div>
                 <div className="shrink-0">
-                  {isQbo || p === "godaddy" ? null : row?.is_connected ? (
+                  {isQbo || p === "godaddy" || p === "venmo" ? null : row?.is_connected ? (
                     <Button variant="outline" onClick={() => toggle(p, false)}>Disconnect</Button>
                   ) : (
                     <Button
@@ -309,6 +312,105 @@ function GodaddySection({ row, onChanged }: { row: IntegrationRow; onChanged: ()
           <Button onClick={generate} disabled={busy} className="bg-brand text-brand-foreground hover:opacity-90">
             <Link2 className="size-4 mr-1.5" /> Generate webhook URL
           </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function VenmoSection({ onChanged }: { onChanged: () => void }) {
+  const qc = useQueryClient();
+  const getFn = useServerFn(getVenmoSettings);
+  const saveFn = useServerFn(saveVenmoSettings);
+  const toggleFn = useServerFn(setIntegrationConnected);
+
+  const { data } = useQuery({ queryKey: ["venmo-settings"], queryFn: () => getFn() });
+  const [handle, setHandle] = useState("");
+  const [testMode, setTestMode] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (data && !initialized) {
+      setHandle(data.handle ?? "");
+      setTestMode(data.test_mode);
+      setInitialized(true);
+    }
+  }, [data, initialized]);
+
+  const save = async () => {
+    const clean = handle.trim().replace(/^@/, "");
+    if (!clean) { toast.error("Enter your Venmo handle"); return; }
+    setBusy(true);
+    try {
+      await saveFn({ data: { handle: clean, test_mode: testMode } });
+      toast.success("Venmo settings saved");
+      qc.invalidateQueries({ queryKey: ["venmo-settings"] });
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally { setBusy(false); }
+  };
+
+  const disconnect = async () => {
+    if (!confirm("Disconnect Venmo? Pay-link buttons on invoices will stop working.")) return;
+    setBusy(true);
+    try {
+      await toggleFn({ data: { provider: "venmo", connected: false } });
+      toast.success("Venmo disconnected");
+      qc.invalidateQueries({ queryKey: ["venmo-settings"] });
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-4 p-4 rounded-lg bg-clay-50 ring-1 ring-black/5 space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        {data?.is_connected ? (
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-green-100 text-green-800 font-medium">Connected</span>
+        ) : (
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-clay-200 text-muted-foreground font-medium">Not connected</span>
+        )}
+        {data?.test_mode && (
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">Test mode</span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Venmo's Business API is closed to most integrators, so Atlas uses Venmo pay-link deep links: a
+        <code className="mx-1 px-1 rounded bg-clay-200 text-[11px]">venmo.com/&lt;handle&gt;</code>
+        URL that opens the Venmo app pre-filled with the invoice amount and number. You mark payments as received manually from the invoice.
+      </p>
+      <div>
+        <Label className="text-xs">Your Venmo handle</Label>
+        <div className="flex gap-2 mt-1">
+          <div className="flex-1 flex items-center rounded-lg border border-input bg-background px-3">
+            <span className="text-muted-foreground text-sm">@</span>
+            <input
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              placeholder="WashRinseRepeat"
+              className="flex-1 bg-transparent py-2 text-sm outline-none"
+            />
+          </div>
+        </div>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={testMode}
+          onChange={(e) => setTestMode(e.target.checked)}
+          className="size-4 rounded border-input"
+        />
+        <span>Test mode — prefix notes with <code className="px-1 rounded bg-clay-200 text-[11px]">[TEST]</code> and skip real payment tracking</span>
+      </label>
+      <div className="flex gap-2">
+        <Button onClick={save} disabled={busy} className="bg-brand text-brand-foreground hover:opacity-90">
+          {data?.is_connected ? "Save" : "Connect Venmo"}
+        </Button>
+        {data?.is_connected && (
+          <Button variant="outline" onClick={disconnect} disabled={busy}>Disconnect</Button>
         )}
       </div>
     </div>
