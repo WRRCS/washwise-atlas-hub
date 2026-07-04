@@ -102,12 +102,17 @@ function DashboardPage() {
   const fetchStats = useServerFn(getDashboardStats);
   const fetchToday = useServerFn(getTodayJobs);
   const fetchActivity = useServerFn(getRecentActivity);
+  const fetchNewLeads = useServerFn(countNewLeads);
 
   const { data: stats } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => fetchStats() });
   const { data: today = [] } = useQuery({ queryKey: ["dashboard-today"], queryFn: () => fetchToday() });
   const { data: activity = [] } = useQuery({
     queryKey: ["dashboard-activity"],
     queryFn: () => fetchActivity(),
+  });
+  const { data: newLeadsCount = 0 } = useQuery({
+    queryKey: ["new-leads-count"],
+    queryFn: () => fetchNewLeads(),
   });
 
   return (
