@@ -238,7 +238,9 @@ function QuickBooksSection() {
 function GodaddySection({ row, onChanged }: { row: IntegrationRow; onChanged: () => void }) {
   const rotateFn = useServerFn(rotateGodaddyWebhookToken);
   const toggleFn = useServerFn(setIntegrationConnected);
+  const testFn = useServerFn(sendTestLeadWebhook);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -246,7 +248,6 @@ function GodaddySection({ row, onChanged }: { row: IntegrationRow; onChanged: ()
     ? `${origin}/api/public/hooks/lead/${(row as any).tenant_id ?? ""}?token=${row.webhook_token}`
     : null;
 
-  // tenant_id isn't in the row; construct URL using the token endpoint. We fetch on rotate.
   const [computedUrl, setComputedUrl] = useState<string | null>(webhookUrl);
 
   const generate = async () => {
@@ -277,14 +278,24 @@ function GodaddySection({ row, onChanged }: { row: IntegrationRow; onChanged: ()
     onChanged();
   };
 
+  const test = async () => {
+    setTesting(true);
+    try {
+      await testFn({ data: { origin } });
+      toast.success("Test lead sent — check the Leads page");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Test failed");
+    } finally { setTesting(false); }
+  };
+
   return (
     <div className="mt-4 space-y-3">
       <div className="p-4 rounded-lg bg-clay-50 ring-1 ring-black/5 space-y-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Website lead capture</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Paste this webhook URL into your GoDaddy website's contact form settings.
-            Every submission will show up as a new client under Clients.
+            Paste this webhook URL into your GoDaddy website's contact form.
+            Every submission becomes a lead under <em>Leads</em> and a prospective client under <em>Clients</em>.
           </p>
         </div>
         {computedUrl ? (
@@ -295,18 +306,22 @@ function GodaddySection({ row, onChanged }: { row: IntegrationRow; onChanged: ()
                 {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
               </Button>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={test} disabled={testing} className="bg-brand text-brand-foreground hover:opacity-90">
+                {testing ? "Testing…" : "Test Webhook"}
+              </Button>
               <Button variant="outline" onClick={generate} disabled={busy}>Rotate URL</Button>
               <Button variant="ghost" onClick={disconnect}>Disable</Button>
             </div>
-            <details className="text-xs text-muted-foreground">
-              <summary className="cursor-pointer">How to hook this up in GoDaddy</summary>
-              <ol className="list-decimal ml-5 mt-2 space-y-1">
-                <li>Edit your GoDaddy site, open the Contact section, and choose <em>Form actions → Send to webhook</em>.</li>
-                <li>Paste the URL above. Expected form fields: <code>name</code>, <code>email</code>, <code>phone</code>, <code>message</code>.</li>
-                <li>Publish. Submit a test entry, then check <em>Clients</em> in Atlas.</li>
+            <div className="text-xs text-muted-foreground pt-2 border-t border-border/40">
+              <p className="font-medium text-foreground mb-2">How to hook this up in GoDaddy</p>
+              <ol className="list-decimal ml-5 space-y-1">
+                <li>Edit your GoDaddy form (Contact / Quote / Booking).</li>
+                <li>Under <em>After submission</em>, choose <em>Send to webhook</em> (or use Zapier/Make with a Webhook POST action if your plan doesn't include webhooks).</li>
+                <li>Paste the URL above and set the method to <code>POST</code>.</li>
+                <li>Save, publish, and submit a test entry. Expected form fields: <code>name</code>, <code>email</code>, <code>phone</code>, <code>service</code>, <code>message</code>.</li>
               </ol>
-            </details>
+            </div>
           </>
         ) : (
           <Button onClick={generate} disabled={busy} className="bg-brand text-brand-foreground hover:opacity-90">
@@ -317,6 +332,7 @@ function GodaddySection({ row, onChanged }: { row: IntegrationRow; onChanged: ()
     </div>
   );
 }
+
 
 function VenmoSection({ onChanged }: { onChanged: () => void }) {
   const qc = useQueryClient();
