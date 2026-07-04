@@ -100,6 +100,7 @@ function IntegrationsPage() {
                   <p className="text-sm text-muted-foreground mt-1">{meta.description}</p>
 
                   {isQbo && <QuickBooksSection />}
+                  {p === "venmo" && <VenmoSection onChanged={() => qc.invalidateQueries({ queryKey: ["integrations"] })} />}
                   {p === "godaddy" && row && (
                     <GodaddySection row={row} onChanged={() => qc.invalidateQueries({ queryKey: ["integrations"] })} />
                   )}
@@ -108,7 +109,7 @@ function IntegrationsPage() {
                   )}
                 </div>
                 <div className="shrink-0">
-                  {isQbo || p === "godaddy" ? null : row?.is_connected ? (
+                  {isQbo || p === "godaddy" || p === "venmo" ? null : row?.is_connected ? (
                     <Button variant="outline" onClick={() => toggle(p, false)}>Disconnect</Button>
                   ) : (
                     <Button
