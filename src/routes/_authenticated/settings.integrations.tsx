@@ -18,6 +18,7 @@ import {
   listQboSyncErrors,
   syncInvoiceToQbo,
 } from "@/lib/qbo.functions";
+import { getVenmoSettings, saveVenmoSettings } from "@/lib/venmo.functions";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, AlertTriangle, RefreshCw } from "lucide-react";
 
