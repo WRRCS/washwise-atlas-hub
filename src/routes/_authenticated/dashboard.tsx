@@ -186,7 +186,6 @@ function DashboardPage() {
         {/* New leads card */}
         <Link
           to="/leads"
-          search={{}}
           className="flex items-center gap-4 bg-card rounded-xl ring-1 ring-black/5 p-4 sm:p-5 hover:ring-brand/40 transition-all group"
         >
           <div className="size-11 rounded-lg bg-brand/10 text-brand grid place-items-center shrink-0">
