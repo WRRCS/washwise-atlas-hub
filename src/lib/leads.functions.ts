@@ -119,7 +119,7 @@ export const updateLeadStatus = createServerFn({ method: "POST" })
       const entry = `[${stamp}] ${data.status}: ${data.note.trim()}`;
       patch.notes = existing?.notes ? `${existing.notes}\n\n${entry}` : entry;
     }
-    const { error } = await context.supabase.from("leads").update(patch).eq("id", data.id);
+    const { error } = await context.supabase.from("leads").update(patch as never).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
