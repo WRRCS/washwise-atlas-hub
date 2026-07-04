@@ -833,6 +833,73 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          assigned_to: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          last_contacted_at: string | null
+          notes: string | null
+          payload: Json
+          service_interest: string | null
+          source: string
+          status: Database["public"]["Enums"]["lead_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          last_contacted_at?: string | null
+          notes?: string | null
+          payload?: Json
+          service_interest?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          last_contacted_at?: string | null
+          notes?: string | null
+          payload?: Json
+          service_interest?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_templates: {
         Row: {
           body: string
@@ -1610,6 +1677,7 @@ export type Database = {
         | "overdue"
         | "cancelled"
       job_status: "scheduled" | "in_progress" | "completed" | "canceled"
+      lead_status: "new" | "contacted" | "qualified" | "won" | "lost"
       notification_channel: "sms" | "email"
       notification_recipient_type: "client" | "employee" | "owner"
       notification_status: "pending" | "sent" | "failed"
@@ -1769,6 +1837,7 @@ export const Constants = {
       ],
       invoice_status: ["draft", "sent", "paid", "void", "overdue", "cancelled"],
       job_status: ["scheduled", "in_progress", "completed", "canceled"],
+      lead_status: ["new", "contacted", "qualified", "won", "lost"],
       notification_channel: ["sms", "email"],
       notification_recipient_type: ["client", "employee", "owner"],
       notification_status: ["pending", "sent", "failed"],
