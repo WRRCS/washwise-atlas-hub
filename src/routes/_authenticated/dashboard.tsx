@@ -9,6 +9,7 @@ import {
   type ActivityRow,
 } from "@/lib/dashboard.functions";
 import { listLowInventory, logInventoryTransaction, type InventoryItem } from "@/lib/inventory.functions";
+import { countNewLeads } from "@/lib/leads.functions";
 import { toast } from "sonner";
 import {
   Calendar,
