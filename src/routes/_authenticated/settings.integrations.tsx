@@ -20,6 +20,7 @@ import {
 } from "@/lib/qbo.functions";
 import { getVenmoSettings, saveVenmoSettings } from "@/lib/venmo.functions";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, AlertTriangle, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/integrations")({
