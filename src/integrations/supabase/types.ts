@@ -280,6 +280,7 @@ export type Database = {
           first_name: string | null
           id: string
           is_active: boolean
+          is_airbnb_host: boolean
           last_name: string | null
           phone: string | null
           qbo_customer_id: string | null
@@ -294,6 +295,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           is_active?: boolean
+          is_airbnb_host?: boolean
           last_name?: string | null
           phone?: string | null
           qbo_customer_id?: string | null
@@ -308,6 +310,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           is_active?: boolean
+          is_airbnb_host?: boolean
           last_name?: string | null
           phone?: string | null
           qbo_customer_id?: string | null
@@ -400,6 +403,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "gps_consent_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integration_errors: {
+        Row: {
+          created_at: string
+          error_message: string
+          id: string
+          inbound_payload: Json | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          source: string
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          id?: string
+          inbound_payload?: Json | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source: string
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          id?: string
+          inbound_payload?: Json | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_errors_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -882,6 +929,9 @@ export type Database = {
           assigned_to: string | null
           client_id: string
           created_at: string
+          external_id: string | null
+          external_metadata: Json | null
+          external_source: string | null
           id: string
           is_recurring: boolean
           notes: string | null
@@ -903,6 +953,9 @@ export type Database = {
           assigned_to?: string | null
           client_id: string
           created_at?: string
+          external_id?: string | null
+          external_metadata?: Json | null
+          external_source?: string | null
           id?: string
           is_recurring?: boolean
           notes?: string | null
@@ -924,6 +977,9 @@ export type Database = {
           assigned_to?: string | null
           client_id?: string
           created_at?: string
+          external_id?: string | null
+          external_metadata?: Json | null
+          external_source?: string | null
           id?: string
           is_recurring?: boolean
           notes?: string | null
