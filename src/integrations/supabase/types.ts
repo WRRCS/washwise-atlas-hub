@@ -1322,6 +1322,51 @@ export type Database = {
           },
         ]
       }
+      service_type_inventory_recipes: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string
+          quantity_per_job: number
+          service_type_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          quantity_per_job?: number
+          service_type_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          quantity_per_job?: number
+          service_type_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_type_inventory_recipes_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_type_inventory_recipes_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           active: boolean
