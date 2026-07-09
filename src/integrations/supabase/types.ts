@@ -2351,6 +2351,16 @@ export type Database = {
       }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
+      save_qbo_integration: {
+        Args: {
+          _access_token: string
+          _realm_id: string
+          _refresh_token: string
+          _settings: Json
+          _tenant: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "owner" | "employee" | "super_admin"
