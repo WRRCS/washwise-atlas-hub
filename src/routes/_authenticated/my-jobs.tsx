@@ -194,8 +194,7 @@ function TodayView() {
                       ) : j.status === "scheduled" || j.status === "in_progress" ? (
                         <>
                           <button
-                            onClick={() => inM.mutate(j.id)}
-                            disabled={inM.isPending}
+                            onClick={() => handleClockIn(j.id)}
                             className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
                           >
                             <Play className="size-4" /> Clock in
