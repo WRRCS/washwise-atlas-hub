@@ -1993,7 +1993,7 @@ export type Database = {
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
     }
     Enums: {
-      app_role: "owner" | "employee"
+      app_role: "owner" | "employee" | "super_admin"
       email_trigger_event:
         | "booking_confirmation"
         | "appointment_reminder"
@@ -2161,7 +2161,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "employee"],
+      app_role: ["owner", "employee", "super_admin"],
       email_trigger_event: [
         "booking_confirmation",
         "appointment_reminder",
