@@ -25,13 +25,20 @@ export type ServiceTypeOption = {
   selected: boolean;
 };
 
-const MASTER_SERVICE_TYPES: Array<{ kind: string; name: string; price: number; duration: number }> = [
-  { kind: "residential_standard", name: "Standard House Cleaning", price: 15000, duration: 120 },
+type ServiceKind =
+  | "residential" | "residential_deep" | "move_in" | "move_out"
+  | "apartment_move_in" | "apartment_move_out"
+  | "airbnb_turnover" | "post_construction" | "commercial"
+  | "window_cleaning" | "carpet_cleaning";
+
+const MASTER_SERVICE_TYPES: Array<{ kind: ServiceKind; name: string; price: number; duration: number }> = [
+  { kind: "residential", name: "Standard House Cleaning", price: 15000, duration: 120 },
   { kind: "residential_deep", name: "Deep Cleaning", price: 30000, duration: 240 },
-  { kind: "move_in_out", name: "Move In / Move Out", price: 35000, duration: 300 },
+  { kind: "move_in", name: "Move In", price: 35000, duration: 300 },
+  { kind: "move_out", name: "Move Out", price: 35000, duration: 300 },
   { kind: "airbnb_turnover", name: "Airbnb Turnover", price: 12000, duration: 180 },
   { kind: "post_construction", name: "Post-Construction", price: 45000, duration: 360 },
-  { kind: "commercial_office", name: "Commercial Office", price: 20000, duration: 180 },
+  { kind: "commercial", name: "Commercial Office", price: 20000, duration: 180 },
   { kind: "window_cleaning", name: "Window Cleaning", price: 15000, duration: 120 },
   { kind: "carpet_cleaning", name: "Carpet Cleaning", price: 20000, duration: 150 },
 ];
