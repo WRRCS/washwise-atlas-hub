@@ -30,6 +30,7 @@ import { Route as AuthenticatedSettingsTemplatesRouteImport } from './routes/_au
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as AuthenticatedSettingsBusinessRouteImport } from './routes/_authenticated/settings.business'
+import { Route as AuthenticatedSettingsAiRouteImport } from './routes/_authenticated/settings.ai'
 import { Route as AuthenticatedLeadsLeadIdRouteImport } from './routes/_authenticated/leads.$leadId'
 import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticated/jobs.new'
 import { Route as AuthenticatedJobsJobIdRouteImport } from './routes/_authenticated/jobs.$jobId'
@@ -149,6 +150,11 @@ const AuthenticatedSettingsBusinessRoute =
     path: '/settings/business',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsAiRoute = AuthenticatedSettingsAiRouteImport.update({
+  id: '/settings/ai',
+  path: '/settings/ai',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLeadsLeadIdRoute =
   AuthenticatedLeadsLeadIdRouteImport.update({
     id: '/$leadId',
@@ -231,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/settings/business': typeof AuthenticatedSettingsBusinessRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/settings/business': typeof AuthenticatedSettingsBusinessRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/_authenticated/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
   '/_authenticated/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/_authenticated/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/_authenticated/settings/business': typeof AuthenticatedSettingsBusinessRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/leads/$leadId'
+    | '/settings/ai'
     | '/settings/business'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/leads/$leadId'
+    | '/settings/ai'
     | '/settings/business'
     | '/settings/integrations'
     | '/settings/notifications'
@@ -396,6 +407,7 @@ export interface FileRouteTypes {
     | '/_authenticated/jobs/$jobId'
     | '/_authenticated/jobs/new'
     | '/_authenticated/leads/$leadId'
+    | '/_authenticated/settings/ai'
     | '/_authenticated/settings/business'
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/notifications'
@@ -565,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsBusinessRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/ai': {
+      id: '/_authenticated/settings/ai'
+      path: '/settings/ai'
+      fullPath: '/settings/ai'
+      preLoaderRoute: typeof AuthenticatedSettingsAiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leads/$leadId': {
       id: '/_authenticated/leads/$leadId'
       path: '/$leadId'
@@ -715,6 +734,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedSopsRoute: typeof AuthenticatedSopsRoute
+  AuthenticatedSettingsAiRoute: typeof AuthenticatedSettingsAiRoute
   AuthenticatedSettingsBusinessRoute: typeof AuthenticatedSettingsBusinessRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
@@ -734,6 +754,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedSopsRoute: AuthenticatedSopsRoute,
+  AuthenticatedSettingsAiRoute: AuthenticatedSettingsAiRoute,
   AuthenticatedSettingsBusinessRoute: AuthenticatedSettingsBusinessRoute,
   AuthenticatedSettingsIntegrationsRoute:
     AuthenticatedSettingsIntegrationsRoute,
