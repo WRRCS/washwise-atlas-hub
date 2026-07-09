@@ -4,7 +4,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 
 const AUTH_BASE = "https://appcenter.intuit.com/connect/oauth2";
-const TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+const TOKEN_URLS = [
+  "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+  "https://oauth.platform.intuit.com/oauth2/v1/tokens",
+];
 const REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 const SCOPE = "com.intuit.quickbooks.accounting";
 
@@ -122,17 +125,25 @@ type TokenResp = {
 
 async function tokenRequest(body: URLSearchParams): Promise<TokenResp> {
   const basic = btoa(`${qboClientId()}:${qboClientSecret()}`);
-  const r = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
-      "Authorization": `Basic ${basic}`,
-    },
-    body,
-  });
-  if (!r.ok) throw new Error(`QBO token error ${r.status}: ${await r.text()}`);
-  return r.json() as Promise<TokenResp>;
+  let lastError = "";
+
+  for (const url of TOKEN_URLS) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+        "Authorization": `Basic ${basic}`,
+      },
+      body: new URLSearchParams(body),
+    });
+    const text = await r.text();
+    if (r.ok) return JSON.parse(text) as TokenResp;
+    lastError = `QBO token error ${r.status} at ${new URL(url).pathname}: ${text}`;
+    if (r.status !== 404) break;
+  }
+
+  throw new Error(lastError);
 }
 
 export function exchangeCode(code: string, redirectUri = qboRedirectUri()) {
