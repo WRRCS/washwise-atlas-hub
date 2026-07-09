@@ -94,7 +94,7 @@ async function upsertTenantSubscription(subscription: any, env: StripeEnv) {
   );
   // Reflect on tenant for fast reads / gating
   const activeStatuses = ["active", "trialing", "past_due"];
-  const patch: Record<string, unknown> = { subscription_status: subscription.status };
+  const patch: { subscription_status: string; plan_tier?: string } = { subscription_status: subscription.status };
   if (activeStatuses.includes(subscription.status)) patch.plan_tier = planTier;
   await supabaseAdmin.from("tenants").update(patch).eq("id", tenantId);
 }
