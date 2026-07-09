@@ -1,6 +1,6 @@
-# Atlas — Cleaning Business Operations Platform
+# Atlas — AI Operating System for Service Businesses
 
-Atlas is a full-stack SaaS application for cleaning businesses: scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, QuickBooks sync, lead capture webhooks, and an AI assistant ("Atlas AI") grounded in tenant business data.
+Atlas is a full-stack SaaS platform for service businesses (cleaning, HVAC, landscaping, pest control, handyman, mobile detailing, home services, and any field-service operation): scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, QuickBooks sync, lead capture webhooks, and an AI assistant ("Atlas AI") grounded in tenant business data.
 
 Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + Auth + RLS + Storage), **Tailwind CSS v4**, and **shadcn/ui**. Deploys to Cloudflare Workers via Nitro.
 
