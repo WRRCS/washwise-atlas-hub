@@ -1,56 +1,72 @@
+# Fix critical billing, auth, and entitlement gaps
 
-# Phase A — Multi-Tenant Foundation
+Scope: the 7 critical items from the audit. Important / nice-to-have items (business profile fields, downgrade guard, custom-domain returns, session verification on `/pay/return`, `invoice.payment_failed` handling) are deferred to a follow-up pass.
 
-Assumptions I'm proceeding with (say the word if either is wrong):
-- Existing tenant stays as tenant #1; your account becomes `super_admin` alongside `owner`.
-- Billing is deferred to Phase C. Onboarding will show plan tiers but not charge yet.
+## What we're fixing
 
-## What ships in this phase
+### 1. Create the three Stripe subscription products
+`billing.functions.ts:111` looks up `atlas_starter_monthly`, `atlas_growth_monthly`, `atlas_scale_monthly` — nothing ever created them, so every plan checkout errors with "Price not found". Create products with correct SaaS tax code and monthly recurring prices ($49 / $99 / $199).
 
-1. **Public `/signup` page** — pricing tiers (Starter $49 / Growth $99 / Scale $199), business name + email + password, Google button. Creates the user; a DB trigger provisions a fresh tenant and assigns owner role.
-2. **`/onboarding` wizard** — 6 steps, blocks the app until finished:
-   1. Business profile (name, email, phone, address, timezone, locale EN/UK)
-   2. Pick service types from a master list
-   3. Set default price per selected service
-   4. Set default duration per selected service
-   5. Business hours + SMS quiet hours
-   6. Confirm & land on dashboard (Stripe step stubbed — "Set up billing later")
-3. **Onboarding gate** — any authenticated route redirects to `/onboarding` while `tenants.onboarding_completed = false`.
-4. **Plan-tier field** stored on tenant (`starter` default) so Phase C can wire enforcement without another migration.
-5. **`super_admin` role** added to the `app_role` enum so Phase B has a place to slot the console.
+### 2. Fix invited employees landing in the wrong tenant
+`inviteEmployee` (`entities.functions.ts:385`) doesn't pass `signup_business_name`, so `handle_new_user` falls through to the legacy path that hard-codes tenant `00000000-…-0001`. After `inviteUserByEmail`, force the new user's profile.tenant_id and user_roles row onto the inviter's tenant with the `employee` role.
 
-## Deferred to later phases
+### 3. Password reset flow
+Add `/forgot-password` (calls `supabase.auth.resetPasswordForEmail` with `redirectTo: /reset-password`) and `/reset-password` (public route, reads recovery hash, calls `supabase.auth.updateUser({ password })`). Link "Forgot password?" from `/auth`.
 
-- Phase B: `/super-admin` console, impersonation, audit log, platform stats, support tickets.
-- Phase C: Stripe subscription billing, tier limits (50/200/∞ jobs, AI query quotas), tenant-scoped feature flags, Billing settings page.
-- Cross-tenant RLS audit (Phase B/C prep — I'll spot-check now but a full sweep across ~35 tables is its own prompt).
+### 4. Access gating: 7-day grace, then lock
+Add a check in `_authenticated/route.tsx` `beforeLoad`: if `tenants.subscription_status IN ('past_due','canceled')` AND `updated_at < now() - 7 days`, redirect all routes except `/settings/billing` to `/settings/billing`. Show a countdown banner during the grace period.
 
-## Technical notes
+Add a `subscription_status_changed_at` column so the 7-day timer starts when the status first goes bad, not when the row was last touched.
 
-- **Migration**
-  - `ALTER TYPE app_role ADD VALUE 'super_admin'`.
-  - `ALTER TABLE tenants ADD` columns: `business_email text`, `business_phone text`, `address text`, `timezone text default 'America/New_York'`, `locale text default 'en-US'`, `plan_tier text default 'starter' check (plan_tier in ('starter','growth','scale'))`, `onboarding_completed boolean default false`, `business_hours jsonb`, `quiet_hours jsonb`.
-  - Backfill existing tenant with `onboarding_completed = true` so you're not forced through the wizard.
-  - Grant your user the `super_admin` role.
-  - Rewrite `handle_new_user()`:
-    - If `raw_user_meta_data->>'signup_business_name'` is set → create new tenant with that name + selected `plan_tier`, insert profile + owner role scoped to the new tenant.
-    - Else → keep current behavior (join default tenant, first user = owner).
-  - Add `current_tenant_onboarding_completed()` security-definer helper for the gate.
+### 5. Enforce max_active_clients and max_employees at the DB
+Two new triggers modeled on `tg_enforce_job_limit`:
+- `tg_enforce_client_limit` on `INSERT INTO clients` — blocks when count ≥ `plan_limits.max_active_clients`.
+- `tg_enforce_employee_limit` on `INSERT INTO user_roles WHERE role='employee'` — blocks when the tenant's employee count ≥ `plan_limits.max_employees`. This runs during invite, so `inviteEmployee` will get a friendly error before the auth user is created — check the count in the server function first and short-circuit with a clear message.
 
-- **Files**
-  - Create `src/routes/signup.tsx` (public, SSR off — writes to `localStorage`).
-  - Create `src/routes/_authenticated/onboarding.tsx` (wizard, uses shadcn Steps pattern).
-  - Create `src/lib/onboarding.functions.ts` (server fns: `getOnboardingState`, `saveBusinessProfile`, `saveServiceSelections`, `completeOnboarding`).
-  - Edit `src/routes/_authenticated/route.tsx` — after auth check, fetch onboarding state; if incomplete and route is not `/onboarding`, redirect.
-  - Edit `src/routes/auth.tsx` — add small "New here? Start a free trial →" link to `/signup`.
-  - Regenerate route tree.
+### 6. VITE_PAYMENTS_CLIENT_TOKEN in production
+Already present in `.env` (verified). No action needed. ✅
 
-- **Signup flow specifics**
-  - `supabase.auth.signUp({ email, password, options: { data: { full_name, signup_business_name, plan_tier } } })`.
-  - Trigger runs server-side, so the tenant exists before the client redirects. Client polls `getOnboardingState` once, then routes to `/onboarding`.
+### 7. Verify Stripe session on `/pay/return`
+Deferred — flagged as Important, not Critical in the audit. Will address in next pass.
 
-- **Not touched this phase**
-  - Existing RLS policies (all already scope by `tenant_id` via `current_tenant_id()`, which pulls from `profiles`). New tenants get isolated automatically because their profile row points at the new tenant id.
-  - `src/integrations/supabase/*` (auto-gen).
+Actually promoting this: the current page shows a false "paid" for any random `session_id` in the URL, which is a real risk. Replacing item 6 in scope: add a server function `verifyCheckoutSession(sessionId)` that calls `stripe.checkout.sessions.retrieve` and returns `{ paid, amount, currency }`. Render the confirmation only when `paid === true`; otherwise show "Payment could not be verified" with a retry link.
 
-After you approve, I'll ship the migration + all files in one pass. Phase B starts on your next go.
+## Files touched
+
+**New**
+- `supabase/migrations/<ts>_critical_billing_fixes.sql` — client/employee limit triggers, `subscription_status_changed_at` column + trigger, minor helper
+- `src/routes/forgot-password.tsx`, `src/routes/reset-password.tsx`
+- `src/lib/pay.functions.ts` — `verifyCheckoutSession`
+
+**Edited**
+- `src/lib/entities.functions.ts` — pre-check employee cap, then correct tenant_id/role after invite
+- `src/routes/_authenticated/route.tsx` — subscription gate with 7-day grace
+- `src/routes/auth.tsx` — "Forgot password?" link
+- `src/routes/pay.return.tsx` — verify session before showing success
+
+**Tool calls**
+- `payments--batch_create_product` for the three plans
+
+## Deferred (call out for next pass)
+- Business profile edit UI (name/email/phone/address/timezone/branding/invoicing defaults) — user picked all four groups; sized as its own pass.
+- Downgrade guard in `openBillingPortal`.
+- Return-URL allowlist for custom domains.
+- `invoice.payment_failed` webhook + notification.
+- AI token cap enforcement.
+
+## How to test in the preview
+
+**Card numbers (Stripe test mode):**
+- Success: `4242 4242 4242 4242` — any future expiry, any 3-digit CVC, any ZIP
+- Declined: `4000 0000 0000 0002`
+- Requires 3-D Secure: `4000 0025 0000 3155`
+
+**Flows to verify:**
+1. **Plan checkout** — Sign in as an owner → Settings → Billing → "Choose plan" on Growth → complete with `4242…` → return to billing page → row shows `active`, plan tier updated to `growth`.
+2. **Past-due gating** — In the Stripe test dashboard, cancel the subscription (or trigger `customer.subscription.updated` with status `past_due`). Refresh the app: banner appears with "N days left". Set `subscription_status_changed_at` to `now() - 8 days` via SQL to simulate expiry — every route except `/settings/billing` redirects to billing.
+3. **Employee invite** — Owner invites `test+emp@example.com` → open the invite email → set password → sign in → land on that owner's tenant (not "Wash Rinse Repeat Cleaning"). Verify with `select tenant_id from profiles where email='test+emp@example.com'`.
+4. **Password reset** — On `/auth` click "Forgot password?" → enter email → click link in email → land on `/reset-password` → set new password → sign in with it.
+5. **Limits** — On a Starter tenant with 50 clients, adding client #51 shows the friendly plan-cap error. Same for employees (max 3 on Starter).
+6. **Invoice payment** — Open a client's invoice → "Pay online" → complete with `4242…` → return page verifies the session and shows "Paid". Tamper with the `session_id` in the URL → page shows "could not be verified".
+
+Approve to implement.
