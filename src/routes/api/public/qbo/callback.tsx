@@ -58,36 +58,18 @@ export const Route = createFileRoute("/api/public/qbo/callback")({
           access_expires_at: now + tokens.expires_in,
         };
 
-        const { error: upErr, count } = await sb.from("integrations").update({
-          is_connected: true,
-          connected_at: new Date().toISOString(),
-          external_account_id: realmId,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          settings: settings as any,
-        }, { count: "exact" }).eq("tenant_id", v.tenantId).eq("provider", "quickbooks");
+        const { error: rpcErr } = await sb.rpc("save_qbo_integration", {
+          _tenant: v.tenantId,
+          _realm_id: realmId,
+          _access_token: tokens.access_token,
+          _refresh_token: tokens.refresh_token,
+          _settings: settings as any,
+        });
+        if (rpcErr) {
+          console.error("[qbo callback] save failed:", rpcErr);
+          return back(`error:save_failed:${rpcErr.message.slice(0, 120)}`, v.returnOrigin);
+        }
 
-        if (upErr) {
-          console.error("[qbo callback] save failed:", upErr);
-          return back(`error:save_failed:${upErr.message.slice(0, 120)}`, v.returnOrigin);
-        }
-        if (!count) {
-          // No integration row existed — insert one.
-          const { error: insErr } = await sb.from("integrations").insert({
-            tenant_id: v.tenantId,
-            provider: "quickbooks",
-            is_connected: true,
-            connected_at: new Date().toISOString(),
-            external_account_id: realmId,
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            settings: settings as any,
-          });
-          if (insErr) {
-            console.error("[qbo callback] insert failed:", insErr);
-            return back(`error:save_failed:${insErr.message.slice(0, 120)}`, v.returnOrigin);
-          }
-        }
         return back("connected", v.returnOrigin);
       },
     },
