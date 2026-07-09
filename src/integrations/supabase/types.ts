@@ -1316,6 +1316,51 @@ export type Database = {
           },
         ]
       }
+      plan_limits: {
+        Row: {
+          ai_tokens_monthly: number | null
+          created_at: string
+          display_name: string
+          features: Json
+          max_active_clients: number | null
+          max_employees: number | null
+          max_monthly_jobs: number | null
+          plan_tier: string
+          price_cents_monthly: number
+          sort_order: number
+          stripe_price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_tokens_monthly?: number | null
+          created_at?: string
+          display_name: string
+          features?: Json
+          max_active_clients?: number | null
+          max_employees?: number | null
+          max_monthly_jobs?: number | null
+          plan_tier: string
+          price_cents_monthly: number
+          sort_order?: number
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_tokens_monthly?: number | null
+          created_at?: string
+          display_name?: string
+          features?: Json
+          max_active_clients?: number | null
+          max_employees?: number | null
+          max_monthly_jobs?: number | null
+          plan_tier?: string
+          price_cents_monthly?: number
+          sort_order?: number
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_audit_log: {
         Row: {
           action: string
@@ -1799,6 +1844,62 @@ export type Database = {
           },
         ]
       }
+      tenant_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          environment: string
+          id: string
+          plan_tier: string
+          price_id: string
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          plan_tier: string
+          price_id: string
+          status?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          plan_tier?: string
+          price_id?: string
+          status?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           address: string | null
@@ -1817,6 +1918,8 @@ export type Database = {
           reminder_lead_hours: number
           signed_up_at: string
           slug: string
+          stripe_customer_id: string | null
+          subscription_status: string | null
           timezone: string
           track_gps: boolean
         }
@@ -1837,6 +1940,8 @@ export type Database = {
           reminder_lead_hours?: number
           signed_up_at?: string
           slug: string
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
           timezone?: string
           track_gps?: boolean
         }
@@ -1857,6 +1962,8 @@ export type Database = {
           reminder_lead_hours?: number
           signed_up_at?: string
           slug?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
           timezone?: string
           track_gps?: boolean
         }
@@ -2032,6 +2139,7 @@ export type Database = {
           units_used: number
         }[]
       }
+      get_my_billing_summary: { Args: never; Returns: Json }
       get_revenue_by_month: {
         Args: { _from: string; _to: string }
         Returns: {
@@ -2042,6 +2150,7 @@ export type Database = {
           total_revenue_cents: number
         }[]
       }
+      get_tenant_usage: { Args: { _tenant: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
