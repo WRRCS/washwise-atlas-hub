@@ -186,6 +186,7 @@ function TodayView() {
                                 jobId: j.id,
                                 entryId: j.open_entry!.id,
                                 startedAt: j.open_entry!.started_at,
+                                serviceTypeId: j.service?.id ?? null,
                               })
                             }
                             className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
