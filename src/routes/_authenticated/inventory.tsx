@@ -16,6 +16,7 @@ import {
   logInventoryTransaction, listItemTransactions,
   type InventoryItem, type InventoryStatus, type InventoryTransaction,
 } from "@/lib/inventory.functions";
+import { InventoryTabs } from "@/components/inventory-tabs";
 
 const invQO = queryOptions({ queryKey: ["inventory"], queryFn: () => listInventory() });
 
@@ -78,6 +79,8 @@ function InventoryPage() {
         action={<BrandButton onClick={() => setFormFor("new")}><Plus className="size-4 mr-1.5" />New item</BrandButton>}
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-4">
+        <InventoryTabs current="items" />
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
           <div className="relative flex-1">
@@ -132,7 +135,10 @@ function InventoryPage() {
                       {i.sku && <div className="text-xs text-muted-foreground">SKU: {i.sku}</div>}
                     </td>
                     <td className="px-3 py-3 text-muted-foreground">{i.unit}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-medium">{i.quantity_on_hand}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums font-medium ${i.quantity_on_hand < 0 ? "text-red-600" : ""}`}>
+                      {i.quantity_on_hand}
+                      {i.quantity_on_hand < 0 && <span className="ml-1 text-[10px] uppercase tracking-wider">went negative</span>}
+                    </td>
                     <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{i.reorder_threshold}</td>
                     <td className="px-3 py-3 text-muted-foreground">{i.vendor_name ?? "—"}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{fmtMoney(i.cost_per_unit_cents)}</td>

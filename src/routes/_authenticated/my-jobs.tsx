@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { listMyJobs, clockIn, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
-import { listInventory, type InventoryItem } from "@/lib/inventory.functions";
+import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { captureGps } from "@/lib/geolocation";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen } from "lucide-react";
@@ -119,7 +119,7 @@ function TodayView() {
     }
   };
 
-  const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null } | null>(null);
+  const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null; serviceTypeId: string | null } | null>(null);
   const [sopFor, setSopFor] = useState<{ jobId: string; serviceTypeId: string | null; label: string } | null>(null);
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -186,6 +186,7 @@ function TodayView() {
                                 jobId: j.id,
                                 entryId: j.open_entry!.id,
                                 startedAt: j.open_entry!.started_at,
+                                serviceTypeId: j.service?.id ?? null,
                               })
                             }
                             className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
@@ -205,7 +206,7 @@ function TodayView() {
                             <Play className="size-4" /> Clock in
                           </button>
                           <button
-                            onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null })}
+                            onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null, serviceTypeId: j.service?.id ?? null })}
                             className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
                           >
                             <Camera className="size-3" /> Complete with photos
@@ -227,6 +228,7 @@ function TodayView() {
           jobId={completeFor.jobId}
           entryId={completeFor.entryId}
           startedAt={completeFor.startedAt}
+          serviceTypeId={completeFor.serviceTypeId}
           trackGps={trackGps}
           onClose={() => setCompleteFor(null)}
           onDone={() => {
@@ -264,6 +266,7 @@ function CompleteJobDialog({
   jobId,
   entryId,
   startedAt,
+  serviceTypeId,
   trackGps,
   onClose,
   onDone,
@@ -271,6 +274,7 @@ function CompleteJobDialog({
   jobId: string;
   entryId: string | null;
   startedAt: string | null;
+  serviceTypeId: string | null;
   trackGps: boolean;
   onClose: () => void;
   onDone: () => void;
@@ -279,14 +283,30 @@ function CompleteJobDialog({
   const complete = useServerFn(completeJobWithPhotos);
   const doLogConsent = useServerFn(logGpsConsent);
   const fetchInventory = useServerFn(listInventory);
+  const fetchRecipe = useServerFn(getRecipeForService);
   const inventoryQ = useQuery<InventoryItem[]>({ queryKey: ["inventory-for-complete"], queryFn: () => fetchInventory() });
+  const recipeQ = useQuery({
+    queryKey: ["recipe-for-service", serviceTypeId],
+    queryFn: () => (serviceTypeId ? fetchRecipe({ data: { service_type_id: serviceTypeId } }) : Promise.resolve([])),
+    enabled: !!serviceTypeId,
+  });
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<Pending[]>([]);
   const [supplies, setSupplies] = useState<Record<string, number>>({});
+  const [prefilled, setPrefilled] = useState(false);
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const hours = startedAt ? hoursBetween(startedAt, new Date().toISOString()) : null;
+
+  // Pre-fill supplies from the recipe once loaded
+  if (!prefilled && recipeQ.data && recipeQ.data.length > 0) {
+    const seed: Record<string, number> = {};
+    for (const r of recipeQ.data) seed[r.inventory_item_id] = r.quantity_per_job;
+    setSupplies(seed);
+    setPrefilled(true);
+  }
+
 
   const addFiles = (files: FileList | null) => {
     if (!files) return;
