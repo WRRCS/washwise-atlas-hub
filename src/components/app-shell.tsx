@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3,
 } from "lucide-react";
 
 const OWNER_NAV = [
@@ -17,6 +17,7 @@ const OWNER_NAV = [
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/invoices", label: "Invoices", icon: Receipt },
+  { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/settings/business", label: "Business profile", icon: Building2 },
   { to: "/settings/templates", label: "Templates", icon: FileText },
   { to: "/settings/notifications", label: "Notifications", icon: Bell },
