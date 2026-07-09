@@ -227,6 +227,7 @@ function TodayView() {
           jobId={completeFor.jobId}
           entryId={completeFor.entryId}
           startedAt={completeFor.startedAt}
+          trackGps={trackGps}
           onClose={() => setCompleteFor(null)}
           onDone={() => {
             qc.invalidateQueries({ queryKey: ["my-jobs"] });
