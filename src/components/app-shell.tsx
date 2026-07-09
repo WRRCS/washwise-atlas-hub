@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield,
 } from "lucide-react";
 import { AtlasChat } from "@/components/atlas-chat";
 
@@ -32,25 +32,28 @@ const EMPLOYEE_NAV = [
   { to: "/clients", label: "Clients", icon: Users },
 ] as const;
 
-
+const SUPER_ADMIN_NAV_ITEM = { to: "/super-admin", label: "Platform console", icon: Shield } as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string; isSuperAdmin: boolean } | null>(null);
 
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return;
-      const [{ data: p }, { data: r }] = await Promise.all([
+      const [{ data: p }, { data: roles }] = await Promise.all([
         supabase.from("profiles").select("full_name, email").eq("id", u.user.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", u.user.id).order("role").limit(1).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", u.user.id),
       ]);
+      const roleSet = new Set((roles ?? []).map((r: any) => r.role));
+      const primary = roleSet.has("owner") ? "owner" : roleSet.has("employee") ? "employee" : "employee";
       setProfile({
         full_name: p?.full_name ?? null,
         email: p?.email ?? u.user.email ?? null,
-        role: r?.role ?? "employee",
+        role: primary,
+        isSuperAdmin: roleSet.has("super_admin"),
       });
     })();
   }, []);
@@ -90,12 +93,25 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+            {profile?.isSuperAdmin && (
+              <Link
+                to={SUPER_ADMIN_NAV_ITEM.to}
+                className={`mt-4 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors border-t border-border/60 pt-4 ${
+                  pathname.startsWith(SUPER_ADMIN_NAV_ITEM.to)
+                    ? "text-brand font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Shield className="size-4 shrink-0" />
+                {SUPER_ADMIN_NAV_ITEM.label}
+              </Link>
+            )}
           </nav>
 
           <div className="p-4 border-t border-border/60">
             <div className="bg-clay-200/50 rounded-lg p-3 ring-1 ring-black/5">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                {profile?.role === "owner" ? "Owner" : "Cleaner"}
+                {profile?.isSuperAdmin ? "Super admin" : profile?.role === "owner" ? "Owner" : "Cleaner"}
               </p>
               <div className="flex items-center gap-3 mb-3">
                 <div className="size-8 rounded-full bg-clay-200 grid place-items-center text-xs font-medium">

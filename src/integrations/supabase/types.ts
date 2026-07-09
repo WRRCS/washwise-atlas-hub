@@ -1316,6 +1316,47 @@ export type Database = {
           },
         ]
       }
+      platform_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          target_entity_id: string | null
+          target_entity_type: string | null
+          target_tenant_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_entity_id?: string | null
+          target_entity_type?: string | null
+          target_tenant_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_entity_id?: string | null
+          target_entity_type?: string | null
+          target_tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_audit_log_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1922,6 +1963,26 @@ export type Database = {
     }
     Functions: {
       _client_name: { Args: { _client_id: string }; Returns: string }
+      admin_get_tenant: { Args: { _tenant: string }; Returns: Json }
+      admin_list_tenants: {
+        Args: never
+        Returns: {
+          business_email: string
+          client_count: number
+          created_at: string
+          id: string
+          job_count: number
+          last_activity_at: string
+          name: string
+          onboarding_completed: boolean
+          paid_invoice_count: number
+          plan_tier: string
+          slug: string
+          total_revenue_cents: number
+          user_count: number
+        }[]
+      }
+      admin_platform_stats: { Args: never; Returns: Json }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_onboarding_completed: { Args: never; Returns: boolean }
       enqueue_notification: {
@@ -1989,11 +2050,22 @@ export type Database = {
         Returns: boolean
       }
       is_owner: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
+      log_platform_action: {
+        Args: {
+          _action: string
+          _entity_id?: string
+          _entity_type?: string
+          _metadata?: Json
+          _tenant?: string
+        }
+        Returns: string
+      }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
     }
     Enums: {
-      app_role: "owner" | "employee"
+      app_role: "owner" | "employee" | "super_admin"
       email_trigger_event:
         | "booking_confirmation"
         | "appointment_reminder"
@@ -2161,7 +2233,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "employee"],
+      app_role: ["owner", "employee", "super_admin"],
       email_trigger_event: [
         "booking_confirmation",
         "appointment_reminder",

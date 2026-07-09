@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
+import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authenticated/super-admin'
 import { Route as AuthenticatedSopsRouteImport } from './routes/_authenticated/sops'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
@@ -28,6 +29,8 @@ import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedSuperAdminIndexRouteImport } from './routes/_authenticated/super-admin.index'
+import { Route as AuthenticatedSuperAdminAuditRouteImport } from './routes/_authenticated/super-admin.audit'
 import { Route as AuthenticatedSettingsTemplatesRouteImport } from './routes/_authenticated/settings.templates'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
@@ -42,6 +45,7 @@ import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_aut
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 import { Route as ApiPublicQboCallbackRouteImport } from './routes/api/public/qbo/callback'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
 
@@ -73,6 +77,11 @@ const PayInvoiceIdRoute = PayInvoiceIdRouteImport.update({
   id: '/pay/$invoiceId',
   path: '/pay/$invoiceId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSuperAdminRoute = AuthenticatedSuperAdminRouteImport.update({
+  id: '/super-admin',
+  path: '/super-admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSopsRoute = AuthenticatedSopsRouteImport.update({
   id: '/sops',
@@ -139,6 +148,18 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSuperAdminIndexRoute =
+  AuthenticatedSuperAdminIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSuperAdminAuditRoute =
+  AuthenticatedSuperAdminAuditRouteImport.update({
+    id: '/audit',
+    path: '/audit',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
 const AuthenticatedSettingsTemplatesRoute =
   AuthenticatedSettingsTemplatesRouteImport.update({
     id: '/settings/templates',
@@ -219,6 +240,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedSuperAdminTenantsTenantIdRoute =
+  AuthenticatedSuperAdminTenantsTenantIdRouteImport.update({
+    id: '/tenants/$tenantId',
+    path: '/tenants/$tenantId',
+    getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
 const ApiPublicHooksTurnoTenantIdRoute =
   ApiPublicHooksTurnoTenantIdRouteImport.update({
     id: '/api/public/hooks/turno/$tenantId',
@@ -249,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/sops': typeof AuthenticatedSopsRoute
+  '/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -263,6 +291,9 @@ export interface FileRoutesByFullPath {
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
+  '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
@@ -299,6 +330,9 @@ export interface FileRoutesByTo {
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
+  '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
@@ -323,6 +357,7 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/sops': typeof AuthenticatedSopsRoute
+  '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -337,6 +372,9 @@ export interface FileRoutesById {
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
+  '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
@@ -361,6 +399,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/services'
     | '/sops'
+    | '/super-admin'
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/clients/$clientId'
@@ -375,6 +414,9 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/templates'
+    | '/super-admin/audit'
+    | '/super-admin/'
+    | '/super-admin/tenants/$tenantId'
     | '/api/public/payments/webhook'
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
@@ -411,6 +453,9 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/templates'
+    | '/super-admin/audit'
+    | '/super-admin'
+    | '/super-admin/tenants/$tenantId'
     | '/api/public/payments/webhook'
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
@@ -434,6 +479,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/services'
     | '/_authenticated/sops'
+    | '/_authenticated/super-admin'
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/_authenticated/clients/$clientId'
@@ -448,6 +494,9 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/templates'
+    | '/_authenticated/super-admin/audit'
+    | '/_authenticated/super-admin/'
+    | '/_authenticated/super-admin/tenants/$tenantId'
     | '/api/public/payments/webhook'
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
@@ -510,6 +559,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pay/$invoiceId'
       preLoaderRoute: typeof PayInvoiceIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/super-admin': {
+      id: '/_authenticated/super-admin'
+      path: '/super-admin'
+      fullPath: '/super-admin'
+      preLoaderRoute: typeof AuthenticatedSuperAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sops': {
       id: '/_authenticated/sops'
@@ -601,6 +657,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/super-admin/': {
+      id: '/_authenticated/super-admin/'
+      path: '/'
+      fullPath: '/super-admin/'
+      preLoaderRoute: typeof AuthenticatedSuperAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/super-admin/audit': {
+      id: '/_authenticated/super-admin/audit'
+      path: '/audit'
+      fullPath: '/super-admin/audit'
+      preLoaderRoute: typeof AuthenticatedSuperAdminAuditRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
     }
     '/_authenticated/settings/templates': {
       id: '/_authenticated/settings/templates'
@@ -700,6 +770,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/super-admin/tenants/$tenantId': {
+      id: '/_authenticated/super-admin/tenants/$tenantId'
+      path: '/tenants/$tenantId'
+      fullPath: '/super-admin/tenants/$tenantId'
+      preLoaderRoute: typeof AuthenticatedSuperAdminTenantsTenantIdRouteImport
+      parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
     '/api/public/hooks/turno/$tenantId': {
       id: '/api/public/hooks/turno/$tenantId'
       path: '/api/public/hooks/turno/$tenantId'
@@ -781,6 +858,25 @@ const AuthenticatedLeadsRouteChildren: AuthenticatedLeadsRouteChildren = {
 const AuthenticatedLeadsRouteWithChildren =
   AuthenticatedLeadsRoute._addFileChildren(AuthenticatedLeadsRouteChildren)
 
+interface AuthenticatedSuperAdminRouteChildren {
+  AuthenticatedSuperAdminAuditRoute: typeof AuthenticatedSuperAdminAuditRoute
+  AuthenticatedSuperAdminIndexRoute: typeof AuthenticatedSuperAdminIndexRoute
+  AuthenticatedSuperAdminTenantsTenantIdRoute: typeof AuthenticatedSuperAdminTenantsTenantIdRoute
+}
+
+const AuthenticatedSuperAdminRouteChildren: AuthenticatedSuperAdminRouteChildren =
+  {
+    AuthenticatedSuperAdminAuditRoute: AuthenticatedSuperAdminAuditRoute,
+    AuthenticatedSuperAdminIndexRoute: AuthenticatedSuperAdminIndexRoute,
+    AuthenticatedSuperAdminTenantsTenantIdRoute:
+      AuthenticatedSuperAdminTenantsTenantIdRoute,
+  }
+
+const AuthenticatedSuperAdminRouteWithChildren =
+  AuthenticatedSuperAdminRoute._addFileChildren(
+    AuthenticatedSuperAdminRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
@@ -795,6 +891,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedSopsRoute: typeof AuthenticatedSopsRoute
+  AuthenticatedSuperAdminRoute: typeof AuthenticatedSuperAdminRouteWithChildren
   AuthenticatedSettingsAiRoute: typeof AuthenticatedSettingsAiRoute
   AuthenticatedSettingsBusinessRoute: typeof AuthenticatedSettingsBusinessRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
@@ -816,6 +913,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedSopsRoute: AuthenticatedSopsRoute,
+  AuthenticatedSuperAdminRoute: AuthenticatedSuperAdminRouteWithChildren,
   AuthenticatedSettingsAiRoute: AuthenticatedSettingsAiRoute,
   AuthenticatedSettingsBusinessRoute: AuthenticatedSettingsBusinessRoute,
   AuthenticatedSettingsIntegrationsRoute:
