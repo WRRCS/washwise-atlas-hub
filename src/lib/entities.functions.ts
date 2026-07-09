@@ -395,6 +395,40 @@ export const inviteEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: isOwner } = await context.supabase.rpc("is_owner");
     if (!isOwner) throw new Error("Only owners can invite employees");
+
+    // Resolve the inviter's tenant so we can attach the new user to it
+    // (the auth trigger only knows about the default tenant).
+    const { data: inviterProfile, error: profErr } = await context.supabase
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (profErr || !inviterProfile?.tenant_id) throw new Error("Could not resolve your tenant");
+    const tenantId = inviterProfile.tenant_id as string;
+
+    // Pre-check employee cap for a friendlier error than a raw trigger throw.
+    const [{ data: tenantRow }, { count: currentEmployees }] = await Promise.all([
+      context.supabase.from("tenants").select("plan_tier").eq("id", tenantId).maybeSingle(),
+      context.supabase
+        .from("user_roles")
+        .select("user_id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("role", "employee"),
+    ]);
+    if (tenantRow?.plan_tier) {
+      const { data: planRow } = await context.supabase
+        .from("plan_limits")
+        .select("max_employees,display_name")
+        .eq("plan_tier", tenantRow.plan_tier)
+        .maybeSingle();
+      const cap = planRow?.max_employees ?? null;
+      if (cap != null && (currentEmployees ?? 0) >= cap) {
+        throw new Error(
+          `Employee limit reached (${currentEmployees}/${cap} on the ${planRow?.display_name ?? tenantRow.plan_tier} plan). Upgrade to invite more employees.`,
+        );
+      }
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
       data: { full_name: data.full_name },
@@ -402,13 +436,29 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     const userId = created.user?.id;
-    if (userId) {
-      // Trigger handle_new_user should have created profile + employee role.
-      await supabaseAdmin.from("profiles").update({
-        full_name: data.full_name,
-        phone: data.phone || null,
-      }).eq("id", userId);
+    if (!userId) return { ok: true };
+
+    // The auth trigger placed the new user in the default tenant via the
+    // legacy path. Re-parent the profile to the inviter's tenant and move
+    // the user_roles row to the correct tenant with the employee role.
+    await supabaseAdmin.from("profiles").update({
+      tenant_id: tenantId,
+      full_name: data.full_name,
+      phone: data.phone || null,
+    }).eq("id", userId);
+
+    // Delete any auto-created role row(s) and insert a clean employee row
+    // on the correct tenant. The employee-limit trigger runs on this INSERT.
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+    const { error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .insert({ user_id: userId, tenant_id: tenantId, role: "employee" });
+    if (roleErr) {
+      // Roll back the invite if the limit trigger (or anything else) rejects.
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      throw new Error(roleErr.message);
     }
+
     return { ok: true };
   });
 
