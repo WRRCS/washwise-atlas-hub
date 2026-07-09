@@ -112,6 +112,9 @@ function JobDetail() {
             <TabsContent value="photos" className="mt-4">
               <PhotosTab jobId={jobId} />
             </TabsContent>
+            <TabsContent value="gps" className="mt-4">
+              <GpsTab jobId={jobId} />
+            </TabsContent>
           </Tabs>
         </section>
         <aside className="space-y-6">
