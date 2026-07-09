@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 
 if (typeof window !== "undefined") {
-  void import("../lib/sentry.client").then((m) => m.initSentryClient());
+  void import("../lib/sentry-browser").then((m) => m.initSentryClient());
 }
 
 function NotFoundComponent() {
