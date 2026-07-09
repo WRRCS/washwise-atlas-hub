@@ -1920,6 +1920,7 @@ export type Database = {
           slug: string
           stripe_customer_id: string | null
           subscription_status: string | null
+          subscription_status_changed_at: string | null
           timezone: string
           track_gps: boolean
         }
@@ -1942,6 +1943,7 @@ export type Database = {
           slug: string
           stripe_customer_id?: string | null
           subscription_status?: string | null
+          subscription_status_changed_at?: string | null
           timezone?: string
           track_gps?: boolean
         }
@@ -1964,6 +1966,7 @@ export type Database = {
           slug?: string
           stripe_customer_id?: string | null
           subscription_status?: string | null
+          subscription_status_changed_at?: string | null
           timezone?: string
           track_gps?: boolean
         }
@@ -2319,6 +2322,7 @@ export type Database = {
         }[]
       }
       get_my_billing_summary: { Args: never; Returns: Json }
+      get_my_subscription_gate: { Args: never; Returns: Json }
       get_revenue_by_month: {
         Args: { _from: string; _to: string }
         Returns: {
