@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard,
 } from "lucide-react";
 import { AtlasChat } from "@/components/atlas-chat";
 
@@ -24,6 +24,7 @@ const OWNER_NAV = [
   { to: "/settings/notifications", label: "Notifications", icon: Bell },
   { to: "/settings/integrations", label: "Integrations", icon: Plug },
   { to: "/settings/ai", label: "AI Assistant", icon: Bot },
+  { to: "/settings/billing", label: "Billing & plan", icon: CreditCard },
 ] as const;
 
 const EMPLOYEE_NAV = [
