@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 
 const AUTH_BASE = "https://appcenter.intuit.com/connect/oauth2";
-const TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens";
+const TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 const REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 const SCOPE = "com.intuit.quickbooks.accounting";
 
