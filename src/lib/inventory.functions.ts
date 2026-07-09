@@ -201,3 +201,129 @@ export const listItemTransactions = createServerFn({ method: "POST" })
       actor_name: r.created_by ? nameMap.get(r.created_by) ?? null : null,
     }));
   });
+
+// -------- Recipes --------
+
+export type RecipeRow = {
+  id: string;
+  service_type_id: string;
+  service_type_name: string;
+  inventory_item_id: string;
+  item_name: string;
+  item_unit: string;
+  item_cost_cents: number;
+  quantity_per_job: number;
+};
+
+export const listRecipes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<RecipeRow[]> => {
+    const { data, error } = await context.supabase
+      .from("service_type_inventory_recipes")
+      .select("id,service_type_id,inventory_item_id,quantity_per_job,service:service_types(name),item:inventory_items(name,unit,cost_per_unit_cents)")
+      .order("service_type_id");
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      service_type_id: r.service_type_id,
+      service_type_name: r.service?.name ?? "",
+      inventory_item_id: r.inventory_item_id,
+      item_name: r.item?.name ?? "",
+      item_unit: r.item?.unit ?? "",
+      item_cost_cents: Number(r.item?.cost_per_unit_cents ?? 0),
+      quantity_per_job: Number(r.quantity_per_job),
+    }));
+  });
+
+export const getRecipeForService = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ service_type_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("service_type_inventory_recipes")
+      .select("inventory_item_id,quantity_per_job")
+      .eq("service_type_id", data.service_type_id);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r: any) => ({
+      inventory_item_id: r.inventory_item_id as string,
+      quantity_per_job: Number(r.quantity_per_job),
+    }));
+  });
+
+const recipeUpsertSchema = z.object({
+  service_type_id: z.string().uuid(),
+  inventory_item_id: z.string().uuid(),
+  quantity_per_job: z.coerce.number().min(0),
+});
+
+export const upsertRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => recipeUpsertSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const tid = await tenantId(context);
+    if (data.quantity_per_job === 0) {
+      const { error } = await context.supabase
+        .from("service_type_inventory_recipes")
+        .delete()
+        .eq("service_type_id", data.service_type_id)
+        .eq("inventory_item_id", data.inventory_item_id);
+      if (error) throw new Error(error.message);
+      return { ok: true, deleted: true };
+    }
+    const { error } = await (context.supabase.from("service_type_inventory_recipes") as any).upsert(
+      {
+        tenant_id: tid,
+        service_type_id: data.service_type_id,
+        inventory_item_id: data.inventory_item_id,
+        quantity_per_job: data.quantity_per_job,
+      },
+      { onConflict: "service_type_id,inventory_item_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("service_type_inventory_recipes").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// -------- Usage report (monthly) --------
+
+export type UsageMonth = {
+  month: string; // YYYY-MM
+  total_units: number;
+  total_cost_cents: number;
+  line_count: number;
+};
+
+export const inventoryUsageByMonth = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<UsageMonth[]> => {
+    const since = new Date();
+    since.setMonth(since.getMonth() - 12);
+    const { data, error } = await context.supabase
+      .from("inventory_transactions")
+      .select("change_amount,created_at,item:inventory_items(cost_per_unit_cents)")
+      .eq("reason", "job_usage")
+      .gte("created_at", since.toISOString());
+    if (error) throw new Error(error.message);
+    const buckets = new Map<string, UsageMonth>();
+    for (const r of (data ?? []) as any[]) {
+      const d = new Date(r.created_at);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      const qty = Math.abs(Number(r.change_amount));
+      const cost = qty * Number(r.item?.cost_per_unit_cents ?? 0);
+      const b = buckets.get(key) ?? { month: key, total_units: 0, total_cost_cents: 0, line_count: 0 };
+      b.total_units += qty;
+      b.total_cost_cents += cost;
+      b.line_count += 1;
+      buckets.set(key, b);
+    }
+    return Array.from(buckets.values()).sort((a, b) => b.month.localeCompare(a.month));
+  });
