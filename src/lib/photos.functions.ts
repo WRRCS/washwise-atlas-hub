@@ -81,6 +81,11 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       })).default([]),
       entry_id: z.string().uuid().optional(),
       notes: z.string().trim().max(2000).optional(),
+      clock_out_gps: z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+        accuracy_meters: z.number().nullable().optional(),
+      }).nullable().optional(),
       supplies_used: z.array(z.object({
         item_id: z.string().uuid(),
         quantity: z.coerce.number().positive(),
