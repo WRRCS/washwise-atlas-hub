@@ -75,19 +75,20 @@ function LeafletMap({ entries }: Props) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {points.map((p, i) => (
-            <div key={i}>
-              <Marker position={[p.lat, p.lng]}>
-                <Popup>{p.label}</Popup>
-              </Marker>
-              {p.acc && (
-                <Circle
-                  center={[p.lat, p.lng]}
-                  radius={p.acc}
-                  pathOptions={{ color: p.kind === "in" ? "#059669" : "#ea580c", weight: 1, fillOpacity: 0.1 }}
-                />
-              )}
-            </div>
+            <Marker key={`m-${i}`} position={[p.lat, p.lng]}>
+              <Popup>{p.label}</Popup>
+            </Marker>
           ))}
+          {points.map((p, i) =>
+            p.acc ? (
+              <Circle
+                key={`c-${i}`}
+                center={[p.lat, p.lng]}
+                radius={p.acc}
+                pathOptions={{ color: p.kind === "in" ? "#059669" : "#ea580c", weight: 1, fillOpacity: 0.1 }}
+              />
+            ) : null,
+          )}
         </MapContainer>
       </div>
       <ul className="mt-3 text-xs text-muted-foreground space-y-1">
