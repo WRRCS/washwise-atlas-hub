@@ -40,6 +40,7 @@ import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_aut
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 import { Route as ApiPublicQboCallbackRouteImport } from './routes/api/public/qbo/callback'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -206,6 +207,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksTurnoTenantIdRoute =
+  ApiPublicHooksTurnoTenantIdRouteImport.update({
+    id: '/api/public/hooks/turno/$tenantId',
+    path: '/api/public/hooks/turno/$tenantId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksLeadTenantIdRoute =
   ApiPublicHooksLeadTenantIdRouteImport.update({
     id: '/api/public/hooks/lead/$tenantId',
@@ -245,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
+  '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -278,6 +286,7 @@ export interface FileRoutesByTo {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
+  '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -313,6 +322,7 @@ export interface FileRoutesById {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
+  '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
+    | '/api/public/hooks/turno/$tenantId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -381,6 +392,7 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
+    | '/api/public/hooks/turno/$tenantId'
   id:
     | '__root__'
     | '/'
@@ -415,6 +427,7 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
+    | '/api/public/hooks/turno/$tenantId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -426,6 +439,7 @@ export interface RootRouteChildren {
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicQboCallbackRoute: typeof ApiPublicQboCallbackRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
+  ApiPublicHooksTurnoTenantIdRoute: typeof ApiPublicHooksTurnoTenantIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -647,6 +661,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/turno/$tenantId': {
+      id: '/api/public/hooks/turno/$tenantId'
+      path: '/api/public/hooks/turno/$tenantId'
+      fullPath: '/api/public/hooks/turno/$tenantId'
+      preLoaderRoute: typeof ApiPublicHooksTurnoTenantIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/lead/$tenantId': {
       id: '/api/public/hooks/lead/$tenantId'
       path: '/api/public/hooks/lead/$tenantId'
@@ -775,6 +796,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicQboCallbackRoute: ApiPublicQboCallbackRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
+  ApiPublicHooksTurnoTenantIdRoute: ApiPublicHooksTurnoTenantIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

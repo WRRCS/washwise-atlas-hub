@@ -144,6 +144,26 @@ function JobDetail() {
               <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
             </div>
           )}
+          {(job as any).external_source === "turno" && (job as any).external_metadata && (
+            <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
+              <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Turno reservation</h4>
+              <div className="text-xs text-muted-foreground font-mono">ID: {(job as any).external_id}</div>
+              {(() => {
+                const m = (job as any).external_metadata as {
+                  guest_name?: string | null; property_name?: string | null;
+                  checkin_at?: string | null; checkout_at?: string | null;
+                };
+                return (
+                  <div className="text-sm space-y-1">
+                    {m.guest_name && <div><span className="text-muted-foreground">Guest:</span> {m.guest_name}</div>}
+                    {m.property_name && <div><span className="text-muted-foreground">Property:</span> {m.property_name}</div>}
+                    {m.checkin_at && <div><span className="text-muted-foreground">Check-in:</span> {format(new Date(m.checkin_at), "PPp")}</div>}
+                    {m.checkout_at && <div><span className="text-muted-foreground">Check-out:</span> {format(new Date(m.checkout_at), "PPp")}</div>}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
           <Link to="/jobs" className="block text-center text-sm text-muted-foreground hover:text-foreground">← Back to queue</Link>
         </aside>
       </div>

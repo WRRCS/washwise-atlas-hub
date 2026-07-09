@@ -20,6 +20,15 @@ import {
 } from "@/lib/qbo.functions";
 import { getVenmoSettings, saveVenmoSettings } from "@/lib/venmo.functions";
 import { sendTestLeadWebhook } from "@/lib/leads.functions";
+import {
+  getTurnoStatus,
+  connectTurno,
+  rotateTurnoSecret,
+  updateTurnoTiming,
+  disconnectTurno,
+  listIntegrationErrors,
+  resolveIntegrationError,
+} from "@/lib/turno.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, AlertTriangle, RefreshCw } from "lucide-react";
@@ -35,7 +44,7 @@ const META: Record<IntegrationProvider, { name: string; icon: typeof Building2; 
   stripe: { name: "Stripe", icon: CreditCard, description: "Accept card and ACH payments on invoices.", phase: "Phase 2" },
   venmo: { name: "Venmo", icon: Wallet, description: "Send Venmo payment requests via pay-link deep links on invoices.", phase: "Available now" },
   godaddy: { name: "GoDaddy website", icon: Globe, description: "Capture leads from your website contact form.", phase: "Available now" },
-  turno: { name: "Turno", icon: Home, description: "Sync Airbnb turnovers automatically from Turno.", phase: "Phase 3" },
+  turno: { name: "Turno", icon: Home, description: "Auto-schedule Airbnb turnovers when Turno sends a reservation webhook.", phase: "Available now" },
 };
 
 function IntegrationsPage() {
@@ -106,12 +115,10 @@ function IntegrationsPage() {
                   {p === "godaddy" && row && (
                     <GodaddySection row={row} onChanged={() => qc.invalidateQueries({ queryKey: ["integrations"] })} />
                   )}
-                  {p === "turno" && (
-                    <p className="text-xs text-muted-foreground mt-3 italic">Sync is planned for Phase 3 — no action needed today.</p>
-                  )}
+                  {p === "turno" && <TurnoSection />}
                 </div>
                 <div className="shrink-0">
-                  {isQbo || p === "godaddy" || p === "venmo" ? null : row?.is_connected ? (
+                  {isQbo || p === "godaddy" || p === "venmo" || p === "turno" ? null : row?.is_connected ? (
                     <Button variant="outline" onClick={() => toggle(p, false)}>Disconnect</Button>
                   ) : (
                     <Button
@@ -433,3 +440,163 @@ function VenmoSection({ onChanged }: { onChanged: () => void }) {
     </div>
   );
 }
+
+function TurnoSection() {
+  const qc = useQueryClient();
+  const statusFn = useServerFn(getTurnoStatus);
+  const connectFn = useServerFn(connectTurno);
+  const rotateFn = useServerFn(rotateTurnoSecret);
+  const timingFn = useServerFn(updateTurnoTiming);
+  const disconnectFn = useServerFn(disconnectTurno);
+  const errorsFn = useServerFn(listIntegrationErrors);
+  const resolveFn = useServerFn(resolveIntegrationError);
+
+  const { data: status } = useQuery({ queryKey: ["turno-status"], queryFn: () => statusFn() });
+  const { data: allErrors = [] } = useQuery({ queryKey: ["integration-errors"], queryFn: () => errorsFn() });
+  const turnoErrors = allErrors.filter((e) => e.source === "turno");
+
+  const [busy, setBusy] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [grace, setGrace] = useState<number | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const webhookUrl = status?.tenant_id ? `${origin}/api/public/hooks/turno/${status.tenant_id}` : "";
+
+  const connect = async () => {
+    setBusy(true);
+    try {
+      await connectFn();
+      toast.success("Turno webhook enabled — copy the URL and secret into Turno");
+      qc.invalidateQueries({ queryKey: ["turno-status"] });
+      qc.invalidateQueries({ queryKey: ["integrations"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusy(false); }
+  };
+
+  const rotate = async () => {
+    if (!confirm("Rotate the webhook secret? Turno webhooks using the old secret will start failing until you update Turno.")) return;
+    setBusy(true);
+    try {
+      await rotateFn();
+      toast.success("New secret generated — update Turno with the new value");
+      qc.invalidateQueries({ queryKey: ["turno-status"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusy(false); }
+  };
+
+  const disconnect = async () => {
+    if (!confirm("Disconnect Turno? Incoming webhooks will be rejected until you reconnect.")) return;
+    setBusy(true);
+    try {
+      await disconnectFn();
+      toast.success("Turno disconnected");
+      qc.invalidateQueries({ queryKey: ["turno-status"] });
+      qc.invalidateQueries({ queryKey: ["integrations"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusy(false); }
+  };
+
+  const saveTiming = async () => {
+    const g = grace ?? status?.grace_hours ?? 2;
+    const d = duration ?? status?.duration_hours ?? 3;
+    try {
+      await timingFn({ data: { grace_hours: g, duration_hours: d } });
+      toast.success("Timing saved");
+      qc.invalidateQueries({ queryKey: ["turno-status"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  const copyUrl = async () => { await navigator.clipboard.writeText(webhookUrl); setCopiedUrl(true); setTimeout(() => setCopiedUrl(false), 1500); };
+  const copySecret = async () => {
+    if (!status?.webhook_secret) return;
+    await navigator.clipboard.writeText(status.webhook_secret);
+    setCopiedSecret(true); setTimeout(() => setCopiedSecret(false), 1500);
+  };
+
+  const resolve = async (id: string) => {
+    try { await resolveFn({ data: { id } }); qc.invalidateQueries({ queryKey: ["integration-errors"] }); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="p-4 rounded-lg bg-clay-50 ring-1 ring-black/5 space-y-3">
+        {!status?.connected ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Atlas listens for Turno reservation webhooks and auto-schedules turnovers. No Turno API key required —
+              you'll paste a webhook URL and secret into Turno (or a Zapier/Make step forwarding Turno events).
+            </p>
+            <Button onClick={connect} disabled={busy} className="bg-brand text-brand-foreground hover:opacity-90">
+              <Link2 className="size-4 mr-1.5" /> Enable Turno webhook
+            </Button>
+          </>
+        ) : (
+          <>
+            <div>
+              <Label className="text-xs">Webhook URL (paste into Turno)</Label>
+              <div className="flex gap-2 mt-1">
+                <input readOnly value={webhookUrl} className="flex-1 font-mono text-xs px-3 py-2 rounded-lg bg-background border border-input" />
+                <Button variant="outline" onClick={copyUrl}>{copiedUrl ? <Check className="size-4" /> : <Copy className="size-4" />}</Button>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Signing secret (paste into Turno)</Label>
+              <div className="flex gap-2 mt-1">
+                <input readOnly value={status.webhook_secret ?? ""} className="flex-1 font-mono text-xs px-3 py-2 rounded-lg bg-background border border-input" />
+                <Button variant="outline" onClick={copySecret}>{copiedSecret ? <Check className="size-4" /> : <Copy className="size-4" />}</Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Turno should send <code>X-Turno-Signature</code> = hex(HMAC-SHA256(body, secret)).
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Grace period after checkout (hours)</Label>
+                <input type="number" min={0} max={24} step={0.5}
+                  defaultValue={status.grace_hours}
+                  onChange={(e) => setGrace(Number(e.target.value))}
+                  className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-input text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs">Default turnover duration (hours)</Label>
+                <input type="number" min={0.5} max={24} step={0.5}
+                  defaultValue={status.duration_hours}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-input text-sm" />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={saveTiming} className="bg-brand text-brand-foreground hover:opacity-90">Save timing</Button>
+              <Button variant="outline" onClick={rotate} disabled={busy}><RefreshCw className="size-3 mr-1" /> Rotate secret</Button>
+              <Button variant="ghost" onClick={disconnect} disabled={busy}>Disconnect</Button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {turnoErrors.length > 0 && (
+        <div className="p-4 rounded-lg bg-destructive/5 ring-1 ring-destructive/20 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-destructive" />
+            <p className="text-sm font-medium text-destructive">{turnoErrors.length} Turno event{turnoErrors.length === 1 ? "" : "s"} need attention</p>
+          </div>
+          <ul className="space-y-2">
+            {turnoErrors.map((e) => (
+              <li key={e.id} className="flex items-start gap-3 text-sm">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString()}</div>
+                  <div>{e.error_message}</div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => resolve(e.id)}>Mark resolved</Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
