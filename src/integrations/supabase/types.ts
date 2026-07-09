@@ -2030,6 +2030,10 @@ export type Database = {
         | "apartment_move_in"
         | "apartment_move_out"
         | "commercial"
+        | "residential_deep"
+        | "post_construction"
+        | "window_cleaning"
+        | "carpet_cleaning"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2190,6 +2194,10 @@ export const Constants = {
         "apartment_move_in",
         "apartment_move_out",
         "commercial",
+        "residential_deep",
+        "post_construction",
+        "window_cleaning",
+        "carpet_cleaning",
       ],
     },
   },
