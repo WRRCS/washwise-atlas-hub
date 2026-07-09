@@ -23,6 +23,7 @@ const OWNER_NAV = [
   { to: "/settings/templates", label: "Templates", icon: FileText },
   { to: "/settings/notifications", label: "Notifications", icon: Bell },
   { to: "/settings/integrations", label: "Integrations", icon: Plug },
+  { to: "/settings/ai", label: "AI Assistant", icon: Bot },
 ] as const;
 
 const EMPLOYEE_NAV = [
