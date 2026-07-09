@@ -142,6 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <AtlasChat />
     </div>
   );
 }
