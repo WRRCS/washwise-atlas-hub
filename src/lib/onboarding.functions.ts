@@ -142,7 +142,7 @@ export const saveServiceTypeSelections = createServerFn({ method: "POST" })
     const tid = profile.tenant_id;
 
     const { data: existing } = await supabase.from("service_types").select("id, kind").eq("tenant_id", tid);
-    const byKind = new Map((existing ?? []).map((r) => [r.kind, r.id]));
+    const byKind = new Map((existing ?? []).map((r) => [r.kind as string, r.id]));
 
     for (const svc of data.services) {
       const existingId = byKind.get(svc.kind);
@@ -157,7 +157,7 @@ export const saveServiceTypeSelections = createServerFn({ method: "POST" })
       } else if (svc.selected) {
         const { error } = await supabase.from("service_types").insert({
           tenant_id: tid,
-          kind: svc.kind,
+          kind: svc.kind as ServiceKind,
           name: svc.name,
           default_price_cents: svc.default_price_cents,
           default_duration_minutes: svc.default_duration_minutes,
