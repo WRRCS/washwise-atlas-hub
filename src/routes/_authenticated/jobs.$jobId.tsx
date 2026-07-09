@@ -254,3 +254,24 @@ function PhotosTab({ jobId }: { jobId: string }) {
     </>
   );
 }
+
+function GpsTab({ jobId }: { jobId: string }) {
+  const fetchGps = useServerFn(listJobGps);
+  const { data: entries = [], isLoading } = useQuery({
+    queryKey: ["job-gps", jobId],
+    queryFn: () => fetchGps({ data: { job_id: jobId } }),
+  });
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const withGps = entries.filter(
+    (e) => e.clock_in_latitude !== null || e.clock_out_latitude !== null,
+  );
+  if (!withGps.length) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No GPS coordinates recorded. Enable "Track employee GPS on clock-in" in Business profile to start capturing
+        location.
+      </p>
+    );
+  }
+  return <JobGpsMap entries={withGps} />;
+}
