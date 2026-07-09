@@ -135,7 +135,10 @@ function InventoryPage() {
                       {i.sku && <div className="text-xs text-muted-foreground">SKU: {i.sku}</div>}
                     </td>
                     <td className="px-3 py-3 text-muted-foreground">{i.unit}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-medium">{i.quantity_on_hand}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums font-medium ${i.quantity_on_hand < 0 ? "text-red-600" : ""}`}>
+                      {i.quantity_on_hand}
+                      {i.quantity_on_hand < 0 && <span className="ml-1 text-[10px] uppercase tracking-wider">went negative</span>}
+                    </td>
                     <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{i.reorder_threshold}</td>
                     <td className="px-3 py-3 text-muted-foreground">{i.vendor_name ?? "—"}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">{fmtMoney(i.cost_per_unit_cents)}</td>
