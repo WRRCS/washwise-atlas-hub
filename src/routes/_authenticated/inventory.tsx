@@ -16,6 +16,7 @@ import {
   logInventoryTransaction, listItemTransactions,
   type InventoryItem, type InventoryStatus, type InventoryTransaction,
 } from "@/lib/inventory.functions";
+import { InventoryTabs } from "@/components/inventory-tabs";
 
 const invQO = queryOptions({ queryKey: ["inventory"], queryFn: () => listInventory() });
 
