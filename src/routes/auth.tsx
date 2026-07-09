@@ -125,7 +125,7 @@ function AuthPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          The first person to sign up becomes the owner. Everyone else is a cleaner until promoted.
+          New to Atlas? <a href="/signup" className="underline hover:text-foreground">Start your free trial</a>
         </p>
       </div>
     </div>

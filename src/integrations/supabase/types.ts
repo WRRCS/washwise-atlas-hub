@@ -1760,33 +1760,63 @@ export type Database = {
       }
       tenants: {
         Row: {
+          address: string | null
           ai_assistant_enabled: boolean
+          business_email: string | null
+          business_hours: Json | null
+          business_phone: string | null
           created_at: string
           gps_retention_days: number
           id: string
+          locale: string
           name: string
+          onboarding_completed: boolean
+          plan_tier: string
+          quiet_hours: Json | null
           reminder_lead_hours: number
+          signed_up_at: string
           slug: string
+          timezone: string
           track_gps: boolean
         }
         Insert: {
+          address?: string | null
           ai_assistant_enabled?: boolean
+          business_email?: string | null
+          business_hours?: Json | null
+          business_phone?: string | null
           created_at?: string
           gps_retention_days?: number
           id?: string
+          locale?: string
           name: string
+          onboarding_completed?: boolean
+          plan_tier?: string
+          quiet_hours?: Json | null
           reminder_lead_hours?: number
+          signed_up_at?: string
           slug: string
+          timezone?: string
           track_gps?: boolean
         }
         Update: {
+          address?: string | null
           ai_assistant_enabled?: boolean
+          business_email?: string | null
+          business_hours?: Json | null
+          business_phone?: string | null
           created_at?: string
           gps_retention_days?: number
           id?: string
+          locale?: string
           name?: string
+          onboarding_completed?: boolean
+          plan_tier?: string
+          quiet_hours?: Json | null
           reminder_lead_hours?: number
+          signed_up_at?: string
           slug?: string
+          timezone?: string
           track_gps?: boolean
         }
         Relationships: []
@@ -1893,6 +1923,7 @@ export type Database = {
     Functions: {
       _client_name: { Args: { _client_id: string }; Returns: string }
       current_tenant_id: { Args: never; Returns: string }
+      current_tenant_onboarding_completed: { Args: never; Returns: boolean }
       enqueue_notification: {
         Args: {
           _channel: Database["public"]["Enums"]["notification_channel"]
@@ -1999,6 +2030,10 @@ export type Database = {
         | "apartment_move_in"
         | "apartment_move_out"
         | "commercial"
+        | "residential_deep"
+        | "post_construction"
+        | "window_cleaning"
+        | "carpet_cleaning"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2159,6 +2194,10 @@ export const Constants = {
         "apartment_move_in",
         "apartment_move_out",
         "commercial",
+        "residential_deep",
+        "post_construction",
+        "window_cleaning",
+        "carpet_cleaning",
       ],
     },
   },
