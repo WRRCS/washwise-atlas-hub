@@ -266,6 +266,7 @@ function CompleteJobDialog({
   jobId,
   entryId,
   startedAt,
+  serviceTypeId,
   trackGps,
   onClose,
   onDone,
@@ -273,6 +274,7 @@ function CompleteJobDialog({
   jobId: string;
   entryId: string | null;
   startedAt: string | null;
+  serviceTypeId: string | null;
   trackGps: boolean;
   onClose: () => void;
   onDone: () => void;
@@ -281,14 +283,30 @@ function CompleteJobDialog({
   const complete = useServerFn(completeJobWithPhotos);
   const doLogConsent = useServerFn(logGpsConsent);
   const fetchInventory = useServerFn(listInventory);
+  const fetchRecipe = useServerFn(getRecipeForService);
   const inventoryQ = useQuery<InventoryItem[]>({ queryKey: ["inventory-for-complete"], queryFn: () => fetchInventory() });
+  const recipeQ = useQuery({
+    queryKey: ["recipe-for-service", serviceTypeId],
+    queryFn: () => (serviceTypeId ? fetchRecipe({ data: { service_type_id: serviceTypeId } }) : Promise.resolve([])),
+    enabled: !!serviceTypeId,
+  });
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<Pending[]>([]);
   const [supplies, setSupplies] = useState<Record<string, number>>({});
+  const [prefilled, setPrefilled] = useState(false);
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const hours = startedAt ? hoursBetween(startedAt, new Date().toISOString()) : null;
+
+  // Pre-fill supplies from the recipe once loaded
+  if (!prefilled && recipeQ.data && recipeQ.data.length > 0) {
+    const seed: Record<string, number> = {};
+    for (const r of recipeQ.data) seed[r.inventory_item_id] = r.quantity_per_job;
+    setSupplies(seed);
+    setPrefilled(true);
+  }
+
 
   const addFiles = (files: FileList | null) => {
     if (!files) return;
