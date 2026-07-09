@@ -228,6 +228,7 @@ function TodayView() {
           jobId={completeFor.jobId}
           entryId={completeFor.entryId}
           startedAt={completeFor.startedAt}
+          serviceTypeId={completeFor.serviceTypeId}
           trackGps={trackGps}
           onClose={() => setCompleteFor(null)}
           onDone={() => {
