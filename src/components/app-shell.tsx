@@ -93,12 +93,25 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+            {profile?.isSuperAdmin && (
+              <Link
+                to={SUPER_ADMIN_NAV_ITEM.to}
+                className={`mt-4 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors border-t border-border/60 pt-4 ${
+                  pathname.startsWith(SUPER_ADMIN_NAV_ITEM.to)
+                    ? "text-brand font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Shield className="size-4 shrink-0" />
+                {SUPER_ADMIN_NAV_ITEM.label}
+              </Link>
+            )}
           </nav>
 
           <div className="p-4 border-t border-border/60">
             <div className="bg-clay-200/50 rounded-lg p-3 ring-1 ring-black/5">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                {profile?.role === "owner" ? "Owner" : "Cleaner"}
+                {profile?.isSuperAdmin ? "Super admin" : profile?.role === "owner" ? "Owner" : "Cleaner"}
               </p>
               <div className="flex items-center gap-3 mb-3">
                 <div className="size-8 rounded-full bg-clay-200 grid place-items-center text-xs font-medium">
