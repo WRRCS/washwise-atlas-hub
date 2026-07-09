@@ -1754,6 +1754,51 @@ export type Database = {
         }
         Returns: string
       }
+      get_client_retention: {
+        Args: never
+        Returns: {
+          client_id: string
+          first_service_date: string
+          full_name: string
+          is_recurring: boolean
+          last_service_date: string
+          lifetime_revenue_cents: number
+          months_active_count: number
+          total_jobs_count: number
+        }[]
+      }
+      get_employee_productivity: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          avg_job_duration_minutes: number
+          employee_id: string
+          full_name: string
+          jobs_completed_count: number
+          revenue_attributed_cents: number
+          total_hours_worked: number
+        }[]
+      }
+      get_inventory_usage_detail: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          item_id: string
+          item_name: string
+          item_unit: string
+          month: string
+          total_cost_cents: number
+          units_used: number
+        }[]
+      }
+      get_revenue_by_month: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          avg_invoice_cents: number
+          by_service_type: Json
+          invoice_count: number
+          month: string
+          total_revenue_cents: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
