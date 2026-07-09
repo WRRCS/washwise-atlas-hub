@@ -206,7 +206,7 @@ function TodayView() {
                             <Play className="size-4" /> Clock in
                           </button>
                           <button
-                            onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null })}
+                            onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null, serviceTypeId: j.service?.id ?? null })}
                             className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
                           >
                             <Camera className="size-3" /> Complete with photos
