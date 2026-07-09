@@ -23,10 +23,20 @@ export const Route = createFileRoute("/_authenticated")({
     }
     return { user: data.user };
   },
-  component: () => (
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const { location } = Route.useRouteContext() as any;
+  // Onboarding wizard uses its own full-screen layout, not AppShell.
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/onboarding")) {
+    return <Outlet />;
+  }
+  return (
     <AppShell>
       <Outlet />
     </AppShell>
-  ),
-});
+  );
+}
+
 
