@@ -46,6 +46,16 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
   });
 
 // Public: create a Stripe embedded checkout session for an invoice
+const ALLOWED_RETURN_HOSTS = ["lovable.app", "lovableproject.com", "localhost"];
+function isAllowedReturnUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:" && !(u.protocol === "http:" && u.hostname === "localhost")) return false;
+    const host = u.hostname.toLowerCase();
+    return ALLOWED_RETURN_HOSTS.some((h) => host === h || host.endsWith("." + h));
+  } catch { return false; }
+}
+
 export const createInvoiceCheckout = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
@@ -56,6 +66,7 @@ export const createInvoiceCheckout = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<CheckoutResult> => {
     try {
+      if (!isAllowedReturnUrl(data.return_url)) return { error: "Invalid return URL" };
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: inv, error } = await supabaseAdmin
         .from("invoices")
