@@ -79,6 +79,7 @@ function JobDetail() {
               <TabsTrigger value="sop">SOP Checklist</TabsTrigger>
               <TabsTrigger value="sop-doc">SOP</TabsTrigger>
               <TabsTrigger value="photos">Photos</TabsTrigger>
+              <TabsTrigger value="gps">Location</TabsTrigger>
             </TabsList>
             <TabsContent value="sop" className="mt-4">
               <div className="flex justify-between items-center mb-4">
