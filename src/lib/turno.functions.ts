@@ -152,7 +152,14 @@ export const listIntegrationErrors = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
-    return (data ?? []) as IntegrationErrorRow[];
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      source: r.source,
+      error_message: r.error_message,
+      inbound_payload: r.inbound_payload ? JSON.stringify(r.inbound_payload) : null,
+      resolved: r.resolved,
+      created_at: r.created_at,
+    }));
   });
 
 export const resolveIntegrationError = createServerFn({ method: "POST" })
