@@ -137,7 +137,7 @@ export type IntegrationErrorRow = {
   id: string;
   source: string;
   error_message: string;
-  inbound_payload: Record<string, unknown> | null;
+  inbound_payload: string | null;
   resolved: boolean;
   created_at: string;
 };
