@@ -115,12 +115,10 @@ function IntegrationsPage() {
                   {p === "godaddy" && row && (
                     <GodaddySection row={row} onChanged={() => qc.invalidateQueries({ queryKey: ["integrations"] })} />
                   )}
-                  {p === "turno" && (
-                    <p className="text-xs text-muted-foreground mt-3 italic">Sync is planned for Phase 3 — no action needed today.</p>
-                  )}
+                  {p === "turno" && <TurnoSection />}
                 </div>
                 <div className="shrink-0">
-                  {isQbo || p === "godaddy" || p === "venmo" ? null : row?.is_connected ? (
+                  {isQbo || p === "godaddy" || p === "venmo" || p === "turno" ? null : row?.is_connected ? (
                     <Button variant="outline" onClick={() => toggle(p, false)}>Disconnect</Button>
                   ) : (
                     <Button
