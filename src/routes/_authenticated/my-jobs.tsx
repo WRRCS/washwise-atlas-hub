@@ -71,6 +71,14 @@ function TodayView() {
   const qc = useQueryClient();
   const list = useServerFn(listMyJobs);
   const doClockIn = useServerFn(clockIn);
+  const getGpsSettings = useServerFn(getTenantGpsSettings);
+  const doLogConsent = useServerFn(logGpsConsent);
+
+  const gpsSettingsQ = useQuery({
+    queryKey: ["tenant-gps-settings"],
+    queryFn: () => getGpsSettings(),
+  });
+  const trackGps = !!gpsSettingsQ.data?.track_gps;
 
   const from = useMemo(() => {
     const d = new Date();
@@ -89,14 +97,27 @@ function TodayView() {
     queryFn: () => list({ data: { from, to } }),
   });
 
-  const inM = useMutation({
-    mutationFn: (job_id: string) => doClockIn({ data: { job_id } }),
-    onSuccess: () => {
-      toast.success("Clocked in");
+  const handleClockIn = async (job_id: string) => {
+    let gps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
+    if (trackGps) {
+      const res = await captureGps();
+      if (res.status === "ok") {
+        gps = res.gps;
+        doLogConsent({ data: { consent_method: "explicit_opt_in" } }).catch(() => {});
+      } else {
+        const method = res.status === "denied" ? "device_permission_denied" : "denied";
+        doLogConsent({ data: { consent_method: method } }).catch(() => {});
+        console.warn("[clock-in] GPS unavailable:", res.status);
+      }
+    }
+    try {
+      await doClockIn({ data: { job_id, gps } });
+      toast.success(gps ? "Clocked in · 📍 Location captured" : "Clocked in");
       qc.invalidateQueries({ queryKey: ["my-jobs"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Failed to clock in"),
-  });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to clock in");
+    }
+  };
 
   const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null } | null>(null);
   const [sopFor, setSopFor] = useState<{ jobId: string; serviceTypeId: string | null; label: string } | null>(null);
