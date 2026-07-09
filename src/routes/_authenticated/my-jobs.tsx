@@ -177,20 +177,25 @@ function TodayView() {
                         <BookOpen className="size-3.5" /> View SOP
                       </button>
                     </div>
-                    <div className="shrink-0 flex flex-col gap-2">
+                    <div className="shrink-0 flex flex-col items-end gap-2">
                       {j.open_entry ? (
-                        <button
-                          onClick={() =>
-                            setCompleteFor({
-                              jobId: j.id,
-                              entryId: j.open_entry!.id,
-                              startedAt: j.open_entry!.started_at,
-                            })
-                          }
-                          className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
-                        >
-                          <Square className="size-4" /> Clock out
-                        </button>
+                        <>
+                          <button
+                            onClick={() =>
+                              setCompleteFor({
+                                jobId: j.id,
+                                entryId: j.open_entry!.id,
+                                startedAt: j.open_entry!.started_at,
+                              })
+                            }
+                            className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
+                          >
+                            <Square className="size-4" /> Clock out
+                          </button>
+                          {j.open_entry.has_gps && (
+                            <span className="text-[11px] text-emerald-700 inline-flex items-center gap-1">📍 Location captured</span>
+                          )}
+                        </>
                       ) : j.status === "scheduled" || j.status === "in_progress" ? (
                         <>
                           <button
