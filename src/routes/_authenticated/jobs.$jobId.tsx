@@ -3,10 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
+import { listJobGps } from "@/lib/time.functions";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
+import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { Check, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -77,6 +79,7 @@ function JobDetail() {
               <TabsTrigger value="sop">SOP Checklist</TabsTrigger>
               <TabsTrigger value="sop-doc">SOP</TabsTrigger>
               <TabsTrigger value="photos">Photos</TabsTrigger>
+              <TabsTrigger value="gps">Location</TabsTrigger>
             </TabsList>
             <TabsContent value="sop" className="mt-4">
               <div className="flex justify-between items-center mb-4">
@@ -108,6 +111,9 @@ function JobDetail() {
             </TabsContent>
             <TabsContent value="photos" className="mt-4">
               <PhotosTab jobId={jobId} />
+            </TabsContent>
+            <TabsContent value="gps" className="mt-4">
+              <GpsTab jobId={jobId} />
             </TabsContent>
           </Tabs>
         </section>
@@ -247,4 +253,25 @@ function PhotosTab({ jobId }: { jobId: string }) {
       )}
     </>
   );
+}
+
+function GpsTab({ jobId }: { jobId: string }) {
+  const fetchGps = useServerFn(listJobGps);
+  const { data: entries = [], isLoading } = useQuery({
+    queryKey: ["job-gps", jobId],
+    queryFn: () => fetchGps({ data: { job_id: jobId } }),
+  });
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const withGps = entries.filter(
+    (e) => e.clock_in_latitude !== null || e.clock_out_latitude !== null,
+  );
+  if (!withGps.length) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No GPS coordinates recorded. Enable "Track employee GPS on clock-in" in Business profile to start capturing
+        location.
+      </p>
+    );
+  }
+  return <JobGpsMap entries={withGps} />;
 }

@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { listMyJobs, clockIn, listMyTimeEntries, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
+import { listMyJobs, clockIn, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
 import { listInventory, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { captureGps } from "@/lib/geolocation";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SopViewer } from "@/components/sop-viewer";
@@ -70,6 +71,14 @@ function TodayView() {
   const qc = useQueryClient();
   const list = useServerFn(listMyJobs);
   const doClockIn = useServerFn(clockIn);
+  const getGpsSettings = useServerFn(getTenantGpsSettings);
+  const doLogConsent = useServerFn(logGpsConsent);
+
+  const gpsSettingsQ = useQuery({
+    queryKey: ["tenant-gps-settings"],
+    queryFn: () => getGpsSettings(),
+  });
+  const trackGps = !!gpsSettingsQ.data?.track_gps;
 
   const from = useMemo(() => {
     const d = new Date();
@@ -88,14 +97,27 @@ function TodayView() {
     queryFn: () => list({ data: { from, to } }),
   });
 
-  const inM = useMutation({
-    mutationFn: (job_id: string) => doClockIn({ data: { job_id } }),
-    onSuccess: () => {
-      toast.success("Clocked in");
+  const handleClockIn = async (job_id: string) => {
+    let gps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
+    if (trackGps) {
+      const res = await captureGps();
+      if (res.status === "ok") {
+        gps = res.gps;
+        doLogConsent({ data: { consent_method: "explicit_opt_in" } }).catch(() => {});
+      } else {
+        const method = res.status === "denied" ? "device_permission_denied" : "denied";
+        doLogConsent({ data: { consent_method: method } }).catch(() => {});
+        console.warn("[clock-in] GPS unavailable:", res.status);
+      }
+    }
+    try {
+      await doClockIn({ data: { job_id, gps } });
+      toast.success(gps ? "Clocked in · 📍 Location captured" : "Clocked in");
       qc.invalidateQueries({ queryKey: ["my-jobs"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Failed to clock in"),
-  });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to clock in");
+    }
+  };
 
   const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null } | null>(null);
   const [sopFor, setSopFor] = useState<{ jobId: string; serviceTypeId: string | null; label: string } | null>(null);
@@ -155,25 +177,29 @@ function TodayView() {
                         <BookOpen className="size-3.5" /> View SOP
                       </button>
                     </div>
-                    <div className="shrink-0 flex flex-col gap-2">
+                    <div className="shrink-0 flex flex-col items-end gap-2">
                       {j.open_entry ? (
-                        <button
-                          onClick={() =>
-                            setCompleteFor({
-                              jobId: j.id,
-                              entryId: j.open_entry!.id,
-                              startedAt: j.open_entry!.started_at,
-                            })
-                          }
-                          className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
-                        >
-                          <Square className="size-4" /> Clock out
-                        </button>
+                        <>
+                          <button
+                            onClick={() =>
+                              setCompleteFor({
+                                jobId: j.id,
+                                entryId: j.open_entry!.id,
+                                startedAt: j.open_entry!.started_at,
+                              })
+                            }
+                            className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
+                          >
+                            <Square className="size-4" /> Clock out
+                          </button>
+                          {j.open_entry.has_gps && (
+                            <span className="text-[11px] text-emerald-700 inline-flex items-center gap-1">📍 Location captured</span>
+                          )}
+                        </>
                       ) : j.status === "scheduled" || j.status === "in_progress" ? (
                         <>
                           <button
-                            onClick={() => inM.mutate(j.id)}
-                            disabled={inM.isPending}
+                            onClick={() => handleClockIn(j.id)}
                             className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
                           >
                             <Play className="size-4" /> Clock in
@@ -201,6 +227,7 @@ function TodayView() {
           jobId={completeFor.jobId}
           entryId={completeFor.entryId}
           startedAt={completeFor.startedAt}
+          trackGps={trackGps}
           onClose={() => setCompleteFor(null)}
           onDone={() => {
             qc.invalidateQueries({ queryKey: ["my-jobs"] });
@@ -237,17 +264,20 @@ function CompleteJobDialog({
   jobId,
   entryId,
   startedAt,
+  trackGps,
   onClose,
   onDone,
 }: {
   jobId: string;
   entryId: string | null;
   startedAt: string | null;
+  trackGps: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
   const createUploadUrl = useServerFn(createJobPhotoUploadUrl);
   const complete = useServerFn(completeJobWithPhotos);
+  const doLogConsent = useServerFn(logGpsConsent);
   const fetchInventory = useServerFn(listInventory);
   const inventoryQ = useQuery<InventoryItem[]>({ queryKey: ["inventory-for-complete"], queryFn: () => fetchInventory() });
   const [notes, setNotes] = useState("");
@@ -288,6 +318,18 @@ function CompleteJobDialog({
   const onSubmit = async () => {
     setSaving(true);
     try {
+      let clockOutGps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
+      if (trackGps && entryId) {
+        const res = await captureGps();
+        if (res.status === "ok") {
+          clockOutGps = res.gps;
+          doLogConsent({ data: { consent_method: "explicit_opt_in" } }).catch(() => {});
+        } else {
+          const method = res.status === "denied" ? "device_permission_denied" : "denied";
+          doLogConsent({ data: { consent_method: method } }).catch(() => {});
+          console.warn("[clock-out] GPS unavailable:", res.status);
+        }
+      }
       const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
       for (const it of items) {
         const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });
@@ -303,12 +345,13 @@ function CompleteJobDialog({
           photos: uploaded,
           entry_id: entryId ?? undefined,
           notes: notes || undefined,
+          clock_out_gps: clockOutGps,
           supplies_used: Object.entries(supplies)
             .filter(([, qty]) => qty > 0)
             .map(([item_id, quantity]) => ({ item_id, quantity })),
         },
       });
-      toast.success("Job completed");
+      toast.success(clockOutGps ? "Job completed · 📍 Location captured" : "Job completed");
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       onDone();
     } catch (e: any) {
@@ -672,9 +715,13 @@ function TimesheetView() {
                   <td className="px-4 py-2">
                     {e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : "—"}
                   </td>
-                  <td className="px-4 py-2">{fmtTime(e.started_at)}</td>
+                  <td className="px-4 py-2">
+                    {fmtTime(e.started_at)}
+                    {e.clock_in_latitude !== null && <span className="ml-1 text-emerald-600" title={`±${Math.round(e.clock_in_accuracy_meters ?? 0)}m`}>📍</span>}
+                  </td>
                   <td className="px-4 py-2">
                     {e.ended_at ? fmtTime(e.ended_at) : <span className="text-orange-600">In progress</span>}
+                    {e.clock_out_latitude !== null && <span className="ml-1 text-emerald-600">📍</span>}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     {e.ended_at ? hoursBetween(e.started_at, e.ended_at).toFixed(2) : "—"}

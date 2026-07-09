@@ -277,6 +277,44 @@ export type Database = {
           },
         ]
       }
+      gps_consent_log: {
+        Row: {
+          consent_given_at: string
+          consent_method: string
+          created_at: string
+          employee_id: string
+          id: string
+          ip_address: string | null
+          tenant_id: string
+        }
+        Insert: {
+          consent_given_at?: string
+          consent_method: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          ip_address?: string | null
+          tenant_id: string
+        }
+        Update: {
+          consent_given_at?: string
+          consent_method?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          ip_address?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gps_consent_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           access_token: string | null
@@ -1530,29 +1568,42 @@ export type Database = {
       tenants: {
         Row: {
           created_at: string
+          gps_retention_days: number
           id: string
           name: string
           reminder_lead_hours: number
           slug: string
+          track_gps: boolean
         }
         Insert: {
           created_at?: string
+          gps_retention_days?: number
           id?: string
           name: string
           reminder_lead_hours?: number
           slug: string
+          track_gps?: boolean
         }
         Update: {
           created_at?: string
+          gps_retention_days?: number
           id?: string
           name?: string
           reminder_lead_hours?: number
           slug?: string
+          track_gps?: boolean
         }
         Relationships: []
       }
       time_entries: {
         Row: {
+          clock_in_accuracy_meters: number | null
+          clock_in_latitude: number | null
+          clock_in_longitude: number | null
+          clock_out_accuracy_meters: number | null
+          clock_out_latitude: number | null
+          clock_out_longitude: number | null
+          consent_given_at: string | null
           ended_at: string | null
           id: string
           job_id: string
@@ -1562,6 +1613,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          clock_in_accuracy_meters?: number | null
+          clock_in_latitude?: number | null
+          clock_in_longitude?: number | null
+          clock_out_accuracy_meters?: number | null
+          clock_out_latitude?: number | null
+          clock_out_longitude?: number | null
+          consent_given_at?: string | null
           ended_at?: string | null
           id?: string
           job_id: string
@@ -1571,6 +1629,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          clock_in_accuracy_meters?: number | null
+          clock_in_latitude?: number | null
+          clock_in_longitude?: number | null
+          clock_out_accuracy_meters?: number | null
+          clock_out_latitude?: number | null
+          clock_out_longitude?: number | null
+          consent_given_at?: string | null
           ended_at?: string | null
           id?: string
           job_id?: string
@@ -1653,6 +1718,7 @@ export type Database = {
       }
       is_owner: { Args: never; Returns: boolean }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
+      purge_expired_gps: { Args: { _tenant: string }; Returns: number }
     }
     Enums: {
       app_role: "owner" | "employee"
