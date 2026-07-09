@@ -28,7 +28,7 @@ function VoiceCallsPage() {
       <PageHeader
         title="Voice AI Calls"
         subtitle="Call log and transcripts from your AI receptionist"
-        right={<Link to="/settings/voice" className="btn btn-sm">Voice settings</Link>}
+        action={<Link to="/settings/voice" className="btn btn-sm">Voice settings</Link>}
       />
       <div className="max-w-6xl mx-auto p-6 md:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">

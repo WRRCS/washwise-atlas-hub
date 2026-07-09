@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
+import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authenticated/super-admin'
 import { Route as AuthenticatedSopsRouteImport } from './routes/_authenticated/sops'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedSuperAdminIndexRouteImport } from './routes/_authenticated/super-admin.index'
 import { Route as AuthenticatedSuperAdminAuditRouteImport } from './routes/_authenticated/super-admin.audit'
+import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
 import { Route as AuthenticatedSettingsTemplatesRouteImport } from './routes/_authenticated/settings.templates'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
@@ -49,6 +51,9 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
+import { Route as ApiPublicTwilioVoiceTenantIdStatusRouteImport } from './routes/api/public/twilio/voice.$tenantId.status'
+import { Route as ApiPublicTwilioVoiceTenantIdIncomingRouteImport } from './routes/api/public/twilio/voice.$tenantId.incoming'
+import { Route as ApiPublicTwilioVoiceTenantIdGatherRouteImport } from './routes/api/public/twilio/voice.$tenantId.gather'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -78,6 +83,11 @@ const PayInvoiceIdRoute = PayInvoiceIdRouteImport.update({
   id: '/pay/$invoiceId',
   path: '/pay/$invoiceId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedVoiceRoute = AuthenticatedVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSuperAdminRoute = AuthenticatedSuperAdminRouteImport.update({
   id: '/super-admin',
@@ -160,6 +170,12 @@ const AuthenticatedSuperAdminAuditRoute =
     id: '/audit',
     path: '/audit',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
+  } as any)
+const AuthenticatedSettingsVoiceRoute =
+  AuthenticatedSettingsVoiceRouteImport.update({
+    id: '/settings/voice',
+    path: '/settings/voice',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSettingsTemplatesRoute =
   AuthenticatedSettingsTemplatesRouteImport.update({
@@ -265,6 +281,24 @@ const ApiPublicHooksLeadTenantIdRoute =
     path: '/api/public/hooks/lead/$tenantId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTwilioVoiceTenantIdStatusRoute =
+  ApiPublicTwilioVoiceTenantIdStatusRouteImport.update({
+    id: '/api/public/twilio/voice/$tenantId/status',
+    path: '/api/public/twilio/voice/$tenantId/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicTwilioVoiceTenantIdIncomingRoute =
+  ApiPublicTwilioVoiceTenantIdIncomingRouteImport.update({
+    id: '/api/public/twilio/voice/$tenantId/incoming',
+    path: '/api/public/twilio/voice/$tenantId/incoming',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicTwilioVoiceTenantIdGatherRoute =
+  ApiPublicTwilioVoiceTenantIdGatherRouteImport.update({
+    id: '/api/public/twilio/voice/$tenantId/gather',
+    path: '/api/public/twilio/voice/$tenantId/gather',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -284,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/services': typeof AuthenticatedServicesRoute
   '/sops': typeof AuthenticatedSopsRoute
   '/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
+  '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -299,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
@@ -306,6 +342,9 @@ export interface FileRoutesByFullPath {
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
+  '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
+  '/api/public/twilio/voice/$tenantId/incoming': typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
+  '/api/public/twilio/voice/$tenantId/status': typeof ApiPublicTwilioVoiceTenantIdStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -324,6 +363,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AuthenticatedReportsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/sops': typeof AuthenticatedSopsRoute
+  '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -339,6 +379,7 @@ export interface FileRoutesByTo {
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
@@ -346,6 +387,9 @@ export interface FileRoutesByTo {
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
+  '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
+  '/api/public/twilio/voice/$tenantId/incoming': typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
+  '/api/public/twilio/voice/$tenantId/status': typeof ApiPublicTwilioVoiceTenantIdStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -367,6 +411,7 @@ export interface FileRoutesById {
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/sops': typeof AuthenticatedSopsRoute
   '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
+  '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -382,6 +427,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
+  '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
@@ -389,6 +435,9 @@ export interface FileRoutesById {
   '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
+  '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
+  '/api/public/twilio/voice/$tenantId/incoming': typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
+  '/api/public/twilio/voice/$tenantId/status': typeof ApiPublicTwilioVoiceTenantIdStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -410,6 +459,7 @@ export interface FileRouteTypes {
     | '/services'
     | '/sops'
     | '/super-admin'
+    | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/clients/$clientId'
@@ -425,6 +475,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/templates'
+    | '/settings/voice'
     | '/super-admin/audit'
     | '/super-admin/'
     | '/super-admin/tenants/$tenantId'
@@ -432,6 +483,9 @@ export interface FileRouteTypes {
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
+    | '/api/public/twilio/voice/$tenantId/gather'
+    | '/api/public/twilio/voice/$tenantId/incoming'
+    | '/api/public/twilio/voice/$tenantId/status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -450,6 +504,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/services'
     | '/sops'
+    | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/clients/$clientId'
@@ -465,6 +520,7 @@ export interface FileRouteTypes {
     | '/settings/integrations'
     | '/settings/notifications'
     | '/settings/templates'
+    | '/settings/voice'
     | '/super-admin/audit'
     | '/super-admin'
     | '/super-admin/tenants/$tenantId'
@@ -472,6 +528,9 @@ export interface FileRouteTypes {
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
+    | '/api/public/twilio/voice/$tenantId/gather'
+    | '/api/public/twilio/voice/$tenantId/incoming'
+    | '/api/public/twilio/voice/$tenantId/status'
   id:
     | '__root__'
     | '/'
@@ -492,6 +551,7 @@ export interface FileRouteTypes {
     | '/_authenticated/services'
     | '/_authenticated/sops'
     | '/_authenticated/super-admin'
+    | '/_authenticated/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/_authenticated/clients/$clientId'
@@ -507,6 +567,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/templates'
+    | '/_authenticated/settings/voice'
     | '/_authenticated/super-admin/audit'
     | '/_authenticated/super-admin/'
     | '/_authenticated/super-admin/tenants/$tenantId'
@@ -514,6 +575,9 @@ export interface FileRouteTypes {
     | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
+    | '/api/public/twilio/voice/$tenantId/gather'
+    | '/api/public/twilio/voice/$tenantId/incoming'
+    | '/api/public/twilio/voice/$tenantId/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -527,6 +591,9 @@ export interface RootRouteChildren {
   ApiPublicQboCallbackRoute: typeof ApiPublicQboCallbackRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
   ApiPublicHooksTurnoTenantIdRoute: typeof ApiPublicHooksTurnoTenantIdRoute
+  ApiPublicTwilioVoiceTenantIdGatherRoute: typeof ApiPublicTwilioVoiceTenantIdGatherRoute
+  ApiPublicTwilioVoiceTenantIdIncomingRoute: typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
+  ApiPublicTwilioVoiceTenantIdStatusRoute: typeof ApiPublicTwilioVoiceTenantIdStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -572,6 +639,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pay/$invoiceId'
       preLoaderRoute: typeof PayInvoiceIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/voice': {
+      id: '/_authenticated/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof AuthenticatedVoiceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/super-admin': {
       id: '/_authenticated/super-admin'
@@ -684,6 +758,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/super-admin/audit'
       preLoaderRoute: typeof AuthenticatedSuperAdminAuditRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/settings/voice': {
+      id: '/_authenticated/settings/voice'
+      path: '/settings/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof AuthenticatedSettingsVoiceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings/templates': {
       id: '/_authenticated/settings/templates'
@@ -811,6 +892,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksLeadTenantIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/twilio/voice/$tenantId/status': {
+      id: '/api/public/twilio/voice/$tenantId/status'
+      path: '/api/public/twilio/voice/$tenantId/status'
+      fullPath: '/api/public/twilio/voice/$tenantId/status'
+      preLoaderRoute: typeof ApiPublicTwilioVoiceTenantIdStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/twilio/voice/$tenantId/incoming': {
+      id: '/api/public/twilio/voice/$tenantId/incoming'
+      path: '/api/public/twilio/voice/$tenantId/incoming'
+      fullPath: '/api/public/twilio/voice/$tenantId/incoming'
+      preLoaderRoute: typeof ApiPublicTwilioVoiceTenantIdIncomingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/twilio/voice/$tenantId/gather': {
+      id: '/api/public/twilio/voice/$tenantId/gather'
+      path: '/api/public/twilio/voice/$tenantId/gather'
+      fullPath: '/api/public/twilio/voice/$tenantId/gather'
+      preLoaderRoute: typeof ApiPublicTwilioVoiceTenantIdGatherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -912,12 +1014,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedSopsRoute: typeof AuthenticatedSopsRoute
   AuthenticatedSuperAdminRoute: typeof AuthenticatedSuperAdminRouteWithChildren
+  AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
   AuthenticatedSettingsAiRoute: typeof AuthenticatedSettingsAiRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
   AuthenticatedSettingsBusinessRoute: typeof AuthenticatedSettingsBusinessRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
   AuthenticatedSettingsTemplatesRoute: typeof AuthenticatedSettingsTemplatesRoute
+  AuthenticatedSettingsVoiceRoute: typeof AuthenticatedSettingsVoiceRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -935,6 +1039,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedSopsRoute: AuthenticatedSopsRoute,
   AuthenticatedSuperAdminRoute: AuthenticatedSuperAdminRouteWithChildren,
+  AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
   AuthenticatedSettingsAiRoute: AuthenticatedSettingsAiRoute,
   AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
   AuthenticatedSettingsBusinessRoute: AuthenticatedSettingsBusinessRoute,
@@ -943,6 +1048,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsNotificationsRoute:
     AuthenticatedSettingsNotificationsRoute,
   AuthenticatedSettingsTemplatesRoute: AuthenticatedSettingsTemplatesRoute,
+  AuthenticatedSettingsVoiceRoute: AuthenticatedSettingsVoiceRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -959,6 +1065,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicQboCallbackRoute: ApiPublicQboCallbackRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
   ApiPublicHooksTurnoTenantIdRoute: ApiPublicHooksTurnoTenantIdRoute,
+  ApiPublicTwilioVoiceTenantIdGatherRoute:
+    ApiPublicTwilioVoiceTenantIdGatherRoute,
+  ApiPublicTwilioVoiceTenantIdIncomingRoute:
+    ApiPublicTwilioVoiceTenantIdIncomingRoute,
+  ApiPublicTwilioVoiceTenantIdStatusRoute:
+    ApiPublicTwilioVoiceTenantIdStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
