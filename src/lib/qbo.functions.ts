@@ -58,15 +58,21 @@ export const disconnectQbo = createServerFn({ method: "POST" })
 export const syncInvoiceToQbo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ invoice_id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    // Verify the invoice belongs to the caller's tenant using the RLS-scoped client.
+    const { data: owned } = await context.supabase
+      .from("invoices").select("id").eq("id", data.invoice_id).maybeSingle();
+    if (!owned) throw new Error("Invoice not found or access denied");
+
     const { pushInvoiceToQbo } = await import("./qbo.server");
     try {
       const r = await pushInvoiceToQbo(data.invoice_id);
       return { ok: true, qbo_id: r.qboId };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      const { admin } = await import("./qbo.server");
-      await admin().from("invoices").update({ qbo_sync_error: msg.slice(0, 500) }).eq("id", data.invoice_id);
+      await context.supabase.from("invoices")
+        .update({ qbo_sync_error: msg.slice(0, 500) })
+        .eq("id", data.invoice_id);
       throw new Error(msg);
     }
   });
