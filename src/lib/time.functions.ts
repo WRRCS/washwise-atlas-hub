@@ -299,14 +299,24 @@ export const listJobGps = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<JobGpsEntry[]> => {
     const { data: rows, error } = await context.supabase
       .from("time_entries")
-      .select("id, user_id, started_at, ended_at, clock_in_latitude, clock_in_longitude, clock_in_accuracy_meters, clock_out_latitude, clock_out_longitude, clock_out_accuracy_meters, profile:profiles!time_entries_user_id_fkey(id, full_name)")
+      .select("id, user_id, started_at, ended_at, clock_in_latitude, clock_in_longitude, clock_in_accuracy_meters, clock_out_latitude, clock_out_longitude, clock_out_accuracy_meters")
       .eq("job_id", data.job_id)
       .order("started_at", { ascending: true });
     if (error) throw new Error(error.message);
-    return (rows ?? []).map((r: any) => ({
+    const list = rows ?? [];
+    const ids = Array.from(new Set(list.map((r: any) => r.user_id)));
+    const nameMap = new Map<string, string | null>();
+    if (ids.length) {
+      const { data: profs } = await context.supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ids);
+      for (const p of profs ?? []) nameMap.set((p as any).id, (p as any).full_name);
+    }
+    return list.map((r: any) => ({
       id: r.id,
       employee_id: r.user_id,
-      employee_name: r.profile?.full_name ?? null,
+      employee_name: nameMap.get(r.user_id) ?? null,
       started_at: r.started_at,
       ended_at: r.ended_at,
       clock_in_latitude: r.clock_in_latitude,
