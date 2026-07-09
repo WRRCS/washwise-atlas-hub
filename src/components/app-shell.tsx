@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield,
 } from "lucide-react";
 import { AtlasChat } from "@/components/atlas-chat";
 
@@ -32,25 +32,28 @@ const EMPLOYEE_NAV = [
   { to: "/clients", label: "Clients", icon: Users },
 ] as const;
 
-
+const SUPER_ADMIN_NAV_ITEM = { to: "/super-admin", label: "Platform console", icon: Shield } as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string; isSuperAdmin: boolean } | null>(null);
 
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return;
-      const [{ data: p }, { data: r }] = await Promise.all([
+      const [{ data: p }, { data: roles }] = await Promise.all([
         supabase.from("profiles").select("full_name, email").eq("id", u.user.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", u.user.id).order("role").limit(1).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", u.user.id),
       ]);
+      const roleSet = new Set((roles ?? []).map((r: any) => r.role));
+      const primary = roleSet.has("owner") ? "owner" : roleSet.has("employee") ? "employee" : "employee";
       setProfile({
         full_name: p?.full_name ?? null,
         email: p?.email ?? u.user.email ?? null,
-        role: r?.role ?? "employee",
+        role: primary,
+        isSuperAdmin: roleSet.has("super_admin"),
       });
     })();
   }, []);
