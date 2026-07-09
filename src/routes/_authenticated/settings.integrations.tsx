@@ -20,6 +20,15 @@ import {
 } from "@/lib/qbo.functions";
 import { getVenmoSettings, saveVenmoSettings } from "@/lib/venmo.functions";
 import { sendTestLeadWebhook } from "@/lib/leads.functions";
+import {
+  getTurnoStatus,
+  connectTurno,
+  rotateTurnoSecret,
+  updateTurnoTiming,
+  disconnectTurno,
+  listIntegrationErrors,
+  resolveIntegrationError,
+} from "@/lib/turno.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, AlertTriangle, RefreshCw } from "lucide-react";
