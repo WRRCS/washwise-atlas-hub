@@ -36,7 +36,7 @@ export function reportLovableError(error: unknown, context: Record<string, unkno
   // Also forward to Sentry if a DSN is configured. Import is dynamic so the
   // Sentry SDK never runs on projects without a DSN.
   if (import.meta.env.VITE_SENTRY_DSN) {
-    import("./sentry.client").then(({ captureClientError }) => {
+    import("./sentry-browser").then(({ captureClientError }) => {
       captureClientError(error, context);
     }).catch(() => { /* never break the app on telemetry */ });
   }
