@@ -44,7 +44,7 @@ const META: Record<IntegrationProvider, { name: string; icon: typeof Building2; 
   stripe: { name: "Stripe", icon: CreditCard, description: "Accept card and ACH payments on invoices.", phase: "Phase 2" },
   venmo: { name: "Venmo", icon: Wallet, description: "Send Venmo payment requests via pay-link deep links on invoices.", phase: "Available now" },
   godaddy: { name: "GoDaddy website", icon: Globe, description: "Capture leads from your website contact form.", phase: "Available now" },
-  turno: { name: "Turno", icon: Home, description: "Sync Airbnb turnovers automatically from Turno.", phase: "Phase 3" },
+  turno: { name: "Turno", icon: Home, description: "Auto-schedule Airbnb turnovers when Turno sends a reservation webhook.", phase: "Available now" },
 };
 
 function IntegrationsPage() {
