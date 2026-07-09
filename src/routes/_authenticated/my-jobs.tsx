@@ -715,7 +715,10 @@ function TimesheetView() {
                   <td className="px-4 py-2">
                     {e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : "—"}
                   </td>
-                  <td className="px-4 py-2">{fmtTime(e.started_at)}</td>
+                  <td className="px-4 py-2">
+                    {fmtTime(e.started_at)}
+                    {e.clock_in_latitude !== null && <span className="ml-1 text-emerald-600" title={`±${Math.round(e.clock_in_accuracy_meters ?? 0)}m`}>📍</span>}
+                  </td>
                   <td className="px-4 py-2">
                     {e.ended_at ? fmtTime(e.ended_at) : <span className="text-orange-600">In progress</span>}
                   </td>
