@@ -129,6 +129,12 @@ QBO_CLIENT_ID="..."
 QBO_CLIENT_SECRET="..."
 QBO_ENVIRONMENT="sandbox"        # or "production"
 QBO_STATE_SECRET="<random 32+ char string>"
+
+# Twilio AI Voice (optional — required for AI calling module)
+TWILIO_ACCOUNT_SID="AC..."
+TWILIO_AUTH_TOKEN="..."
+TWILIO_PHONE_NUMBER="+15551234567"
+TWILIO_WEBHOOK_SECRET="<random 32+ char string>"
 ```
 
 ### 4. Database
