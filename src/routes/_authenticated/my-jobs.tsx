@@ -264,17 +264,20 @@ function CompleteJobDialog({
   jobId,
   entryId,
   startedAt,
+  trackGps,
   onClose,
   onDone,
 }: {
   jobId: string;
   entryId: string | null;
   startedAt: string | null;
+  trackGps: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
   const createUploadUrl = useServerFn(createJobPhotoUploadUrl);
   const complete = useServerFn(completeJobWithPhotos);
+  const doLogConsent = useServerFn(logGpsConsent);
   const fetchInventory = useServerFn(listInventory);
   const inventoryQ = useQuery<InventoryItem[]>({ queryKey: ["inventory-for-complete"], queryFn: () => fetchInventory() });
   const [notes, setNotes] = useState("");
@@ -315,6 +318,18 @@ function CompleteJobDialog({
   const onSubmit = async () => {
     setSaving(true);
     try {
+      let clockOutGps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
+      if (trackGps && entryId) {
+        const res = await captureGps();
+        if (res.status === "ok") {
+          clockOutGps = res.gps;
+          doLogConsent({ data: { consent_method: "explicit_opt_in" } }).catch(() => {});
+        } else {
+          const method = res.status === "denied" ? "device_permission_denied" : "denied";
+          doLogConsent({ data: { consent_method: method } }).catch(() => {});
+          console.warn("[clock-out] GPS unavailable:", res.status);
+        }
+      }
       const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
       for (const it of items) {
         const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });
@@ -330,12 +345,13 @@ function CompleteJobDialog({
           photos: uploaded,
           entry_id: entryId ?? undefined,
           notes: notes || undefined,
+          clock_out_gps: clockOutGps,
           supplies_used: Object.entries(supplies)
             .filter(([, qty]) => qty > 0)
             .map(([item_id, quantity]) => ({ item_id, quantity })),
         },
       });
-      toast.success("Job completed");
+      toast.success(clockOutGps ? "Job completed · 📍 Location captured" : "Job completed");
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       onDone();
     } catch (e: any) {
