@@ -112,9 +112,16 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
     }
 
     if (data.entry_id) {
+      const gps = data.clock_out_gps ?? null;
       const { error: te } = await context.supabase
         .from("time_entries")
-        .update({ ended_at: endedAt, notes: data.notes ?? null })
+        .update({
+          ended_at: endedAt,
+          notes: data.notes ?? null,
+          clock_out_latitude: gps?.latitude ?? null,
+          clock_out_longitude: gps?.longitude ?? null,
+          clock_out_accuracy_meters: gps?.accuracy_meters ?? null,
+        })
         .eq("id", data.entry_id)
         .eq("user_id", context.userId);
       if (te) throw new Error(te.message);
