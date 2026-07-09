@@ -721,6 +721,7 @@ function TimesheetView() {
                   </td>
                   <td className="px-4 py-2">
                     {e.ended_at ? fmtTime(e.ended_at) : <span className="text-orange-600">In progress</span>}
+                    {e.clock_out_latitude !== null && <span className="ml-1 text-emerald-600">📍</span>}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     {e.ended_at ? hoursBetween(e.started_at, e.ended_at).toFixed(2) : "—"}
