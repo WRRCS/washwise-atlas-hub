@@ -1,6 +1,6 @@
-# Atlas — Cleaning Business Operations Platform
+# Atlas — AI Operating System for Service Businesses
 
-Atlas is a full-stack SaaS application for cleaning businesses: scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, QuickBooks sync, lead capture webhooks, and an AI assistant ("Atlas AI") grounded in tenant business data.
+Atlas is a full-stack SaaS platform for service businesses (cleaning, HVAC, landscaping, pest control, handyman, mobile detailing, home services, and any field-service operation): scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, QuickBooks sync, lead capture webhooks, and an AI assistant ("Atlas AI") grounded in tenant business data.
 
 Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + Auth + RLS + Storage), **Tailwind CSS v4**, and **shadcn/ui**. Deploys to Cloudflare Workers via Nitro.
 
@@ -129,6 +129,12 @@ QBO_CLIENT_ID="..."
 QBO_CLIENT_SECRET="..."
 QBO_ENVIRONMENT="sandbox"        # or "production"
 QBO_STATE_SECRET="<random 32+ char string>"
+
+# Twilio AI Voice (optional — required for AI calling module)
+TWILIO_ACCOUNT_SID="AC..."
+TWILIO_AUTH_TOKEN="..."
+TWILIO_PHONE_NUMBER="+15551234567"
+TWILIO_WEBHOOK_SECRET="<random 32+ char string>"
 ```
 
 ### 4. Database
