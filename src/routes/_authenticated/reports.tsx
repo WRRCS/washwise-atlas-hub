@@ -69,7 +69,7 @@ function ReportsPage() {
   const tab = search.tab;
 
   const setSearch = (patch: Record<string, string | number>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch }) });
+    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) });
 
   return (
     <AppShell>
