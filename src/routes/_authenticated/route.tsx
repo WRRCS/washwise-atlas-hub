@@ -11,9 +11,12 @@ export const Route = createFileRoute("/_authenticated")({
     }
     // Onboarding gate: if the tenant hasn't finished onboarding, force the wizard.
     if (!location.pathname.startsWith("/onboarding")) {
-      const { data: profile } = await supabase
-        .from("profiles").select("tenant_id").eq("id", data.user.id).maybeSingle();
-      if (profile?.tenant_id) {
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("tenant_id").eq("id", data.user.id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+      ]);
+      const isSuperAdmin = (roles ?? []).some((r: any) => r.role === "super_admin");
+      if (!isSuperAdmin && profile?.tenant_id) {
         const { data: tenant } = await supabase
           .from("tenants").select("onboarding_completed").eq("id", profile.tenant_id).maybeSingle();
         if (tenant && !tenant.onboarding_completed) {
