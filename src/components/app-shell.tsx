@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot,
 } from "lucide-react";
+import { AtlasChat } from "@/components/atlas-chat";
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -22,6 +23,7 @@ const OWNER_NAV = [
   { to: "/settings/templates", label: "Templates", icon: FileText },
   { to: "/settings/notifications", label: "Notifications", icon: Bell },
   { to: "/settings/integrations", label: "Integrations", icon: Plug },
+  { to: "/settings/ai", label: "AI Assistant", icon: Bot },
 ] as const;
 
 const EMPLOYEE_NAV = [
@@ -140,6 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      <AtlasChat />
     </div>
   );
 }

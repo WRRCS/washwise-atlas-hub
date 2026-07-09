@@ -55,6 +55,98 @@ export type Database = {
           },
         ]
       }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          messages: Json
+          tenant_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_log: {
+        Row: {
+          completion_tokens: number
+          conversation_id: string | null
+          created_at: string
+          estimated_cost_cents: number
+          id: string
+          model: string
+          prompt_tokens: number
+          tenant_id: string
+          total_tokens: number
+          user_id: string
+        }
+        Insert: {
+          completion_tokens?: number
+          conversation_id?: string | null
+          created_at?: string
+          estimated_cost_cents?: number
+          id?: string
+          model: string
+          prompt_tokens?: number
+          tenant_id: string
+          total_tokens?: number
+          user_id: string
+        }
+        Update: {
+          completion_tokens?: number
+          conversation_id?: string | null
+          created_at?: string
+          estimated_cost_cents?: number
+          id?: string
+          model?: string
+          prompt_tokens?: number
+          tenant_id?: string
+          total_tokens?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_notes: {
         Row: {
           client_id: string
@@ -1612,6 +1704,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          ai_assistant_enabled: boolean
           created_at: string
           gps_retention_days: number
           id: string
@@ -1621,6 +1714,7 @@ export type Database = {
           track_gps: boolean
         }
         Insert: {
+          ai_assistant_enabled?: boolean
           created_at?: string
           gps_retention_days?: number
           id?: string
@@ -1630,6 +1724,7 @@ export type Database = {
           track_gps?: boolean
         }
         Update: {
+          ai_assistant_enabled?: boolean
           created_at?: string
           gps_retention_days?: number
           id?: string
