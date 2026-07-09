@@ -2064,6 +2064,185 @@ export type Database = {
           },
         ]
       }
+      voice_agent_config: {
+        Row: {
+          business_hours: Json
+          created_at: string
+          enabled: boolean
+          forward_number: string | null
+          greeting: string
+          id: string
+          language: string
+          system_prompt: string
+          tenant_id: string
+          twilio_phone_number: string | null
+          updated_at: string
+          voice: string
+        }
+        Insert: {
+          business_hours?: Json
+          created_at?: string
+          enabled?: boolean
+          forward_number?: string | null
+          greeting?: string
+          id?: string
+          language?: string
+          system_prompt?: string
+          tenant_id: string
+          twilio_phone_number?: string | null
+          updated_at?: string
+          voice?: string
+        }
+        Update: {
+          business_hours?: Json
+          created_at?: string
+          enabled?: boolean
+          forward_number?: string | null
+          greeting?: string
+          id?: string
+          language?: string
+          system_prompt?: string
+          tenant_id?: string
+          twilio_phone_number?: string | null
+          updated_at?: string
+          voice?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_agent_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_call_turns: {
+        Row: {
+          call_id: string
+          content: string | null
+          created_at: string
+          id: string
+          role: string
+          seq: number
+          tenant_id: string
+          tool_args: Json | null
+          tool_name: string | null
+          tool_result: Json | null
+        }
+        Insert: {
+          call_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          role: string
+          seq: number
+          tenant_id: string
+          tool_args?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+        }
+        Update: {
+          call_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          role?: string
+          seq?: number
+          tenant_id?: string
+          tool_args?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_call_turns_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "voice_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_call_turns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_calls: {
+        Row: {
+          call_sid: string
+          created_at: string
+          direction: string
+          duration_sec: number | null
+          ended_at: string | null
+          from_number: string | null
+          id: string
+          lead_id: string | null
+          recording_sid: string | null
+          recording_url: string | null
+          started_at: string
+          status: string
+          summary: string | null
+          tenant_id: string
+          to_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          call_sid: string
+          created_at?: string
+          direction?: string
+          duration_sec?: number | null
+          ended_at?: string | null
+          from_number?: string | null
+          id?: string
+          lead_id?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          tenant_id: string
+          to_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          call_sid?: string
+          created_at?: string
+          direction?: string
+          duration_sec?: number | null
+          ended_at?: string | null
+          from_number?: string | null
+          id?: string
+          lead_id?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          tenant_id?: string
+          to_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_calls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
