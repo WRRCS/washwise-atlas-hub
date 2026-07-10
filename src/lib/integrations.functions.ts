@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type IntegrationProvider = "quickbooks" | "stripe" | "venmo" | "godaddy" | "turno";
+export type IntegrationProvider = "stripe" | "venmo" | "godaddy" | "turno";
 
 export type IntegrationRow = {
   id: string;
