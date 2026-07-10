@@ -220,27 +220,8 @@ function InvoiceDetailPage() {
   );
 }
 
-function QboSyncButton({ invoiceId, qboId, qboError, onDone }: { invoiceId: string; qboId: string | null; qboError: string | null; onDone: () => void }) {
-  const syncFn = useServerFn(syncInvoiceToQbo);
-  const [busy, setBusy] = useState(false);
-  if (qboId) return null;
-  const run = async () => {
-    setBusy(true);
-    try {
-      await syncFn({ data: { invoice_id: invoiceId } });
-      toast.success("Synced to QuickBooks");
-      onDone();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "QBO sync failed");
-    } finally { setBusy(false); }
-  };
-  return (
-    <Button variant="outline" onClick={run} disabled={busy}>
-      <RefreshCw className={`size-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
-      {qboError ? "Retry QBO sync" : "Sync to QBO"}
-    </Button>
-  );
-}
+
+
 
 function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; status: string; onPaid: () => void }) {
   const qc = useQueryClient();
