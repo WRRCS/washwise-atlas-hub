@@ -89,7 +89,7 @@ function PlanCard({
         </li>
         <li className="flex items-center gap-2">
           {features.integrations ? <Check className="size-4 text-brand" /> : <X className="size-4 text-muted-foreground" />}
-          Integrations (QBO, Turno, etc.)
+          Integrations (Turno, GoDaddy, etc.)
         </li>
         <li className="flex items-center gap-2">
           {features.priority_support ? <Check className="size-4 text-brand" /> : <X className="size-4 text-muted-foreground" />}

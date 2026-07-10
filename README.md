@@ -1,6 +1,6 @@
 # Atlas — AI Operating System for Service Businesses
 
-Atlas is a full-stack SaaS platform for service businesses (cleaning, HVAC, landscaping, pest control, handyman, mobile detailing, home services, and any field-service operation): scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, QuickBooks sync, lead capture webhooks, and an AI assistant ("Atlas AI") grounded in tenant business data.
+Atlas is a full-stack SaaS platform for service businesses (cleaning, HVAC, landscaping, pest control, handyman, mobile detailing, home services, and any field-service operation): scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, lead capture webhooks, and an AI assistant ("Atlas AI") grounded in tenant business data.
 
 Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + Auth + RLS + Storage), **Tailwind CSS v4**, and **shadcn/ui**. Deploys to Cloudflare Workers via Nitro.
 
@@ -13,7 +13,7 @@ Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + A
 - **Jobs & Calendar** — scheduling, GPS tracking, photo uploads
 - **Clients CRM** — notes, history, retention analytics
 - **Invoicing & Payments** — Stripe checkout, Venmo, public pay links
-- **QuickBooks Online** — OAuth2 integration with invoice sync
+
 - **Inventory** — items, recipes, usage tracking, low-stock alerts
 - **SOPs** — standard operating procedures library
 - **Employees** — time tracking, productivity reports
@@ -37,7 +37,7 @@ Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + A
 | Server code   | TanStack `createServerFn` + server routes under `api/`      |
 | AI            | Lovable AI Gateway (Google Gemini 2.5 Flash)                |
 | Payments      | Stripe Checkout                                              |
-| Accounting    | QuickBooks Online OAuth2                                    |
+
 | Data          | TanStack Query v5 with router integration                   |
 | Forms         | react-hook-form + Zod                                        |
 | Types         | Strict TypeScript                                            |
@@ -65,7 +65,6 @@ src/
       hooks/lead.$tenantId.tsx
       hooks/turno.$tenantId.ts
       payments/webhook.ts
-      qbo/callback.tsx
     pay.$invoiceId.tsx       # Public invoice payment page
   lib/
     *.functions.ts           # createServerFn RPC modules (client-safe imports)
@@ -93,7 +92,7 @@ Notable architectural conventions:
 ### 1. Prerequisites
 - Node.js 20+ or Bun
 - A Supabase project (free tier works)
-- Optional: Stripe account, QuickBooks Online developer app, an AI API key
+- Optional: Stripe account, an AI API key
 
 ### 2. Clone & install
 ```bash
@@ -124,11 +123,6 @@ VITE_PAYMENTS_CLIENT_TOKEN="pk_test_..."
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 
-# QuickBooks Online (optional)
-QBO_CLIENT_ID="..."
-QBO_CLIENT_SECRET="..."
-QBO_ENVIRONMENT="sandbox"        # or "production"
-QBO_STATE_SECRET="<random 32+ char string>"
 
 # Twilio AI Voice (optional — required for AI calling module)
 TWILIO_ACCOUNT_SID="AC..."

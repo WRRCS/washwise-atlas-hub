@@ -48,7 +48,6 @@ import { Route as AuthenticatedInvoicesInvoiceIdRouteImport } from './routes/_au
 import { Route as AuthenticatedInventoryUsageRouteImport } from './routes/_authenticated/inventory.usage'
 import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_authenticated/inventory.recipes'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
-import { Route as ApiPublicQboCallbackRouteImport } from './routes/api/public/qbo/callback'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
@@ -264,11 +263,6 @@ const AuthenticatedClientsClientIdRoute =
     path: '/$clientId',
     getParentRoute: () => AuthenticatedClientsRoute,
   } as any)
-const ApiPublicQboCallbackRoute = ApiPublicQboCallbackRouteImport.update({
-  id: '/api/public/qbo/callback',
-  path: '/api/public/qbo/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -353,7 +347,6 @@ export interface FileRoutesByFullPath {
   '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
-  '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
   '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
@@ -400,7 +393,6 @@ export interface FileRoutesByTo {
   '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
-  '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
   '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
@@ -450,7 +442,6 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
-  '/api/public/qbo/callback': typeof ApiPublicQboCallbackRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
   '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
@@ -500,7 +491,6 @@ export interface FileRouteTypes {
     | '/super-admin/'
     | '/super-admin/tenants/$tenantId'
     | '/api/public/payments/webhook'
-    | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
     | '/api/public/twilio/voice/$tenantId/gather'
@@ -547,7 +537,6 @@ export interface FileRouteTypes {
     | '/super-admin'
     | '/super-admin/tenants/$tenantId'
     | '/api/public/payments/webhook'
-    | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
     | '/api/public/twilio/voice/$tenantId/gather'
@@ -596,7 +585,6 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin/'
     | '/_authenticated/super-admin/tenants/$tenantId'
     | '/api/public/payments/webhook'
-    | '/api/public/qbo/callback'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
     | '/api/public/twilio/voice/$tenantId/gather'
@@ -614,7 +602,6 @@ export interface RootRouteChildren {
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
-  ApiPublicQboCallbackRoute: typeof ApiPublicQboCallbackRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
   ApiPublicHooksTurnoTenantIdRoute: typeof ApiPublicHooksTurnoTenantIdRoute
   ApiPublicTwilioVoiceTenantIdGatherRoute: typeof ApiPublicTwilioVoiceTenantIdGatherRoute
@@ -897,13 +884,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
       parentRoute: typeof AuthenticatedClientsRoute
     }
-    '/api/public/qbo/callback': {
-      id: '/api/public/qbo/callback'
-      path: '/api/public/qbo/callback'
-      fullPath: '/api/public/qbo/callback'
-      preLoaderRoute: typeof ApiPublicQboCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -1104,7 +1084,6 @@ const rootRouteChildren: RootRouteChildren = {
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
-  ApiPublicQboCallbackRoute: ApiPublicQboCallbackRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
   ApiPublicHooksTurnoTenantIdRoute: ApiPublicHooksTurnoTenantIdRoute,
   ApiPublicTwilioVoiceTenantIdGatherRoute:

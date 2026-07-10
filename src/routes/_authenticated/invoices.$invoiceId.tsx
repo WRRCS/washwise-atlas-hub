@@ -13,9 +13,8 @@ import {
   getInvoice, sendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge,
 } from "@/lib/invoices.functions";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
-import { syncInvoiceToQbo } from "@/lib/qbo.functions";
 import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functions";
-import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   component: InvoiceDetailPage,
@@ -200,34 +199,10 @@ function InvoiceDetailPage() {
                 <X className="size-4 mr-1.5" /> Cancel
               </Button>
             )}
-            <QboSyncButton
-              invoiceId={inv.id}
-              qboId={(inv as any).qbo_id ?? null}
-              qboError={(inv as any).qbo_sync_error ?? null}
-              onDone={refresh}
-            />
           </div>
         </div>
 
-        {(inv as any).qbo_id && (
-          <div className="flex items-center gap-2 text-xs text-success">
-            <Check className="size-3.5" /> Synced to QuickBooks
-            {(inv as any).qbo_synced_at && (
-              <span className="text-muted-foreground">
-                · {format(new Date((inv as any).qbo_synced_at), "PPp")}
-              </span>
-            )}
-          </div>
-        )}
-        {(inv as any).qbo_sync_error && !(inv as any).qbo_id && (
-          <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/5 ring-1 ring-destructive/20 rounded-lg p-3">
-            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium">QuickBooks sync failed</p>
-              <p className="text-muted-foreground break-words">{(inv as any).qbo_sync_error}</p>
-            </div>
-          </div>
-        )}
+
 
         <PaymentLinksCard invoiceId={inv.id} status={inv.status} onPaid={refresh} />
 
@@ -245,27 +220,8 @@ function InvoiceDetailPage() {
   );
 }
 
-function QboSyncButton({ invoiceId, qboId, qboError, onDone }: { invoiceId: string; qboId: string | null; qboError: string | null; onDone: () => void }) {
-  const syncFn = useServerFn(syncInvoiceToQbo);
-  const [busy, setBusy] = useState(false);
-  if (qboId) return null;
-  const run = async () => {
-    setBusy(true);
-    try {
-      await syncFn({ data: { invoice_id: invoiceId } });
-      toast.success("Synced to QuickBooks");
-      onDone();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "QBO sync failed");
-    } finally { setBusy(false); }
-  };
-  return (
-    <Button variant="outline" onClick={run} disabled={busy}>
-      <RefreshCw className={`size-4 mr-1.5 ${busy ? "animate-spin" : ""}`} />
-      {qboError ? "Retry QBO sync" : "Sync to QBO"}
-    </Button>
-  );
-}
+
+
 
 function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; status: string; onPaid: () => void }) {
   const qc = useQueryClient();
