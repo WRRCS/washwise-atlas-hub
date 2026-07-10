@@ -65,7 +65,6 @@ src/
       hooks/lead.$tenantId.tsx
       hooks/turno.$tenantId.ts
       payments/webhook.ts
-      qbo/callback.tsx
     pay.$invoiceId.tsx       # Public invoice payment page
   lib/
     *.functions.ts           # createServerFn RPC modules (client-safe imports)
