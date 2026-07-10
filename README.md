@@ -37,7 +37,7 @@ Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + A
 | Server code   | TanStack `createServerFn` + server routes under `api/`      |
 | AI            | Lovable AI Gateway (Google Gemini 2.5 Flash)                |
 | Payments      | Stripe Checkout                                              |
-| Accounting    | QuickBooks Online OAuth2                                    |
+
 | Data          | TanStack Query v5 with router integration                   |
 | Forms         | react-hook-form + Zod                                        |
 | Types         | Strict TypeScript                                            |
