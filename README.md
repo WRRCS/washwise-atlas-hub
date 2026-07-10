@@ -13,7 +13,7 @@ Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + A
 - **Jobs & Calendar** — scheduling, GPS tracking, photo uploads
 - **Clients CRM** — notes, history, retention analytics
 - **Invoicing & Payments** — Stripe checkout, Venmo, public pay links
-- **QuickBooks Online** — OAuth2 integration with invoice sync
+
 - **Inventory** — items, recipes, usage tracking, low-stock alerts
 - **SOPs** — standard operating procedures library
 - **Employees** — time tracking, productivity reports
