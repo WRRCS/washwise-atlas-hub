@@ -92,7 +92,7 @@ Notable architectural conventions:
 ### 1. Prerequisites
 - Node.js 20+ or Bun
 - A Supabase project (free tier works)
-- Optional: Stripe account, QuickBooks Online developer app, an AI API key
+- Optional: Stripe account, an AI API key
 
 ### 2. Clone & install
 ```bash
