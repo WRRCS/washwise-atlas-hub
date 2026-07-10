@@ -24,7 +24,7 @@ import {
 } from "@/lib/turno.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home } from "lucide-react";
+import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, RefreshCw, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/integrations")({
   component: IntegrationsPage,
