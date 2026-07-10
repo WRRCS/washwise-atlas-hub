@@ -159,11 +159,8 @@ export const sendInvoice = createServerFn({ method: "POST" })
       });
     }
 
-    // Fire-and-forget QBO sync (records error on the invoice if it fails).
-    try {
-      const { trySyncInvoice } = await import("./qbo.server");
-      await trySyncInvoice(data.id);
-    } catch { /* swallow */ }
+
+
 
     return { ok: true };
   });
