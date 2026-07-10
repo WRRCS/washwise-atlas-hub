@@ -123,11 +123,6 @@ VITE_PAYMENTS_CLIENT_TOKEN="pk_test_..."
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 
-# QuickBooks Online (optional)
-QBO_CLIENT_ID="..."
-QBO_CLIENT_SECRET="..."
-QBO_ENVIRONMENT="sandbox"        # or "production"
-QBO_STATE_SECRET="<random 32+ char string>"
 
 # Twilio AI Voice (optional — required for AI calling module)
 TWILIO_ACCOUNT_SID="AC..."
