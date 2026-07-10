@@ -37,7 +37,7 @@ export const setIntegrationConnected = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({
-      provider: z.enum(["quickbooks", "stripe", "venmo", "godaddy", "turno"]),
+      provider: z.enum(["stripe", "venmo", "godaddy", "turno"]),
       connected: z.boolean(),
       external_account_id: z.string().nullable().optional(),
     }).parse(input),
