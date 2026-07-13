@@ -241,7 +241,7 @@ export const changePlan = createServerFn({ method: "POST" })
 
       await stripe.subscriptions.update(sub.stripe_subscription_id, {
         items: [{ id: itemId, price: newPrice.id }],
-        proration_behavior: "create_prorated_invoice",
+        proration_behavior: "always_invoice",
         metadata: {
           tenant_id: profile.tenant_id,
           plan_tier: plan.plan_tier,
