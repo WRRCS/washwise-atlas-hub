@@ -52,7 +52,7 @@ const patchSchema = z.object({
   invoice_footer: z.string().trim().max(1000).nullable().optional(),
   payment_terms_days: z.number().int().min(0).max(365).nullable().optional(),
   late_fee_percent: z.number().min(0).max(100).nullable().optional(),
-  reminder_lead_hours: z.number().int().min(0).max(168).nullable().optional(),
+  reminder_lead_hours: z.number().int().min(0).max(168).optional(),
 });
 
 type BusinessProfilePatch = z.infer<typeof patchSchema>;
