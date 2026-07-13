@@ -39,6 +39,7 @@ export type BillingSummary = {
     id: string;
     stripe_invoice_id: string;
     amount_paid_cents: number;
+    amount_due_cents: number;
     currency: string;
     status: string;
     hosted_invoice_url: string | null;
