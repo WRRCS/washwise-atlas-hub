@@ -20,7 +20,6 @@ async function markInvoicePaidFromSession(session: any, env: StripeEnv) {
 
   const amount = session.amount_total ?? 0;
 
-  // Retrieve charge for method details
   let chargeId: string | null = null;
   let methodDetails: any = null;
   try {
@@ -52,7 +51,6 @@ async function markInvoicePaidFromSession(session: any, env: StripeEnv) {
     payment_method_details: methodDetails,
     note: "Paid via card",
   });
-  // Note: tg_payment_mark_invoice_paid trigger flips the invoice to 'paid'.
 }
 
 async function upsertTenantSubscription(subscription: any, env: StripeEnv) {
@@ -92,11 +90,75 @@ async function upsertTenantSubscription(subscription: any, env: StripeEnv) {
     },
     { onConflict: "stripe_subscription_id" },
   );
-  // Reflect on tenant for fast reads / gating
   const activeStatuses = ["active", "trialing", "past_due"];
   const patch: { subscription_status: string; plan_tier?: string } = { subscription_status: subscription.status };
   if (activeStatuses.includes(subscription.status)) patch.plan_tier = planTier;
   await supabaseAdmin.from("tenants").update(patch).eq("id", tenantId);
+}
+
+async function recordInvoiceEvent(invoice: any, env: StripeEnv, status: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // Try to resolve tenant via subscription first, then customer.
+  let tenantId: string | null = invoice.subscription_details?.metadata?.tenant_id
+    ?? invoice.metadata?.tenant_id
+    ?? null;
+  const stripeSubId: string | null = typeof invoice.subscription === "string"
+    ? invoice.subscription
+    : invoice.subscription?.id ?? null;
+  const stripeCustomerId: string | null = typeof invoice.customer === "string"
+    ? invoice.customer
+    : invoice.customer?.id ?? null;
+
+  if (!tenantId && stripeSubId) {
+    const { data: subRow } = await supabaseAdmin
+      .from("tenant_subscriptions")
+      .select("tenant_id")
+      .eq("stripe_subscription_id", stripeSubId)
+      .maybeSingle();
+    tenantId = (subRow?.tenant_id as string | undefined) ?? null;
+  }
+  if (!tenantId && stripeCustomerId) {
+    const { data: tenantRow } = await supabaseAdmin
+      .from("tenants")
+      .select("id")
+      .eq("stripe_customer_id", stripeCustomerId)
+      .maybeSingle();
+    tenantId = (tenantRow?.id as string | undefined) ?? null;
+  }
+  if (!tenantId) {
+    console.warn("invoice webhook: cannot resolve tenant for invoice", invoice.id);
+    return;
+  }
+
+  const firstLine = invoice.lines?.data?.[0];
+  const periodStart = firstLine?.period?.start ?? invoice.period_start;
+  const periodEnd = firstLine?.period?.end ?? invoice.period_end;
+
+  await supabaseAdmin.from("subscription_invoices").upsert(
+    {
+      tenant_id: tenantId,
+      stripe_invoice_id: invoice.id,
+      stripe_subscription_id: stripeSubId,
+      stripe_customer_id: stripeCustomerId,
+      amount_paid_cents: invoice.amount_paid ?? 0,
+      amount_due_cents: invoice.amount_due ?? 0,
+      currency: invoice.currency ?? "usd",
+      status,
+      hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+      invoice_pdf: invoice.invoice_pdf ?? null,
+      period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+      period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+      environment: env,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_invoice_id" },
+  );
+
+  if (status === "payment_failed") {
+    // Mirror past_due immediately on the tenant so dunning banner appears
+    // even before customer.subscription.updated arrives.
+    await supabaseAdmin.from("tenants").update({ subscription_status: "past_due" }).eq("id", tenantId);
+  }
 }
 
 export const Route = createFileRoute("/api/public/payments/webhook")({
@@ -113,7 +175,6 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
           switch (event.type) {
             case "checkout.session.completed":
             case "checkout.session.async_payment_succeeded":
-              // Invoice payment flow (skips silently if no invoice_id metadata)
               if ((event.data.object as any).metadata?.invoice_id) {
                 await markInvoicePaidFromSession(event.data.object, env);
               }
@@ -122,6 +183,16 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
             case "customer.subscription.updated":
             case "customer.subscription.deleted":
               await upsertTenantSubscription(event.data.object, env);
+              break;
+            case "invoice.payment_succeeded":
+            case "invoice.paid":
+              await recordInvoiceEvent(event.data.object, env, "paid");
+              break;
+            case "invoice.payment_failed":
+              await recordInvoiceEvent(event.data.object, env, "payment_failed");
+              break;
+            case "customer.subscription.trial_will_end":
+              // no-op stub — email hook can attach here later
               break;
             default:
               console.log("Unhandled Stripe event:", event.type);
