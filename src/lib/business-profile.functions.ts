@@ -9,7 +9,7 @@ export type BusinessProfile = {
   slug: string;
   business_email: string | null;
   business_phone: string | null;
-  business_address: string | null;
+  address: string | null;
   website: string | null;
   timezone: string | null;
   logo_url: string | null;
@@ -30,12 +30,12 @@ export const getBusinessProfile = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("tenants")
       .select(
-        "id,name,legal_name,slug,business_email,business_phone,business_address,website,timezone,logo_url,primary_color,invoice_prefix,invoice_footer,payment_terms_days,late_fee_percent,reminder_lead_hours",
+        "id,name,legal_name,slug,business_email,business_phone,address,website,timezone,logo_url,primary_color,invoice_prefix,invoice_footer,payment_terms_days,late_fee_percent,reminder_lead_hours",
       )
       .eq("id", profile.tenant_id)
       .maybeSingle();
     if (error || !data) throw new Error(error?.message ?? "Workspace not found");
-    return data as BusinessProfile;
+    return data as unknown as BusinessProfile;
   });
 
 const patchSchema = z.object({
@@ -43,10 +43,10 @@ const patchSchema = z.object({
   legal_name: z.string().trim().max(200).nullable().optional(),
   business_email: z.string().trim().email().max(200).nullable().optional(),
   business_phone: z.string().trim().max(50).nullable().optional(),
-  business_address: z.string().trim().max(500).nullable().optional(),
-  website: z.string().trim().url().max(300).nullable().optional().or(z.literal("")),
+  address: z.string().trim().max(500).nullable().optional(),
+  website: z.string().trim().max(300).nullable().optional(),
   timezone: z.string().trim().max(80).nullable().optional(),
-  logo_url: z.string().trim().url().max(500).nullable().optional().or(z.literal("")),
+  logo_url: z.string().trim().max(500).nullable().optional(),
   primary_color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   invoice_prefix: z.string().trim().max(20).nullable().optional(),
   invoice_footer: z.string().trim().max(1000).nullable().optional(),
@@ -54,6 +54,8 @@ const patchSchema = z.object({
   late_fee_percent: z.number().min(0).max(100).nullable().optional(),
   reminder_lead_hours: z.number().int().min(0).max(168).nullable().optional(),
 });
+
+type BusinessProfilePatch = z.infer<typeof patchSchema>;
 
 export const updateBusinessProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -67,11 +69,17 @@ export const updateBusinessProfile = createServerFn({ method: "POST" })
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!profile?.tenant_id) throw new Error("No workspace");
 
-    // normalize empty strings to null for nullable fields
-    const patch: Record<string, unknown> = { ...data };
-    for (const key of ["website", "logo_url", "legal_name", "business_email", "business_phone", "business_address", "invoice_prefix", "invoice_footer"]) {
-      if (patch[key] === "") patch[key] = null;
+    // Normalize empty strings on nullable string fields to null.
+    const patch: BusinessProfilePatch = { ...data };
+    const nullableStrings: (keyof BusinessProfilePatch)[] = [
+      "website", "logo_url", "legal_name", "business_email", "business_phone",
+      "address", "invoice_prefix", "invoice_footer",
+    ];
+    for (const key of nullableStrings) {
+      if (patch[key] === "") (patch as any)[key] = null;
     }
+    // Basic URL sanity for website/logo_url after empty normalization.
+    if (patch.website && !/^https?:\/\//i.test(patch.website)) patch.website = `https://${patch.website}`;
 
     const { error } = await context.supabase
       .from("tenants")
