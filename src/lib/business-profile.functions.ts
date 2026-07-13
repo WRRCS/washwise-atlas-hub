@@ -83,7 +83,7 @@ export const updateBusinessProfile = createServerFn({ method: "POST" })
 
     const { error } = await context.supabase
       .from("tenants")
-      .update(patch)
+      .update(patch as any)
       .eq("id", profile.tenant_id);
     if (error) throw new Error(error.message);
     return { ok: true };
