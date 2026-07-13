@@ -1832,6 +1832,71 @@ export type Database = {
           },
         ]
       }
+      subscription_invoices: {
+        Row: {
+          amount_due_cents: number
+          amount_paid_cents: number
+          created_at: string
+          currency: string
+          environment: string
+          hosted_invoice_url: string | null
+          id: string
+          invoice_pdf: string | null
+          period_end: string | null
+          period_start: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_invoice_id: string
+          stripe_subscription_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_due_cents?: number
+          amount_paid_cents?: number
+          created_at?: string
+          currency?: string
+          environment?: string
+          hosted_invoice_url?: string | null
+          id?: string
+          invoice_pdf?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status: string
+          stripe_customer_id?: string | null
+          stripe_invoice_id: string
+          stripe_subscription_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_due_cents?: number
+          amount_paid_cents?: number
+          created_at?: string
+          currency?: string
+          environment?: string
+          hosted_invoice_url?: string | null
+          id?: string
+          invoice_pdf?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_invoice_id?: string
+          stripe_subscription_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -1898,10 +1963,17 @@ export type Database = {
           created_at: string
           gps_retention_days: number
           id: string
+          invoice_footer: string | null
+          invoice_prefix: string | null
+          late_fee_percent: number | null
+          legal_name: string | null
           locale: string
+          logo_url: string | null
           name: string
           onboarding_completed: boolean
+          payment_terms_days: number | null
           plan_tier: string
+          primary_color: string | null
           quiet_hours: Json | null
           reminder_lead_hours: number
           signed_up_at: string
@@ -1911,6 +1983,7 @@ export type Database = {
           subscription_status_changed_at: string | null
           timezone: string
           track_gps: boolean
+          website: string | null
         }
         Insert: {
           address?: string | null
@@ -1921,10 +1994,17 @@ export type Database = {
           created_at?: string
           gps_retention_days?: number
           id?: string
+          invoice_footer?: string | null
+          invoice_prefix?: string | null
+          late_fee_percent?: number | null
+          legal_name?: string | null
           locale?: string
+          logo_url?: string | null
           name: string
           onboarding_completed?: boolean
+          payment_terms_days?: number | null
           plan_tier?: string
+          primary_color?: string | null
           quiet_hours?: Json | null
           reminder_lead_hours?: number
           signed_up_at?: string
@@ -1934,6 +2014,7 @@ export type Database = {
           subscription_status_changed_at?: string | null
           timezone?: string
           track_gps?: boolean
+          website?: string | null
         }
         Update: {
           address?: string | null
@@ -1944,10 +2025,17 @@ export type Database = {
           created_at?: string
           gps_retention_days?: number
           id?: string
+          invoice_footer?: string | null
+          invoice_prefix?: string | null
+          late_fee_percent?: number | null
+          legal_name?: string | null
           locale?: string
+          logo_url?: string | null
           name?: string
           onboarding_completed?: boolean
+          payment_terms_days?: number | null
           plan_tier?: string
+          primary_color?: string | null
           quiet_hours?: Json | null
           reminder_lead_hours?: number
           signed_up_at?: string
@@ -1957,6 +2045,7 @@ export type Database = {
           subscription_status_changed_at?: string | null
           timezone?: string
           track_gps?: boolean
+          website?: string | null
         }
         Relationships: []
       }
@@ -2309,7 +2398,9 @@ export type Database = {
           units_used: number
         }[]
       }
-      get_my_billing_summary: { Args: never; Returns: Json }
+      get_my_billing_summary:
+        | { Args: never; Returns: Json }
+        | { Args: { _environment?: string }; Returns: Json }
       get_my_subscription_gate: { Args: never; Returns: Json }
       get_revenue_by_month: {
         Args: { _from: string; _to: string }
@@ -2342,6 +2433,7 @@ export type Database = {
         Returns: string
       }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
+      preview_plan_change: { Args: { _target_tier: string }; Returns: Json }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
     }
     Enums: {

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -20,10 +20,8 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { redirect } = useSearch({ from: "/auth" });
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -36,23 +34,11 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: { full_name: fullName },
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created. You're signed in.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       navigate({ to: redirect ?? "/jobs", replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Auth failed");
+      toast.error(err instanceof Error ? err.message : "Sign-in failed");
     } finally {
       setLoading(false);
     }
@@ -81,26 +67,9 @@ function AuthPage() {
         </div>
 
         <div className="rounded-xl bg-card ring-1 ring-black/5 p-6 space-y-5">
-          <div className="flex gap-1 rounded-lg bg-clay-100 p-1">
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${mode === "signin" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
-            >Sign in</button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${mode === "signup" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
-            >Sign up</button>
-          </div>
+          <h1 className="text-lg font-medium">Sign in</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Full name</Label>
-                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-              </div>
-            )}
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -108,16 +77,14 @@ function AuthPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                {mode === "signin" && (
-                  <a href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground underline">
-                    Forgot password?
-                  </a>
-                )}
+                <a href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground underline">
+                  Forgot password?
+                </a>
               </div>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-brand text-brand-foreground hover:opacity-90">
-              {loading ? "…" : mode === "signup" ? "Create account" : "Sign in"}
+              {loading ? "…" : "Sign in"}
             </Button>
           </form>
 
@@ -132,7 +99,8 @@ function AuthPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          New to Atlas? <a href="/signup" className="underline hover:text-foreground">Start your free trial</a>
+          New to Atlas?{" "}
+          <Link to="/signup" className="underline hover:text-foreground">Start your free trial</Link>
         </p>
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
+import { DunningBanner } from "@/components/DunningBanner";
+import { useQuery } from "@tanstack/react-query";
 
-const GRACE_DAYS = 7;
 const BILLING_PATH = "/settings/billing";
+const ONBOARDING_PATH = "/onboarding";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -13,7 +15,7 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/auth", search: { redirect: location.href } });
     }
 
-    if (location.pathname.startsWith("/onboarding")) {
+    if (location.pathname.startsWith(ONBOARDING_PATH)) {
       return { user: data.user };
     }
 
@@ -24,26 +26,28 @@ export const Route = createFileRoute("/_authenticated")({
     const isSuperAdmin = (roles ?? []).some((r: any) => r.role === "super_admin");
     if (isSuperAdmin || !profile?.tenant_id) return { user: data.user };
 
+    // Onboarding gate
     const { data: tenant } = await supabase
       .from("tenants")
-      .select("onboarding_completed,subscription_status,subscription_status_changed_at")
+      .select("onboarding_completed")
       .eq("id", profile.tenant_id)
       .maybeSingle();
-
     if (tenant && !tenant.onboarding_completed) {
-      throw redirect({ to: "/onboarding" });
+      throw redirect({ to: ONBOARDING_PATH });
     }
 
-    // 7-day grace period, then lock everything except the billing page.
-    const status = tenant?.subscription_status;
-    if ((status === "past_due" || status === "canceled" || status === "unpaid") &&
-        !location.pathname.startsWith(BILLING_PATH)) {
-      const changedAt = tenant?.subscription_status_changed_at
-        ? new Date(tenant.subscription_status_changed_at).getTime()
-        : Date.now();
+    // Subscription gate — canonical from RPC (grace_days lives server-side)
+    const { data: gate } = await supabase.rpc("get_my_subscription_gate");
+    const status = (gate as any)?.subscription_status as string | undefined;
+    const changedAtStr = (gate as any)?.subscription_status_changed_at as string | undefined;
+    const graceDays = (gate as any)?.grace_days ?? 7;
+    if (
+      (status === "past_due" || status === "canceled" || status === "unpaid") &&
+      !location.pathname.startsWith(BILLING_PATH)
+    ) {
+      const changedAt = changedAtStr ? new Date(changedAtStr).getTime() : Date.now();
       const ageMs = Date.now() - changedAt;
-      const graceMs = GRACE_DAYS * 24 * 60 * 60 * 1000;
-      if (ageMs > graceMs) {
+      if (ageMs > graceDays * 24 * 60 * 60 * 1000) {
         throw redirect({ to: BILLING_PATH });
       }
     }
@@ -53,17 +57,30 @@ export const Route = createFileRoute("/_authenticated")({
   component: RouteComponent,
 });
 
+function useSubscriptionStatus() {
+  return useQuery({
+    queryKey: ["subscription-status-banner"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_my_subscription_gate");
+      return data as { subscription_status?: string; subscription_status_changed_at?: string } | null;
+    },
+    staleTime: 60_000,
+  });
+}
+
 function RouteComponent() {
-  // Onboarding wizard uses its own full-screen layout, not AppShell.
-  if (typeof window !== "undefined" && window.location.pathname.startsWith("/onboarding")) {
+  const isOnboarding = typeof window !== "undefined" && window.location.pathname.startsWith(ONBOARDING_PATH);
+  const { data: gate } = useSubscriptionStatus();
+
+  if (isOnboarding) {
     return <Outlet />;
   }
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <>
+      <DunningBanner status={gate?.subscription_status ?? null} />
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </>
   );
 }
-
-
-
