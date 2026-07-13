@@ -64,9 +64,8 @@ export const getBillingSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { environment?: StripeEnv } | undefined) => d ?? {})
   .handler(async ({ data, context }): Promise<BillingSummary> => {
-    const { data: res, error } = await context.supabase.rpc("get_my_billing_summary", {
-      _environment: data.environment ?? null,
-    });
+    const rpcArgs = data.environment ? { _environment: data.environment } : {};
+    const { data: res, error } = await context.supabase.rpc("get_my_billing_summary", rpcArgs);
     if (error) throw new Error(error.message);
     return res as BillingSummary;
   });
