@@ -3,14 +3,18 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare,
 } from "lucide-react";
 import { AtlasChat } from "@/components/atlas-chat";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getUnreadCount } from "@/lib/sms.functions";
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/calendar", label: "Schedule", icon: Calendar },
+  { to: "/messages", label: "Messages", icon: MessageSquare },
   { to: "/leads", label: "Leads", icon: Inbox },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/services", label: "Services", icon: Sparkles },
@@ -30,6 +34,7 @@ const OWNER_NAV = [
 const EMPLOYEE_NAV = [
   { to: "/my-jobs", label: "My jobs", icon: ClipboardList },
   { to: "/calendar", label: "Schedule", icon: Calendar },
+  { to: "/messages", label: "Messages", icon: MessageSquare },
   { to: "/clients", label: "Clients", icon: Users },
 ] as const;
 
@@ -64,6 +69,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({ to: "/auth", replace: true });
   };
 
+  const unreadFn = useServerFn(getUnreadCount);
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["sms-unread-count"],
+    queryFn: () => unreadFn(),
+    enabled: !!profile,
+    refetchInterval: 20_000,
+  });
+
   return (
     <div className="min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand">
       <div className="flex min-h-screen">
@@ -91,6 +104,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   <Icon className="size-4 shrink-0" />
                   {item.label}
+                  {item.to === "/messages" && unreadCount > 0 && (
+                    <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -147,9 +165,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
-              <Link key={item.to} to={item.to} className={`flex-1 flex flex-col items-center py-2 text-[10px] ${active ? "text-brand" : "text-muted-foreground"}`}>
+              <Link key={item.to} to={item.to} className={`relative flex-1 flex flex-col items-center py-2 text-[10px] ${active ? "text-brand" : "text-muted-foreground"}`}>
                 <Icon className="size-4 mb-0.5" />
                 {item.label}
+                {item.to === "/messages" && unreadCount > 0 && (
+                  <span className="absolute top-1 right-1/3 bg-brand text-brand-foreground text-[9px] font-medium rounded-full size-3.5 grid place-items-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}

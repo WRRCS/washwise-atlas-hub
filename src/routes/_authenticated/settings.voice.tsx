@@ -54,6 +54,8 @@ function VoiceSettingsPage() {
   const tenantId = (cfg.data as any)?.tenant_id ?? "";
   const incomingUrl = tenantId ? `${origin}/api/public/twilio/voice/${tenantId}/incoming` : "";
   const statusUrl = tenantId ? `${origin}/api/public/twilio/voice/${tenantId}/status` : "";
+  const smsIncomingUrl = tenantId ? `${origin}/api/public/twilio/sms/${tenantId}/incoming` : "";
+  const smsStatusUrl = tenantId ? `${origin}/api/public/twilio/sms/${tenantId}/status` : "";
 
   return (
     <AppShell>
@@ -122,6 +124,16 @@ function VoiceSettingsPage() {
               </p>
               <UrlRow label="A call comes in (POST)" url={incomingUrl} />
               <UrlRow label="Status callback (POST)" url={statusUrl} />
+            </section>
+
+            <section className="bg-clay-100 rounded-lg ring-1 ring-black/5 p-5 space-y-3">
+              <h2 className="font-medium">SMS webhook URLs</h2>
+              <p className="text-sm text-muted-foreground">
+                Same number as above — in Twilio Console, open the number's Messaging section and set these.
+                Two-way texting to clients goes through the <a href="/messages" className="text-brand hover:underline">Messages</a> inbox.
+              </p>
+              <UrlRow label="A message comes in (POST)" url={smsIncomingUrl} />
+              <UrlRow label="Status callback (POST)" url={smsStatusUrl} />
             </section>
           </>
         )}

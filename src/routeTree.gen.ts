@@ -24,6 +24,7 @@ import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedMyJobsRouteImport } from './routes/_authenticated/my-jobs'
+import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/jobs'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
@@ -55,6 +56,8 @@ import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/pub
 import { Route as ApiPublicTwilioVoiceTenantIdStatusRouteImport } from './routes/api/public/twilio/voice.$tenantId.status'
 import { Route as ApiPublicTwilioVoiceTenantIdIncomingRouteImport } from './routes/api/public/twilio/voice.$tenantId.incoming'
 import { Route as ApiPublicTwilioVoiceTenantIdGatherRouteImport } from './routes/api/public/twilio/voice.$tenantId.gather'
+import { Route as ApiPublicTwilioSmsTenantIdStatusRouteImport } from './routes/api/public/twilio/sms.$tenantId.status'
+import { Route as ApiPublicTwilioSmsTenantIdIncomingRouteImport } from './routes/api/public/twilio/sms.$tenantId.incoming'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -128,6 +131,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
 const AuthenticatedMyJobsRoute = AuthenticatedMyJobsRouteImport.update({
   id: '/my-jobs',
   path: '/my-jobs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMessagesRoute = AuthenticatedMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
@@ -305,6 +313,18 @@ const ApiPublicTwilioVoiceTenantIdGatherRoute =
     path: '/api/public/twilio/voice/$tenantId/gather',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTwilioSmsTenantIdStatusRoute =
+  ApiPublicTwilioSmsTenantIdStatusRouteImport.update({
+    id: '/api/public/twilio/sms/$tenantId/status',
+    path: '/api/public/twilio/sms/$tenantId/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicTwilioSmsTenantIdIncomingRoute =
+  ApiPublicTwilioSmsTenantIdIncomingRouteImport.update({
+    id: '/api/public/twilio/sms/$tenantId/incoming',
+    path: '/api/public/twilio/sms/$tenantId/incoming',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -320,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/leads': typeof AuthenticatedLeadsRouteWithChildren
+  '/messages': typeof AuthenticatedMessagesRoute
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/reports': typeof AuthenticatedReportsRoute
@@ -349,6 +370,8 @@ export interface FileRoutesByFullPath {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
+  '/api/public/twilio/sms/$tenantId/incoming': typeof ApiPublicTwilioSmsTenantIdIncomingRoute
+  '/api/public/twilio/sms/$tenantId/status': typeof ApiPublicTwilioSmsTenantIdStatusRoute
   '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
   '/api/public/twilio/voice/$tenantId/incoming': typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
   '/api/public/twilio/voice/$tenantId/status': typeof ApiPublicTwilioVoiceTenantIdStatusRoute
@@ -367,6 +390,7 @@ export interface FileRoutesByTo {
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/leads': typeof AuthenticatedLeadsRouteWithChildren
+  '/messages': typeof AuthenticatedMessagesRoute
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/reports': typeof AuthenticatedReportsRoute
@@ -395,6 +419,8 @@ export interface FileRoutesByTo {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
+  '/api/public/twilio/sms/$tenantId/incoming': typeof ApiPublicTwilioSmsTenantIdIncomingRoute
+  '/api/public/twilio/sms/$tenantId/status': typeof ApiPublicTwilioSmsTenantIdStatusRoute
   '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
   '/api/public/twilio/voice/$tenantId/incoming': typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
   '/api/public/twilio/voice/$tenantId/status': typeof ApiPublicTwilioVoiceTenantIdStatusRoute
@@ -415,6 +441,7 @@ export interface FileRoutesById {
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/_authenticated/jobs': typeof AuthenticatedJobsRouteWithChildren
   '/_authenticated/leads': typeof AuthenticatedLeadsRouteWithChildren
+  '/_authenticated/messages': typeof AuthenticatedMessagesRoute
   '/_authenticated/my-jobs': typeof AuthenticatedMyJobsRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
@@ -444,6 +471,8 @@ export interface FileRoutesById {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
+  '/api/public/twilio/sms/$tenantId/incoming': typeof ApiPublicTwilioSmsTenantIdIncomingRoute
+  '/api/public/twilio/sms/$tenantId/status': typeof ApiPublicTwilioSmsTenantIdStatusRoute
   '/api/public/twilio/voice/$tenantId/gather': typeof ApiPublicTwilioVoiceTenantIdGatherRoute
   '/api/public/twilio/voice/$tenantId/incoming': typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
   '/api/public/twilio/voice/$tenantId/status': typeof ApiPublicTwilioVoiceTenantIdStatusRoute
@@ -464,6 +493,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/jobs'
     | '/leads'
+    | '/messages'
     | '/my-jobs'
     | '/onboarding'
     | '/reports'
@@ -493,6 +523,8 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
+    | '/api/public/twilio/sms/$tenantId/incoming'
+    | '/api/public/twilio/sms/$tenantId/status'
     | '/api/public/twilio/voice/$tenantId/gather'
     | '/api/public/twilio/voice/$tenantId/incoming'
     | '/api/public/twilio/voice/$tenantId/status'
@@ -511,6 +543,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/jobs'
     | '/leads'
+    | '/messages'
     | '/my-jobs'
     | '/onboarding'
     | '/reports'
@@ -539,6 +572,8 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
+    | '/api/public/twilio/sms/$tenantId/incoming'
+    | '/api/public/twilio/sms/$tenantId/status'
     | '/api/public/twilio/voice/$tenantId/gather'
     | '/api/public/twilio/voice/$tenantId/incoming'
     | '/api/public/twilio/voice/$tenantId/status'
@@ -558,6 +593,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices'
     | '/_authenticated/jobs'
     | '/_authenticated/leads'
+    | '/_authenticated/messages'
     | '/_authenticated/my-jobs'
     | '/_authenticated/onboarding'
     | '/_authenticated/reports'
@@ -587,6 +623,8 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
+    | '/api/public/twilio/sms/$tenantId/incoming'
+    | '/api/public/twilio/sms/$tenantId/status'
     | '/api/public/twilio/voice/$tenantId/gather'
     | '/api/public/twilio/voice/$tenantId/incoming'
     | '/api/public/twilio/voice/$tenantId/status'
@@ -604,6 +642,8 @@ export interface RootRouteChildren {
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
   ApiPublicHooksTurnoTenantIdRoute: typeof ApiPublicHooksTurnoTenantIdRoute
+  ApiPublicTwilioSmsTenantIdIncomingRoute: typeof ApiPublicTwilioSmsTenantIdIncomingRoute
+  ApiPublicTwilioSmsTenantIdStatusRoute: typeof ApiPublicTwilioSmsTenantIdStatusRoute
   ApiPublicTwilioVoiceTenantIdGatherRoute: typeof ApiPublicTwilioVoiceTenantIdGatherRoute
   ApiPublicTwilioVoiceTenantIdIncomingRoute: typeof ApiPublicTwilioVoiceTenantIdIncomingRoute
   ApiPublicTwilioVoiceTenantIdStatusRoute: typeof ApiPublicTwilioVoiceTenantIdStatusRoute
@@ -714,6 +754,13 @@ declare module '@tanstack/react-router' {
       path: '/my-jobs'
       fullPath: '/my-jobs'
       preLoaderRoute: typeof AuthenticatedMyJobsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/messages': {
+      id: '/_authenticated/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof AuthenticatedMessagesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leads': {
@@ -933,6 +980,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTwilioVoiceTenantIdGatherRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/twilio/sms/$tenantId/status': {
+      id: '/api/public/twilio/sms/$tenantId/status'
+      path: '/api/public/twilio/sms/$tenantId/status'
+      fullPath: '/api/public/twilio/sms/$tenantId/status'
+      preLoaderRoute: typeof ApiPublicTwilioSmsTenantIdStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/twilio/sms/$tenantId/incoming': {
+      id: '/api/public/twilio/sms/$tenantId/incoming'
+      path: '/api/public/twilio/sms/$tenantId/incoming'
+      fullPath: '/api/public/twilio/sms/$tenantId/incoming'
+      preLoaderRoute: typeof ApiPublicTwilioSmsTenantIdIncomingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1028,6 +1089,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRouteWithChildren
   AuthenticatedJobsRoute: typeof AuthenticatedJobsRouteWithChildren
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRouteWithChildren
+  AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
   AuthenticatedMyJobsRoute: typeof AuthenticatedMyJobsRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
@@ -1053,6 +1115,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRouteWithChildren,
   AuthenticatedJobsRoute: AuthenticatedJobsRouteWithChildren,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRouteWithChildren,
+  AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
   AuthenticatedMyJobsRoute: AuthenticatedMyJobsRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
@@ -1086,6 +1149,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
   ApiPublicHooksTurnoTenantIdRoute: ApiPublicHooksTurnoTenantIdRoute,
+  ApiPublicTwilioSmsTenantIdIncomingRoute:
+    ApiPublicTwilioSmsTenantIdIncomingRoute,
+  ApiPublicTwilioSmsTenantIdStatusRoute: ApiPublicTwilioSmsTenantIdStatusRoute,
   ApiPublicTwilioVoiceTenantIdGatherRoute:
     ApiPublicTwilioVoiceTenantIdGatherRoute,
   ApiPublicTwilioVoiceTenantIdIncomingRoute:
@@ -1096,3 +1162,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
