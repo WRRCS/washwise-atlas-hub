@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
@@ -19,10 +19,8 @@ import {
 import { downloadCsv } from "@/lib/csv";
 
 const searchSchema = z.object({
-  tab: fallback(z.string(), "revenue").default("revenue"),
   from: fallback(z.string(), "").default(""),
   to: fallback(z.string(), "").default(""),
-  at_risk_days: fallback(z.coerce.number(), 60).default(60),
 });
 
 export const Route = createFileRoute("/_authenticated/reports")({
@@ -51,13 +49,6 @@ function fmtMonth(ym: string) {
   return new Date(Number(y), Number(m) - 1, 1).toLocaleString(undefined, { month: "short", year: "2-digit" });
 }
 
-const TABS = [
-  { key: "revenue", label: "Revenue" },
-  { key: "employees", label: "Employee productivity" },
-  { key: "retention", label: "Client retention" },
-  { key: "inventory", label: "Inventory usage" },
-] as const;
-
 const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
 
 function ReportsPage() {
@@ -66,30 +57,14 @@ function ReportsPage() {
   const defaults = defaultRange();
   const from = search.from || defaults.from;
   const to = search.to || defaults.to;
-  const tab = search.tab;
-
   const setSearch = (patch: Record<string, string | number>) =>
     navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) });
 
   return (
     <AppShell>
-      <PageHeader title="Reports" subtitle="Deeper insights into revenue, staff, clients, and supplies" />
+      <PageHeader title="Reports" subtitle="Revenue trends and summary" />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-1 border-b border-border/60">
-            {TABS.map((t) => (
-              <Link
-                key={t.key}
-                to="/reports"
-                search={(prev: Record<string, unknown>) => ({ ...prev, tab: t.key })}
-                className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
-                  tab === t.key ? "border-brand text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t.label}
-              </Link>
-            ))}
-          </div>
           <div className="ml-auto flex items-center gap-2">
             <label className="text-xs text-muted-foreground">From</label>
             <Input type="date" value={from} onChange={(e) => setSearch({ from: e.target.value })} className="h-8 w-40" />
@@ -102,15 +77,7 @@ function ReportsPage() {
           </div>
         </div>
 
-        {tab === "revenue" && <RevenueTab from={from} to={to} />}
-        {tab === "employees" && <EmployeesTab from={from} to={to} />}
-        {tab === "retention" && (
-          <RetentionTab
-            atRiskDays={search.at_risk_days}
-            setAtRiskDays={(n) => setSearch({ at_risk_days: n })}
-          />
-        )}
-        {tab === "inventory" && <InventoryTab from={from} to={to} />}
+        <RevenueTab from={from} to={to} />
       </div>
     </AppShell>
   );
