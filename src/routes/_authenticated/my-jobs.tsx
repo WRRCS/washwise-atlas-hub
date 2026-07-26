@@ -169,6 +169,8 @@ function TodayView() {
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
                       </p>
                       {j.notes && <p className="text-sm mt-2 text-muted-foreground italic">{j.notes}</p>}
+                      <TeamOnJob teammates={j.teammates} />
+
                       <button
                         type="button"
                         onClick={() => setSopFor({ jobId: j.id, serviceTypeId: j.service?.id ?? null, label: j.service?.name ?? "SOP" })}
