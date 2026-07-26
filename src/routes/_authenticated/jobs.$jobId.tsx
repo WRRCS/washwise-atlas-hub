@@ -5,6 +5,7 @@ import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
 import { listJobGps } from "@/lib/time.functions";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
+import { myPermissions } from "@/lib/entities.functions";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
@@ -12,6 +13,7 @@ import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { Check, MessageSquare, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
   component: JobDetail,
@@ -27,6 +29,13 @@ function JobDetail() {
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const setStatus = useServerFn(updateJobStatus);
+  const permsFn = useServerFn(myPermissions);
+
+  const { data: perms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: () => permsFn(),
+  });
+  const canSeePricing = !!(perms?.isOwner || perms?.canViewPricing);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job", jobId],
@@ -38,6 +47,7 @@ function JobDetail() {
 
   const sop = (job.sop ?? []).slice().sort((a, b) => a.position - b.position);
   const done = sop.filter((s) => s.completed).length;
+
 
   const onToggle = async (id: string, completed: boolean) => {
     await toggle({ data: { id, completed } });
