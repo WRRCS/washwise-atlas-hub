@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck,
@@ -46,10 +46,17 @@ const EMPLOYEE_NAV = [
 
 const SUPER_ADMIN_NAV_ITEM = { to: "/super-admin", label: "Platform console", icon: Shield } as const;
 
+const AppShellNestingContext = createContext(false);
+
 export function AppShell({ children }: { children: ReactNode }) {
+  const alreadyInsideShell = useContext(AppShellNestingContext);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string; isSuperAdmin: boolean } | null>(null);
+
+  if (alreadyInsideShell) {
+    return <>{children}</>;
+  }
 
   useEffect(() => {
     (async () => {
@@ -84,7 +91,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
 
   return (
-    <div className="min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand">
+    <AppShellNestingContext.Provider value={true}>
+      <div className="min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand">
       <div className="flex min-h-screen">
         <aside className="hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
           <div className="p-6">
@@ -187,7 +195,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <AtlasChat />
-    </div>
+      </div>
+    </AppShellNestingContext.Provider>
   );
 }
 
