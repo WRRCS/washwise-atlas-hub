@@ -535,3 +535,47 @@ export const listInvoices = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return data ?? [];
   });
+
+// ============= Employee permissions =============
+
+export const listEmployeePermissions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) return [] as Array<{ employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean }>;
+    const { data, error } = await context.supabase
+      .from("employee_permissions")
+      .select("employee_id, can_view_employee_contacts, can_view_pricing");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const setEmployeePermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      employee_id: z.string().uuid(),
+      can_view_employee_contacts: z.boolean(),
+      can_view_pricing: z.boolean(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) throw new Error("Only owners can change permissions");
+    const { data: prof, error: pErr } = await context.supabase
+      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (pErr || !prof?.tenant_id) throw new Error("Could not resolve tenant");
+    const { error } = await context.supabase
+      .from("employee_permissions")
+      .upsert(
+        {
+          tenant_id: prof.tenant_id,
+          employee_id: data.employee_id,
+          can_view_employee_contacts: data.can_view_employee_contacts,
+          can_view_pricing: data.can_view_pricing,
+        },
+        { onConflict: "tenant_id,employee_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
