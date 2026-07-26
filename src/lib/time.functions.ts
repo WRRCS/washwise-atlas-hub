@@ -18,6 +18,7 @@ export type MyJobRow = {
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   service: { id: string; name: string; color: string | null } | null;
   open_entry: { id: string; started_at: string; has_gps: boolean } | null;
+  teammates: { id: string; full_name: string | null; avatar_url: string | null }[];
 };
 
 export type TimeEntryRow = {
@@ -100,7 +101,27 @@ export const listMyJobs = createServerFn({ method: "POST" })
       });
     }
 
-    return (jobs ?? []).map((j: any) => ({ ...j, open_entry: openMap.get(j.id) ?? null })) as MyJobRow[];
+    const allJobIds = (jobs ?? []).map((j: any) => j.id);
+    const teammatesByJob = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }[]>();
+    if (allJobIds.length) {
+      const { data: crew } = await context.supabase
+        .from("job_employees")
+        .select("job_id, employee:profiles!employee_id(id, full_name, avatar_url)")
+        .in("job_id", allJobIds);
+      for (const row of (crew ?? []) as any[]) {
+        const emp = row.employee;
+        if (!emp) continue;
+        const arr = teammatesByJob.get(row.job_id) ?? [];
+        arr.push({ id: emp.id, full_name: emp.full_name, avatar_url: emp.avatar_url });
+        teammatesByJob.set(row.job_id, arr);
+      }
+    }
+
+    return (jobs ?? []).map((j: any) => ({
+      ...j,
+      open_entry: openMap.get(j.id) ?? null,
+      teammates: teammatesByJob.get(j.id) ?? [],
+    })) as MyJobRow[];
   });
 
 export const getTenantGpsSettings = createServerFn({ method: "POST" })

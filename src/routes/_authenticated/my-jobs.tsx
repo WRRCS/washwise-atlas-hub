@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -38,6 +38,60 @@ function clientName(c: MyJobRow["client"]) {
 }
 function hoursBetween(a: string, b: string) {
   return (new Date(b).getTime() - new Date(a).getTime()) / 3600000;
+}
+
+function useMyUserId() {
+  const [uid, setUid] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
+  }, []);
+  return uid;
+}
+
+function tmInitials(name: string | null | undefined) {
+  if (!name) return "?";
+  return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+}
+
+function TeamOnJob({ teammates }: { teammates: MyJobRow["teammates"] }) {
+  const myId = useMyUserId();
+  const others = teammates.filter((t) => t.id !== myId);
+  if (!others.length) return null;
+  return (
+    <div className="mt-3 flex items-center gap-2 flex-wrap">
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">With</span>
+      {others.map((t) => (
+        <span key={t.id} className="inline-flex items-center gap-1.5 bg-clay-100 rounded-full pl-0.5 pr-2 py-0.5">
+          {t.avatar_url ? (
+            <img src={t.avatar_url} alt="" className="size-5 rounded-full object-cover" />
+          ) : (
+            <span className="size-5 rounded-full bg-clay-200 grid place-items-center text-[9px] font-medium">{tmInitials(t.full_name)}</span>
+          )}
+          <span className="text-xs">{t.full_name ?? "Teammate"}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ScheduleTeammates({ teammates }: { teammates: MyJobRow["teammates"] }) {
+  const myId = useMyUserId();
+  const others = teammates.filter((t) => t.id !== myId);
+  if (!others.length) return null;
+  return (
+    <div className="flex -space-x-1 mt-1" title={others.map((t) => t.full_name ?? "Teammate").join(", ")}>
+      {others.slice(0, 3).map((t) =>
+        t.avatar_url ? (
+          <img key={t.id} src={t.avatar_url} alt="" className="size-4 rounded-full object-cover ring-1 ring-clay-50" />
+        ) : (
+          <span key={t.id} className="size-4 rounded-full bg-clay-200 grid place-items-center text-[8px] font-medium ring-1 ring-clay-50">
+            {tmInitials(t.full_name)}
+          </span>
+        ),
+      )}
+      {others.length > 3 && <span className="text-[9px] ml-1 text-muted-foreground">+{others.length - 3}</span>}
+    </div>
+  );
 }
 
 function MyJobsPage() {
@@ -169,6 +223,8 @@ function TodayView() {
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
                       </p>
                       {j.notes && <p className="text-sm mt-2 text-muted-foreground italic">{j.notes}</p>}
+                      <TeamOnJob teammates={j.teammates} />
+
                       <button
                         type="button"
                         onClick={() => setSopFor({ jobId: j.id, serviceTypeId: j.service?.id ?? null, label: j.service?.name ?? "SOP" })}
@@ -651,6 +707,7 @@ function ScheduleView() {
                   <div key={j.id} className={`text-xs px-2 py-1.5 rounded border ${statusBg[j.status]}`}>
                     <div className="font-medium">{fmtTime(j.scheduled_start)}</div>
                     <div className="truncate">{clientName(j.client)}</div>
+                    <ScheduleTeammates teammates={j.teammates} />
                   </div>
                 ))}
                 {!items.length && <div className="text-[11px] text-muted-foreground/60">—</div>}
