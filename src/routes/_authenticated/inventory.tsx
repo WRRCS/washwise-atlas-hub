@@ -16,8 +16,6 @@ import {
   logInventoryTransaction, listItemTransactions,
   type InventoryItem, type InventoryStatus, type InventoryTransaction,
 } from "@/lib/inventory.functions";
-import { InventoryTabs } from "@/components/inventory-tabs";
-
 const invQO = queryOptions({ queryKey: ["inventory"], queryFn: () => listInventory() });
 
 export const Route = createFileRoute("/_authenticated/inventory")({
@@ -79,8 +77,6 @@ function InventoryPage() {
         action={<BrandButton onClick={() => setFormFor("new")}><Plus className="size-4 mr-1.5" />New item</BrandButton>}
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-4">
-        <InventoryTabs current="items" />
-
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
           <div className="relative flex-1">

@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { InventoryTabs } from "@/components/inventory-tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { listRecipes, listInventory, upsertRecipe, type RecipeRow, type InventoryItem } from "@/lib/inventory.functions";
@@ -49,7 +48,6 @@ function RecipesPage() {
     <AppShell>
       <PageHeader title="Inventory" subtitle="Recipes define how much stock each job consumes" />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-4">
-        <InventoryTabs current="recipes" />
         {grouped.length === 0 && (
           <div className="text-sm text-muted-foreground py-12 text-center">
             No recipes yet. Complete the seed migration or add items.

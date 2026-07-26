@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { InventoryTabs } from "@/components/inventory-tabs";
 import { inventoryUsageByMonth } from "@/lib/inventory.functions";
 
 const usageQO = queryOptions({ queryKey: ["inventory-usage"], queryFn: () => inventoryUsageByMonth() });
@@ -29,7 +28,6 @@ function UsagePage() {
     <AppShell>
       <PageHeader title="Inventory" subtitle="Supplies consumed by completed jobs, by month" />
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-8 space-y-4">
-        <InventoryTabs current="usage" />
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
           <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between">
             <div className="font-medium">Inventory usage — last 12 months</div>
