@@ -538,6 +538,14 @@ export const listInvoices = createServerFn({ method: "GET" })
 
 // ============= Employee permissions =============
 
+export const amIOwner = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase.rpc("is_owner");
+    return { isOwner: !!data };
+  });
+
+
 export const listEmployeePermissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
