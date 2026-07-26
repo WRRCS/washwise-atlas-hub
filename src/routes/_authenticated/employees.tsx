@@ -271,16 +271,71 @@ function Section({ title, rows, empty, children }: { title: string; rows: Employ
   );
 }
 
-function EmployeeRow({ e, onEdit, onImpersonate, onDeactivate, onPromote }: {
+type PermsRow = { employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean };
+
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onPromote }: {
   e: Employee;
+  isOwnerViewer: boolean;
+  perms: PermsRow | null;
+  onSavePerms: (next: { can_view_employee_contacts: boolean; can_view_pricing: boolean }) => void;
   onEdit: () => void;
   onImpersonate: () => void;
   onDeactivate: () => void;
   onPromote: () => void;
 }) {
+  const showAccess = isOwnerViewer && e.role !== "owner";
+  const contacts = perms?.can_view_employee_contacts ?? false;
+  const pricing = perms?.can_view_pricing ?? false;
+  const summary = !contacts && !pricing
+    ? "Default"
+    : [contacts ? "Contacts" : null, pricing ? "Pricing" : null].filter(Boolean).join(" + ");
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1.5fr_1fr_0.8fr_1fr_auto] gap-2 md:gap-4 items-center px-5 py-4">
-      <div className="font-medium">{e.full_name ?? "—"}</div>
+      <div className="font-medium flex items-center gap-2">
+        <span>{e.full_name ?? "—"}</span>
+        {showAccess && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ring-black/10 hover:bg-clay-100 transition"
+                title="Manage access"
+              >
+                <ShieldCheck className="size-3" />
+                {summary}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="start">
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium">Access</div>
+                  <div className="text-xs text-muted-foreground">Extra permissions for {e.full_name ?? "this employee"}.</div>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm">Can view team contact info</div>
+                    <div className="text-xs text-muted-foreground">See phone & email of other employees.</div>
+                  </div>
+                  <Switch
+                    checked={contacts}
+                    onCheckedChange={(v) => onSavePerms({ can_view_employee_contacts: v, can_view_pricing: pricing })}
+                  />
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm">Can view pricing & invoices</div>
+                    <div className="text-xs text-muted-foreground">See job prices and invoice amounts.</div>
+                  </div>
+                  <Switch
+                    checked={pricing}
+                    onCheckedChange={(v) => onSavePerms({ can_view_employee_contacts: contacts, can_view_pricing: v })}
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
       <div className="text-sm text-muted-foreground truncate">{e.email}</div>
       <div className="text-sm text-muted-foreground">{e.phone ?? "—"}</div>
       <div>
