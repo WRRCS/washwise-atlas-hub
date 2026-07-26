@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCallback } from "react";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
-import { getPublicInvoice, createInvoiceCheckout } from "@/lib/invoice-checkout.functions";
+import { getPublicInvoice, createInvoiceCheckout, getPublicVenmoPayLink } from "@/lib/invoice-checkout.functions";
+import { useState } from "react";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 
 export const Route = createFileRoute("/pay/$invoiceId")({
@@ -29,11 +30,19 @@ function PayInvoicePage() {
   const { invoiceId } = Route.useParams();
   const getFn = useServerFn(getPublicInvoice);
   const createFn = useServerFn(createInvoiceCheckout);
+  const venmoFn = useServerFn(getPublicVenmoPayLink);
+  const [method, setMethod] = useState<"card" | "venmo">("card");
 
   const { data: inv, isLoading } = useQuery({
     queryKey: ["public-invoice", invoiceId],
     queryFn: () => getFn({ data: { id: invoiceId } }),
   });
+
+  const { data: venmo } = useQuery({
+    queryKey: ["public-invoice-venmo", invoiceId],
+    queryFn: () => venmoFn({ data: { invoice_id: invoiceId } }),
+  });
+  const venmoAvailable = !!venmo && !("error" in venmo);
 
   const fetchClientSecret = useCallback(async (): Promise<string> => {
     const result = await createFn({
@@ -70,12 +79,38 @@ function PayInvoicePage() {
               <span className="text-sm text-muted-foreground">Amount due</span>
               <span className="text-3xl font-medium tabular-nums">{money(inv.total_cents, inv.currency)}</span>
             </div>
-            {inv.card_surcharge && inv.surcharge_cents > 0 && (
+            {method === "card" && inv.card_surcharge && inv.surcharge_cents > 0 && (
               <p className="text-xs text-muted-foreground mt-2">
-                Includes a {money(inv.surcharge_cents, inv.currency)} card processing surcharge.
+                Includes a {money(inv.surcharge_cents, inv.currency)} processing fee for card, Apple Pay, and Google Pay.
+              </p>
+            )}
+            {method === "venmo" && venmoAvailable && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Pay {money((venmo as { amount_cents: number }).amount_cents, inv.currency)} via Venmo — no processing fee.
               </p>
             )}
           </div>
+
+          {!isPaid && !isDead && venmoAvailable && (
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setMethod("card")}
+                className={`flex-1 text-sm font-medium rounded-lg px-3 py-2 border transition-colors ${
+                  method === "card" ? "border-brand bg-brand/5 text-brand" : "border-border text-muted-foreground hover:bg-clay-100"
+                }`}
+              >
+                Card / Apple Pay / Google Pay
+              </button>
+              <button
+                onClick={() => setMethod("venmo")}
+                className={`flex-1 text-sm font-medium rounded-lg px-3 py-2 border transition-colors ${
+                  method === "venmo" ? "border-brand bg-brand/5 text-brand" : "border-border text-muted-foreground hover:bg-clay-100"
+                }`}
+              >
+                Venmo
+              </button>
+            </div>
+          )}
 
           {isPaid ? (
             <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
@@ -85,6 +120,15 @@ function PayInvoicePage() {
             <div className="bg-muted rounded-xl p-6 text-center text-sm text-muted-foreground">
               This invoice is no longer payable.
             </div>
+          ) : method === "venmo" && venmoAvailable ? (
+            <a
+              href={(venmo as { link: string }).link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-center bg-[#3D95CE] text-white font-medium rounded-xl px-4 py-3 hover:opacity-90"
+            >
+              Pay with Venmo
+            </a>
           ) : (
             <div className="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
               <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret }}>

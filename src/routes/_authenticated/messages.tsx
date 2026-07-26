@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
   ),
 });
 
-type Selection = { client_id: string | null; counterparty_number: string };
+type Selection = { client_id: string | null; counterparty_number: string | null; channel: "sms" | "portal" };
 
 function MessagesPage() {
   const qc = useQueryClient();
@@ -41,7 +41,7 @@ function MessagesPage() {
   const deepLink = Route.useSearch();
   const [selected, setSelected] = useState<Selection | null>(
     deepLink.clientId && deepLink.phone
-      ? { client_id: deepLink.clientId, counterparty_number: deepLink.phone }
+      ? { client_id: deepLink.clientId, counterparty_number: deepLink.phone, channel: "sms" as const }
       : null,
   );
   const [draft, setDraft] = useState("");
@@ -91,6 +91,7 @@ function MessagesPage() {
           client_id: selected.client_id,
           to_number: selected.client_id ? null : selected.counterparty_number,
           body,
+          channel: selected.channel,
         },
       });
       qc.invalidateQueries({ queryKey: ["sms-thread", threadKey] });
@@ -127,6 +128,7 @@ function MessagesPage() {
                       setSelected({
                         client_id: c.client_id,
                         counterparty_number: c.counterparty_number,
+                        channel: c.last_channel,
                       })
                     }
                     className={`w-full text-left px-4 py-3 border-b border-border/40 transition-colors ${
@@ -134,8 +136,11 @@ function MessagesPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium truncate">
-                        {c.client_name ?? c.counterparty_number}
+                      <span className="text-sm font-medium truncate flex items-center gap-1.5">
+                        {c.client_name ?? c.counterparty_number ?? "Unknown"}
+                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-clay-100 text-muted-foreground shrink-0">
+                          {c.last_channel === "portal" ? "Portal" : "SMS"}
+                        </span>
                       </span>
                       {c.unread_count > 0 && (
                         <Badge className="bg-brand text-brand-foreground shrink-0">

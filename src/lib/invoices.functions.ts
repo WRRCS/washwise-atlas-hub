@@ -5,7 +5,7 @@ import { renderEmailForClientContext } from "@/lib/templates.functions";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
-const SURCHARGE_RATE = 0.03;
+const SURCHARGE_RATE = 0.029; // Stripe published US online card rate: 2.9% + 30¢
 const SURCHARGE_FIXED = 30; // 30 cents
 
 function calcSurcharge(subtotal: number) {

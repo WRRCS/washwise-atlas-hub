@@ -10,8 +10,9 @@ export type SmsMessageRow = {
   tenant_id: string;
   client_id: string | null;
   direction: "inbound" | "outbound";
-  from_number: string;
-  to_number: string;
+  channel: "sms" | "portal";
+  from_number: string | null;
+  to_number: string | null;
   body: string;
   status: string;
   twilio_sid: string | null;
@@ -24,10 +25,11 @@ export type ConversationRow = {
   key: string; // client_id if matched, otherwise the counterparty phone number
   client_id: string | null;
   client_name: string | null;
-  counterparty_number: string;
+  counterparty_number: string | null;
   last_message: string;
   last_message_at: string;
   last_direction: "inbound" | "outbound";
+  last_channel: "sms" | "portal";
   unread_count: number;
 };
 
@@ -69,7 +71,7 @@ export const listConversations = createServerFn({ method: "GET" })
     const { data: rows, error } = await (context.supabase as any)
       .from("sms_messages")
       .select(
-        "id, client_id, direction, from_number, to_number, body, read_at, created_at, client:clients(first_name, last_name)",
+        "id, client_id, direction, channel, from_number, to_number, body, read_at, created_at, client:clients(first_name, last_name)",
       )
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
@@ -79,7 +81,7 @@ export const listConversations = createServerFn({ method: "GET" })
     const byKey = new Map<string, ConversationRow>();
     for (const r of (rows ?? []) as any[]) {
       const key = r.client_id ?? (r.direction === "inbound" ? r.from_number : r.to_number);
-      const counterparty = r.direction === "inbound" ? r.from_number : r.to_number;
+      const counterparty = (r.direction === "inbound" ? r.from_number : r.to_number) ?? null;
       const existing = byKey.get(key);
       if (!existing) {
         const name = r.client
@@ -93,6 +95,7 @@ export const listConversations = createServerFn({ method: "GET" })
           last_message: r.body,
           last_message_at: r.created_at,
           last_direction: r.direction,
+          last_channel: r.channel ?? "sms",
           unread_count: r.direction === "inbound" && !r.read_at ? 1 : 0,
         });
       } else if (r.direction === "inbound" && !r.read_at) {
@@ -181,6 +184,7 @@ const sendSchema = z
     client_id: z.string().uuid().nullable().optional(),
     to_number: z.string().min(3).nullable().optional(),
     body: z.string().min(1).max(1600),
+    channel: z.enum(["sms", "portal"]).default("sms"),
   })
   .refine((v) => !!v.client_id || !!v.to_number, "client_id or to_number required");
 
@@ -189,11 +193,32 @@ export const sendSms = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => sendSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { tenantId, twilioNumber } = await getTenantAndNumber(context);
+    const clientId: string | null = data.client_id ?? null;
+
+    // Portal-only conversations have no phone number to text — the reply just
+    // gets written back into the shared thread and the client sees it next
+    // time they open their portal messages tab.
+    if (data.channel === "portal") {
+      if (!clientId) throw new Error("A portal reply needs a client.");
+      const { error: insertError } = await (context.supabase as any).from("sms_messages").insert({
+        tenant_id: tenantId,
+        client_id: clientId,
+        direction: "outbound",
+        channel: "portal",
+        from_number: null,
+        to_number: null,
+        body: data.body,
+        status: "sent",
+        sent_by: context.userId,
+      } as never);
+      if (insertError) throw new Error(insertError.message);
+      return { ok: true };
+    }
+
     if (!twilioNumber)
       throw new Error("No business SMS number configured. Set it under Settings → Voice AI.");
 
     let destinationRaw: string | null = data.to_number ?? null;
-    const clientId: string | null = data.client_id ?? null;
     if (clientId) {
       const { data: client, error } = await context.supabase
         .from("clients")
@@ -220,6 +245,7 @@ export const sendSms = createServerFn({ method: "POST" })
       tenant_id: tenantId,
       client_id: clientId,
       direction: "outbound",
+      channel: "sms",
       from_number: from,
       to_number: to,
       body: data.body,

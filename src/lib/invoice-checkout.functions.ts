@@ -121,3 +121,39 @@ export const createInvoiceCheckout = createServerFn({ method: "POST" })
       return { error: getStripeErrorMessage(error) };
     }
   });
+
+function normalizeVenmoHandle(raw: string): string {
+  return raw.trim().replace(/^@/, "");
+}
+
+// Public: Venmo pay-link for the invoice's subtotal (no processing fee added —
+// Venmo's personal pay-link has no fee, unlike the card surcharge above).
+export const getPublicVenmoPayLink = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ invoice_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }): Promise<{ link: string; amount_cents: number } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: inv, error } = await supabaseAdmin
+      .from("invoices")
+      .select("id, tenant_id, number, subtotal_cents, total_cents, status")
+      .eq("id", data.invoice_id)
+      .maybeSingle();
+    if (error) return { error: error.message };
+    if (!inv) return { error: "Invoice not found" };
+    if (inv.status === "paid") return { error: "This invoice is already paid" };
+
+    const { data: integration } = await supabaseAdmin
+      .from("integrations")
+      .select("is_connected, settings")
+      .eq("tenant_id", inv.tenant_id)
+      .eq("provider", "venmo")
+      .maybeSingle();
+    const settings = (integration?.settings as { handle?: string; test_mode?: boolean } | null) ?? {};
+    if (!integration?.is_connected || !settings.handle) return { error: "Venmo is not set up for this business yet." };
+
+    const amount = inv.subtotal_cents ?? inv.total_cents ?? 0;
+    if (amount <= 0) return { error: "Invoice has no amount" };
+    const handle = normalizeVenmoHandle(settings.handle);
+    const note = settings.test_mode ? `[TEST] Invoice ${inv.number ?? ""}`.trim() : `Invoice ${inv.number ?? ""}`.trim();
+    const params = new URLSearchParams({ txn: "pay", amount: (amount / 100).toFixed(2), note });
+    return { link: `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`, amount_cents: amount };
+  });
