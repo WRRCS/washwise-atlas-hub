@@ -11,10 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PortalVerifyRouteImport } from './routes/portal-verify'
+import { Route as PortalLoginRouteImport } from './routes/portal-login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortalIndexRouteImport } from './routes/portal/index'
+import { Route as PortalMessagesRouteImport } from './routes/portal/messages'
+import { Route as PortalBillingRouteImport } from './routes/portal/billing'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
@@ -32,6 +38,7 @@ import { Route as AuthenticatedInventoryRouteImport } from './routes/_authentica
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
+import { Route as AuthenticatedClientRequestsRouteImport } from './routes/_authenticated/client-requests'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedSuperAdminIndexRouteImport } from './routes/_authenticated/super-admin.index'
 import { Route as AuthenticatedSuperAdminAuditRouteImport } from './routes/_authenticated/super-admin.audit'
@@ -69,6 +76,16 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalVerifyRoute = PortalVerifyRouteImport.update({
+  id: '/portal-verify',
+  path: '/portal-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalLoginRoute = PortalLoginRouteImport.update({
+  id: '/portal-login',
+  path: '/portal-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -79,6 +96,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRouteRoute = PortalRouteRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -87,6 +109,21 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalMessagesRoute = PortalMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalBillingRoute = PortalBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => PortalRouteRoute,
 } as any)
 const PayReturnRoute = PayReturnRouteImport.update({
   id: '/pay/return',
@@ -173,6 +210,12 @@ const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientRequestsRoute =
+  AuthenticatedClientRequestsRouteImport.update({
+    id: '/client-requests',
+    path: '/client-requests',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -328,11 +371,15 @@ const ApiPublicTwilioSmsTenantIdIncomingRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/portal': typeof PortalRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/portal-login': typeof PortalLoginRoute
+  '/portal-verify': typeof PortalVerifyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/client-requests': typeof AuthenticatedClientRequestsRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
@@ -350,6 +397,9 @@ export interface FileRoutesByFullPath {
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/portal/billing': typeof PortalBillingRoute
+  '/portal/messages': typeof PortalMessagesRoute
+  '/portal/': typeof PortalIndexRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -380,9 +430,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/portal-login': typeof PortalLoginRoute
+  '/portal-verify': typeof PortalVerifyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/client-requests': typeof AuthenticatedClientRequestsRoute
   '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
@@ -399,6 +452,9 @@ export interface FileRoutesByTo {
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/portal/billing': typeof PortalBillingRoute
+  '/portal/messages': typeof PortalMessagesRoute
+  '/portal': typeof PortalIndexRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -429,11 +485,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/portal': typeof PortalRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/portal-login': typeof PortalLoginRoute
+  '/portal-verify': typeof PortalVerifyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/client-requests': typeof AuthenticatedClientRequestsRoute
   '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
@@ -451,6 +511,9 @@ export interface FileRoutesById {
   '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/portal/billing': typeof PortalBillingRoute
+  '/portal/messages': typeof PortalMessagesRoute
+  '/portal/': typeof PortalIndexRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/_authenticated/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -481,11 +544,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/portal'
     | '/auth'
     | '/forgot-password'
+    | '/portal-login'
+    | '/portal-verify'
     | '/reset-password'
     | '/signup'
     | '/calendar'
+    | '/client-requests'
     | '/clients'
     | '/dashboard'
     | '/employees'
@@ -503,6 +570,9 @@ export interface FileRouteTypes {
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/portal/billing'
+    | '/portal/messages'
+    | '/portal/'
     | '/clients/$clientId'
     | '/inventory/recipes'
     | '/inventory/usage'
@@ -533,9 +603,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/forgot-password'
+    | '/portal-login'
+    | '/portal-verify'
     | '/reset-password'
     | '/signup'
     | '/calendar'
+    | '/client-requests'
     | '/clients'
     | '/dashboard'
     | '/employees'
@@ -552,6 +625,9 @@ export interface FileRouteTypes {
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/portal/billing'
+    | '/portal/messages'
+    | '/portal'
     | '/clients/$clientId'
     | '/inventory/recipes'
     | '/inventory/usage'
@@ -581,11 +657,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/portal'
     | '/auth'
     | '/forgot-password'
+    | '/portal-login'
+    | '/portal-verify'
     | '/reset-password'
     | '/signup'
     | '/_authenticated/calendar'
+    | '/_authenticated/client-requests'
     | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/employees'
@@ -603,6 +683,9 @@ export interface FileRouteTypes {
     | '/_authenticated/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/portal/billing'
+    | '/portal/messages'
+    | '/portal/'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/inventory/recipes'
     | '/_authenticated/inventory/usage'
@@ -633,8 +716,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  PortalRouteRoute: typeof PortalRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  PortalLoginRoute: typeof PortalLoginRoute
+  PortalVerifyRoute: typeof PortalVerifyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
@@ -665,6 +751,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal-verify': {
+      id: '/portal-verify'
+      path: '/portal-verify'
+      fullPath: '/portal-verify'
+      preLoaderRoute: typeof PortalVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal-login': {
+      id: '/portal-login'
+      path: '/portal-login'
+      fullPath: '/portal-login'
+      preLoaderRoute: typeof PortalLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
@@ -677,6 +777,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -692,6 +799,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/portal/': {
+      id: '/portal/'
+      path: '/'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/messages': {
+      id: '/portal/messages'
+      path: '/messages'
+      fullPath: '/portal/messages'
+      preLoaderRoute: typeof PortalMessagesRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/billing': {
+      id: '/portal/billing'
+      path: '/billing'
+      fullPath: '/portal/billing'
+      preLoaderRoute: typeof PortalBillingRouteImport
+      parentRoute: typeof PortalRouteRoute
     }
     '/pay/return': {
       id: '/pay/return'
@@ -810,6 +938,13 @@ declare module '@tanstack/react-router' {
       path: '/clients'
       fullPath: '/clients'
       preLoaderRoute: typeof AuthenticatedClientsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/client-requests': {
+      id: '/_authenticated/client-requests'
+      path: '/client-requests'
+      fullPath: '/client-requests'
+      preLoaderRoute: typeof AuthenticatedClientRequestsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/calendar': {
@@ -1082,6 +1217,7 @@ const AuthenticatedSuperAdminRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedClientRequestsRoute: typeof AuthenticatedClientRequestsRoute
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
@@ -1108,6 +1244,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedClientRequestsRoute: AuthenticatedClientRequestsRoute,
   AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
@@ -1137,11 +1274,30 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface PortalRouteRouteChildren {
+  PortalBillingRoute: typeof PortalBillingRoute
+  PortalMessagesRoute: typeof PortalMessagesRoute
+  PortalIndexRoute: typeof PortalIndexRoute
+}
+
+const PortalRouteRouteChildren: PortalRouteRouteChildren = {
+  PortalBillingRoute: PortalBillingRoute,
+  PortalMessagesRoute: PortalMessagesRoute,
+  PortalIndexRoute: PortalIndexRoute,
+}
+
+const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
+  PortalRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  PortalRouteRoute: PortalRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  PortalLoginRoute: PortalLoginRoute,
+  PortalVerifyRoute: PortalVerifyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,

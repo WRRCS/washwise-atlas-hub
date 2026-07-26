@@ -3,18 +3,20 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, ClipboardCheck,
 } from "lucide-react";
 import { AtlasChat } from "@/components/atlas-chat";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadCount } from "@/lib/sms.functions";
+import { getPendingClientRequestCount } from "@/lib/client-requests.functions";
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/messages", label: "Messages", icon: MessageSquare },
+  { to: "/client-requests", label: "Client requests", icon: ClipboardCheck },
   { to: "/leads", label: "Leads", icon: Inbox },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/services", label: "Services", icon: Sparkles },
@@ -77,6 +79,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     refetchInterval: 20_000,
   });
 
+  const pendingRequestsFn = useServerFn(getPendingClientRequestCount);
+  const { data: pendingRequestCount = 0 } = useQuery({
+    queryKey: ["client-requests-pending-count"],
+    queryFn: () => pendingRequestsFn(),
+    enabled: !!profile && profile.role !== "employee",
+    refetchInterval: 30_000,
+  });
+
   return (
     <div className="min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand">
       <div className="flex min-h-screen">
@@ -107,6 +117,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   {item.to === "/messages" && unreadCount > 0 && (
                     <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                       {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                  {item.to === "/client-requests" && pendingRequestCount > 0 && (
+                    <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                      {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
                     </span>
                   )}
                 </Link>
