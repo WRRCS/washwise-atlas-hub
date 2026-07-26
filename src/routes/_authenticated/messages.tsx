@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +16,7 @@ import {
   type ConversationRow,
   type SmsMessageRow,
 } from "@/lib/sms.functions";
+import { amIOwner } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -33,10 +34,22 @@ type Selection = { client_id: string | null; counterparty_number: string };
 
 function MessagesPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const ownerFn = useServerFn(amIOwner);
+  const ownerQ = useQuery({ queryKey: ["am-i-owner"], queryFn: () => ownerFn() });
+  useEffect(() => {
+    if (ownerQ.data && !ownerQ.data.isOwner) {
+      navigate({ to: "/my-jobs", replace: true });
+    }
+  }, [ownerQ.data, navigate]);
   const listFn = useServerFn(listConversations);
   const threadFn = useServerFn(getThread);
   const markReadFn = useServerFn(markThreadRead);
   const sendFn = useServerFn(sendSms);
+
+  if (ownerQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (ownerQ.data && !ownerQ.data.isOwner) return null;
+
 
   const deepLink = Route.useSearch();
   const [selected, setSelected] = useState<Selection | null>(
