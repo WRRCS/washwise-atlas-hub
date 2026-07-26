@@ -13,10 +13,15 @@ export async function sendEmail(opts: {
   from?: string;
 }): Promise<{ ok: boolean }> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = opts.from || process.env.EMAIL_FROM || "Wash Rinse Repeat Cleaning <no-reply@washrinserepeatcleaning.com>";
+  const from =
+    opts.from ||
+    process.env.EMAIL_FROM ||
+    "Wash Rinse Repeat Cleaning <no-reply@washrinserepeatcleaning.com>";
 
   if (!apiKey) {
-    console.error(`[email] RESEND_API_KEY not configured — skipped "${opts.subject}" to ${opts.to}`);
+    console.error(
+      `[email] RESEND_API_KEY not configured — skipped "${opts.subject}" to ${opts.to}`,
+    );
     return { ok: false };
   }
 

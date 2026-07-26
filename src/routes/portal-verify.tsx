@@ -44,7 +44,12 @@ function PortalVerifyPage() {
         {error ? (
           <>
             <p className="text-sm text-destructive">{error}</p>
-            <a href="/portal-login" className="text-sm text-brand hover:underline mt-3 inline-block">Request a new link</a>
+            <a
+              href="/portal-login"
+              className="text-sm text-brand hover:underline mt-3 inline-block"
+            >
+              Request a new link
+            </a>
           </>
         ) : (
           <p className="text-sm text-muted-foreground">Signing you in…</p>

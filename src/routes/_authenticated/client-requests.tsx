@@ -7,11 +7,18 @@ import { format, formatDistanceToNow } from "date-fns";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Inbox, Check, X } from "lucide-react";
-import { listClientRequests, approveClientRequest, dismissClientRequest, type ClientRequestRow } from "@/lib/client-requests.functions";
+import {
+  listClientRequests,
+  approveClientRequest,
+  dismissClientRequest,
+  type ClientRequestRow,
+} from "@/lib/client-requests.functions";
 
 export const Route = createFileRoute("/_authenticated/client-requests")({
   component: ClientRequestsPage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => (
+    <div className="p-8 text-sm text-destructive">{error.message}</div>
+  ),
 });
 
 function ClientRequestsPage() {
@@ -52,7 +59,10 @@ function ClientRequestsPage() {
 
   return (
     <>
-      <PageHeader title="Client requests" subtitle="Special requests clients added from their portal" />
+      <PageHeader
+        title="Client requests"
+        subtitle="Special requests clients added from their portal"
+      />
       <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 md:px-8 py-6 space-y-4">
         <div className="flex gap-2">
           {(["pending", "all"] as const).map((f) => (
@@ -60,7 +70,9 @@ function ClientRequestsPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={`text-xs px-3 py-1.5 rounded-lg border capitalize transition-colors ${
-                filter === f ? "border-brand bg-brand/5 text-brand" : "border-border hover:bg-clay-100"
+                filter === f
+                  ? "border-brand bg-brand/5 text-brand"
+                  : "border-border hover:bg-clay-100"
               }`}
             >
               {f}
@@ -84,12 +96,19 @@ function ClientRequestsPage() {
                     <p className="text-sm font-medium">{r.client_name}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
-                      {r.job_scheduled_start && ` · for the ${format(new Date(r.job_scheduled_start), "MMM d")} appointment`}
+                      {r.job_scheduled_start &&
+                        ` · for the ${format(new Date(r.job_scheduled_start), "MMM d")} appointment`}
                     </p>
                   </div>
-                  <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
-                    r.status === "pending" ? "bg-warning/15 text-warning" : r.status === "approved" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
-                  }`}>
+                  <span
+                    className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                      r.status === "pending"
+                        ? "bg-warning/15 text-warning"
+                        : r.status === "approved"
+                          ? "bg-success/15 text-success"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
                     {r.status}
                   </span>
                 </div>

@@ -9,7 +9,10 @@ export const Route = createFileRoute("/portal/billing")({
 });
 
 function money(cents: number, currency = "usd") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(cents / 100);
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -25,7 +28,8 @@ function PortalBillingPage() {
   const listFn = useServerFn(listMyInvoices);
   const { data: invoices = [], isLoading } = useQuery<PortalInvoice[]>({
     queryKey: ["portal-invoices"],
-    queryFn: () => listFn({ data: { session_token: localStorage.getItem("portal_session") ?? "" } }),
+    queryFn: () =>
+      listFn({ data: { session_token: localStorage.getItem("portal_session") ?? "" } }),
   });
 
   const payable = (inv: PortalInvoice) => inv.status === "sent" || inv.status === "overdue";
@@ -38,7 +42,10 @@ function PortalBillingPage() {
         <p className="text-sm text-muted-foreground">No invoices yet.</p>
       ) : (
         invoices.map((inv) => (
-          <div key={inv.id} className="bg-card rounded-xl ring-1 ring-black/5 p-4 flex items-center justify-between gap-3">
+          <div
+            key={inv.id}
+            className="bg-card rounded-xl ring-1 ring-black/5 p-4 flex items-center justify-between gap-3"
+          >
             <div>
               <p className="font-medium text-sm">Invoice {inv.number}</p>
               <p className="text-xs text-muted-foreground">
@@ -48,7 +55,9 @@ function PortalBillingPage() {
             </div>
             <div className="text-right shrink-0">
               <p className="font-medium tabular-nums">{money(inv.total_cents, inv.currency)}</p>
-              <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${STATUS_STYLE[inv.status] ?? "bg-muted text-muted-foreground"}`}>
+              <span
+                className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${STATUS_STYLE[inv.status] ?? "bg-muted text-muted-foreground"}`}
+              >
                 {inv.status}
               </span>
             </div>

@@ -53,14 +53,21 @@ function PortalMessagesPage() {
           </p>
         )}
         {messages.map((m) => (
-          <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-start" : "justify-end"}`}>
+          <div
+            key={m.id}
+            className={`flex ${m.direction === "outbound" ? "justify-start" : "justify-end"}`}
+          >
             <div
               className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${
-                m.direction === "outbound" ? "bg-clay-100 text-foreground rounded-bl-sm" : "bg-brand text-brand-foreground rounded-br-sm"
+                m.direction === "outbound"
+                  ? "bg-clay-100 text-foreground rounded-bl-sm"
+                  : "bg-brand text-brand-foreground rounded-br-sm"
               }`}
             >
               <p className="whitespace-pre-wrap break-words">{m.body}</p>
-              <p className={`text-[10px] mt-1 ${m.direction === "outbound" ? "text-muted-foreground" : "text-brand-foreground/70"}`}>
+              <p
+                className={`text-[10px] mt-1 ${m.direction === "outbound" ? "text-muted-foreground" : "text-brand-foreground/70"}`}
+              >
                 {format(new Date(m.created_at), "MMM d, p")}
               </p>
             </div>
@@ -74,7 +81,12 @@ function PortalMessagesPage() {
           placeholder="Type a message to our team…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
         />
         <button
           onClick={onSend}

@@ -18,17 +18,22 @@ function calcSurcharge(subtotal: number) {
 export const listInvoices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      status: z.string().optional(),
-      client_id: z.string().uuid().optional(),
-      from: z.string().optional(),
-      to: z.string().optional(),
-    }).partial().parse(input ?? {}),
+    z
+      .object({
+        status: z.string().optional(),
+        client_id: z.string().uuid().optional(),
+        from: z.string().optional(),
+        to: z.string().optional(),
+      })
+      .partial()
+      .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
     let q = context.supabase
       .from("invoices")
-      .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, job_id, client:clients(id, first_name, last_name)")
+      .select(
+        "id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, job_id, client:clients(id, first_name, last_name)",
+      )
       .order("issue_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(500);
@@ -50,12 +55,16 @@ export const getInvoice = createServerFn({ method: "POST" })
     const [{ data: inv, error }, { data: items, error: ie }] = await Promise.all([
       context.supabase
         .from("invoices")
-        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, email, phone, billing_address, service_address)")
+        .select(
+          "id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, email, phone, billing_address, service_address)",
+        )
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
         .from("invoice_line_items")
-        .select("id, description, quantity, unit_price_cents, line_total_cents, service_date, sort_order")
+        .select(
+          "id, description, quantity, unit_price_cents, line_total_cents, service_date, sort_order",
+        )
         .eq("invoice_id", data.id)
         .order("sort_order")
         .order("service_date"),
@@ -104,8 +113,11 @@ export const sendInvoice = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: inv, error: ge } = await context.supabase
       .from("invoices")
-      .select("id, tenant_id, client_id, number, total_cents, client:clients(first_name, last_name)")
-      .eq("id", data.id).maybeSingle();
+      .select(
+        "id, tenant_id, client_id, number, total_cents, client:clients(first_name, last_name)",
+      )
+      .eq("id", data.id)
+      .maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!inv) throw new Error("Invoice not found");
 
@@ -121,19 +133,25 @@ export const sendInvoice = createServerFn({ method: "POST" })
       const { data: venmoRow } = await context.supabase
         .from("integrations")
         .select("is_connected, settings")
-        .eq("tenant_id", inv.tenant_id).eq("provider", "venmo").maybeSingle();
+        .eq("tenant_id", inv.tenant_id)
+        .eq("provider", "venmo")
+        .maybeSingle();
       const vs = (venmoRow?.settings as { handle?: string; test_mode?: boolean } | null) ?? {};
       if (venmoRow?.is_connected && vs.handle) {
         const handle = vs.handle.replace(/^@/, "");
         const amount = ((inv.total_cents ?? 0) / 100).toFixed(2);
-        const note = vs.test_mode ? `[TEST] Invoice ${inv.number ?? ""}` : `Invoice ${inv.number ?? ""}`;
+        const note = vs.test_mode
+          ? `[TEST] Invoice ${inv.number ?? ""}`
+          : `Invoice ${inv.number ?? ""}`;
         const params = new URLSearchParams({ txn: "pay", amount, note: note.trim() });
         venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
       }
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
 
     // Render email via template + enqueue
-    const c = (inv.client as { first_name?: string; last_name?: string } | null);
+    const c = inv.client as { first_name?: string; last_name?: string } | null;
     const rendered = await renderEmailForClientContext({
       supabase: context.supabase,
       tenantId: inv.tenant_id,
@@ -158,9 +176,6 @@ export const sendInvoice = createServerFn({ method: "POST" })
         scheduled_for: new Date().toISOString(),
       });
     }
-
-
-
 
     return { ok: true };
   });
@@ -196,14 +211,19 @@ export const cancelInvoice = createServerFn({ method: "POST" })
 export const createMonthlyBundle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      client_id: z.string().uuid(),
-      month: z.string().regex(/^\d{4}-\d{2}$/), // YYYY-MM
-    }).parse(input),
+    z
+      .object({
+        client_id: z.string().uuid(),
+        month: z.string().regex(/^\d{4}-\d{2}$/), // YYYY-MM
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: prof } = await context.supabase
-      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", context.userId)
+      .maybeSingle();
     if (!prof) throw new Error("No profile");
 
     const [year, month] = data.month.split("-").map(Number);
@@ -225,20 +245,21 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
     // Filter out those already invoiced
     const jobIds = jobs.map((j) => j.id);
     const { data: existing } = await context.supabase
-      .from("invoices").select("job_id").in("job_id", jobIds);
+      .from("invoices")
+      .select("job_id")
+      .in("job_id", jobIds);
     const invoiced = new Set((existing ?? []).map((e) => e.job_id));
     const eligible = jobs.filter((j) => !invoiced.has(j.id));
-    if (eligible.length === 0) throw new Error("All completed jobs in that month are already invoiced.");
+    if (eligible.length === 0)
+      throw new Error("All completed jobs in that month are already invoiced.");
 
     // Delete auto-invoices for those jobs so we can bundle them (they were draft only)
     // Actually: keep them intact but skip. To bundle, we cancel prior drafts for these jobs.
-    const draftIds = (existing ?? []).filter((e) => jobIds.includes(e.job_id as string)).map((e) => e.job_id!);
+    const draftIds = (existing ?? [])
+      .filter((e) => jobIds.includes(e.job_id as string))
+      .map((e) => e.job_id!);
     if (draftIds.length) {
-      await context.supabase
-        .from("invoices")
-        .delete()
-        .in("job_id", draftIds)
-        .eq("status", "draft");
+      await context.supabase.from("invoices").delete().in("job_id", draftIds).eq("status", "draft");
     }
     const toBundle = jobs; // include all jobs in the month once drafts cleared
 
@@ -278,12 +299,18 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
         cleanings_count: toBundle.length,
         bundle_month: `${data.month}-01`,
       })
-      .select("id").single();
+      .select("id")
+      .single();
     if (ie) throw new Error(ie.message);
 
     const items = toBundle.map((j, i) => {
       const d = new Date(j.scheduled_start);
-      const label = d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+      const label = d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      });
       const svc = (j.service_type as { name?: string } | null)?.name ?? "Cleaning";
       return {
         invoice_id: invoice.id,
@@ -306,10 +333,12 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
 export const previewMonthlyBundle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({
-      client_id: z.string().uuid(),
-      month: z.string().regex(/^\d{4}-\d{2}$/),
-    }).parse(input),
+    z
+      .object({
+        client_id: z.string().uuid(),
+        month: z.string().regex(/^\d{4}-\d{2}$/),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const [year, month] = data.month.split("-").map(Number);

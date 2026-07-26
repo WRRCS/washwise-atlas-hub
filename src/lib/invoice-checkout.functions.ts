@@ -3,19 +3,21 @@ import { z } from "zod";
 import { type StripeEnv, createStripeClient, getStripeErrorMessage } from "@/lib/stripe.server";
 
 type CheckoutResult = { clientSecret: string } | { error: string };
-type InvoiceSummary = {
-  id: string;
-  number: string;
-  status: string;
-  total_cents: number;
-  subtotal_cents: number;
-  surcharge_cents: number;
-  card_surcharge: boolean;
-  currency: string;
-  due_date: string | null;
-  client_name: string;
-  client_email: string | null;
-} | { error: string };
+type InvoiceSummary =
+  | {
+      id: string;
+      number: string;
+      status: string;
+      total_cents: number;
+      subtotal_cents: number;
+      surcharge_cents: number;
+      card_surcharge: boolean;
+      currency: string;
+      due_date: string | null;
+      client_name: string;
+      client_email: string | null;
+    }
+  | { error: string };
 
 // Public: fetch minimal invoice info by id for the pay page
 export const getPublicInvoice = createServerFn({ method: "POST" })
@@ -24,12 +26,18 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invoices")
-      .select("id, number, status, total_cents, subtotal_cents, surcharge_cents, card_surcharge, currency, due_date, client:clients(first_name, last_name, email)")
+      .select(
+        "id, number, status, total_cents, subtotal_cents, surcharge_cents, card_surcharge, currency, due_date, client:clients(first_name, last_name, email)",
+      )
       .eq("id", data.id)
       .maybeSingle();
     if (error) return { error: error.message };
     if (!inv) return { error: "Invoice not found" };
-    const client = inv.client as { first_name: string | null; last_name: string | null; email: string | null } | null;
+    const client = inv.client as {
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+    } | null;
     return {
       id: inv.id,
       number: inv.number,
@@ -50,19 +58,24 @@ const ALLOWED_RETURN_HOSTS = ["lovable.app", "lovableproject.com", "localhost"];
 function isAllowedReturnUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
-    if (u.protocol !== "https:" && !(u.protocol === "http:" && u.hostname === "localhost")) return false;
+    if (u.protocol !== "https:" && !(u.protocol === "http:" && u.hostname === "localhost"))
+      return false;
     const host = u.hostname.toLowerCase();
     return ALLOWED_RETURN_HOSTS.some((h) => host === h || host.endsWith("." + h));
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export const createInvoiceCheckout = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
-    z.object({
-      invoice_id: z.string().uuid(),
-      return_url: z.string().url(),
-      environment: z.enum(["sandbox", "live"]),
-    }).parse(input),
+    z
+      .object({
+        invoice_id: z.string().uuid(),
+        return_url: z.string().url(),
+        environment: z.enum(["sandbox", "live"]),
+      })
+      .parse(input),
   )
   .handler(async ({ data }): Promise<CheckoutResult> => {
     try {
@@ -70,32 +83,42 @@ export const createInvoiceCheckout = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: inv, error } = await supabaseAdmin
         .from("invoices")
-        .select("id, tenant_id, number, status, total_cents, currency, client:clients(first_name, last_name, email)")
+        .select(
+          "id, tenant_id, number, status, total_cents, currency, client:clients(first_name, last_name, email)",
+        )
         .eq("id", data.invoice_id)
         .maybeSingle();
       if (error) return { error: error.message };
       if (!inv) return { error: "Invoice not found" };
       if (inv.status === "paid") return { error: "This invoice is already paid" };
-      if (inv.status === "cancelled" || inv.status === "void") return { error: "This invoice is no longer payable" };
+      if (inv.status === "cancelled" || inv.status === "void")
+        return { error: "This invoice is no longer payable" };
       const total = inv.total_cents ?? 0;
       if (total < 50) return { error: "Invoice amount is too small to process" };
 
-      const client = inv.client as { first_name: string | null; last_name: string | null; email: string | null } | null;
-      const customerName = [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "Customer";
+      const client = inv.client as {
+        first_name: string | null;
+        last_name: string | null;
+        email: string | null;
+      } | null;
+      const customerName =
+        [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "Customer";
 
       const stripe = createStripeClient(data.environment as StripeEnv);
       const session = await stripe.checkout.sessions.create({
-        line_items: [{
-          price_data: {
-            currency: (inv.currency ?? "usd").toLowerCase(),
-            product_data: {
-              name: `Invoice ${inv.number}`,
-              description: `Wash Rinse Repeat Cleaning — ${customerName}`,
+        line_items: [
+          {
+            price_data: {
+              currency: (inv.currency ?? "usd").toLowerCase(),
+              product_data: {
+                name: `Invoice ${inv.number}`,
+                description: `Wash Rinse Repeat Cleaning — ${customerName}`,
+              },
+              unit_amount: total,
             },
-            unit_amount: total,
+            quantity: 1,
           },
-          quantity: 1,
-        }],
+        ],
         mode: "payment",
         ui_mode: "embedded_page",
         return_url: `${data.return_url}?session_id={CHECKOUT_SESSION_ID}`,
@@ -130,30 +153,39 @@ function normalizeVenmoHandle(raw: string): string {
 // Venmo's personal pay-link has no fee, unlike the card surcharge above).
 export const getPublicVenmoPayLink = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ invoice_id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }): Promise<{ link: string; amount_cents: number } | { error: string }> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: inv, error } = await supabaseAdmin
-      .from("invoices")
-      .select("id, tenant_id, number, subtotal_cents, total_cents, status")
-      .eq("id", data.invoice_id)
-      .maybeSingle();
-    if (error) return { error: error.message };
-    if (!inv) return { error: "Invoice not found" };
-    if (inv.status === "paid") return { error: "This invoice is already paid" };
+  .handler(
+    async ({ data }): Promise<{ link: string; amount_cents: number } | { error: string }> => {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: inv, error } = await supabaseAdmin
+        .from("invoices")
+        .select("id, tenant_id, number, subtotal_cents, total_cents, status")
+        .eq("id", data.invoice_id)
+        .maybeSingle();
+      if (error) return { error: error.message };
+      if (!inv) return { error: "Invoice not found" };
+      if (inv.status === "paid") return { error: "This invoice is already paid" };
 
-    const { data: integration } = await supabaseAdmin
-      .from("integrations")
-      .select("is_connected, settings")
-      .eq("tenant_id", inv.tenant_id)
-      .eq("provider", "venmo")
-      .maybeSingle();
-    const settings = (integration?.settings as { handle?: string; test_mode?: boolean } | null) ?? {};
-    if (!integration?.is_connected || !settings.handle) return { error: "Venmo is not set up for this business yet." };
+      const { data: integration } = await supabaseAdmin
+        .from("integrations")
+        .select("is_connected, settings")
+        .eq("tenant_id", inv.tenant_id)
+        .eq("provider", "venmo")
+        .maybeSingle();
+      const settings =
+        (integration?.settings as { handle?: string; test_mode?: boolean } | null) ?? {};
+      if (!integration?.is_connected || !settings.handle)
+        return { error: "Venmo is not set up for this business yet." };
 
-    const amount = inv.subtotal_cents ?? inv.total_cents ?? 0;
-    if (amount <= 0) return { error: "Invoice has no amount" };
-    const handle = normalizeVenmoHandle(settings.handle);
-    const note = settings.test_mode ? `[TEST] Invoice ${inv.number ?? ""}`.trim() : `Invoice ${inv.number ?? ""}`.trim();
-    const params = new URLSearchParams({ txn: "pay", amount: (amount / 100).toFixed(2), note });
-    return { link: `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`, amount_cents: amount };
-  });
+      const amount = inv.subtotal_cents ?? inv.total_cents ?? 0;
+      if (amount <= 0) return { error: "Invoice has no amount" };
+      const handle = normalizeVenmoHandle(settings.handle);
+      const note = settings.test_mode
+        ? `[TEST] Invoice ${inv.number ?? ""}`.trim()
+        : `Invoice ${inv.number ?? ""}`.trim();
+      const params = new URLSearchParams({ txn: "pay", amount: (amount / 100).toFixed(2), note });
+      return {
+        link: `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`,
+        amount_cents: amount,
+      };
+    },
+  );

@@ -4,7 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { format, isPast } from "date-fns";
-import { listMyAppointments, submitClientRequest, type PortalAppointment } from "@/lib/portal.functions";
+import {
+  listMyAppointments,
+  submitClientRequest,
+  type PortalAppointment,
+} from "@/lib/portal.functions";
 import { MapPin, Plus, Users } from "lucide-react";
 
 export const Route = createFileRoute("/portal/")({
@@ -28,14 +32,20 @@ function PortalAppointmentsPage() {
     queryFn: () => listFn({ data: { session_token: getSessionToken() } }),
   });
 
-  const upcoming = appointments.filter((a) => !isPast(new Date(a.scheduled_end)) && a.status !== "canceled");
-  const past = appointments.filter((a) => isPast(new Date(a.scheduled_end)) || a.status === "canceled");
+  const upcoming = appointments.filter(
+    (a) => !isPast(new Date(a.scheduled_end)) && a.status !== "canceled",
+  );
+  const past = appointments.filter(
+    (a) => isPast(new Date(a.scheduled_end)) || a.status === "canceled",
+  );
 
   const onSubmitRequest = async () => {
     if (!requestFor || !requestBody.trim()) return;
     setBusy(true);
     try {
-      await requestFn({ data: { session_token: getSessionToken(), job_id: requestFor.id, body: requestBody.trim() } });
+      await requestFn({
+        data: { session_token: getSessionToken(), job_id: requestFor.id, body: requestBody.trim() },
+      });
       toast.success("Sent! Your cleaning team will follow up.");
       setRequestFor(null);
       setRequestBody("");
@@ -53,7 +63,9 @@ function PortalAppointmentsPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-medium text-sm">{appt.service_name ?? "Cleaning"}</p>
-            <p className="text-sm text-muted-foreground">{format(new Date(appt.scheduled_start), "EEEE, MMM d · h:mm a")}</p>
+            <p className="text-sm text-muted-foreground">
+              {format(new Date(appt.scheduled_start), "EEEE, MMM d · h:mm a")}
+            </p>
           </div>
           <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-clay-100 text-muted-foreground shrink-0">
             {appt.status.replace("_", " ")}
@@ -90,7 +102,9 @@ function PortalAppointmentsPage() {
       ) : (
         <>
           <section className="space-y-3">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Upcoming</h2>
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              Upcoming
+            </h2>
             {upcoming.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nothing scheduled right now.</p>
             ) : (
@@ -99,19 +113,31 @@ function PortalAppointmentsPage() {
           </section>
           {past.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Past</h2>
-              {past.slice(0, 10).map((a) => <AppointmentCard key={a.id} appt={a} />)}
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Past
+              </h2>
+              {past.slice(0, 10).map((a) => (
+                <AppointmentCard key={a.id} appt={a} />
+              ))}
             </section>
           )}
         </>
       )}
 
       {requestFor && (
-        <div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-20" onClick={() => setRequestFor(null)}>
-          <div className="bg-card rounded-xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-20"
+          onClick={() => setRequestFor(null)}
+        >
+          <div
+            className="bg-card rounded-xl p-5 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="font-medium mb-1">Add a request</h3>
             <p className="text-xs text-muted-foreground mb-3">
-              For your {requestFor.service_name ?? "cleaning"} on {format(new Date(requestFor.scheduled_start), "MMM d")}. This goes to our team for review before your visit.
+              For your {requestFor.service_name ?? "cleaning"} on{" "}
+              {format(new Date(requestFor.scheduled_start), "MMM d")}. This goes to our team for
+              review before your visit.
             </p>
             <textarea
               autoFocus
@@ -121,7 +147,12 @@ function PortalAppointmentsPage() {
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[90px]"
             />
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setRequestFor(null)} className="text-sm px-3 py-2 text-muted-foreground">Cancel</button>
+              <button
+                onClick={() => setRequestFor(null)}
+                className="text-sm px-3 py-2 text-muted-foreground"
+              >
+                Cancel
+              </button>
               <button
                 onClick={onSubmitRequest}
                 disabled={busy || !requestBody.trim()}

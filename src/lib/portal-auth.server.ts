@@ -4,7 +4,9 @@
 // this runs fine on the Cloudflare Workers target).
 
 function toHex(buf: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export async function sha256Hex(input: string): Promise<string> {
@@ -24,7 +26,9 @@ export const PORTAL_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days signed
 
 export type PortalSession = { tenantId: string; clientId: string };
 
-export async function requirePortalSession(sessionToken: string | null | undefined): Promise<PortalSession> {
+export async function requirePortalSession(
+  sessionToken: string | null | undefined,
+): Promise<PortalSession> {
   if (!sessionToken) throw new Error("Not signed in. Please request a new login link.");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const hash = await sha256Hex(sessionToken);

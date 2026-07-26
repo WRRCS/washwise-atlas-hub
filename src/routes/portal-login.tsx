@@ -38,11 +38,14 @@ function PortalLoginPage() {
   return (
     <div className="min-h-screen bg-clay-50 grid place-items-center px-4">
       <div className="w-full max-w-sm bg-card rounded-xl ring-1 ring-black/5 p-6">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground text-center">Wash Rinse Repeat Cleaning</p>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground text-center">
+          Wash Rinse Repeat Cleaning
+        </p>
         <h1 className="text-xl font-medium mt-2 text-center">Client portal</h1>
         {sent ? (
           <p className="text-sm text-muted-foreground mt-6 text-center">
-            If that email is on file, a sign-in link is on its way — check your inbox (and spam folder). The link is valid for 30 minutes.
+            If that email is on file, a sign-in link is on its way — check your inbox (and spam
+            folder). The link is valid for 30 minutes.
           </p>
         ) : (
           <form onSubmit={onSubmit} className="mt-6 space-y-3">

@@ -1,7 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { sha256Hex, randomToken, requirePortalSession, PORTAL_LOGIN_TOKEN_TTL_MS, PORTAL_SESSION_TTL_MS } from "@/lib/portal-auth.server";
+import {
+  sha256Hex,
+  randomToken,
+  requirePortalSession,
+  PORTAL_LOGIN_TOKEN_TTL_MS,
+  PORTAL_SESSION_TTL_MS,
+} from "@/lib/portal-auth.server";
 import { sendEmail } from "@/lib/email.server";
 import { sendViaTwilio } from "@/lib/sms.server";
 import { normalizePhoneE164 } from "@/lib/phone";
@@ -67,7 +73,10 @@ export const verifyPortalLink = createServerFn({ method: "POST" })
     if (!row || row.used_at || new Date(row.expires_at as string) < new Date()) {
       throw new Error("This login link is invalid or has expired. Please request a new one.");
     }
-    await (supabaseAdmin as any).from("client_portal_tokens").update({ used_at: new Date().toISOString() } as never).eq("id", row.id);
+    await (supabaseAdmin as any)
+      .from("client_portal_tokens")
+      .update({ used_at: new Date().toISOString() } as never)
+      .eq("id", row.id);
 
     const sessionToken = randomToken();
     const sessionHash = await sha256Hex(sessionToken);
@@ -78,7 +87,11 @@ export const verifyPortalLink = createServerFn({ method: "POST" })
       expires_at: new Date(Date.now() + PORTAL_SESSION_TTL_MS).toISOString(),
     } as never);
 
-    const { data: client } = await supabaseAdmin.from("clients").select("first_name, last_name").eq("id", row.client_id as string).maybeSingle();
+    const { data: client } = await supabaseAdmin
+      .from("clients")
+      .select("first_name, last_name")
+      .eq("id", row.client_id as string)
+      .maybeSingle();
     return {
       session_token: sessionToken,
       client_name: [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "there",
@@ -104,7 +117,9 @@ export const listMyAppointments = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: jobs, error } = await supabaseAdmin
       .from("jobs")
-      .select("id, status, scheduled_start, scheduled_end, client:clients(service_address), service:service_types(name)")
+      .select(
+        "id, status, scheduled_start, scheduled_end, client:clients(service_address), service:service_types(name)",
+      )
       .eq("client_id", clientId)
       .order("scheduled_start", { ascending: true });
     if (error) throw new Error(error.message);
@@ -140,11 +155,13 @@ export const listMyAppointments = createServerFn({ method: "POST" })
 
 export const submitClientRequest = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
-    z.object({
-      session_token: z.string(),
-      job_id: z.string().uuid().nullable().optional(),
-      body: z.string().trim().min(1).max(1000),
-    }).parse(input),
+    z
+      .object({
+        session_token: z.string(),
+        job_id: z.string().uuid().nullable().optional(),
+        body: z.string().trim().min(1).max(1000),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     const { tenantId, clientId } = await requirePortalSession(data.session_token);
@@ -162,10 +179,18 @@ export const submitClientRequest = createServerFn({ method: "POST" })
 
 // ============= Messaging (shares the staff SMS inbox, channel="portal") =============
 
-async function notifyManagersOfPortalMessage(opts: { tenantId: string; clientName: string; body: string }) {
+async function notifyManagersOfPortalMessage(opts: {
+  tenantId: string;
+  clientName: string;
+  body: string;
+}) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const { data: tenant } = await supabaseAdmin.from("tenants").select("business_email, name").eq("id", opts.tenantId).maybeSingle();
+  const { data: tenant } = await supabaseAdmin
+    .from("tenants")
+    .select("business_email, name")
+    .eq("id", opts.tenantId)
+    .maybeSingle();
   const toEmail = (tenant as any)?.business_email || "info@washrinserepeatcleaning.com";
   await sendEmail({
     to: toEmail,
@@ -174,7 +199,11 @@ async function notifyManagersOfPortalMessage(opts: { tenantId: string; clientNam
     text: `${opts.clientName} sent a portal message: ${opts.body}`,
   });
 
-  const { data: cfg } = await supabaseAdmin.from("voice_agent_config").select("twilio_phone_number").eq("tenant_id", opts.tenantId).maybeSingle();
+  const { data: cfg } = await supabaseAdmin
+    .from("voice_agent_config")
+    .select("twilio_phone_number")
+    .eq("tenant_id", opts.tenantId)
+    .maybeSingle();
   const fromNumber = normalizePhoneE164((cfg as any)?.twilio_phone_number ?? null);
   if (!fromNumber) return; // no tenant SMS number configured — email above still went out
 
@@ -186,7 +215,10 @@ async function notifyManagersOfPortalMessage(opts: { tenantId: string; clientNam
   const ownerIds = (ownerRoles ?? []).map((r: any) => r.user_id);
   const numbers = new Set<string>();
   if (ownerIds.length) {
-    const { data: owners } = await supabaseAdmin.from("profiles").select("phone").in("id", ownerIds);
+    const { data: owners } = await supabaseAdmin
+      .from("profiles")
+      .select("phone")
+      .in("id", ownerIds);
     for (const o of (owners ?? []) as any[]) {
       const n = normalizePhoneE164(o.phone ?? null);
       if (n) numbers.add(n);
@@ -195,7 +227,11 @@ async function notifyManagersOfPortalMessage(opts: { tenantId: string; clientNam
   const preview = opts.body.length > 100 ? `${opts.body.slice(0, 100)}…` : opts.body;
   for (const to of numbers) {
     try {
-      await sendViaTwilio({ to, from: fromNumber, body: `New portal message from ${opts.clientName}: ${preview}` });
+      await sendViaTwilio({
+        to,
+        from: fromNumber,
+        body: `New portal message from ${opts.clientName}: ${preview}`,
+      });
     } catch (err) {
       console.error("[portal] failed to text manager", to, err);
     }
@@ -203,12 +239,19 @@ async function notifyManagersOfPortalMessage(opts: { tenantId: string; clientNam
 }
 
 export const sendPortalMessage = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ session_token: z.string(), body: z.string().trim().min(1).max(1600) }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ session_token: z.string(), body: z.string().trim().min(1).max(1600) }).parse(input),
+  )
   .handler(async ({ data }) => {
     const { tenantId, clientId } = await requirePortalSession(data.session_token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: client } = await supabaseAdmin.from("clients").select("first_name, last_name").eq("id", clientId).maybeSingle();
-    const clientName = [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "A client";
+    const { data: client } = await supabaseAdmin
+      .from("clients")
+      .select("first_name, last_name")
+      .eq("id", clientId)
+      .maybeSingle();
+    const clientName =
+      [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "A client";
 
     const { error } = await (supabaseAdmin as any).from("sms_messages").insert({
       tenant_id: tenantId,
@@ -279,6 +322,9 @@ export const logout = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const hash = await sha256Hex(data.session_token);
-    await (supabaseAdmin as any).from("client_portal_sessions").delete().eq("session_token_hash", hash);
+    await (supabaseAdmin as any)
+      .from("client_portal_sessions")
+      .delete()
+      .eq("session_token_hash", hash);
     return { ok: true };
   });
