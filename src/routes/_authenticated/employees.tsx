@@ -10,9 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
+  listEmployeePermissions, setEmployeePermissions, amIOwner,
 } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/employees")({
