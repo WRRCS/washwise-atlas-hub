@@ -158,7 +158,9 @@ function JobDetail() {
             {job.assignees && job.assignees.length ? (
               <ul className="space-y-1">{job.assignees.map((a: any) => <li key={a.id} className="text-sm">{a.full_name ?? "—"}</li>)}</ul>
             ) : <p className="text-sm text-muted-foreground">Unassigned</p>}
-            <p className="text-xs text-muted-foreground tabular-nums">Price · {fmtCents(job.price_cents)}</p>
+            {canSeePricing && (
+              <p className="text-xs text-muted-foreground tabular-nums">Price · {fmtCents(job.price_cents)}</p>
+            )}
           </div>
 
           {job.notes && (
