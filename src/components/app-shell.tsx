@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2,
 } from "lucide-react";
 import { AtlasChat } from "@/components/atlas-chat";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +20,7 @@ const OWNER_NAV = [
   { to: "/services", label: "Services", icon: Sparkles },
   { to: "/sops", label: "SOPs", icon: BookOpen },
   { to: "/employees", label: "Employees", icon: UserCog },
+  { to: "/team", label: "Team", icon: Users2 },
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/invoices", label: "Invoices", icon: Receipt },
   { to: "/reports", label: "Reports", icon: BarChart3 },
@@ -31,11 +32,13 @@ const OWNER_NAV = [
   { to: "/settings/billing", label: "Billing & plan", icon: CreditCard },
 ] as const;
 
+// Employees intentionally do NOT see /messages (client SMS inbox) or
+// /clients (full CRM). "Team" replaces those with an internal-only roster
+// and teammate messaging.
 const EMPLOYEE_NAV = [
   { to: "/my-jobs", label: "My jobs", icon: ClipboardList },
   { to: "/calendar", label: "Schedule", icon: Calendar },
-  { to: "/messages", label: "Messages", icon: MessageSquare },
-  { to: "/clients", label: "Clients", icon: Users },
+  { to: "/team", label: "Team", icon: Users2 },
 ] as const;
 
 const SUPER_ADMIN_NAV_ITEM = { to: "/super-admin", label: "Platform console", icon: Shield } as const;
