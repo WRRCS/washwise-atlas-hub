@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
-import { Check, Send, Trash2, X } from "lucide-react";
+import { Check, MessageSquare, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
@@ -59,6 +59,19 @@ function JobDetail() {
         subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={
           <div className="flex gap-2">
+            {job.client?.phone && (
+              <Link
+                to="/messages"
+                search={{
+                  clientId: job.client.id,
+                  phone: job.client.phone,
+                  name: [job.client.first_name, job.client.last_name].filter(Boolean).join(" ") || undefined,
+                }}
+                className="inline-flex items-center gap-1.5 text-sm border border-input rounded-lg px-3 py-2 hover:bg-clay-100"
+              >
+                <MessageSquare className="size-4" /> Message client
+              </Link>
+            )}
             {job.status === "scheduled" && (
               <button onClick={() => onStatus("in_progress")} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90">Start job</button>
             )}

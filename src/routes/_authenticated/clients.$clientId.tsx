@@ -18,7 +18,7 @@ import {
 } from "@/lib/entities.functions";
 import { listQuoteTemplates, listEmailTemplates, getClientPreference, setClientQuotePreference, sendClientEmail, renderTemplate, COMPANY_NAME } from "@/lib/templates.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Mail, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare, Trash2, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
   component: ClientDetail,
@@ -65,6 +65,15 @@ function ClientDetail() {
             <Link to="/clients" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground px-3 py-2">
               <ArrowLeft className="size-4" /> Back
             </Link>
+            {client.phone && (
+              <Link
+                to="/messages"
+                search={{ clientId: client.id, phone: client.phone, name }}
+                className="inline-flex items-center gap-1.5 text-sm border border-input rounded-lg px-3 py-2 hover:bg-clay-100"
+              >
+                <MessageSquare className="size-4" /> Message client
+              </Link>
+            )}
             <Button variant="outline" onClick={onDelete} className="text-destructive hover:text-destructive">
               <Trash2 className="size-4 mr-1.5" /> Delete
             </Button>
