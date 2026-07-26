@@ -69,7 +69,7 @@ function JobDetail() {
         subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={
           <div className="flex gap-2">
-            {job.client?.phone && (
+            {canSeePricing && job.client?.phone && (
               <Link
                 to="/messages"
                 search={{
