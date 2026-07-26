@@ -5,6 +5,7 @@ import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
 import { listJobGps } from "@/lib/time.functions";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
+import { myPermissions } from "@/lib/team.functions";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
@@ -12,6 +13,7 @@ import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { Check, MessageSquare, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
   component: JobDetail,
@@ -27,6 +29,13 @@ function JobDetail() {
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const setStatus = useServerFn(updateJobStatus);
+  const permsFn = useServerFn(myPermissions);
+
+  const { data: perms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: () => permsFn(),
+  });
+  const canSeePricing = !!(perms?.isOwner || perms?.canViewPricing);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job", jobId],
@@ -38,6 +47,7 @@ function JobDetail() {
 
   const sop = (job.sop ?? []).slice().sort((a, b) => a.position - b.position);
   const done = sop.filter((s) => s.completed).length;
+
 
   const onToggle = async (id: string, completed: boolean) => {
     await toggle({ data: { id, completed } });
@@ -59,7 +69,7 @@ function JobDetail() {
         subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={
           <div className="flex gap-2">
-            {job.client?.phone && (
+            {canSeePricing && job.client?.phone && (
               <Link
                 to="/messages"
                 search={{
@@ -148,7 +158,9 @@ function JobDetail() {
             {job.assignees && job.assignees.length ? (
               <ul className="space-y-1">{job.assignees.map((a: any) => <li key={a.id} className="text-sm">{a.full_name ?? "—"}</li>)}</ul>
             ) : <p className="text-sm text-muted-foreground">Unassigned</p>}
-            <p className="text-xs text-muted-foreground tabular-nums">Price · {fmtCents(job.price_cents)}</p>
+            {canSeePricing && (
+              <p className="text-xs text-muted-foreground tabular-nums">Price · {fmtCents(job.price_cents)}</p>
+            )}
           </div>
 
           {job.notes && (

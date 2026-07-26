@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { listClients, createClient } from "@/lib/entities.functions";
+import { listClients, createClient, amIOwner } from "@/lib/entities.functions";
 import { Plus, Search, MapPin, Mail, Phone } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -22,10 +22,26 @@ function fullName(c: { first_name: string | null; last_name: string | null }) {
 }
 
 function ClientsPage() {
+  const navigate = useNavigate();
+  const ownerFn = useServerFn(amIOwner);
+  const ownerQ = useQuery({ queryKey: ["am-i-owner"], queryFn: () => ownerFn() });
+  useEffect(() => {
+    if (ownerQ.data && !ownerQ.data.isOwner) {
+      navigate({ to: "/my-jobs", replace: true });
+    }
+  }, [ownerQ.data, navigate]);
   const listFn = useServerFn(listClients);
-  const { data = [], isLoading } = useQuery({ queryKey: ["clients"], queryFn: () => listFn({}) });
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => listFn({}),
+    enabled: !!ownerQ.data?.isOwner,
+  });
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+
+  if (ownerQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (ownerQ.data && !ownerQ.data.isOwner) return null;
+
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
