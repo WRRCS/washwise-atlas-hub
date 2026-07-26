@@ -7,7 +7,7 @@ import { format, isPast } from "date-fns";
 import { listMyAppointments, submitClientRequest, type PortalAppointment } from "@/lib/portal.functions";
 import { MapPin, Plus, Users } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/")({
+export const Route = createFileRoute("/portal/")({
   component: PortalAppointmentsPage,
 });
 

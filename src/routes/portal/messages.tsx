@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { listMyMessages, sendPortalMessage, type PortalMessage } from "@/lib/portal.functions";
 import { Send } from "lucide-react";
 
-export const Route = createFileRoute("/_portal/messages")({
+export const Route = createFileRoute("/portal/messages")({
   component: PortalMessagesPage,
 });
 

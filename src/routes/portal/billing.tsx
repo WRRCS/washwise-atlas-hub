@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { listMyInvoices, type PortalInvoice } from "@/lib/portal.functions";
 
-export const Route = createFileRoute("/_portal/billing")({
+export const Route = createFileRoute("/portal/billing")({
   component: PortalBillingPage,
 });
 

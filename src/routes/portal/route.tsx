@@ -4,7 +4,7 @@ import { useState } from "react";
 import { logout } from "@/lib/portal.functions";
 import { Calendar, LogOut, MessageSquare, Receipt } from "lucide-react";
 
-export const Route = createFileRoute("/_portal")({
+export const Route = createFileRoute("/portal")({
   ssr: false,
   beforeLoad: () => {
     if (typeof window !== "undefined" && !localStorage.getItem("portal_session")) {
