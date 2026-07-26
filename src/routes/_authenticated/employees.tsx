@@ -74,7 +74,7 @@ function Employees() {
   const submitInvite = async () => {
     setInviting(true);
     try {
-      await inviteFn({ data: { ...invite, redirect_to: window.location.origin } });
+      await inviteFn({ data: { ...invite, redirect_to: window.location.origin + "/reset-password" } });
       toast.success("Invitation sent");
       setInviteOpen(false);
       setInvite({ full_name: "", email: "", phone: "" });
@@ -193,7 +193,7 @@ function Employees() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite employee</DialogTitle>
-            <DialogDescription>They'll get an email with a sign-in link.</DialogDescription>
+            <DialogDescription>They'll get an email with a link to set their password and sign in.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
