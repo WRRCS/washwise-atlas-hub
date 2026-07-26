@@ -40,6 +40,46 @@ function hoursBetween(a: string, b: string) {
   return (new Date(b).getTime() - new Date(a).getTime()) / 3600000;
 }
 
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const platform = (navigator as any).platform || "";
+  const iOSPlatforms = /iPhone|iPad|iPod/;
+  // iPadOS 13+ reports as Mac; detect touch to catch it
+  return iOSPlatforms.test(ua) || iOSPlatforms.test(platform) ||
+    (platform === "MacIntel" && (navigator as any).maxTouchPoints > 1);
+}
+
+function directionsUrl(address: string) {
+  const q = encodeURIComponent(address);
+  return isIOS()
+    ? `https://maps.apple.com/?daddr=${q}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+}
+
+function formatDuration(startIso: string, endIso: string) {
+  const mins = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+type StaffNote = { label: string; text: string };
+function collectStaffNotes(j: MyJobRow): StaffNote[] {
+  const out: StaffNote[] = [];
+  if (j.notes) out.push({ label: "Job notes", text: j.notes });
+  const s = j.property_specs;
+  if (s?.key_location) out.push({ label: "Key / access", text: s.key_location });
+  if (s?.access_notes) out.push({ label: "Access notes", text: s.access_notes });
+  if (s?.pets) out.push({ label: "Pets", text: s.pets });
+  if (s?.parking_notes) out.push({ label: "Parking", text: s.parking_notes });
+  if (s?.special_instructions) out.push({ label: "Special instructions", text: s.special_instructions });
+  for (const n of j.client_notes.slice(0, 2)) out.push({ label: "Client note", text: n.note });
+  return out;
+}
+
 function useMyUserId() {
   const [uid, setUid] = useState<string | null>(null);
   useEffect(() => {
