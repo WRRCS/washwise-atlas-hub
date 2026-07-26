@@ -290,9 +290,14 @@ function TodayView() {
                       </div>
                       <p className="font-medium">{clientName(j.client)}</p>
                       {j.client?.service_address && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                        <a
+                          href={directionsUrl(j.client.service_address)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-brand hover:underline flex items-center gap-1 mt-1"
+                        >
                           <MapPin className="size-3" /> {j.client.service_address}
-                        </p>
+                        </a>
                       )}
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
