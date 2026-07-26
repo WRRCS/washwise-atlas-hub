@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
@@ -12,17 +12,12 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   BarChart, Bar, Legend, PieChart, Pie, Cell,
 } from "recharts";
-import {
-  revenueByMonth, employeeProductivity, clientRetention, inventoryUsageDetail,
-  type RevenueMonthRow, type EmployeeProductivityRow, type ClientRetentionRow, type InventoryUsageDetailRow,
-} from "@/lib/reports.functions";
+import { revenueByMonth, type RevenueMonthRow } from "@/lib/reports.functions";
 import { downloadCsv } from "@/lib/csv";
 
 const searchSchema = z.object({
-  tab: fallback(z.string(), "revenue").default("revenue"),
   from: fallback(z.string(), "").default(""),
   to: fallback(z.string(), "").default(""),
-  at_risk_days: fallback(z.coerce.number(), 60).default(60),
 });
 
 export const Route = createFileRoute("/_authenticated/reports")({
@@ -50,13 +45,6 @@ function fmtMonth(ym: string) {
   const [y, m] = ym.split("-");
   return new Date(Number(y), Number(m) - 1, 1).toLocaleString(undefined, { month: "short", year: "2-digit" });
 }
-
-const TABS = [
-  { key: "revenue", label: "Revenue" },
-  { key: "employees", label: "Employee productivity" },
-  { key: "retention", label: "Client retention" },
-  { key: "inventory", label: "Inventory usage" },
-] as const;
 
 const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
 
