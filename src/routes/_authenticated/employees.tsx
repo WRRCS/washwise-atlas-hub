@@ -10,9 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
+  listEmployeePermissions, setEmployeePermissions, amIOwner,
 } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -37,8 +40,18 @@ function Employees() {
   const updateFn = useServerFn(updateEmployee);
   const impersonateFn = useServerFn(impersonateEmployee);
   const roleFn = useServerFn(setRole);
+  const permsFn = useServerFn(listEmployeePermissions);
+  const savePermsFn = useServerFn(setEmployeePermissions);
+  const ownerFn = useServerFn(amIOwner);
 
   const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => listFn() });
+  const { data: permsData = [] } = useQuery({ queryKey: ["employee_permissions"], queryFn: () => permsFn() });
+  const { data: ownerInfo } = useQuery({ queryKey: ["am_i_owner"], queryFn: () => ownerFn() });
+  const isOwner = !!ownerInfo?.isOwner;
+  const permsMap = new Map(
+    (permsData as Array<{ employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean }>).map((p) => [p.employee_id, p]),
+  );
+
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState({ full_name: "", email: "", phone: "" });
   const [inviting, setInviting] = useState(false);
@@ -48,6 +61,15 @@ function Employees() {
 
   const employees = (data as Employee[]).filter((e) => e.role !== "owner");
   const owners = (data as Employee[]).filter((e) => e.role === "owner");
+
+  const savePerms = async (employee_id: string, next: { can_view_employee_contacts: boolean; can_view_pricing: boolean }) => {
+    try {
+      await savePermsFn({ data: { employee_id, ...next } });
+      qc.invalidateQueries({ queryKey: ["employee_permissions"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update access");
+    }
+  };
 
   const submitInvite = async () => {
     setInviting(true);
@@ -137,6 +159,9 @@ function Employees() {
           {(e) => (
             <EmployeeRow
               e={e}
+              isOwnerViewer={isOwner}
+              perms={permsMap.get(e.id) ?? null}
+              onSavePerms={(next) => savePerms(e.id, next)}
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
@@ -150,6 +175,9 @@ function Employees() {
             {(e) => (
               <EmployeeRow
                 e={e}
+                isOwnerViewer={isOwner}
+                perms={null}
+                onSavePerms={() => {}}
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
                 onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
@@ -243,16 +271,71 @@ function Section({ title, rows, empty, children }: { title: string; rows: Employ
   );
 }
 
-function EmployeeRow({ e, onEdit, onImpersonate, onDeactivate, onPromote }: {
+type PermsRow = { employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean };
+
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onPromote }: {
   e: Employee;
+  isOwnerViewer: boolean;
+  perms: PermsRow | null;
+  onSavePerms: (next: { can_view_employee_contacts: boolean; can_view_pricing: boolean }) => void;
   onEdit: () => void;
   onImpersonate: () => void;
   onDeactivate: () => void;
   onPromote: () => void;
 }) {
+  const showAccess = isOwnerViewer && e.role !== "owner";
+  const contacts = perms?.can_view_employee_contacts ?? false;
+  const pricing = perms?.can_view_pricing ?? false;
+  const summary = !contacts && !pricing
+    ? "Default"
+    : [contacts ? "Contacts" : null, pricing ? "Pricing" : null].filter(Boolean).join(" + ");
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1.5fr_1fr_0.8fr_1fr_auto] gap-2 md:gap-4 items-center px-5 py-4">
-      <div className="font-medium">{e.full_name ?? "—"}</div>
+      <div className="font-medium flex items-center gap-2">
+        <span>{e.full_name ?? "—"}</span>
+        {showAccess && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ring-black/10 hover:bg-clay-100 transition"
+                title="Manage access"
+              >
+                <ShieldCheck className="size-3" />
+                {summary}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="start">
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium">Access</div>
+                  <div className="text-xs text-muted-foreground">Extra permissions for {e.full_name ?? "this employee"}.</div>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm">Can view team contact info</div>
+                    <div className="text-xs text-muted-foreground">See phone & email of other employees.</div>
+                  </div>
+                  <Switch
+                    checked={contacts}
+                    onCheckedChange={(v) => onSavePerms({ can_view_employee_contacts: v, can_view_pricing: pricing })}
+                  />
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm">Can view pricing & invoices</div>
+                    <div className="text-xs text-muted-foreground">See job prices and invoice amounts.</div>
+                  </div>
+                  <Switch
+                    checked={pricing}
+                    onCheckedChange={(v) => onSavePerms({ can_view_employee_contacts: contacts, can_view_pricing: v })}
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
       <div className="text-sm text-muted-foreground truncate">{e.email}</div>
       <div className="text-sm text-muted-foreground">{e.phone ?? "—"}</div>
       <div>
