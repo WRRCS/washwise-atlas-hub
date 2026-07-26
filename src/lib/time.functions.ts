@@ -18,6 +18,7 @@ export type MyJobRow = {
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   service: { id: string; name: string; color: string | null } | null;
   open_entry: { id: string; started_at: string; has_gps: boolean } | null;
+  teammates: { id: string; full_name: string | null; avatar_url: string | null }[];
 };
 
 export type TimeEntryRow = {
