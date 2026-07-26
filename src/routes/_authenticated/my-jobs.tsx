@@ -687,6 +687,7 @@ function ScheduleView() {
                   <div key={j.id} className={`text-xs px-2 py-1.5 rounded border ${statusBg[j.status]}`}>
                     <div className="font-medium">{fmtTime(j.scheduled_start)}</div>
                     <div className="truncate">{clientName(j.client)}</div>
+                    <ScheduleTeammates teammates={j.teammates} />
                   </div>
                 ))}
                 {!items.length && <div className="text-[11px] text-muted-foreground/60">—</div>}
