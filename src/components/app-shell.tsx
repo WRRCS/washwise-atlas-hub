@@ -54,10 +54,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string; isSuperAdmin: boolean } | null>(null);
 
-  if (alreadyInsideShell) {
-    return <>{children}</>;
-  }
-
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
@@ -89,6 +85,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     enabled: !!profile,
     refetchInterval: 20_000,
   });
+
+  if (alreadyInsideShell) {
+    return <>{children}</>;
+  }
 
   return (
     <AppShellNestingContext.Provider value={true}>
