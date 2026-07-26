@@ -158,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* mobile top bar */}
         <div className="md:hidden fixed top-0 inset-x-0 z-20 bg-clay-100 border-b border-border/60 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="size-5 rounded bg-brand" />
+            <img src={wrrcLogo.url} alt="Wash Rinse Repeat" className="h-7 w-auto object-contain" />
             <span className="font-medium tracking-tight">Atlas</span>
           </div>
           <button onClick={signOut} className="text-xs text-muted-foreground"><LogOut className="size-4" /></button>
