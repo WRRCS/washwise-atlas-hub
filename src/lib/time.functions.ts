@@ -9,6 +9,14 @@ export type GpsFix = {
   accuracy_meters?: number | null;
 };
 
+export type PropertySpecsSummary = {
+  key_location: string | null;
+  access_notes: string | null;
+  pets: string | null;
+  parking_notes: string | null;
+  special_instructions: string | null;
+} | null;
+
 export type MyJobRow = {
   id: string;
   status: "scheduled" | "in_progress" | "completed" | "canceled";
@@ -19,6 +27,8 @@ export type MyJobRow = {
   service: { id: string; name: string; color: string | null } | null;
   open_entry: { id: string; started_at: string; has_gps: boolean } | null;
   teammates: { id: string; full_name: string | null; avatar_url: string | null }[];
+  property_specs: PropertySpecsSummary;
+  client_notes: { note: string; created_at: string }[];
 };
 
 export type TimeEntryRow = {
@@ -117,10 +127,43 @@ export const listMyJobs = createServerFn({ method: "POST" })
       }
     }
 
+    const clientIds = Array.from(
+      new Set((jobs ?? []).map((j: any) => j?.client?.id).filter(Boolean)),
+    ) as string[];
+    const specsByClient = new Map<string, PropertySpecsSummary>();
+    const notesByClient = new Map<string, { note: string; created_at: string }[]>();
+    if (clientIds.length) {
+      const { data: specs } = await context.supabase
+        .from("property_specs")
+        .select("client_id, key_location, access_notes, pets, parking_notes, special_instructions")
+        .in("client_id", clientIds);
+      for (const s of (specs ?? []) as any[]) {
+        specsByClient.set(s.client_id, {
+          key_location: s.key_location,
+          access_notes: s.access_notes,
+          pets: s.pets,
+          parking_notes: s.parking_notes,
+          special_instructions: s.special_instructions,
+        });
+      }
+      const { data: notes } = await context.supabase
+        .from("client_notes")
+        .select("client_id, note, created_at")
+        .in("client_id", clientIds)
+        .order("created_at", { ascending: false });
+      for (const n of (notes ?? []) as any[]) {
+        const arr = notesByClient.get(n.client_id) ?? [];
+        arr.push({ note: n.note, created_at: n.created_at });
+        notesByClient.set(n.client_id, arr);
+      }
+    }
+
     return (jobs ?? []).map((j: any) => ({
       ...j,
       open_entry: openMap.get(j.id) ?? null,
       teammates: teammatesByJob.get(j.id) ?? [],
+      property_specs: j?.client?.id ? specsByClient.get(j.client.id) ?? null : null,
+      client_notes: (j?.client?.id ? notesByClient.get(j.client.id) ?? [] : []).slice(0, 5),
     })) as MyJobRow[];
   });
 

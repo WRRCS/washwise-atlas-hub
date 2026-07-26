@@ -9,7 +9,7 @@ import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "
 import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { captureGps } from "@/lib/geolocation";
-import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen } from "lucide-react";
+import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen, Navigation, StickyNote } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SopViewer } from "@/components/sop-viewer";
 
@@ -38,6 +38,46 @@ function clientName(c: MyJobRow["client"]) {
 }
 function hoursBetween(a: string, b: string) {
   return (new Date(b).getTime() - new Date(a).getTime()) / 3600000;
+}
+
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const platform = (navigator as any).platform || "";
+  const iOSPlatforms = /iPhone|iPad|iPod/;
+  // iPadOS 13+ reports as Mac; detect touch to catch it
+  return iOSPlatforms.test(ua) || iOSPlatforms.test(platform) ||
+    (platform === "MacIntel" && (navigator as any).maxTouchPoints > 1);
+}
+
+function directionsUrl(address: string) {
+  const q = encodeURIComponent(address);
+  return isIOS()
+    ? `https://maps.apple.com/?daddr=${q}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+}
+
+function formatDuration(startIso: string, endIso: string) {
+  const mins = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+type StaffNote = { label: string; text: string };
+function collectStaffNotes(j: MyJobRow): StaffNote[] {
+  const out: StaffNote[] = [];
+  if (j.notes) out.push({ label: "Job notes", text: j.notes });
+  const s = j.property_specs;
+  if (s?.key_location) out.push({ label: "Key / access", text: s.key_location });
+  if (s?.access_notes) out.push({ label: "Access notes", text: s.access_notes });
+  if (s?.pets) out.push({ label: "Pets", text: s.pets });
+  if (s?.parking_notes) out.push({ label: "Parking", text: s.parking_notes });
+  if (s?.special_instructions) out.push({ label: "Special instructions", text: s.special_instructions });
+  for (const n of j.client_notes.slice(0, 2)) out.push({ label: "Client note", text: n.note });
+  return out;
 }
 
 function useMyUserId() {
@@ -93,6 +133,108 @@ function ScheduleTeammates({ teammates }: { teammates: MyJobRow["teammates"] }) 
     </div>
   );
 }
+
+function UpNextHero({
+  job,
+  onClockIn,
+  onClockOut,
+  onCompleteNow,
+  onOpenSop,
+}: {
+  job: MyJobRow;
+  onClockIn: () => void;
+  onClockOut: () => void;
+  onCompleteNow: () => void;
+  onOpenSop: () => void;
+}) {
+  const address = job.client?.service_address ?? null;
+  const notes = collectStaffNotes(job);
+  const isToday = new Date(job.scheduled_start).toDateString() === new Date().toDateString();
+  const isOpen = !!job.open_entry;
+  return (
+    <section className="mb-6 rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/10 via-clay-50 to-clay-50 p-5 md:p-6 ring-1 ring-brand/10 shadow-sm">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+          {isOpen ? "Currently on the clock" : isToday ? "Up next today" : "Your next appointment"}
+        </span>
+        <StatusPill status={job.status} />
+      </div>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xl md:text-2xl font-semibold leading-tight">{clientName(job.client)}</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{job.service?.name ?? "Service"}</p>
+          <div className="mt-3 grid gap-2 text-sm">
+            <p className="flex items-center gap-2">
+              <Clock className="size-4 text-muted-foreground" />
+              <span className="font-medium">{fmtTime(job.scheduled_start)} – {fmtTime(job.scheduled_end)}</span>
+              <span className="text-muted-foreground">· {formatDuration(job.scheduled_start, job.scheduled_end)}</span>
+            </p>
+            {address && (
+              <a
+                href={directionsUrl(address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-start gap-2 text-brand hover:underline"
+              >
+                <Navigation className="size-4 mt-0.5 shrink-0" />
+                <span>{address}<span className="ml-2 text-xs text-muted-foreground">Tap for directions</span></span>
+              </a>
+            )}
+          </div>
+          {notes.length > 0 && (
+            <div className="mt-4 rounded-lg bg-clay-100/70 p-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <StickyNote className="size-3.5" /> Notes for this visit
+              </div>
+              <ul className="space-y-1.5 text-sm">
+                {notes.map((n, i) => (
+                  <li key={i}>
+                    <span className="font-medium">{n.label}:</span>{" "}
+                    <span className="text-muted-foreground">{n.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <TeamOnJob teammates={job.teammates} />
+        </div>
+        <div className="shrink-0 flex flex-col items-stretch md:items-end gap-2 min-w-[180px]">
+          {isOpen ? (
+            <button
+              onClick={onClockOut}
+              className="inline-flex items-center justify-center gap-2 bg-orange-600 text-white text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+            >
+              <Square className="size-5" /> Clock out
+            </button>
+          ) : (
+            <button
+              onClick={onClockIn}
+              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+            >
+              <Play className="size-5" /> Clock in
+            </button>
+          )}
+          <button
+            onClick={onOpenSop}
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-brand hover:underline"
+          >
+            <BookOpen className="size-3.5" /> View SOP
+          </button>
+          {!isOpen && (
+            <button
+              onClick={onCompleteNow}
+              className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Camera className="size-3" /> Complete with photos
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 
 function MyJobsPage() {
   const [tab, setTab] = useState<Tab>("today");
@@ -189,8 +331,43 @@ function TodayView() {
     groups.set(key, arr);
   }
 
+  const now = Date.now();
+  const todayStr = new Date().toDateString();
+  const upNext =
+    jobs.find((j) => j.open_entry) ??
+    jobs.find(
+      (j) =>
+        new Date(j.scheduled_start).toDateString() === todayStr &&
+        new Date(j.scheduled_end).getTime() >= now &&
+        j.status !== "completed" &&
+        j.status !== "canceled",
+    ) ??
+    jobs.find((j) => new Date(j.scheduled_end).getTime() >= now && j.status !== "completed" && j.status !== "canceled") ??
+    null;
+
   return (
     <>
+      {upNext && (
+        <UpNextHero
+          job={upNext}
+          onClockIn={() => handleClockIn(upNext.id)}
+          onClockOut={() =>
+            setCompleteFor({
+              jobId: upNext.id,
+              entryId: upNext.open_entry?.id ?? null,
+              startedAt: upNext.open_entry?.started_at ?? null,
+              serviceTypeId: upNext.service?.id ?? null,
+            })
+          }
+          onCompleteNow={() =>
+            setCompleteFor({ jobId: upNext.id, entryId: null, startedAt: null, serviceTypeId: upNext.service?.id ?? null })
+          }
+          onOpenSop={() =>
+            setSopFor({ jobId: upNext.id, serviceTypeId: upNext.service?.id ?? null, label: upNext.service?.name ?? "SOP" })
+          }
+        />
+      )}
+
       <div className="space-y-6">
         {[...groups.entries()].map(([day, items]) => (
           <section key={day}>
@@ -215,9 +392,14 @@ function TodayView() {
                       </div>
                       <p className="font-medium">{clientName(j.client)}</p>
                       {j.client?.service_address && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                        <a
+                          href={directionsUrl(j.client.service_address)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-brand hover:underline flex items-center gap-1 mt-1"
+                        >
                           <MapPin className="size-3" /> {j.client.service_address}
-                        </p>
+                        </a>
                       )}
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
