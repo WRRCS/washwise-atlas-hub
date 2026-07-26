@@ -40,6 +40,7 @@ const EMPLOYEE_NAV = [
   { to: "/my-jobs", label: "My jobs", icon: ClipboardList },
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/team", label: "Team", icon: Users2 },
+  { to: "/time-off", label: "Time off & swaps", icon: CalendarClock },
 ] as const;
 
 const SUPER_ADMIN_NAV_ITEM = { to: "/super-admin", label: "Platform console", icon: Shield } as const;
