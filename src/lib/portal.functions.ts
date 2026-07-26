@@ -33,7 +33,7 @@ export const requestPortalLink = createServerFn({ method: "POST" })
     for (const client of clients ?? []) {
       const token = randomToken();
       const hash = await sha256Hex(token);
-      await supabaseAdmin.from("client_portal_tokens").insert({
+      await (supabaseAdmin as any).from("client_portal_tokens").insert({
         tenant_id: (client as any).tenant_id,
         client_id: (client as any).id,
         token_hash: hash,
@@ -58,7 +58,7 @@ export const verifyPortalLink = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const hash = await sha256Hex(data.token);
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await (supabaseAdmin as any)
       .from("client_portal_tokens")
       .select("id, tenant_id, client_id, expires_at, used_at")
       .eq("token_hash", hash)
@@ -67,11 +67,11 @@ export const verifyPortalLink = createServerFn({ method: "POST" })
     if (!row || row.used_at || new Date(row.expires_at as string) < new Date()) {
       throw new Error("This login link is invalid or has expired. Please request a new one.");
     }
-    await supabaseAdmin.from("client_portal_tokens").update({ used_at: new Date().toISOString() } as never).eq("id", row.id);
+    await (supabaseAdmin as any).from("client_portal_tokens").update({ used_at: new Date().toISOString() } as never).eq("id", row.id);
 
     const sessionToken = randomToken();
     const sessionHash = await sha256Hex(sessionToken);
-    await supabaseAdmin.from("client_portal_sessions").insert({
+    await (supabaseAdmin as any).from("client_portal_sessions").insert({
       tenant_id: row.tenant_id,
       client_id: row.client_id,
       session_token_hash: sessionHash,
@@ -149,7 +149,7 @@ export const submitClientRequest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { tenantId, clientId } = await requirePortalSession(data.session_token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("client_requests").insert({
+    const { error } = await (supabaseAdmin as any).from("client_requests").insert({
       tenant_id: tenantId,
       client_id: clientId,
       job_id: data.job_id ?? null,
@@ -210,7 +210,7 @@ export const sendPortalMessage = createServerFn({ method: "POST" })
     const { data: client } = await supabaseAdmin.from("clients").select("first_name, last_name").eq("id", clientId).maybeSingle();
     const clientName = [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "A client";
 
-    const { error } = await supabaseAdmin.from("sms_messages").insert({
+    const { error } = await (supabaseAdmin as any).from("sms_messages").insert({
       tenant_id: tenantId,
       client_id: clientId,
       direction: "inbound",
@@ -238,7 +238,7 @@ export const listMyMessages = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<PortalMessage[]> => {
     const { clientId } = await requirePortalSession(data.session_token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
+    const { data: rows, error } = await (supabaseAdmin as any)
       .from("sms_messages")
       .select("id, direction, body, created_at")
       .eq("client_id", clientId)
@@ -279,6 +279,6 @@ export const logout = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const hash = await sha256Hex(data.session_token);
-    await supabaseAdmin.from("client_portal_sessions").delete().eq("session_token_hash", hash);
+    await (supabaseAdmin as any).from("client_portal_sessions").delete().eq("session_token_hash", hash);
     return { ok: true };
   });

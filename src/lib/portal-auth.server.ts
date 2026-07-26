@@ -28,7 +28,7 @@ export async function requirePortalSession(sessionToken: string | null | undefin
   if (!sessionToken) throw new Error("Not signed in. Please request a new login link.");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const hash = await sha256Hex(sessionToken);
-  const { data: session, error } = await supabaseAdmin
+  const { data: session, error } = await (supabaseAdmin as any)
     .from("client_portal_sessions")
     .select("tenant_id, client_id, expires_at")
     .eq("session_token_hash", hash)
@@ -37,7 +37,7 @@ export async function requirePortalSession(sessionToken: string | null | undefin
   if (!session || new Date(session.expires_at as string) < new Date()) {
     throw new Error("Your session expired. Please request a new login link.");
   }
-  await supabaseAdmin
+  await (supabaseAdmin as any)
     .from("client_portal_sessions")
     .update({ last_seen_at: new Date().toISOString() } as never)
     .eq("session_token_hash", hash);
