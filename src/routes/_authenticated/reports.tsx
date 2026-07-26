@@ -12,7 +12,10 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   BarChart, Bar, Legend, PieChart, Pie, Cell,
 } from "recharts";
-import { revenueByMonth, type RevenueMonthRow } from "@/lib/reports.functions";
+import {
+  revenueByMonth, employeeProductivity, clientRetention, inventoryUsageDetail,
+  type RevenueMonthRow, type EmployeeProductivityRow, type ClientRetentionRow, type InventoryUsageDetailRow,
+} from "@/lib/reports.functions";
 import { downloadCsv } from "@/lib/csv";
 
 const searchSchema = z.object({
