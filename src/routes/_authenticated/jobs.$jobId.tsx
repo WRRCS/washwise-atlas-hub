@@ -5,7 +5,7 @@ import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
 import { listJobGps } from "@/lib/time.functions";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
-import { myPermissions } from "@/lib/entities.functions";
+import { myPermissions } from "@/lib/team.functions";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
