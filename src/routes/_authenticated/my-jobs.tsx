@@ -74,6 +74,26 @@ function TeamOnJob({ teammates }: { teammates: MyJobRow["teammates"] }) {
   );
 }
 
+function ScheduleTeammates({ teammates }: { teammates: MyJobRow["teammates"] }) {
+  const myId = useMyUserId();
+  const others = teammates.filter((t) => t.id !== myId);
+  if (!others.length) return null;
+  return (
+    <div className="flex -space-x-1 mt-1" title={others.map((t) => t.full_name ?? "Teammate").join(", ")}>
+      {others.slice(0, 3).map((t) =>
+        t.avatar_url ? (
+          <img key={t.id} src={t.avatar_url} alt="" className="size-4 rounded-full object-cover ring-1 ring-clay-50" />
+        ) : (
+          <span key={t.id} className="size-4 rounded-full bg-clay-200 grid place-items-center text-[8px] font-medium ring-1 ring-clay-50">
+            {tmInitials(t.full_name)}
+          </span>
+        ),
+      )}
+      {others.length > 3 && <span className="text-[9px] ml-1 text-muted-foreground">+{others.length - 3}</span>}
+    </div>
+  );
+}
+
 function MyJobsPage() {
   const [tab, setTab] = useState<Tab>("today");
   return (
