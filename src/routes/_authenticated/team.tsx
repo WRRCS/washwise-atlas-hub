@@ -1,20 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  listTeamRoster,
-  listTeamThreads,
-  listTeamMessages,
-  sendTeamMessage,
-  type TeamMember,
-  type TeamThread,
-} from "@/lib/team.functions";
-import { Mail, Phone, Send } from "lucide-react";
-import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
+import { listTeamRoster, type TeamMember } from "@/lib/team.functions";
+import { Mail, Phone } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/team")({
   component: TeamPage,
@@ -26,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/team")({
 function TeamPage() {
   return (
     <AppShell>
-      <PageHeader title="Team" subtitle="Your teammates and internal messages" />
+      <PageHeader title="Team" subtitle="Your teammates" />
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
         <RosterView />
       </div>
