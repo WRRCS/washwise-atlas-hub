@@ -35,6 +35,8 @@
 
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
   --color-clay-50: var(--clay-50);
   --color-clay-100: var(--clay-100);
   --color-clay-200: var(--clay-200);
@@ -61,9 +63,11 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.02 60);
 
-  /* Terracotta brand */
-  --brand: oklch(0.55 0.14 40);
-  --brand-foreground: oklch(0.985 0.006 70);
+  /* Wash Rinse Repeat brand — orange primary, cyan accent */
+  --brand: oklch(0.72 0.17 55);
+  --brand-foreground: oklch(0.99 0.006 70);
+  --brand-accent: oklch(0.75 0.13 225);
+  --brand-accent-foreground: oklch(0.99 0.006 70);
 
   --primary: oklch(0.22 0.02 60);
   --primary-foreground: oklch(0.985 0.006 70);
@@ -78,7 +82,7 @@
 
   --border: oklch(0.9 0.012 70);
   --input: oklch(0.9 0.012 70);
-  --ring: oklch(0.55 0.14 40);
+  --ring: oklch(0.72 0.17 55);
 
   --success: oklch(0.7 0.15 150);
   --warning: oklch(0.75 0.15 75);
@@ -91,8 +95,10 @@
   --card-foreground: oklch(0.97 0.006 70);
   --popover: oklch(0.22 0.02 60);
   --popover-foreground: oklch(0.97 0.006 70);
-  --brand: oklch(0.65 0.16 40);
+  --brand: oklch(0.75 0.17 55);
   --brand-foreground: oklch(0.18 0.015 60);
+  --brand-accent: oklch(0.78 0.13 225);
+  --brand-accent-foreground: oklch(0.18 0.015 60);
   --primary: oklch(0.97 0.006 70);
   --primary-foreground: oklch(0.18 0.015 60);
   --secondary: oklch(0.28 0.02 60);
@@ -103,7 +109,7 @@
   --accent-foreground: oklch(0.97 0.006 70);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.16 40);
+  --ring: oklch(0.75 0.17 55);
 }
 
 @layer base {

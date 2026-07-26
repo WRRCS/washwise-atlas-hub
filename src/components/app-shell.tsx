@@ -9,6 +9,7 @@ import { AtlasChat } from "@/components/atlas-chat";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadCount } from "@/lib/sms.functions";
+import wrrcLogo from "@/assets/wrrc-logo.png.asset.json";
 
 const OWNER_NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -88,9 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <aside className="hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
           <div className="p-6">
             <div className="flex items-center gap-2.5 px-2">
-              <div className="size-6 rounded bg-brand grid place-items-center">
-                <div className="size-2 bg-clay-50 rounded-full" />
-              </div>
+              <img src={wrrcLogo.url} alt="Wash Rinse Repeat" className="h-9 w-auto object-contain" />
               <span className="font-medium tracking-tight text-lg">Atlas</span>
             </div>
           </div>
@@ -159,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* mobile top bar */}
         <div className="md:hidden fixed top-0 inset-x-0 z-20 bg-clay-100 border-b border-border/60 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="size-5 rounded bg-brand" />
+            <img src={wrrcLogo.url} alt="Wash Rinse Repeat" className="h-7 w-auto object-contain" />
             <span className="font-medium tracking-tight">Atlas</span>
           </div>
           <button onClick={signOut} className="text-xs text-muted-foreground"><LogOut className="size-4" /></button>
