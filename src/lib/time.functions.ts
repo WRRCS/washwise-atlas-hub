@@ -106,7 +106,7 @@ export const listMyJobs = createServerFn({ method: "POST" })
     if (allJobIds.length) {
       const { data: crew } = await context.supabase
         .from("job_employees")
-        .select("job_id, employee:profiles!job_employees_employee_id_fkey(id, full_name, avatar_url)")
+        .select("job_id, employee:profiles!employee_id(id, full_name, avatar_url)")
         .in("job_id", allJobIds);
       for (const row of (crew ?? []) as any[]) {
         const emp = row.employee;
