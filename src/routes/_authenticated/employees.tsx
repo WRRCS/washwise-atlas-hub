@@ -159,6 +159,9 @@ function Employees() {
           {(e) => (
             <EmployeeRow
               e={e}
+              isOwnerViewer={isOwner}
+              perms={permsMap.get(e.id) ?? null}
+              onSavePerms={(next) => savePerms(e.id, next)}
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
@@ -172,6 +175,9 @@ function Employees() {
             {(e) => (
               <EmployeeRow
                 e={e}
+                isOwnerViewer={isOwner}
+                perms={null}
+                onSavePerms={() => {}}
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
                 onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
