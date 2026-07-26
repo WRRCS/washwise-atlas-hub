@@ -12,7 +12,7 @@ import {
   type TeamMember,
   type TeamThread,
 } from "@/lib/team.functions";
-import { Mail, Phone, Send, Users, MessageSquare } from "lucide-react";
+import { Mail, Phone, Send } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -23,31 +23,12 @@ export const Route = createFileRoute("/_authenticated/team")({
   ),
 });
 
-type Tab = "roster" | "messages";
-
 function TeamPage() {
-  const [tab, setTab] = useState<Tab>("roster");
   return (
     <AppShell>
       <PageHeader title="Team" subtitle="Your teammates and internal messages" />
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
-        <div className="flex gap-1 mb-6 bg-clay-100 p-1 rounded-lg w-fit">
-          {(["roster", "messages"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                tab === t
-                  ? "bg-clay-50 text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t === "roster" ? <Users className="size-4" /> : <MessageSquare className="size-4" />}
-              {t === "roster" ? "Team roster" : "Team messages"}
-            </button>
-          ))}
-        </div>
-        {tab === "roster" ? <RosterView /> : <MessagesView />}
+        <RosterView />
       </div>
     </AppShell>
   );
