@@ -134,6 +134,108 @@ function ScheduleTeammates({ teammates }: { teammates: MyJobRow["teammates"] }) 
   );
 }
 
+function UpNextHero({
+  job,
+  onClockIn,
+  onClockOut,
+  onCompleteNow,
+  onOpenSop,
+}: {
+  job: MyJobRow;
+  onClockIn: () => void;
+  onClockOut: () => void;
+  onCompleteNow: () => void;
+  onOpenSop: () => void;
+}) {
+  const address = job.client?.service_address ?? null;
+  const notes = collectStaffNotes(job);
+  const isToday = new Date(job.scheduled_start).toDateString() === new Date().toDateString();
+  const isOpen = !!job.open_entry;
+  return (
+    <section className="mb-6 rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/10 via-clay-50 to-clay-50 p-5 md:p-6 ring-1 ring-brand/10 shadow-sm">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+          {isOpen ? "Currently on the clock" : isToday ? "Up next today" : "Your next appointment"}
+        </span>
+        <StatusPill status={job.status} />
+      </div>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xl md:text-2xl font-semibold leading-tight">{clientName(job.client)}</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{job.service?.name ?? "Service"}</p>
+          <div className="mt-3 grid gap-2 text-sm">
+            <p className="flex items-center gap-2">
+              <Clock className="size-4 text-muted-foreground" />
+              <span className="font-medium">{fmtTime(job.scheduled_start)} – {fmtTime(job.scheduled_end)}</span>
+              <span className="text-muted-foreground">· {formatDuration(job.scheduled_start, job.scheduled_end)}</span>
+            </p>
+            {address && (
+              <a
+                href={directionsUrl(address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-start gap-2 text-brand hover:underline"
+              >
+                <Navigation className="size-4 mt-0.5 shrink-0" />
+                <span>{address}<span className="ml-2 text-xs text-muted-foreground">Tap for directions</span></span>
+              </a>
+            )}
+          </div>
+          {notes.length > 0 && (
+            <div className="mt-4 rounded-lg bg-clay-100/70 p-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <StickyNote className="size-3.5" /> Notes for this visit
+              </div>
+              <ul className="space-y-1.5 text-sm">
+                {notes.map((n, i) => (
+                  <li key={i}>
+                    <span className="font-medium">{n.label}:</span>{" "}
+                    <span className="text-muted-foreground">{n.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <TeamOnJob teammates={job.teammates} />
+        </div>
+        <div className="shrink-0 flex flex-col items-stretch md:items-end gap-2 min-w-[180px]">
+          {isOpen ? (
+            <button
+              onClick={onClockOut}
+              className="inline-flex items-center justify-center gap-2 bg-orange-600 text-white text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+            >
+              <Square className="size-5" /> Clock out
+            </button>
+          ) : (
+            <button
+              onClick={onClockIn}
+              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+            >
+              <Play className="size-5" /> Clock in
+            </button>
+          )}
+          <button
+            onClick={onOpenSop}
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-brand hover:underline"
+          >
+            <BookOpen className="size-3.5" /> View SOP
+          </button>
+          {!isOpen && (
+            <button
+              onClick={onCompleteNow}
+              className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Camera className="size-3" /> Complete with photos
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+
 function MyJobsPage() {
   const [tab, setTab] = useState<Tab>("today");
   return (
