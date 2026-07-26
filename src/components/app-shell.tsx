@@ -89,9 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <aside className="hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
           <div className="p-6">
             <div className="flex items-center gap-2.5 px-2">
-              <div className="size-6 rounded bg-brand grid place-items-center">
-                <div className="size-2 bg-clay-50 rounded-full" />
-              </div>
+              <img src={wrrcLogo.url} alt="Wash Rinse Repeat" className="h-9 w-auto object-contain" />
               <span className="font-medium tracking-tight text-lg">Atlas</span>
             </div>
           </div>
