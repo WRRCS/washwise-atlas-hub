@@ -9,6 +9,14 @@ export type GpsFix = {
   accuracy_meters?: number | null;
 };
 
+export type PropertySpecsSummary = {
+  key_location: string | null;
+  access_notes: string | null;
+  pets: string | null;
+  parking_notes: string | null;
+  special_instructions: string | null;
+} | null;
+
 export type MyJobRow = {
   id: string;
   status: "scheduled" | "in_progress" | "completed" | "canceled";
@@ -19,6 +27,8 @@ export type MyJobRow = {
   service: { id: string; name: string; color: string | null } | null;
   open_entry: { id: string; started_at: string; has_gps: boolean } | null;
   teammates: { id: string; full_name: string | null; avatar_url: string | null }[];
+  property_specs: PropertySpecsSummary;
+  client_notes: { note: string; created_at: string }[];
 };
 
 export type TimeEntryRow = {
