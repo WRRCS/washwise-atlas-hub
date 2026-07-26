@@ -40,8 +40,18 @@ function Employees() {
   const updateFn = useServerFn(updateEmployee);
   const impersonateFn = useServerFn(impersonateEmployee);
   const roleFn = useServerFn(setRole);
+  const permsFn = useServerFn(listEmployeePermissions);
+  const savePermsFn = useServerFn(setEmployeePermissions);
+  const ownerFn = useServerFn(amIOwner);
 
   const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => listFn() });
+  const { data: permsData = [] } = useQuery({ queryKey: ["employee_permissions"], queryFn: () => permsFn() });
+  const { data: ownerInfo } = useQuery({ queryKey: ["am_i_owner"], queryFn: () => ownerFn() });
+  const isOwner = !!ownerInfo?.isOwner;
+  const permsMap = new Map(
+    (permsData as Array<{ employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean }>).map((p) => [p.employee_id, p]),
+  );
+
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState({ full_name: "", email: "", phone: "" });
   const [inviting, setInviting] = useState(false);
@@ -51,6 +61,15 @@ function Employees() {
 
   const employees = (data as Employee[]).filter((e) => e.role !== "owner");
   const owners = (data as Employee[]).filter((e) => e.role === "owner");
+
+  const savePerms = async (employee_id: string, next: { can_view_employee_contacts: boolean; can_view_pricing: boolean }) => {
+    try {
+      await savePermsFn({ data: { employee_id, ...next } });
+      qc.invalidateQueries({ queryKey: ["employee_permissions"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update access");
+    }
+  };
 
   const submitInvite = async () => {
     setInviting(true);
