@@ -369,6 +369,41 @@ export type Database = {
           },
         ]
       }
+      employee_permissions: {
+        Row: {
+          can_view_employee_contacts: boolean
+          can_view_pricing: boolean
+          employee_id: string
+          id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          can_view_employee_contacts?: boolean
+          can_view_pricing?: boolean
+          employee_id: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          can_view_employee_contacts?: boolean
+          can_view_pricing?: boolean
+          employee_id?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_permissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gps_consent_log: {
         Row: {
           consent_given_at: string
@@ -1639,6 +1674,60 @@ export type Database = {
           },
         ]
       }
+      shift_swap_requests: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          proposed_covering_employee_id: string | null
+          reason: string | null
+          requesting_employee_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          proposed_covering_employee_id?: string | null
+          reason?: string | null
+          requesting_employee_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          proposed_covering_employee_id?: string | null
+          reason?: string | null
+          requesting_employee_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_swap_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swap_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sop_attachments: {
         Row: {
           caption: string | null
@@ -1897,6 +1986,44 @@ export type Database = {
           },
         ]
       }
+      team_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          recipient_id: string | null
+          sender_id: string
+          tenant_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string | null
+          sender_id: string
+          tenant_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string | null
+          sender_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -2108,6 +2235,53 @@ export type Database = {
           },
           {
             foreignKeyName: "time_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_off_requests: {
+        Row: {
+          created_at: string
+          employee_id: string
+          end_date: string
+          id: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          end_date: string
+          id?: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          end_date?: string
+          id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_requests_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
