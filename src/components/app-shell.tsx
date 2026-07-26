@@ -24,6 +24,7 @@ const OWNER_NAV = [
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/invoices", label: "Invoices", icon: Receipt },
   { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/requests", label: "Requests", icon: ClipboardCheck },
   { to: "/settings/business", label: "Business profile", icon: Building2 },
   { to: "/settings/templates", label: "Templates", icon: FileText },
   { to: "/settings/notifications", label: "Notifications", icon: Bell },
