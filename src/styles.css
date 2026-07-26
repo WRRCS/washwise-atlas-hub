@@ -35,6 +35,8 @@
 
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
   --color-clay-50: var(--clay-50);
   --color-clay-100: var(--clay-100);
   --color-clay-200: var(--clay-200);
