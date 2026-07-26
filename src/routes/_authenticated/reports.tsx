@@ -57,30 +57,14 @@ function ReportsPage() {
   const defaults = defaultRange();
   const from = search.from || defaults.from;
   const to = search.to || defaults.to;
-  const tab = search.tab;
-
   const setSearch = (patch: Record<string, string | number>) =>
     navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) });
 
   return (
     <AppShell>
-      <PageHeader title="Reports" subtitle="Deeper insights into revenue, staff, clients, and supplies" />
+      <PageHeader title="Reports" subtitle="Revenue trends and summary" />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-1 border-b border-border/60">
-            {TABS.map((t) => (
-              <Link
-                key={t.key}
-                to="/reports"
-                search={(prev: Record<string, unknown>) => ({ ...prev, tab: t.key })}
-                className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
-                  tab === t.key ? "border-brand text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t.label}
-              </Link>
-            ))}
-          </div>
           <div className="ml-auto flex items-center gap-2">
             <label className="text-xs text-muted-foreground">From</label>
             <Input type="date" value={from} onChange={(e) => setSearch({ from: e.target.value })} className="h-8 w-40" />
@@ -93,15 +77,7 @@ function ReportsPage() {
           </div>
         </div>
 
-        {tab === "revenue" && <RevenueTab from={from} to={to} />}
-        {tab === "employees" && <EmployeesTab from={from} to={to} />}
-        {tab === "retention" && (
-          <RetentionTab
-            atRiskDays={search.at_risk_days}
-            setAtRiskDays={(n) => setSearch({ at_risk_days: n })}
-          />
-        )}
-        {tab === "inventory" && <InventoryTab from={from} to={to} />}
+        <RevenueTab from={from} to={to} />
       </div>
     </AppShell>
   );
