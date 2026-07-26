@@ -229,8 +229,43 @@ function TodayView() {
     groups.set(key, arr);
   }
 
+  const now = Date.now();
+  const todayStr = new Date().toDateString();
+  const upNext =
+    jobs.find((j) => j.open_entry) ??
+    jobs.find(
+      (j) =>
+        new Date(j.scheduled_start).toDateString() === todayStr &&
+        new Date(j.scheduled_end).getTime() >= now &&
+        j.status !== "completed" &&
+        j.status !== "canceled",
+    ) ??
+    jobs.find((j) => new Date(j.scheduled_end).getTime() >= now && j.status !== "completed" && j.status !== "canceled") ??
+    null;
+
   return (
     <>
+      {upNext && (
+        <UpNextHero
+          job={upNext}
+          onClockIn={() => handleClockIn(upNext.id)}
+          onClockOut={() =>
+            setCompleteFor({
+              jobId: upNext.id,
+              entryId: upNext.open_entry?.id ?? null,
+              startedAt: upNext.open_entry?.started_at ?? null,
+              serviceTypeId: upNext.service?.id ?? null,
+            })
+          }
+          onCompleteNow={() =>
+            setCompleteFor({ jobId: upNext.id, entryId: null, startedAt: null, serviceTypeId: upNext.service?.id ?? null })
+          }
+          onOpenSop={() =>
+            setSopFor({ jobId: upNext.id, serviceTypeId: upNext.service?.id ?? null, label: upNext.service?.name ?? "SOP" })
+          }
+        />
+      )}
+
       <div className="space-y-6">
         {[...groups.entries()].map(([day, items]) => (
           <section key={day}>
