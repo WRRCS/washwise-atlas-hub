@@ -4,11 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCallback } from "react";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
-import {
-  getPublicInvoice,
-  createInvoiceCheckout,
-  getPublicVenmoPayLink,
-} from "@/lib/invoice-checkout.functions";
+import { getPublicInvoice, createInvoiceCheckout, getPublicVenmoPayLink } from "@/lib/invoice-checkout.functions";
 import { useState } from "react";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 
@@ -23,16 +19,11 @@ export const Route = createFileRoute("/pay/$invoiceId")({
     ],
   }),
   errorComponent: ({ error }) => <div className="p-8 text-sm text-red-700">{error.message}</div>,
-  notFoundComponent: () => (
-    <div className="p-8 text-sm text-muted-foreground">Invoice not found.</div>
-  ),
+  notFoundComponent: () => <div className="p-8 text-sm text-muted-foreground">Invoice not found.</div>,
 });
 
 function money(cents: number, currency = "usd") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(cents / 100);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
 }
 
 function PayInvoicePage() {
@@ -67,12 +58,7 @@ function PayInvoicePage() {
   }, [createFn, invoiceId]);
 
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
-  if (!inv || "error" in inv)
-    return (
-      <div className="max-w-md mx-auto p-8 text-sm text-red-700">
-        {(inv as { error: string })?.error ?? "Invoice not found"}
-      </div>
-    );
+  if (!inv || "error" in inv) return <div className="max-w-md mx-auto p-8 text-sm text-red-700">{(inv as { error: string })?.error ?? "Invoice not found"}</div>;
 
   const isPaid = inv.status === "paid";
   const isDead = inv.status === "cancelled" || inv.status === "void";
@@ -83,9 +69,7 @@ function PayInvoicePage() {
       <div className="min-h-screen bg-clay-50">
         <div className="max-w-2xl mx-auto px-6 py-10">
           <div className="text-center mb-6">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">
-              Wash Rinse Repeat Cleaning
-            </p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Wash Rinse Repeat Cleaning</p>
             <h1 className="text-2xl font-medium mt-2">Invoice {inv.number}</h1>
             <p className="text-sm text-muted-foreground mt-1">Billed to {inv.client_name}</p>
           </div>
@@ -93,20 +77,16 @@ function PayInvoicePage() {
           <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 mb-6">
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-muted-foreground">Amount due</span>
-              <span className="text-3xl font-medium tabular-nums">
-                {money(inv.total_cents, inv.currency)}
-              </span>
+              <span className="text-3xl font-medium tabular-nums">{money(inv.total_cents, inv.currency)}</span>
             </div>
             {method === "card" && inv.card_surcharge && inv.surcharge_cents > 0 && (
               <p className="text-xs text-muted-foreground mt-2">
-                Includes a {money(inv.surcharge_cents, inv.currency)} processing fee for card, Apple
-                Pay, and Google Pay.
+                Includes a {money(inv.surcharge_cents, inv.currency)} processing fee for card, Apple Pay, and Google Pay.
               </p>
             )}
             {method === "venmo" && venmoAvailable && (
               <p className="text-xs text-muted-foreground mt-2">
-                Pay {money((venmo as { amount_cents: number }).amount_cents, inv.currency)} via
-                Venmo — no processing fee.
+                Pay {money((venmo as { amount_cents: number }).amount_cents, inv.currency)} via Venmo — no processing fee.
               </p>
             )}
           </div>
@@ -116,9 +96,7 @@ function PayInvoicePage() {
               <button
                 onClick={() => setMethod("card")}
                 className={`flex-1 text-sm font-medium rounded-lg px-3 py-2 border transition-colors ${
-                  method === "card"
-                    ? "border-brand bg-brand/5 text-brand"
-                    : "border-border text-muted-foreground hover:bg-clay-100"
+                  method === "card" ? "border-brand bg-brand/5 text-brand" : "border-border text-muted-foreground hover:bg-clay-100"
                 }`}
               >
                 Card / Apple Pay / Google Pay
@@ -126,9 +104,7 @@ function PayInvoicePage() {
               <button
                 onClick={() => setMethod("venmo")}
                 className={`flex-1 text-sm font-medium rounded-lg px-3 py-2 border transition-colors ${
-                  method === "venmo"
-                    ? "border-brand bg-brand/5 text-brand"
-                    : "border-border text-muted-foreground hover:bg-clay-100"
+                  method === "venmo" ? "border-brand bg-brand/5 text-brand" : "border-border text-muted-foreground hover:bg-clay-100"
                 }`}
               >
                 Venmo
