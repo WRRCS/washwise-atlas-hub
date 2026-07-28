@@ -57,6 +57,18 @@ function SchedulePage() {
   const unavFn = useServerFn(listUnavailability);
   const moveFn = useServerFn(moveJob);
   const publishFn = useServerFn(publishSchedule);
+  const setColorFn = useServerFn(setClientColor);
+
+  const colorMut = useMutation({
+    mutationFn: (v: { clientId: string; color: string | null }) =>
+      setColorFn({ data: { id: v.clientId, color: v.color } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("Color saved for client");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save color"),
+  });
 
   const from = startOfDay(anchor).toISOString();
   const to = endOfDay(addDays(anchor, 6)).toISOString();
