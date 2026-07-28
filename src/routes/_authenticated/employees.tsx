@@ -345,66 +345,72 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
           {e.role}
         </span>
         {showAccess && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ring-black/10 hover:bg-clay-100 transition"
-                title="Manage access"
-              >
-                <ShieldCheck className="size-3" />
-                {summary}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium">Access for {e.full_name ?? "this employee"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {e.role === "manager"
-                      ? "Managers can be granted extra access as they grow into the role."
-                      : "Extra permissions beyond the employee default."}
+          <>
+            <InlinePermBadge label="Contacts" on={current.can_view_employee_contacts} />
+            <InlinePermBadge label="Pricing" on={current.can_view_pricing} />
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ring-black/10 hover:bg-clay-100 transition"
+                  title="Manage access"
+                >
+                  <ShieldCheck className="size-3" />
+                  Access • {summary}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="start">
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-sm font-medium">Access for {e.full_name ?? "this employee"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {e.role === "manager"
+                        ? "Managers can be granted extra access as they grow into the role."
+                        : "Extra permissions beyond the employee default."}
+                    </div>
+                  </div>
+                  <PermToggle
+                    label="View team contact info"
+                    hint="See phone & email of other employees."
+                    checked={current.can_view_employee_contacts}
+                    onChange={(v) => toggle("can_view_employee_contacts", v)}
+                  />
+                  <PermToggle
+                    label="View pricing & invoices"
+                    hint="See job prices and invoice amounts."
+                    checked={current.can_view_pricing}
+                    onChange={(v) => toggle("can_view_pricing", v)}
+                  />
+                  <div className="border-t border-border/60 pt-3 space-y-4">
+                    <PermToggle
+                      label="Schedule & assignments"
+                      hint="Create/edit jobs, assign employees, approve time off."
+                      checked={current.can_schedule}
+                      onChange={(v) => toggle("can_schedule", v)}
+                    />
+                    <PermToggle
+                      label="Manage clients & employees"
+                      hint="Add/edit clients and employees. Includes client-to-manager chat."
+                      checked={current.can_manage_clients_employees}
+                      onChange={(v) => toggle("can_manage_clients_employees", v)}
+                    />
+                    <PermToggle
+                      label="View client contact info (CPNI)"
+                      hint="See client phone, email, and billing info."
+                      checked={current.can_view_client_cpni}
+                      onChange={(v) => toggle("can_view_client_cpni", v)}
+                    />
+                    <PermToggle
+                      label="View wages & hourly rates"
+                      hint="See team hourly pay and labor costs. Owner-only by default."
+                      checked={current.can_view_wages}
+                      onChange={(v) => toggle("can_view_wages", v)}
+                    />
                   </div>
                 </div>
-                <PermToggle
-                  label="Schedule & assignments"
-                  hint="Create/edit jobs, assign employees, approve time off."
-                  checked={current.can_schedule}
-                  onChange={(v) => toggle("can_schedule", v)}
-                />
-                <PermToggle
-                  label="Manage clients & employees"
-                  hint="Add/edit clients and employees. Includes client-to-manager chat."
-                  checked={current.can_manage_clients_employees}
-                  onChange={(v) => toggle("can_manage_clients_employees", v)}
-                />
-                <PermToggle
-                  label="View client contact info (CPNI)"
-                  hint="See client phone, email, and billing info."
-                  checked={current.can_view_client_cpni}
-                  onChange={(v) => toggle("can_view_client_cpni", v)}
-                />
-                <PermToggle
-                  label="View pricing & invoices"
-                  hint="See job prices and invoice amounts."
-                  checked={current.can_view_pricing}
-                  onChange={(v) => toggle("can_view_pricing", v)}
-                />
-                <PermToggle
-                  label="View team contact info"
-                  hint="See phone & email of other employees."
-                  checked={current.can_view_employee_contacts}
-                  onChange={(v) => toggle("can_view_employee_contacts", v)}
-                />
-                <PermToggle
-                  label="View wages & hourly rates"
-                  hint="See team hourly pay and labor costs. Owner-only by default."
-                  checked={current.can_view_wages}
-                  onChange={(v) => toggle("can_view_wages", v)}
-                />
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          </>
         )}
       </div>
       <div className="text-sm text-muted-foreground truncate">{e.email ?? "—"}</div>
@@ -451,6 +457,22 @@ function PermToggle({ label, hint, checked, onChange }: { label: string; hint: s
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
+  );
+}
+
+function InlinePermBadge({ label, on }: { label: string; on: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full ring-1 ${
+        on
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+          : "bg-clay-100 text-muted-foreground ring-black/5"
+      }`}
+      title={`${label}: ${on ? "On" : "Off"}`}
+    >
+      <span className={`size-1.5 rounded-full ${on ? "bg-emerald-500" : "bg-clay-400"}`} />
+      {label} {on ? "on" : "off"}
+    </span>
   );
 }
 
