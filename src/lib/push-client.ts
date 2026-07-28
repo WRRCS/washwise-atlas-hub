@@ -71,9 +71,10 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<Subscript
   const reg = await registerSw();
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {
+    const key = urlBase64ToUint8Array(vapidPublicKey);
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      applicationServerKey: key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) as ArrayBuffer,
     });
   }
   return {
