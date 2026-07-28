@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { PushToggle } from "@/components/push-toggle";
 
 export const Route = createFileRoute("/portal/dashboard")({
   ssr: false,
