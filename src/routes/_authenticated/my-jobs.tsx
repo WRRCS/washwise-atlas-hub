@@ -12,6 +12,7 @@ import { captureGps } from "@/lib/geolocation";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen, Navigation, StickyNote } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SopViewer } from "@/components/sop-viewer";
+import { PushToggle } from "@/components/push-toggle";
 
 export const Route = createFileRoute("/_authenticated/my-jobs")({
   component: MyJobsPage,
@@ -241,6 +242,9 @@ function MyJobsPage() {
   return (
     <AppShell>
       <PageHeader title="My jobs" subtitle="Your assigned work and time tracking" />
+      <div className="max-w-5xl w-full mx-auto px-6 md:px-8 pt-4">
+        <PushToggle mode="app" />
+      </div>
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
         <div className="flex gap-1 mb-6 bg-clay-100 p-1 rounded-lg w-fit">
           {(["today", "schedule", "timesheet"] as Tab[]).map((t) => (

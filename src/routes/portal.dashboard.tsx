@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { PushToggle } from "@/components/push-toggle";
 
 export const Route = createFileRoute("/portal/dashboard")({
   ssr: false,
@@ -157,6 +158,9 @@ function PortalDashboard() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
+        <div className="mb-4">
+          <PushToggle mode="portal" />
+        </div>
         <Tabs defaultValue="jobs">
           <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="jobs">Jobs</TabsTrigger>

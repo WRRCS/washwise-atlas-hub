@@ -1692,6 +1692,60 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          client_id: string | null
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh: string
+          tenant_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          auth: string
+          client_id?: string | null
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh: string
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          auth?: string
+          client_id?: string | null
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh?: string
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_templates: {
         Row: {
           body_html: string
@@ -2774,6 +2828,10 @@ export type Database = {
         Returns: string
       }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
+      portal_delete_push_subscription: {
+        Args: { _endpoint: string }
+        Returns: undefined
+      }
       portal_email_is_client: { Args: { _email: string }; Returns: boolean }
       portal_get_data: { Args: never; Returns: Json }
       portal_request_service: {
@@ -2782,6 +2840,15 @@ export type Database = {
           _notes: string
           _requested_date: string
           _service_type_id: string
+        }
+        Returns: string
+      }
+      portal_save_push_subscription: {
+        Args: {
+          _auth: string
+          _endpoint: string
+          _p256dh: string
+          _user_agent: string
         }
         Returns: string
       }
@@ -2816,7 +2883,7 @@ export type Database = {
         | "cancelled"
       job_status: "scheduled" | "in_progress" | "completed" | "canceled"
       lead_status: "new" | "contacted" | "qualified" | "won" | "lost"
-      notification_channel: "sms" | "email"
+      notification_channel: "sms" | "email" | "push"
       notification_recipient_type: "client" | "employee" | "owner"
       notification_status: "pending" | "sent" | "failed"
       payment_provider: "venmo" | "card" | "ach" | "manual"
@@ -2980,7 +3047,7 @@ export const Constants = {
       invoice_status: ["draft", "sent", "paid", "void", "overdue", "cancelled"],
       job_status: ["scheduled", "in_progress", "completed", "canceled"],
       lead_status: ["new", "contacted", "qualified", "won", "lost"],
-      notification_channel: ["sms", "email"],
+      notification_channel: ["sms", "email", "push"],
       notification_recipient_type: ["client", "employee", "owner"],
       notification_status: ["pending", "sent", "failed"],
       payment_provider: ["venmo", "card", "ach", "manual"],
