@@ -81,7 +81,7 @@ function NotificationsSettings() {
 
         <StaffReminderPrefs />
 
-        {isOwner && <BulkReminderPrefsEditor />}
+        {canBulkEdit && <BulkReminderPrefsEditor />}
 
 
         <Tabs defaultValue="templates">
