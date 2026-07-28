@@ -251,7 +251,7 @@ function PortalDashboard() {
                 if (error) throw error;
                 return data as any;
               }}
-              saver={async (prefs) => {
+              saver={async (prefs: { lead_minutes: number[]; channels: ReminderChannel[]; enabled: boolean }) => {
                 const { error } = await supabase.rpc("portal_upsert_reminder_prefs", {
                   _client_id: client.id,
                   _lead_minutes: prefs.lead_minutes,
