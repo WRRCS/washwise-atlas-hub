@@ -531,6 +531,9 @@ export type Database = {
       }
       employee_permissions: {
         Row: {
+          can_manage_clients_employees: boolean
+          can_schedule: boolean
+          can_view_client_cpni: boolean
           can_view_employee_contacts: boolean
           can_view_pricing: boolean
           employee_id: string
@@ -539,6 +542,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          can_manage_clients_employees?: boolean
+          can_schedule?: boolean
+          can_view_client_cpni?: boolean
           can_view_employee_contacts?: boolean
           can_view_pricing?: boolean
           employee_id: string
@@ -547,6 +553,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          can_manage_clients_employees?: boolean
+          can_schedule?: boolean
+          can_view_client_cpni?: boolean
           can_view_employee_contacts?: boolean
           can_view_pricing?: boolean
           employee_id?: string
@@ -2921,7 +2930,7 @@ export type Database = {
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
     }
     Enums: {
-      app_role: "owner" | "employee" | "super_admin"
+      app_role: "owner" | "employee" | "super_admin" | "manager"
       email_trigger_event:
         | "booking_confirmation"
         | "appointment_reminder"
@@ -3089,7 +3098,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "employee", "super_admin"],
+      app_role: ["owner", "employee", "super_admin", "manager"],
       email_trigger_event: [
         "booking_confirmation",
         "appointment_reminder",
