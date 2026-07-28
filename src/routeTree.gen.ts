@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PortalRouteImport } from './routes/portal'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
@@ -72,6 +74,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -90,6 +97,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PortalDashboardRoute = PortalDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => PortalRoute,
 } as any)
 const PayReturnRoute = PayReturnRouteImport.update({
   id: '/pay/return',
@@ -348,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -371,6 +384,7 @@ export interface FileRoutesByFullPath {
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -401,6 +415,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -423,6 +438,7 @@ export interface FileRoutesByTo {
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -455,6 +471,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
@@ -478,6 +495,7 @@ export interface FileRoutesById {
   '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/_authenticated/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -510,6 +528,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/forgot-password'
+    | '/portal'
     | '/reset-password'
     | '/signup'
     | '/calendar'
@@ -533,6 +552,7 @@ export interface FileRouteTypes {
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/portal/dashboard'
     | '/clients/$clientId'
     | '/inventory/recipes'
     | '/inventory/usage'
@@ -563,6 +583,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/forgot-password'
+    | '/portal'
     | '/reset-password'
     | '/signup'
     | '/calendar'
@@ -585,6 +606,7 @@ export interface FileRouteTypes {
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/portal/dashboard'
     | '/clients/$clientId'
     | '/inventory/recipes'
     | '/inventory/usage'
@@ -616,6 +638,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/forgot-password'
+    | '/portal'
     | '/reset-password'
     | '/signup'
     | '/_authenticated/calendar'
@@ -639,6 +662,7 @@ export interface FileRouteTypes {
     | '/_authenticated/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/portal/dashboard'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/inventory/recipes'
     | '/_authenticated/inventory/usage'
@@ -671,6 +695,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  PortalRoute: typeof PortalRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
@@ -701,6 +726,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
@@ -728,6 +760,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/portal/dashboard': {
+      id: '/portal/dashboard'
+      path: '/dashboard'
+      fullPath: '/portal/dashboard'
+      preLoaderRoute: typeof PortalDashboardRouteImport
+      parentRoute: typeof PortalRoute
     }
     '/pay/return': {
       id: '/pay/return'
@@ -1200,11 +1239,23 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface PortalRouteChildren {
+  PortalDashboardRoute: typeof PortalDashboardRoute
+}
+
+const PortalRouteChildren: PortalRouteChildren = {
+  PortalDashboardRoute: PortalDashboardRoute,
+}
+
+const PortalRouteWithChildren =
+  PortalRoute._addFileChildren(PortalRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  PortalRoute: PortalRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,

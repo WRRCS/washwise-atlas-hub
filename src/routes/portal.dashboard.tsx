@@ -77,8 +77,8 @@ function PortalDashboard() {
     mutationFn: async (input: { requested_date: string | null; notes: string }) => {
       const { error } = await supabase.rpc("portal_request_service", {
         _client_id: activeClientId!,
-        _service_type_id: null,
-        _requested_date: input.requested_date,
+        _service_type_id: null as unknown as string,
+        _requested_date: (input.requested_date ?? null) as unknown as string,
         _notes: input.notes,
       });
       if (error) throw error;
