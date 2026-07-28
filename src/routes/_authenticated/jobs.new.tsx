@@ -105,8 +105,26 @@ function NewJob() {
                 {clients.map((c) => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}
               </select>
             </Field>
-            <Field label="Service address">
-              <Input value={selectedClient?.service_address ?? ""} disabled placeholder="From client record" />
+            <Field label={properties.length > 1 ? "Location" : "Service address"}>
+              {properties.length > 1 ? (
+                <select
+                  value={propertyId}
+                  onChange={(e) => setPropertyId(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}{p.is_primary ? " ★" : ""} — {p.address}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={selectedProperty?.address ?? selectedClient?.service_address ?? ""}
+                  disabled
+                  placeholder={clientId ? "Add a location on the client page" : "Select a client first"}
+                />
+              )}
             </Field>
             <Field label="Service">
               <select value={serviceId} onChange={(e) => {
