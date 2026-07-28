@@ -49,10 +49,13 @@ function NotificationsSettings() {
   const leadFn = useServerFn(getReminderLead);
   const setLeadFn = useServerFn(setReminderLead);
   const logsFn = useServerFn(listRecentNotifications);
+  const ownerFn = useServerFn(amIOwner);
 
   const templates = useQuery<NotificationTemplate[]>({ queryKey: ["notification-templates"], queryFn: () => listFn() });
   const lead = useQuery<{ reminder_lead_hours: number }>({ queryKey: ["reminder-lead"], queryFn: () => leadFn() });
   const logs = useQuery<Array<{ id: string; template_name: string; channel: string; scheduled_for: string; status: string }>>({ queryKey: ["notifications-recent"], queryFn: () => logsFn() });
+  const ownerInfo = useQuery({ queryKey: ["am_i_owner"], queryFn: () => ownerFn() });
+  const isOwner = !!(ownerInfo.data as any)?.isOwner;
 
   return (
     <>
