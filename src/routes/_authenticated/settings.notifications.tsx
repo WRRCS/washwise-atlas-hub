@@ -15,6 +15,7 @@ import {
 } from "@/lib/notifications.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffReminderPrefs } from "@/components/reminder-prefs-editor";
+import { BulkReminderPrefsEditor } from "@/components/bulk-reminder-prefs-editor";
 
 export const Route = createFileRoute("/_authenticated/settings/notifications")({
   component: NotificationsSettings,
