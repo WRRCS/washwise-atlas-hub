@@ -57,6 +57,7 @@ function Employees() {
       can_view_client_cpni: boolean;
       can_schedule: boolean;
       can_manage_clients_employees: boolean;
+      can_view_wages: boolean;
     }>).map((p) => [p.employee_id, p]),
   );
 
