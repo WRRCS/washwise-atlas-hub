@@ -134,11 +134,8 @@ export const bulkUpsertReminderPrefs = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => bulkSchema.parse(input))
   .handler(async ({ data, context }) => {
     const tenantId = await tenantIdFor(context);
-    const { data: isOwner } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "owner",
-    });
-    if (!isOwner) throw new Error("Forbidden");
+    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+    if (!allowed) throw new Error("Forbidden");
     // Confirm every target user actually belongs to this tenant (defense in depth on top of RLS).
     const { data: profiles, error: pErr } = await context.supabase
       .from("profiles")
