@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
+import { listClientProperties } from "@/lib/client-properties.functions";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
   component: NewJob,
