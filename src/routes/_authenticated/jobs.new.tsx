@@ -30,6 +30,7 @@ function NewJob() {
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
 
   const [clientId, setClientId] = useState("");
+  const [propertyId, setPropertyId] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [assignee, setAssignee] = useState("");
   const [start, setStart] = useState(() => {
@@ -40,7 +41,25 @@ function NewJob() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const propsFn = useServerFn(listClientProperties);
+  const { data: properties = [] } = useQuery({
+    queryKey: ["client-properties", clientId],
+    queryFn: () => propsFn({ data: { client_id: clientId } }),
+    enabled: !!clientId,
+  });
+
   const selectedClient = clients.find((c) => c.id === clientId) ?? null;
+  const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
+
+  // Auto-select primary/only property when client changes
+  useEffect(() => {
+    if (!clientId) { setPropertyId(""); return; }
+    if (properties.length === 0) { setPropertyId(""); return; }
+    if (!properties.find((p) => p.id === propertyId)) {
+      const primary = properties.find((p) => p.is_primary) ?? properties[0];
+      setPropertyId(primary.id);
+    }
+  }, [clientId, properties, propertyId]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
