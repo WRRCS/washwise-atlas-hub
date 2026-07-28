@@ -65,7 +65,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         supabase.from("user_roles").select("role").eq("user_id", u.user.id),
       ]);
       const roleSet = new Set((roles ?? []).map((r: any) => r.role));
-      const primary = roleSet.has("owner") ? "owner" : roleSet.has("employee") ? "employee" : "employee";
+      const primary = roleSet.has("owner")
+        ? "owner"
+        : roleSet.has("manager")
+          ? "manager"
+          : roleSet.has("employee")
+            ? "employee"
+            : "employee";
       setProfile({
         full_name: p?.full_name ?? null,
         email: p?.email ?? u.user.email ?? null,
