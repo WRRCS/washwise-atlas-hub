@@ -94,21 +94,21 @@ export const updateClient = createServerFn({ method: "POST" })
       billing_address: z.string().trim().max(300).optional(),
       service_address: z.string().trim().max(300).optional(),
       is_active: z.boolean().optional(),
+      client_sop: z.string().trim().max(4000).optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("clients")
-      .update({
-        first_name: data.first_name,
-        last_name: data.last_name || null,
-        email: data.email || null,
-        phone: data.phone || null,
-        billing_address: data.billing_address || null,
-        service_address: data.service_address || null,
-        is_active: data.is_active ?? true,
-      })
-      .eq("id", data.id);
+    const patch: Record<string, unknown> = {
+      first_name: data.first_name,
+      last_name: data.last_name || null,
+      email: data.email || null,
+      phone: data.phone || null,
+      billing_address: data.billing_address || null,
+      service_address: data.service_address || null,
+      is_active: data.is_active ?? true,
+    };
+    if (data.client_sop !== undefined) patch.client_sop = data.client_sop || null;
+    const { error } = await context.supabase.from("clients").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
