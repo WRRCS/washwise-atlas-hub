@@ -56,6 +56,7 @@ import { Route as AuthenticatedInventoryUsageRouteImport } from './routes/_authe
 import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_authenticated/inventory.recipes'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicHooksProcessPushRouteImport } from './routes/api/public/hooks/process-push'
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
@@ -313,6 +314,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProcessPushRoute =
+  ApiPublicHooksProcessPushRouteImport.update({
+    id: '/api/public/hooks/process-push',
+    path: '/api/public/hooks/process-push',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedSuperAdminTenantsTenantIdRoute =
   AuthenticatedSuperAdminTenantsTenantIdRouteImport.update({
     id: '/tenants/$tenantId',
@@ -409,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
+  '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
@@ -464,6 +472,7 @@ export interface FileRoutesByTo {
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
+  '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
@@ -522,6 +531,7 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
+  '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
@@ -580,6 +590,7 @@ export interface FileRouteTypes {
     | '/super-admin/audit'
     | '/super-admin/'
     | '/super-admin/tenants/$tenantId'
+    | '/api/public/hooks/process-push'
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
@@ -635,6 +646,7 @@ export interface FileRouteTypes {
     | '/super-admin/audit'
     | '/super-admin'
     | '/super-admin/tenants/$tenantId'
+    | '/api/public/hooks/process-push'
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
@@ -692,6 +704,7 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin/audit'
     | '/_authenticated/super-admin/'
     | '/_authenticated/super-admin/tenants/$tenantId'
+    | '/api/public/hooks/process-push'
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
@@ -712,6 +725,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
+  ApiPublicHooksProcessPushRoute: typeof ApiPublicHooksProcessPushRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
   ApiPublicHooksTurnoTenantIdRoute: typeof ApiPublicHooksTurnoTenantIdRoute
@@ -1053,6 +1067,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/process-push': {
+      id: '/api/public/hooks/process-push'
+      path: '/api/public/hooks/process-push'
+      fullPath: '/api/public/hooks/process-push'
+      preLoaderRoute: typeof ApiPublicHooksProcessPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/super-admin/tenants/$tenantId': {
       id: '/_authenticated/super-admin/tenants/$tenantId'
       path: '/tenants/$tenantId'
@@ -1281,6 +1302,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
+  ApiPublicHooksProcessPushRoute: ApiPublicHooksProcessPushRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
   ApiPublicHooksTurnoTenantIdRoute: ApiPublicHooksTurnoTenantIdRoute,
