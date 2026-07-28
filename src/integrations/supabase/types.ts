@@ -147,6 +147,54 @@ export type Database = {
           },
         ]
       }
+      client_messages: {
+        Row: {
+          body: string
+          client_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          body: string
+          client_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_notes: {
         Row: {
           client_id: string
@@ -216,6 +264,64 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_service_requests: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          requested_date: string | null
+          service_type_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          requested_date?: string | null
+          service_type_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          requested_date?: string | null
+          service_type_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_service_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_service_requests_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_service_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -2607,6 +2713,21 @@ export type Database = {
         Returns: string
       }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
+      portal_email_is_client: { Args: { _email: string }; Returns: boolean }
+      portal_get_data: { Args: never; Returns: Json }
+      portal_request_service: {
+        Args: {
+          _client_id: string
+          _notes: string
+          _requested_date: string
+          _service_type_id: string
+        }
+        Returns: string
+      }
+      portal_send_message: {
+        Args: { _body: string; _client_id: string }
+        Returns: string
+      }
       preview_plan_change: { Args: { _target_tier: string }; Returns: Json }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
     }
