@@ -81,6 +81,9 @@ function NotificationsSettings() {
 
         <StaffReminderPrefs />
 
+        {isOwner && <BulkReminderPrefsEditor />}
+
+
         <Tabs defaultValue="templates">
           <TabsList>
             <TabsTrigger value="templates">Templates</TabsTrigger>
