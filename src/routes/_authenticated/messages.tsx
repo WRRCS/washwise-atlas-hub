@@ -16,7 +16,7 @@ import {
   type ConversationRow,
   type SmsMessageRow,
 } from "@/lib/sms.functions";
-import { amIOwner } from "@/lib/entities.functions";
+import { myCapabilities } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -35,20 +35,21 @@ type Selection = { client_id: string | null; counterparty_number: string };
 function MessagesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const ownerFn = useServerFn(amIOwner);
-  const ownerQ = useQuery({ queryKey: ["am-i-owner"], queryFn: () => ownerFn() });
+  const capsFn = useServerFn(myCapabilities);
+  const capsQ = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
+  const canAccess = !!(capsQ.data?.isOwner || capsQ.data?.canManage);
   useEffect(() => {
-    if (ownerQ.data && !ownerQ.data.isOwner) {
+    if (capsQ.data && !canAccess) {
       navigate({ to: "/my-jobs", replace: true });
     }
-  }, [ownerQ.data, navigate]);
+  }, [capsQ.data, canAccess, navigate]);
   const listFn = useServerFn(listConversations);
   const threadFn = useServerFn(getThread);
   const markReadFn = useServerFn(markThreadRead);
   const sendFn = useServerFn(sendSms);
 
-  if (ownerQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
-  if (ownerQ.data && !ownerQ.data.isOwner) return null;
+  if (capsQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (capsQ.data && !canAccess) return null;
 
 
   const deepLink = Route.useSearch();
