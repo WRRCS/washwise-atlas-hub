@@ -564,10 +564,17 @@ export const listEmployeePermissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) return [] as Array<{ employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean }>;
+    if (!isOwner) return [] as Array<{
+      employee_id: string;
+      can_view_employee_contacts: boolean;
+      can_view_pricing: boolean;
+      can_view_client_cpni: boolean;
+      can_schedule: boolean;
+      can_manage_clients_employees: boolean;
+    }>;
     const { data, error } = await context.supabase
       .from("employee_permissions")
-      .select("employee_id, can_view_employee_contacts, can_view_pricing");
+      .select("employee_id, can_view_employee_contacts, can_view_pricing, can_view_client_cpni, can_schedule, can_manage_clients_employees");
     if (error) throw new Error(error.message);
     return data ?? [];
   });
@@ -579,6 +586,9 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
       employee_id: z.string().uuid(),
       can_view_employee_contacts: z.boolean(),
       can_view_pricing: z.boolean(),
+      can_view_client_cpni: z.boolean(),
+      can_schedule: z.boolean(),
+      can_manage_clients_employees: z.boolean(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -595,7 +605,10 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
           employee_id: data.employee_id,
           can_view_employee_contacts: data.can_view_employee_contacts,
           can_view_pricing: data.can_view_pricing,
-        },
+          can_view_client_cpni: data.can_view_client_cpni,
+          can_schedule: data.can_schedule,
+          can_manage_clients_employees: data.can_manage_clients_employees,
+        } as any,
         { onConflict: "tenant_id,employee_id" },
       );
     if (error) throw new Error(error.message);
