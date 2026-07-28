@@ -500,3 +500,148 @@ function ClientTemplatesCard({ client }: { client: { id: string; first_name: str
     </div>
   );
 }
+
+/* ---------------- Locations ---------------- */
+
+function LocationsTab({ clientId }: { clientId: string }) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listClientProperties);
+  const upsertFn = useServerFn(upsertClientProperty);
+  const deleteFn = useServerFn(deleteClientProperty);
+  const { data: props = [], isLoading } = useQuery({
+    queryKey: ["client-properties", clientId],
+    queryFn: () => listFn({ data: { client_id: clientId } }),
+  });
+  const [editing, setEditing] = useState<ClientProperty | null>(null);
+  const [adding, setAdding] = useState(false);
+  const empty = { label: "", address: "", notes: "", is_primary: false };
+  const [form, setForm] = useState(empty);
+
+  const startAdd = () => { setForm(empty); setEditing(null); setAdding(true); };
+  const startEdit = (p: ClientProperty) => {
+    setEditing(p);
+    setForm({ label: p.label, address: p.address, notes: p.notes ?? "", is_primary: p.is_primary });
+    setAdding(true);
+  };
+  const cancel = () => { setAdding(false); setEditing(null); };
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["client-properties", clientId] });
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.label.trim() || !form.address.trim()) {
+      toast.error("Label and address are required");
+      return;
+    }
+    try {
+      await upsertFn({
+        data: {
+          id: editing?.id,
+          client_id: clientId,
+          label: form.label.trim(),
+          address: form.address.trim(),
+          notes: form.notes.trim() || undefined,
+          is_primary: form.is_primary,
+        },
+      });
+      toast.success(editing ? "Location updated" : "Location added");
+      invalidate();
+      cancel();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    }
+  };
+
+  const remove = async (p: ClientProperty) => {
+    if (!confirm(`Delete location "${p.label}"?`)) return;
+    try {
+      await deleteFn({ data: { id: p.id } });
+      toast.success("Location deleted");
+      invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium">Service locations</h3>
+          <p className="text-xs text-muted-foreground">Add each property you clean for this client (e.g., home, Airbnb nicknames).</p>
+        </div>
+        {!adding && (
+          <Button size="sm" onClick={startAdd} className="bg-brand text-brand-foreground hover:opacity-90">
+            <Plus className="size-4 mr-1.5" /> Add location
+          </Button>
+        )}
+      </div>
+
+      {adding && (
+        <form onSubmit={save} className="bg-card p-4 rounded-xl ring-1 ring-black/5 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nickname *</Label>
+              <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Petticote, Beach Bum, Home…" />
+            </div>
+            <div className="space-y-1.5 flex items-end">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={form.is_primary} onChange={(e) => setForm({ ...form, is_primary: e.target.checked })} />
+                Primary location
+              </label>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Address *</Label>
+            <Textarea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Notes</Label>
+            <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Door code, parking, etc." />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={cancel}>Cancel</Button>
+            <Button type="submit" size="sm" className="bg-brand text-brand-foreground hover:opacity-90">
+              {editing ? "Save" : "Add location"}
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Loading…</div>
+      ) : props.length === 0 ? (
+        <div className="p-8 text-center text-sm text-muted-foreground bg-card rounded-xl ring-1 ring-black/5">
+          No locations yet. Add one to schedule jobs at a specific address.
+        </div>
+      ) : (
+        <div className="bg-card rounded-xl ring-1 ring-black/5 divide-y divide-border/60">
+          {props.map((p) => (
+            <div key={p.id} className="p-4 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <MapPin className="size-4 mt-0.5 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{p.label}</span>
+                    {p.is_primary && (
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-brand">
+                        <Star className="size-3" /> Primary
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground truncate">{p.address}</div>
+                  {p.notes && <div className="text-xs text-muted-foreground mt-1">{p.notes}</div>}
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" variant="outline" onClick={() => startEdit(p)}>Edit</Button>
+                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => remove(p)}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
