@@ -299,6 +299,7 @@ type PermsRow = {
   can_view_client_cpni: boolean;
   can_schedule: boolean;
   can_manage_clients_employees: boolean;
+  can_view_wages: boolean;
 };
 
 const EMPTY_PERMS = {
@@ -307,6 +308,7 @@ const EMPTY_PERMS = {
   can_view_client_cpni: false,
   can_schedule: false,
   can_manage_clients_employees: false,
+  can_view_wages: false,
 };
 
 function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onChangeRole }: {
@@ -326,6 +328,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
     can_view_client_cpni: perms?.can_view_client_cpni ?? false,
     can_schedule: perms?.can_schedule ?? false,
     can_manage_clients_employees: perms?.can_manage_clients_employees ?? false,
+    can_view_wages: perms?.can_view_wages ?? false,
   };
   const activeCount = Object.values(current).filter(Boolean).length;
   const summary = activeCount === 0 ? "Default" : `${activeCount} on`;
