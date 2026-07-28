@@ -41,22 +41,7 @@ function hoursBetween(a: string, b: string) {
   return (new Date(b).getTime() - new Date(a).getTime()) / 3600000;
 }
 
-function isIOS() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  const platform = (navigator as any).platform || "";
-  const iOSPlatforms = /iPhone|iPad|iPod/;
-  // iPadOS 13+ reports as Mac; detect touch to catch it
-  return iOSPlatforms.test(ua) || iOSPlatforms.test(platform) ||
-    (platform === "MacIntel" && (navigator as any).maxTouchPoints > 1);
-}
-
-function directionsUrl(address: string) {
-  const q = encodeURIComponent(address);
-  return isIOS()
-    ? `https://maps.apple.com/?daddr=${q}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
-}
+import { directionsUrl } from "@/lib/maps";
 
 function formatDuration(startIso: string, endIso: string) {
   const mins = Math.max(0, Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000));

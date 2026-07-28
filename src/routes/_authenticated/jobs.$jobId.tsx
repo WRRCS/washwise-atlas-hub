@@ -6,12 +6,13 @@ import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
 import { listJobGps } from "@/lib/time.functions";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { myPermissions } from "@/lib/team.functions";
+import { directionsUrl } from "@/lib/maps";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
-import { Check, MessageSquare, Send, Trash2, X } from "lucide-react";
+import { Check, MessageSquare, Navigation, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -157,7 +158,19 @@ function JobDetail() {
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service address</h4>
-            <p className="text-sm whitespace-pre-wrap">{job.client?.service_address ?? "—"}</p>
+            {job.client?.service_address ? (
+              <a
+                href={directionsUrl(job.client.service_address)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-start gap-2 text-sm text-brand hover:underline whitespace-pre-wrap"
+              >
+                <Navigation className="size-4 mt-0.5 shrink-0" />
+                <span>{job.client.service_address}</span>
+              </a>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
+            )}
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service</h4>
@@ -191,26 +204,29 @@ function JobDetail() {
             )}
           </div>
 
-          {(job as any).property_specs && (
-            (() => {
-              const s = (job as any).property_specs as {
-                key_location: string | null;
-                access_notes: string | null;
-                pets: string | null;
-                parking_notes: string | null;
-                special_instructions: string | null;
-              };
-              const rows: Array<[string, string | null]> = [
-                ["Door / key", s.key_location],
-                ["Access notes", s.access_notes],
-                ["Pets", s.pets],
-                ["Parking", s.parking_notes],
-                ["Special instructions", s.special_instructions],
-              ].filter(([, v]) => v && v.trim()) as Array<[string, string]>;
-              if (!rows.length) return null;
-              return (
-                <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
-                  <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Property details</h4>
+          {(() => {
+            const s = ((job as any).property_specs ?? null) as {
+              key_location: string | null;
+              access_notes: string | null;
+              pets: string | null;
+              parking_notes: string | null;
+              special_instructions: string | null;
+            } | null;
+            const clientNotes = ((job as any).client_notes ?? []) as Array<{ id: string; note: string; created_at: string }>;
+            const rows: Array<[string, string | null]> = s
+              ? [
+                  ["Door / key", s.key_location],
+                  ["Access notes", s.access_notes],
+                  ["Pets", s.pets],
+                  ["Parking", s.parking_notes],
+                  ["Special instructions", s.special_instructions],
+                ].filter(([, v]) => v && v.trim()) as Array<[string, string]>
+              : [];
+            const hasAny = rows.length > 0 || clientNotes.length > 0 || (job.notes && job.notes.trim());
+            return (
+              <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
+                <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Notes &amp; access</h4>
+                {rows.length > 0 && (
                   <dl className="space-y-2">
                     {rows.map(([k, v]) => (
                       <div key={k}>
@@ -219,17 +235,52 @@ function JobDetail() {
                       </div>
                     ))}
                   </dl>
-                </div>
-              );
-            })()
-          )}
+                )}
+                {job.notes && job.notes.trim() && (
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Job notes</div>
+                    <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
+                  </div>
+                )}
+                {clientNotes.length > 0 && (
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Client notes</div>
+                    <ul className="space-y-2 mt-1">
+                      {clientNotes.map((n) => (
+                        <li key={n.id} className="text-sm whitespace-pre-wrap border-l-2 border-brand/30 pl-2">
+                          {n.note}
+                          <div className="text-[10px] text-muted-foreground">{format(new Date(n.created_at), "MMM d, yyyy")}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {!hasAny && (
+                  perms?.isOwner ? (
+                    <div className="text-xs text-muted-foreground">
+                      No access info on file.{" "}
+                      {job.client?.id && (
+                        <Link to="/clients/$clientId" params={{ clientId: job.client.id }} className="text-brand hover:underline">
+                          Add door codes &amp; property specs →
+                        </Link>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No door codes or access notes on file — ask a manager to add them.</p>
+                  )
+                )}
+              </div>
+            );
+          })()}
 
-          {job.notes && (
-            <div className="bg-card p-5 rounded-xl ring-1 ring-black/5">
-              <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Notes</h4>
-              <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
+          {job.client?.client_sop && job.client.client_sop.trim() && (
+            <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2 border-l-4 border-brand">
+              <h4 className="text-xs uppercase tracking-wider text-brand">Client-specific SOP</h4>
+              <p className="text-[11px] text-muted-foreground">Applies to this client on top of the standard service SOP.</p>
+              <p className="text-sm whitespace-pre-wrap">{job.client.client_sop}</p>
             </div>
           )}
+
           {(job as any).external_source === "turno" && (job as any).external_metadata && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Turno reservation</h4>

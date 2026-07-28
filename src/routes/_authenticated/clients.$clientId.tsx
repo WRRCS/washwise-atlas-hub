@@ -120,6 +120,7 @@ function ProfileTab({ client, onSaved }: {
     email: string | null; phone: string | null;
     billing_address: string | null; service_address: string | null;
     is_active: boolean;
+    client_sop?: string | null;
   };
   onSaved: () => void;
 }) {
@@ -133,6 +134,7 @@ function ProfileTab({ client, onSaved }: {
     billing_address: client.billing_address ?? "",
     service_address: client.service_address ?? "",
     is_active: client.is_active,
+    client_sop: client.client_sop ?? "",
   });
 
   const submit = async (e: React.FormEvent) => {
@@ -150,6 +152,7 @@ function ProfileTab({ client, onSaved }: {
           billing_address: form.billing_address.trim() || undefined,
           service_address: form.service_address.trim() || undefined,
           is_active: form.is_active,
+          client_sop: form.client_sop.trim(),
         },
       });
       toast.success("Saved");
@@ -171,6 +174,19 @@ function ProfileTab({ client, onSaved }: {
       </div>
       <FieldRow label="Service address"><Textarea rows={2} value={form.service_address} onChange={(e) => setForm({ ...form, service_address: e.target.value })} /></FieldRow>
       <FieldRow label="Billing address"><Textarea rows={2} value={form.billing_address} onChange={(e) => setForm({ ...form, billing_address: e.target.value })} /></FieldRow>
+      <div>
+        <FieldRow label="Client-specific SOP (staff-only, shown on job view)">
+          <Textarea
+            rows={4}
+            value={form.client_sop}
+            onChange={(e) => setForm({ ...form, client_sop: e.target.value })}
+            placeholder="e.g. Microfiber cloths only, no bleach products. Feed the cat before leaving."
+          />
+        </FieldRow>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Never shown to the client in the portal. Displayed to assigned staff on the job detail view, alongside the standard service SOP.
+        </p>
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
         Active
