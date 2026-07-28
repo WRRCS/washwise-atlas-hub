@@ -183,6 +183,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster />
+      <AppSplash />
     </QueryClientProvider>
   );
 }
