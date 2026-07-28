@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { listClients, createClient, amIOwner } from "@/lib/entities.functions";
+import { listClients, createClient, myCapabilities } from "@/lib/entities.functions";
 import { Plus, Search, MapPin, Mail, Phone } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -23,25 +23,26 @@ function fullName(c: { first_name: string | null; last_name: string | null }) {
 
 function ClientsPage() {
   const navigate = useNavigate();
-  const ownerFn = useServerFn(amIOwner);
-  const ownerQ = useQuery({ queryKey: ["am-i-owner"], queryFn: () => ownerFn() });
+  const capsFn = useServerFn(myCapabilities);
+  const capsQ = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
+  const canAccess = !!(capsQ.data?.isOwner || capsQ.data?.canManage);
   useEffect(() => {
-    if (ownerQ.data && !ownerQ.data.isOwner) {
+    if (capsQ.data && !canAccess) {
       navigate({ to: "/my-jobs", replace: true });
     }
-  }, [ownerQ.data, navigate]);
+  }, [capsQ.data, canAccess, navigate]);
   const listFn = useServerFn(listClients);
   const { data = [], isLoading } = useQuery({
     queryKey: ["clients"],
     queryFn: () => listFn({}),
-    enabled: !!ownerQ.data?.isOwner,
+    enabled: canAccess,
   });
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"active" | "inactive" | "all">("active");
 
-  if (ownerQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
-  if (ownerQ.data && !ownerQ.data.isOwner) return null;
+  if (capsQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (capsQ.data && !canAccess) return null;
 
 
   const counts = useMemo(() => {
