@@ -13,6 +13,34 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { AppSplash } from "@/components/app-splash";
+
+type IOSSplash = { device: string; w: number; h: number; ratio: number; dw: number; dh: number };
+const IOS_SPLASH: IOSSplash[] = [
+  { device: "iphone-15-pro-max", w: 1290, h: 2796, ratio: 3, dw: 430, dh: 932 },
+  { device: "iphone-15-pro",     w: 1179, h: 2556, ratio: 3, dw: 393, dh: 852 },
+  { device: "iphone-14-plus",    w: 1284, h: 2778, ratio: 3, dw: 428, dh: 926 },
+  { device: "iphone-14",         w: 1170, h: 2532, ratio: 3, dw: 390, dh: 844 },
+  { device: "iphone-x",          w: 1125, h: 2436, ratio: 3, dw: 375, dh: 812 },
+  { device: "iphone-xr",         w: 828,  h: 1792, ratio: 2, dw: 414, dh: 896 },
+  { device: "iphone-8",          w: 750,  h: 1334, ratio: 2, dw: 375, dh: 667 },
+  { device: "ipad-pro-12",       w: 2048, h: 2732, ratio: 2, dw: 1024, dh: 1366 },
+  { device: "ipad-pro-11",       w: 1668, h: 2388, ratio: 2, dw: 834, dh: 1194 },
+  { device: "ipad-mini",         w: 1536, h: 2048, ratio: 2, dw: 768, dh: 1024 },
+];
+
+const iosSplashLinks = IOS_SPLASH.flatMap((s) => [
+  {
+    rel: "apple-touch-startup-image",
+    href: `/splash/${s.device}.png`,
+    media: `(device-width: ${s.dw}px) and (device-height: ${s.dh}px) and (-webkit-device-pixel-ratio: ${s.ratio}) and (orientation: portrait)`,
+  },
+  {
+    rel: "apple-touch-startup-image",
+    href: `/splash/${s.device}-landscape.png`,
+    media: `(device-width: ${s.dw}px) and (device-height: ${s.dh}px) and (-webkit-device-pixel-ratio: ${s.ratio}) and (orientation: landscape)`,
+  },
+]);
 
 if (typeof window !== "undefined") {
   void import("../lib/sentry-browser").then((m) => m.initSentryClient());
@@ -82,8 +110,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#3b82f6" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#ffffff", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#0b0b0b", media: "(prefers-color-scheme: dark)" },
+      { name: "color-scheme", content: "light dark" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "Atlas" },
+      { name: "application-name", content: "Atlas" },
+      { name: "format-detection", content: "telephone=no" },
       { title: "Atlas — Wash Rinse Repeat Cleaning" },
       { name: "description", content: "Internal field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing." },
       { property: "og:title", content: "Atlas — Wash Rinse Repeat Cleaning" },
@@ -107,6 +143,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon.png" },
       { rel: "apple-touch-icon", sizes: "180x180", href: "/wrrc-apple-touch-icon.png" },
+      ...iosSplashLinks,
     ],
   }),
   shellComponent: RootShell,
@@ -146,6 +183,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster />
+      <AppSplash />
     </QueryClientProvider>
   );
 }

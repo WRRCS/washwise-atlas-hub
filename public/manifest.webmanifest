@@ -1,25 +1,20 @@
 {
   "name": "Atlas — Wash Rinse Repeat Cleaning",
   "short_name": "Atlas",
-  "description": "Internal field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing.",
-  "start_url": "/",
+  "description": "Field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing.",
+  "start_url": "/?utm_source=pwa",
+  "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
-  "orientation": "portrait-primary",
+  "theme_color": "#E5893A",
+  "orientation": "portrait",
   "scope": "/",
+  "categories": ["business", "productivity"],
   "icons": [
-    {
-      "src": "/wrrc-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/wrrc-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/wrrc-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/wrrc-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/wrrc-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/wrrc-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
