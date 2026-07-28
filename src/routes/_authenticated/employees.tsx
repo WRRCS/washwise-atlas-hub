@@ -40,14 +40,15 @@ function Employees() {
   const updateFn = useServerFn(updateEmployee);
   const impersonateFn = useServerFn(impersonateEmployee);
   const roleFn = useServerFn(setRole);
+  const capsFn = useServerFn(myCapabilities);
   const permsFn = useServerFn(listEmployeePermissions);
   const savePermsFn = useServerFn(setEmployeePermissions);
-  const ownerFn = useServerFn(amIOwner);
 
   const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => listFn() });
   const { data: permsData = [] } = useQuery({ queryKey: ["employee_permissions"], queryFn: () => permsFn() });
-  const { data: ownerInfo } = useQuery({ queryKey: ["am_i_owner"], queryFn: () => ownerFn() });
-  const isOwner = !!ownerInfo?.isOwner;
+  const { data: caps } = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
+  const isOwner = !!caps?.isOwner;
+  const canManage = !!(caps?.isOwner || caps?.canManage);
   const permsMap = new Map(
     (permsData as Array<{
       employee_id: string;
