@@ -6,12 +6,13 @@ import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
 import { listJobGps } from "@/lib/time.functions";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { myPermissions } from "@/lib/team.functions";
+import { directionsUrl } from "@/lib/maps";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
-import { Check, MessageSquare, Send, Trash2, X } from "lucide-react";
+import { Check, MessageSquare, Navigation, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 
