@@ -273,28 +273,56 @@ function Section({ title, rows, empty, children }: { title: string; rows: Employ
   );
 }
 
-type PermsRow = { employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean };
+type Role = "owner" | "manager" | "employee";
+type PermsRow = {
+  employee_id: string;
+  can_view_employee_contacts: boolean;
+  can_view_pricing: boolean;
+  can_view_client_cpni: boolean;
+  can_schedule: boolean;
+  can_manage_clients_employees: boolean;
+};
 
-function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onPromote }: {
+const EMPTY_PERMS = {
+  can_view_employee_contacts: false,
+  can_view_pricing: false,
+  can_view_client_cpni: false,
+  can_schedule: false,
+  can_manage_clients_employees: false,
+};
+
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onChangeRole }: {
   e: Employee;
   isOwnerViewer: boolean;
   perms: PermsRow | null;
-  onSavePerms: (next: { can_view_employee_contacts: boolean; can_view_pricing: boolean }) => void;
+  onSavePerms: (next: typeof EMPTY_PERMS) => void;
   onEdit: () => void;
   onImpersonate: () => void;
   onDeactivate: () => void;
-  onPromote: () => void;
+  onChangeRole: (r: Role) => void;
 }) {
   const showAccess = isOwnerViewer && e.role !== "owner";
-  const contacts = perms?.can_view_employee_contacts ?? false;
-  const pricing = perms?.can_view_pricing ?? false;
-  const summary = !contacts && !pricing
-    ? "Default"
-    : [contacts ? "Contacts" : null, pricing ? "Pricing" : null].filter(Boolean).join(" + ");
+  const current = {
+    can_view_employee_contacts: perms?.can_view_employee_contacts ?? false,
+    can_view_pricing: perms?.can_view_pricing ?? false,
+    can_view_client_cpni: perms?.can_view_client_cpni ?? false,
+    can_schedule: perms?.can_schedule ?? false,
+    can_manage_clients_employees: perms?.can_manage_clients_employees ?? false,
+  };
+  const activeCount = Object.values(current).filter(Boolean).length;
+  const summary = activeCount === 0 ? "Default" : `${activeCount} on`;
+  const roleColor =
+    e.role === "owner" ? "bg-brand-orange/10 text-brand-orange" :
+    e.role === "manager" ? "bg-brand-cyan/10 text-brand-cyan" :
+    "bg-clay-100 text-muted-foreground";
+  const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1.5fr_1fr_0.8fr_1fr_auto] gap-2 md:gap-4 items-center px-5 py-4">
-      <div className="font-medium flex items-center gap-2">
+      <div className="font-medium flex items-center gap-2 flex-wrap">
         <span>{e.full_name ?? "—"}</span>
+        <span className={`inline-flex items-center text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full ${roleColor}`}>
+          {e.role}
+        </span>
         {showAccess && (
           <Popover>
             <PopoverTrigger asChild>
@@ -307,38 +335,52 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
                 {summary}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-72" align="start">
+            <PopoverContent className="w-80" align="start">
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm font-medium">Access</div>
-                  <div className="text-xs text-muted-foreground">Extra permissions for {e.full_name ?? "this employee"}.</div>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm">Can view team contact info</div>
-                    <div className="text-xs text-muted-foreground">See phone & email of other employees.</div>
+                  <div className="text-sm font-medium">Access for {e.full_name ?? "this employee"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {e.role === "manager"
+                      ? "Managers can be granted extra access as they grow into the role."
+                      : "Extra permissions beyond the employee default."}
                   </div>
-                  <Switch
-                    checked={contacts}
-                    onCheckedChange={(v) => onSavePerms({ can_view_employee_contacts: v, can_view_pricing: pricing })}
-                  />
                 </div>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm">Can view pricing & invoices</div>
-                    <div className="text-xs text-muted-foreground">See job prices and invoice amounts.</div>
-                  </div>
-                  <Switch
-                    checked={pricing}
-                    onCheckedChange={(v) => onSavePerms({ can_view_employee_contacts: contacts, can_view_pricing: v })}
-                  />
-                </div>
+                <PermToggle
+                  label="Schedule & assignments"
+                  hint="Create/edit jobs, assign employees, approve time off."
+                  checked={current.can_schedule}
+                  onChange={(v) => toggle("can_schedule", v)}
+                />
+                <PermToggle
+                  label="Manage clients & employees"
+                  hint="Add/edit clients and employees. Includes client-to-manager chat."
+                  checked={current.can_manage_clients_employees}
+                  onChange={(v) => toggle("can_manage_clients_employees", v)}
+                />
+                <PermToggle
+                  label="View client contact info (CPNI)"
+                  hint="See client phone, email, and billing info."
+                  checked={current.can_view_client_cpni}
+                  onChange={(v) => toggle("can_view_client_cpni", v)}
+                />
+                <PermToggle
+                  label="View pricing & invoices"
+                  hint="See job prices and invoice amounts."
+                  checked={current.can_view_pricing}
+                  onChange={(v) => toggle("can_view_pricing", v)}
+                />
+                <PermToggle
+                  label="View team contact info"
+                  hint="See phone & email of other employees."
+                  checked={current.can_view_employee_contacts}
+                  onChange={(v) => toggle("can_view_employee_contacts", v)}
+                />
               </div>
             </PopoverContent>
           </Popover>
         )}
       </div>
-      <div className="text-sm text-muted-foreground truncate">{e.email}</div>
+      <div className="text-sm text-muted-foreground truncate">{e.email ?? "—"}</div>
       <div className="text-sm text-muted-foreground">{e.phone ?? "—"}</div>
       <div>
         <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${e.is_active ? "bg-emerald-50 text-emerald-700" : "bg-clay-200 text-muted-foreground"}`}>
@@ -346,20 +388,41 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
         </span>
       </div>
       <div className="text-sm text-muted-foreground">{formatLast(e.last_sign_in_at)}</div>
-      <div className="flex items-center gap-2 justify-end">
+      <div className="flex items-center gap-2 justify-end flex-wrap">
         <Button size="sm" variant="ghost" onClick={onImpersonate} title="Open a sign-in link in a new tab">
           <LogIn className="size-3.5 mr-1.5" /> Impersonate
         </Button>
         <Button size="sm" variant="outline" onClick={onEdit}>
           <Pencil className="size-3.5 mr-1.5" /> Edit
         </Button>
-        <Button size="sm" variant="outline" onClick={onPromote} className="hidden lg:inline-flex">
-          {e.role === "owner" ? "Demote" : "Promote"}
-        </Button>
+        {isOwnerViewer && (
+          <select
+            value={e.role}
+            onChange={(ev) => onChangeRole(ev.target.value as Role)}
+            className="text-xs h-8 rounded-md border border-input bg-background px-2"
+            title="Change role"
+          >
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+            <option value="owner">Owner</option>
+          </select>
+        )}
         <Button size="sm" variant="outline" onClick={onDeactivate} className={e.is_active ? "text-destructive hover:text-destructive" : ""}>
           {e.is_active ? "Deactivate" : "Reactivate"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function PermToggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="text-sm">{label}</div>
+        <div className="text-xs text-muted-foreground">{hint}</div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }
