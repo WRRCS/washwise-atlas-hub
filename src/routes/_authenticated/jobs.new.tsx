@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
+import { listClientProperties } from "@/lib/client-properties.functions";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
   component: NewJob,
@@ -29,6 +30,7 @@ function NewJob() {
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
 
   const [clientId, setClientId] = useState("");
+  const [propertyId, setPropertyId] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [assignee, setAssignee] = useState("");
   const [start, setStart] = useState(() => {
@@ -39,7 +41,25 @@ function NewJob() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const propsFn = useServerFn(listClientProperties);
+  const { data: properties = [] } = useQuery({
+    queryKey: ["client-properties", clientId],
+    queryFn: () => propsFn({ data: { client_id: clientId } }),
+    enabled: !!clientId,
+  });
+
   const selectedClient = clients.find((c) => c.id === clientId) ?? null;
+  const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
+
+  // Auto-select primary/only property when client changes
+  useEffect(() => {
+    if (!clientId) { setPropertyId(""); return; }
+    if (properties.length === 0) { setPropertyId(""); return; }
+    if (!properties.find((p) => p.id === propertyId)) {
+      const primary = properties.find((p) => p.is_primary) ?? properties[0];
+      setPropertyId(primary.id);
+    }
+  }, [clientId, properties, propertyId]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +71,7 @@ function NewJob() {
       await create({
         data: {
           client_id: clientId,
+          property_id: propertyId || null,
           service_type_id: serviceId,
           scheduled_start: startDate.toISOString(),
           scheduled_end: endDate.toISOString(),
@@ -84,8 +105,26 @@ function NewJob() {
                 {clients.map((c) => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}
               </select>
             </Field>
-            <Field label="Service address">
-              <Input value={selectedClient?.service_address ?? ""} disabled placeholder="From client record" />
+            <Field label={properties.length > 1 ? "Location" : "Service address"}>
+              {properties.length > 1 ? (
+                <select
+                  value={propertyId}
+                  onChange={(e) => setPropertyId(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}{p.is_primary ? " ★" : ""} — {p.address}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={selectedProperty?.address ?? selectedClient?.service_address ?? ""}
+                  disabled
+                  placeholder={clientId ? "Add a location on the client page" : "Select a client first"}
+                />
+              )}
             </Field>
             <Field label="Service">
               <select value={serviceId} onChange={(e) => {

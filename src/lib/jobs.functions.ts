@@ -53,6 +53,7 @@ export const listJobs = createServerFn({ method: "POST" })
 
 const createJobSchema = z.object({
   client_id: z.string().uuid(),
+  property_id: z.string().uuid().nullable().optional(),
   service_type_id: z.string().uuid(),
   scheduled_start: z.string(),
   scheduled_end: z.string(),
@@ -127,6 +128,7 @@ export const createJob = createServerFn({ method: "POST" })
         .insert({
           tenant_id: prof.tenant_id,
           client_id: data.client_id,
+          property_id: data.property_id ?? null,
           service_type_id: data.service_type_id,
           scheduled_start: occ.start.toISOString(),
           scheduled_end: occ.end.toISOString(),
