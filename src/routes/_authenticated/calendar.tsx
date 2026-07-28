@@ -28,11 +28,11 @@ function initials(name: string | null | undefined) {
   return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-// Deterministic color per client for chip fill (Homebase-style)
+// Palette users can pick from per client
 const CHIP_PALETTE = [
-  "#e11d48", "#7c3aed", "#0ea5e9", "#f59e0b", "#10b981",
-  "#f43f5e", "#8b5cf6", "#0891b2", "#ef4444", "#ec4899",
-  "#14b8a6", "#f97316", "#6366f1", "#22c55e", "#eab308",
+  "#e11d48", "#f43f5e", "#f97316", "#f59e0b", "#eab308",
+  "#22c55e", "#10b981", "#14b8a6", "#0ea5e9", "#0891b2",
+  "#6366f1", "#7c3aed", "#8b5cf6", "#ec4899", "#64748b",
 ];
 function chipColor(seed: string | null | undefined) {
   const s = seed ?? "x";
