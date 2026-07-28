@@ -640,6 +640,8 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    // Only owners can change permissions (specifically, granting can_view_wages).
+    // This ensures wages stay owner-controlled.
     const { data: isOwner } = await context.supabase.rpc("is_owner");
     if (!isOwner) throw new Error("Only owners can change permissions");
     const { data: prof, error: pErr } = await context.supabase
@@ -656,6 +658,7 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
           can_view_client_cpni: data.can_view_client_cpni,
           can_schedule: data.can_schedule,
           can_manage_clients_employees: data.can_manage_clients_employees,
+          can_view_wages: data.can_view_wages,
         } as any,
         { onConflict: "tenant_id,employee_id" },
       );
