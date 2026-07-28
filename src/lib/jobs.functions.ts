@@ -13,6 +13,7 @@ export type JobRow = {
   is_recurring: boolean;
   recurrence_rule: string | null;
   recurrence_end: string | null;
+  published_at: string | null;
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   service: { id: string; kind: string; name: string; color: string | null } | null;
   assignees: JobAssignee[];
@@ -40,7 +41,7 @@ export const listJobs = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<JobRow[]> => {
     let q = context.supabase
       .from("jobs")
-      .select("id, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, client:clients(id,first_name,last_name,service_address), service:service_types(id,kind,name,color)")
+      .select("id, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, client:clients(id,first_name,last_name,service_address), service:service_types(id,kind,name,color)")
       .order("scheduled_start", { ascending: true });
     if (data.from) q = q.gte("scheduled_start", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);
@@ -207,4 +208,44 @@ export const updateJobStatus = createServerFn({ method: "POST" })
     const { error } = await context.supabase.from("jobs").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const moveJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; scheduled_start: string; scheduled_end: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("jobs")
+      .update({ scheduled_start: data.scheduled_start, scheduled_end: data.scheduled_end })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const publishSchedule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from: string; to: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("jobs")
+      .update({ published_at: new Date().toISOString() })
+      .is("published_at", null)
+      .gte("scheduled_start", data.from)
+      .lt("scheduled_start", data.to)
+      .select("id");
+    if (error) throw new Error(error.message);
+    return { count: rows?.length ?? 0 };
+  });
+
+export const listUnavailability = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from: string; to: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("employee_unavailability")
+      .select("id, employee_id, starts_at, ends_at, all_day, reason")
+      .gte("starts_at", data.from)
+      .lt("starts_at", data.to);
+    if (error) throw new Error(error.message);
+    return rows ?? [];
   });

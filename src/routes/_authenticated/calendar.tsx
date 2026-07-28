@@ -1,18 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { listJobs, createJob, checkConflicts } from "@/lib/jobs.functions";
+import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
-import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay } from "date-fns";
+import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -20,27 +20,157 @@ export const Route = createFileRoute("/_authenticated/calendar")({
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
 });
 
-type View = "week" | "list";
+type View = "grid" | "list";
 
 function initials(name: string | null | undefined) {
   if (!name) return "?";
   return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
+// Deterministic color per client for chip fill (Homebase-style)
+const CHIP_PALETTE = [
+  "#e11d48", "#7c3aed", "#0ea5e9", "#f59e0b", "#10b981",
+  "#f43f5e", "#8b5cf6", "#0891b2", "#ef4444", "#ec4899",
+  "#14b8a6", "#f97316", "#6366f1", "#22c55e", "#eab308",
+];
+function chipColor(seed: string | null | undefined) {
+  const s = seed ?? "x";
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return CHIP_PALETTE[h % CHIP_PALETTE.length];
+}
+
+function fmtTime(iso: string) {
+  const d = new Date(iso);
+  return format(d, "h:mma").toLowerCase().replace(":00", "");
+}
+
 function SchedulePage() {
+  const qc = useQueryClient();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [view, setView] = useState<View>("week");
+  const [view, setView] = useState<View>("grid");
   const [dialogDate, setDialogDate] = useState<Date | null>(null);
 
-  const fn = useServerFn(listJobs);
+  const jobsFn = useServerFn(listJobs);
+  const empFn = useServerFn(listEmployees);
+  const unavFn = useServerFn(listUnavailability);
+  const moveFn = useServerFn(moveJob);
+  const publishFn = useServerFn(publishSchedule);
+
   const from = startOfDay(anchor).toISOString();
   const to = endOfDay(addDays(anchor, 6)).toISOString();
-  const { data = [] } = useQuery({
-    queryKey: ["jobs", "week", from, to],
-    queryFn: () => fn({ data: { from, to } }),
-  });
+
+  const { data: jobs = [] } = useQuery({ queryKey: ["jobs", "week", from, to], queryFn: () => jobsFn({ data: { from, to } }) });
+  const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
+  const { data: unavailability = [] } = useQuery({ queryKey: ["unavail", from, to], queryFn: () => unavFn({ data: { from, to } }) });
+
+  const cleaners = useMemo(
+    () => employees.filter((e: any) => e.is_active !== false && (e.role === "employee" || e.role === "manager" || e.role === "owner")),
+    [employees],
+  );
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
+
+  const moveMut = useMutation({
+    mutationFn: (v: { id: string; start: Date; end: Date }) =>
+      moveFn({ data: { id: v.id, scheduled_start: v.start.toISOString(), scheduled_end: v.end.toISOString() } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Shift moved");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Move failed"),
+  });
+
+  const publishMut = useMutation({
+    mutationFn: () => publishFn({ data: { from, to } }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success(r.count ? `Published ${r.count} shift${r.count === 1 ? "" : "s"}` : "Nothing new to publish");
+    },
+  });
+
+  // Build lookup: for each employee, jobs on each day
+  const jobsByEmpDay = useMemo(() => {
+    const m = new Map<string, Map<string, any[]>>();
+    for (const j of jobs) {
+      const dayKey = format(new Date(j.scheduled_start), "yyyy-MM-dd");
+      for (const a of j.assignees) {
+        if (!m.has(a.id)) m.set(a.id, new Map());
+        const dm = m.get(a.id)!;
+        if (!dm.has(dayKey)) dm.set(dayKey, []);
+        dm.get(dayKey)!.push(j);
+      }
+    }
+    return m;
+  }, [jobs]);
+
+  const unavByEmpDay = useMemo(() => {
+    const m = new Map<string, Map<string, any[]>>();
+    for (const u of unavailability) {
+      const dayKey = format(new Date(u.starts_at), "yyyy-MM-dd");
+      if (!m.has(u.employee_id)) m.set(u.employee_id, new Map());
+      const dm = m.get(u.employee_id)!;
+      if (!dm.has(dayKey)) dm.set(dayKey, []);
+      dm.get(dayKey)!.push(u);
+    }
+    return m;
+  }, [unavailability]);
+
+  // Wages / hours per day, per employee (aggregate)
+  const dailyTotals = useMemo(() => {
+    return days.map((d) => {
+      const dayKey = format(d, "yyyy-MM-dd");
+      let hours = 0;
+      let wages = 0;
+      for (const emp of cleaners) {
+        const rate = (emp.hourly_rate_cents ?? 0) / 100;
+        const list = jobsByEmpDay.get(emp.id)?.get(dayKey) ?? [];
+        for (const j of list) {
+          const mins = differenceInMinutes(new Date(j.scheduled_end), new Date(j.scheduled_start));
+          hours += mins / 60;
+          wages += (mins / 60) * rate;
+        }
+      }
+      return { dayKey, hours, wages };
+    });
+  }, [days, cleaners, jobsByEmpDay]);
+
+  const weekTotals = useMemo(
+    () =>
+      dailyTotals.reduce((acc, d) => ({ hours: acc.hours + d.hours, wages: acc.wages + d.wages }), { hours: 0, wages: 0 }),
+    [dailyTotals],
+  );
+
+  const empWeekTotals = useMemo(() => {
+    const m = new Map<string, { hours: number; wages: number }>();
+    for (const emp of cleaners) {
+      const rate = (emp.hourly_rate_cents ?? 0) / 100;
+      let hours = 0;
+      const dm = jobsByEmpDay.get(emp.id);
+      if (dm) for (const list of dm.values()) for (const j of list) hours += differenceInMinutes(new Date(j.scheduled_end), new Date(j.scheduled_start)) / 60;
+      m.set(emp.id, { hours, wages: hours * rate });
+    }
+    return m;
+  }, [cleaners, jobsByEmpDay]);
+
+  const draftCount = jobs.filter((j: any) => !j.published_at).length;
+
+  const onDropOnCell = (e: React.DragEvent, employeeId: string, day: Date) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData("application/x-atlas-shift");
+    if (!data) return;
+    const { id, srcDayKey, startISO, endISO } = JSON.parse(data);
+    const dayKey = format(day, "yyyy-MM-dd");
+    if (dayKey === srcDayKey) return; // no-op
+    // shift preserves time-of-day; only date changes
+    const oldStart = new Date(startISO);
+    const oldEnd = new Date(endISO);
+    const newStart = new Date(day);
+    newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+    const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
+    moveMut.mutate({ id, start: newStart, end: newEnd });
+    void employeeId; // move is at job level; assignees keep
+  };
 
   return (
     <>
@@ -50,12 +180,26 @@ function SchedulePage() {
         action={
           <div className="flex flex-wrap gap-2 items-center">
             <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-clay-100">
-              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs rounded ${view === "week" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}>Week</button>
-              <button onClick={() => setView("list")} className={`px-3 py-1 text-xs rounded ${view === "list" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}>List</button>
+              <button onClick={() => setView("grid")} className={`px-2.5 py-1 text-xs rounded flex items-center gap-1 ${view === "grid" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}>
+                <LayoutGrid className="size-3.5" /> Week grid
+              </button>
+              <button onClick={() => setView("list")} className={`px-2.5 py-1 text-xs rounded flex items-center gap-1 ${view === "list" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}>
+                <ListIcon className="size-3.5" /> List
+              </button>
             </div>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, -7))}>←</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
+            <Button
+              size="sm"
+              variant={draftCount ? "default" : "outline"}
+              onClick={() => publishMut.mutate()}
+              disabled={publishMut.isPending}
+              className={draftCount ? "bg-brand text-brand-foreground hover:opacity-90" : ""}
+            >
+              <Send className="size-3.5 mr-1" />
+              {draftCount ? `Publish (${draftCount})` : "Published"}
+            </Button>
             <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogDate(new Date())}>
               <Plus className="size-4" /> New Job
             </Button>
@@ -63,40 +207,140 @@ function SchedulePage() {
         }
       />
 
-      {view === "week" ? (
-        <div className="max-w-7xl mx-auto w-full px-6 md:px-8 py-6 grid grid-cols-1 md:grid-cols-7 gap-3">
-          {days.map((d) => {
-            const dayJobs = data.filter((j) => isSameDay(new Date(j.scheduled_start), d));
-            const today = isSameDay(d, new Date());
-            return (
-              <div key={d.toISOString()} className={`bg-card rounded-xl ring-1 ring-black/5 p-3 min-h-[220px] flex flex-col ${today ? "ring-brand/40" : ""}`}>
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{format(d, "EEE")}</p>
-                    <p className={`text-lg font-medium ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
-                  </div>
-                  <button
-                    onClick={() => setDialogDate(d)}
-                    className="size-6 rounded-md hover:bg-clay-200 text-muted-foreground grid place-items-center"
-                    aria-label="Add job"
-                  >
-                    <Plus className="size-3.5" />
-                  </button>
-                </div>
-                <div className="space-y-2 flex-1">
-                  {dayJobs.map((j) => (
-                    <JobCard key={j.id} job={j} />
-                  ))}
-                  {dayJobs.length === 0 && <p className="text-[11px] text-muted-foreground">No jobs</p>}
-                </div>
+      {view === "grid" ? (
+        <div className="w-full px-4 md:px-6 py-4">
+          <div className="rounded-xl ring-1 ring-black/10 bg-card overflow-hidden">
+            {/* Header row */}
+            <div className="grid" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
+              <div className="px-3 py-3 text-xs font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
+                <Users className="size-3.5" /> Team members ({cleaners.length})
               </div>
-            );
-          })}
+              {days.map((d) => {
+                const today = isSameDay(d, new Date());
+                return (
+                  <div key={d.toISOString()} className={`px-3 py-3 text-center border-b border-l border-border/60 ${today ? "bg-brand/5" : "bg-clay-50"}`}>
+                    <p className={`text-[10px] uppercase tracking-widest ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE")}</p>
+                    <p className={`text-lg font-semibold ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Employee rows */}
+            {cleaners.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground">No employees yet. Add employees to see the schedule grid.</div>
+            )}
+            {cleaners.map((emp: any) => {
+              const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
+              return (
+                <div key={emp.id} className="grid border-t border-border/60" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
+                  <div className="px-3 py-3 flex items-center gap-2 bg-clay-50/50">
+                    <div className="size-8 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
+                      {initials(emp.full_name)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{emp.full_name ?? emp.email}</p>
+                      <p className="text-[10px] text-muted-foreground tabular-nums">
+                        {totals.hours.toFixed(2)} hrs / ${totals.wages.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                  {days.map((d) => {
+                    const dayKey = format(d, "yyyy-MM-dd");
+                    const shifts = jobsByEmpDay.get(emp.id)?.get(dayKey) ?? [];
+                    const unavs = unavByEmpDay.get(emp.id)?.get(dayKey) ?? [];
+                    const today = isSameDay(d, new Date());
+                    return (
+                      <div
+                        key={dayKey}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => onDropOnCell(e, emp.id, d)}
+                        className={`border-l border-border/60 p-1.5 space-y-1 min-h-[110px] ${today ? "bg-brand/[0.02]" : ""}`}
+                      >
+                        {unavs.map((u: any) => (
+                          <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
+                            <p className="font-semibold text-muted-foreground">Unavailable</p>
+                            <p className="text-muted-foreground">
+                              {u.all_day ? "All Day" : `${fmtTime(u.starts_at)}-${fmtTime(u.ends_at)}`}
+                            </p>
+                          </div>
+                        ))}
+                        {shifts
+                          .sort((a: any, b: any) => a.scheduled_start.localeCompare(b.scheduled_start))
+                          .map((j: any) => {
+                            const label =
+                              j.notes ||
+                              [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") ||
+                              j.service?.name ||
+                              "Shift";
+                            const c = chipColor(j.client?.id ?? j.notes);
+                            const draft = !j.published_at;
+                            // conflict: same emp, overlapping other shift in same day
+                            const s = new Date(j.scheduled_start).getTime();
+                            const e = new Date(j.scheduled_end).getTime();
+                            const conflict = shifts.some((k: any) => k.id !== j.id && new Date(k.scheduled_start).getTime() < e && new Date(k.scheduled_end).getTime() > s);
+                            return (
+                              <Link
+                                to="/jobs/$jobId"
+                                params={{ jobId: j.id }}
+                                key={j.id}
+                                draggable
+                                onDragStart={(ev) => {
+                                  ev.dataTransfer.setData(
+                                    "application/x-atlas-shift",
+                                    JSON.stringify({ id: j.id, srcDayKey: dayKey, startISO: j.scheduled_start, endISO: j.scheduled_end }),
+                                  );
+                                  ev.dataTransfer.effectAllowed = "move";
+                                }}
+                                className={`block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-grab active:cursor-grabbing hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
+                                style={{ backgroundColor: c }}
+                                title={`${label} — ${fmtTime(j.scheduled_start)}-${fmtTime(j.scheduled_end)}${draft ? " (draft)" : ""}`}
+                              >
+                                <div className="flex items-center gap-1 font-semibold">
+                                  {conflict && <AlertTriangle className="size-3 shrink-0" />}
+                                  <span>{fmtTime(j.scheduled_start)}-{fmtTime(j.scheduled_end)}</span>
+                                </div>
+                                <p className="uppercase font-semibold truncate">{label}</p>
+                              </Link>
+                            );
+                          })}
+                        {shifts.length === 0 && unavs.length === 0 && (
+                          <button
+                            onClick={() => setDialogDate(d)}
+                            className="w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
+                          >
+                            + Add shift
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            {/* Wages / hours footer */}
+            <div className="grid border-t-2 border-border" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
+              <div className="px-3 py-2 bg-clay-50">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
+              </div>
+              {dailyTotals.map((t) => (
+                <div key={t.dayKey} className="px-2 py-2 border-l border-border/60 bg-clay-50 text-right tabular-nums">
+                  <p className="text-xs font-semibold">${t.wages.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">{t.hours.toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end text-xs text-muted-foreground tabular-nums">
+            <span>Week total: <span className="font-semibold text-foreground">${weekTotals.wages.toFixed(2)}</span> • {weekTotals.hours.toFixed(2)} hrs</span>
+          </div>
         </div>
       ) : (
         <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-2">
-          {data.length === 0 && <p className="text-sm text-muted-foreground">No jobs scheduled this week.</p>}
-          {data.map((j) => (
+          {jobs.length === 0 && <p className="text-sm text-muted-foreground">No jobs scheduled this week.</p>}
+          {jobs.map((j: any) => (
             <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} className="block bg-card rounded-lg ring-1 ring-black/5 p-4 hover:ring-brand/30 transition">
               <div className="flex items-center gap-4">
                 <div className="w-24 shrink-0">
@@ -107,11 +351,11 @@ function SchedulePage() {
                   {j.service?.name}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
+                  <p className="text-sm font-medium truncate">{j.notes || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
                   <p className="text-xs text-muted-foreground truncate">{j.client?.service_address ?? "—"}</p>
                 </div>
                 <div className="flex -space-x-1">
-                  {j.assignees.slice(0, 3).map((a) => (
+                  {j.assignees.slice(0, 3).map((a: any) => (
                     <div key={a.id} className="size-7 rounded-full bg-clay-200 grid place-items-center text-[10px] font-medium ring-2 ring-card">{initials(a.full_name)}</div>
                   ))}
                   {j.assignees.length === 0 && <span className="text-xs text-muted-foreground">Unassigned</span>}
@@ -122,26 +366,8 @@ function SchedulePage() {
         </div>
       )}
 
-      {dialogDate && (
-        <NewJobDialog date={dialogDate} onClose={() => setDialogDate(null)} />
-      )}
+      {dialogDate && <NewJobDialog date={dialogDate} onClose={() => setDialogDate(null)} />}
     </>
-  );
-}
-
-function JobCard({ job }: { job: any }) {
-  const color = job.service?.color ?? "#8b8b8b";
-  return (
-    <Link to="/jobs/$jobId" params={{ jobId: job.id }} className="block p-2 rounded-md bg-clay-100 hover:bg-clay-200/70 text-xs border-l-2" style={{ borderLeftColor: color }}>
-      <p className="font-medium truncate">{format(new Date(job.scheduled_start), "h:mma")} · {job.service?.name}</p>
-      <p className="text-muted-foreground truncate">{[job.client?.first_name, job.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
-      <div className="flex items-center gap-1 mt-1">
-        {job.assignees.slice(0, 3).map((a: any) => (
-          <span key={a.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-background">{initials(a.full_name)}</span>
-        ))}
-        {job.is_recurring && <span className="text-[9px] text-muted-foreground">↻</span>}
-      </div>
-    </Link>
   );
 }
 
@@ -157,7 +383,7 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const { data: services = [] } = useQuery({ queryKey: ["services"], queryFn: () => svcFn({}) });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
 
-  const cleaners = useMemo(() => employees.filter((e: any) => e.role === "employee" || e.role === "owner"), [employees]);
+  const cleaners = useMemo(() => employees.filter((e: any) => e.role === "employee" || e.role === "manager" || e.role === "owner"), [employees]);
 
   const [clientId, setClientId] = useState("");
   const [serviceId, setServiceId] = useState("");

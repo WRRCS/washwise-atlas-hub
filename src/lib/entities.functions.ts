@@ -361,7 +361,7 @@ export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const [{ data: profs }, { data: roles }] = await Promise.all([
-      context.supabase.from("profiles").select("id, full_name, email, phone, is_active").order("full_name"),
+      context.supabase.from("profiles").select("id, full_name, email, phone, is_active, hourly_rate_cents").order("full_name"),
       context.supabase.from("user_roles").select("user_id, role"),
     ]);
     const rolesMap = new Map<string, string>();

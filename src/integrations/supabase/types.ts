@@ -573,6 +573,42 @@ export type Database = {
           },
         ]
       }
+      employee_unavailability: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          employee_id: string
+          ends_at: string
+          id: string
+          reason: string | null
+          starts_at: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          employee_id: string
+          ends_at: string
+          id?: string
+          reason?: string | null
+          starts_at: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          employee_id?: string
+          ends_at?: string
+          id?: string
+          reason?: string | null
+          starts_at?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gps_consent_log: {
         Row: {
           consent_given_at: string
@@ -1129,6 +1165,7 @@ export type Database = {
           notes: string | null
           price_cents: number
           property_id: string | null
+          published_at: string | null
           recurrence_end: string | null
           recurrence_group_id: string | null
           recurrence_rule: string | null
@@ -1153,6 +1190,7 @@ export type Database = {
           notes?: string | null
           price_cents?: number
           property_id?: string | null
+          published_at?: string | null
           recurrence_end?: string | null
           recurrence_group_id?: string | null
           recurrence_rule?: string | null
@@ -1177,6 +1215,7 @@ export type Database = {
           notes?: string | null
           price_cents?: number
           property_id?: string | null
+          published_at?: string | null
           recurrence_end?: string | null
           recurrence_group_id?: string | null
           recurrence_rule?: string | null
@@ -1607,6 +1646,7 @@ export type Database = {
           created_at: string
           email: string | null
           full_name: string | null
+          hourly_rate_cents: number
           id: string
           is_active: boolean
           phone: string | null
@@ -1618,6 +1658,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
+          hourly_rate_cents?: number
           id: string
           is_active?: boolean
           phone?: string | null
@@ -1629,6 +1670,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
+          hourly_rate_cents?: number
           id?: string
           is_active?: boolean
           phone?: string | null
