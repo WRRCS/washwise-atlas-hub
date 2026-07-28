@@ -518,8 +518,14 @@ export const setRole = createServerFn({ method: "POST" })
     z.object({ user_id: z.string().uuid(), role: z.enum(["owner", "manager", "employee"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    // Only owners can promote to owner. Managers with can_manage_clients_employees
+    // can toggle between employee and manager.
     const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) throw new Error("Forbidden");
+    if (data.role === "owner" && !isOwner) throw new Error("Only owners can grant the owner role");
+    if (!isOwner) {
+      const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+      if (!allowed) throw new Error("You don't have permission to change roles");
+    }
     const { data: prof } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
     await context.supabase.from("user_roles").delete().eq("user_id", data.user_id).eq("tenant_id", prof.tenant_id);
