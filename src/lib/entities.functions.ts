@@ -509,7 +509,7 @@ export const impersonateEmployee = createServerFn({ method: "POST" })
 export const setRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ user_id: z.string().uuid(), role: z.enum(["owner", "employee"]) }).parse(input),
+    z.object({ user_id: z.string().uuid(), role: z.enum(["owner", "manager", "employee"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: isOwner } = await context.supabase.rpc("is_owner");
@@ -521,6 +521,20 @@ export const setRole = createServerFn({ method: "POST" })
       user_id: data.user_id, tenant_id: prof.tenant_id, role: data.role,
     });
     if (error) throw new Error(error.message);
+    if (data.role === "manager") {
+      await context.supabase.from("employee_permissions").upsert(
+        {
+          tenant_id: prof.tenant_id,
+          employee_id: data.user_id,
+          can_view_employee_contacts: true,
+          can_view_pricing: false,
+          can_view_client_cpni: false,
+          can_schedule: true,
+          can_manage_clients_employees: true,
+        } as any,
+        { onConflict: "tenant_id,employee_id" },
+      );
+    }
     return { ok: true };
   });
 
