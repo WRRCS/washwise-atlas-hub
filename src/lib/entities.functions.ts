@@ -399,8 +399,8 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) throw new Error("Only owners can invite employees");
+    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+    if (!allowed) throw new Error("You don't have permission to invite employees");
 
     // Resolve the inviter's tenant so we can attach the new user to it
     // (the auth trigger only knows about the default tenant).
