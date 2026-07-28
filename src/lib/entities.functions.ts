@@ -571,22 +571,57 @@ export const amIOwner = createServerFn({ method: "GET" })
     return { isOwner: !!data };
   });
 
+export const myCapabilities = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [
+      { data: isOwner },
+      { data: isStaff },
+      { data: canManage },
+      { data: canSchedule },
+      { data: canViewCpni },
+      { data: canViewPricing },
+      { data: canViewWages },
+      { data: canViewContacts },
+    ] = await Promise.all([
+      context.supabase.rpc("is_owner"),
+      context.supabase.rpc("is_owner_or_manager"),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_schedule" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_client_cpni" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_pricing" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_wages" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_employee_contacts" }),
+    ]);
+    return {
+      isOwner: !!isOwner,
+      isStaff: !!isStaff,
+      canManage: !!canManage,
+      canSchedule: !!canSchedule,
+      canViewCpni: !!canViewCpni,
+      canViewPricing: !!canViewPricing,
+      canViewWages: !!canViewWages,
+      canViewContacts: !!canViewContacts,
+    };
+  });
+
 
 export const listEmployeePermissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) return [] as Array<{
+    const { data: isStaff } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isStaff) return [] as Array<{
       employee_id: string;
       can_view_employee_contacts: boolean;
       can_view_pricing: boolean;
       can_view_client_cpni: boolean;
       can_schedule: boolean;
       can_manage_clients_employees: boolean;
+      can_view_wages: boolean;
     }>;
     const { data, error } = await context.supabase
       .from("employee_permissions")
-      .select("employee_id, can_view_employee_contacts, can_view_pricing, can_view_client_cpni, can_schedule, can_manage_clients_employees");
+      .select("employee_id, can_view_employee_contacts, can_view_pricing, can_view_client_cpni, can_schedule, can_manage_clients_employees, can_view_wages");
     if (error) throw new Error(error.message);
     return data ?? [];
   });
@@ -601,6 +636,7 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
       can_view_client_cpni: z.boolean(),
       can_schedule: z.boolean(),
       can_manage_clients_employees: z.boolean(),
+      can_view_wages: z.boolean(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
