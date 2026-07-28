@@ -360,17 +360,23 @@ export const deleteServiceType = createServerFn({ method: "POST" })
 export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: profs }, { data: roles }] = await Promise.all([
+    const [{ data: profs }, { data: roles }, { data: isOwner }, { data: canViewWages }] = await Promise.all([
       context.supabase.from("profiles").select("id, full_name, email, phone, is_active, hourly_rate_cents").order("full_name"),
       context.supabase.from("user_roles").select("user_id, role"),
+      context.supabase.rpc("is_owner"),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_wages" }),
     ]);
     const rolesMap = new Map<string, string>();
     (roles ?? []).forEach((r) => rolesMap.set(r.user_id, r.role));
-    const list = (profs ?? []).map((p) => ({ ...p, role: rolesMap.get(p.id) ?? "employee" }));
+    const showWages = !!isOwner || !!canViewWages;
+    const list = (profs ?? []).map((p) => ({
+      ...p,
+      hourly_rate_cents: showWages ? p.hourly_rate_cents : 0,
+      role: rolesMap.get(p.id) ?? "employee",
+    }));
 
-    // Attach last_sign_in_at via admin (owner only; ignore errors for non-owners)
-    const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) return list.map((p) => ({ ...p, last_sign_in_at: null as string | null }));
+    const { data: isStaff } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isStaff) return list.map((p) => ({ ...p, last_sign_in_at: null as string | null }));
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
