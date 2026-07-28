@@ -88,6 +88,35 @@ export function AppShell({ children }: { children: ReactNode }) {
     refetchInterval: 20_000,
   });
 
+  const capableFn = useServerFn(amIClientChatCapable);
+  const { data: capable } = useQuery({
+    queryKey: ["client-chat-capable"],
+    queryFn: () => capableFn(),
+    enabled: !!profile,
+  });
+  const clientChatCapable = !!capable?.capable;
+
+  const clientChatUnreadFn = useServerFn(getClientChatUnread);
+  const { data: clientChatUnread } = useQuery({
+    queryKey: ["client-chat-unread"],
+    queryFn: () => clientChatUnreadFn(),
+    enabled: clientChatCapable,
+    refetchInterval: 20_000,
+  });
+  const clientChatUnreadCount = clientChatUnread?.count ?? 0;
+
+  const primaryNav = (() => {
+    if (profile?.role === "employee") {
+      const base = [...EMPLOYEE_NAV] as Array<{ to: string; label: string; icon: any }>;
+      if (clientChatCapable) {
+        base.splice(2, 0, { to: "/client-chat", label: "Client chat", icon: MessageSquare });
+      }
+      return base;
+    }
+    // owner: OWNER_NAV already includes /client-chat
+    return OWNER_NAV as ReadonlyArray<{ to: string; label: string; icon: any }>;
+  })();
+
   if (alreadyInsideShell) {
     return <>{children}</>;
   }
