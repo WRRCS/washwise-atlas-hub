@@ -162,13 +162,14 @@ function PortalDashboard() {
           <PushToggle mode="portal" />
         </div>
         <Tabs defaultValue="jobs">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="invoices">
               Invoices{openInvoices.length > 0 && <Badge variant="secondary" className="ml-2">{openInvoices.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="request">Request service</TabsTrigger>
+            <TabsTrigger value="request">Request</TabsTrigger>
+            <TabsTrigger value="reminders">Reminders</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs" className="space-y-6 mt-6">
