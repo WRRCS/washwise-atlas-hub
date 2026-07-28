@@ -2816,7 +2816,7 @@ export type Database = {
         | "cancelled"
       job_status: "scheduled" | "in_progress" | "completed" | "canceled"
       lead_status: "new" | "contacted" | "qualified" | "won" | "lost"
-      notification_channel: "sms" | "email"
+      notification_channel: "sms" | "email" | "push"
       notification_recipient_type: "client" | "employee" | "owner"
       notification_status: "pending" | "sent" | "failed"
       payment_provider: "venmo" | "card" | "ach" | "manual"
@@ -2980,7 +2980,7 @@ export const Constants = {
       invoice_status: ["draft", "sent", "paid", "void", "overdue", "cancelled"],
       job_status: ["scheduled", "in_progress", "completed", "canceled"],
       lead_status: ["new", "contacted", "qualified", "won", "lost"],
-      notification_channel: ["sms", "email"],
+      notification_channel: ["sms", "email", "push"],
       notification_recipient_type: ["client", "employee", "owner"],
       notification_status: ["pending", "sent", "failed"],
       payment_provider: ["venmo", "card", "ach", "manual"],
