@@ -460,6 +460,22 @@ function PermToggle({ label, hint, checked, onChange }: { label: string; hint: s
   );
 }
 
+function InlinePermBadge({ label, on }: { label: string; on: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full ring-1 ${
+        on
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+          : "bg-clay-100 text-muted-foreground ring-black/5"
+      }`}
+      title={`${label}: ${on ? "On" : "Off"}`}
+    >
+      <span className={`size-1.5 rounded-full ${on ? "bg-emerald-500" : "bg-clay-400"}`} />
+      {label} {on ? "on" : "off"}
+    </span>
+  );
+}
+
 function formatLast(iso: string | null) {
   if (!iso) return "Never";
   const d = new Date(iso);
