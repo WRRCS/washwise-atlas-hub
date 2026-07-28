@@ -63,10 +63,10 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.02 60);
 
-  /* Wash Rinse Repeat brand — orange primary, cyan accent */
-  --brand: oklch(0.72 0.17 55);
+  /* Wash Rinse Repeat brand — blue primary (from logo), orange accent */
+  --brand: oklch(0.75 0.13 225);
   --brand-foreground: oklch(0.99 0.006 70);
-  --brand-accent: oklch(0.75 0.13 225);
+  --brand-accent: oklch(0.72 0.17 55);
   --brand-accent-foreground: oklch(0.99 0.006 70);
 
   --primary: oklch(0.22 0.02 60);
