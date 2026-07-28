@@ -41,10 +41,6 @@ function ClientsPage() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"active" | "inactive" | "all">("active");
 
-  if (capsQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
-  if (capsQ.data && !canAccess) return null;
-
-
   const counts = useMemo(() => {
     const active = data.filter((c) => c.is_active).length;
     return { all: data.length, active, inactive: data.length - active };
@@ -60,6 +56,10 @@ function ClientsPage() {
       [fullName(c), c.email, c.phone, c.service_address].some((v) => (v ?? "").toLowerCase().includes(needle)),
     );
   }, [data, q, status]);
+
+  if (capsQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (capsQ.data && !canAccess) return null;
+
 
   return (
     <>
