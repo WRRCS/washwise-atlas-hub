@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { PushToggle } from "@/components/push-toggle";
+import { ReminderPrefsEditor } from "@/components/reminder-prefs-editor";
+import type { ReminderChannel } from "@/lib/reminder-prefs.functions";
 
 export const Route = createFileRoute("/portal/dashboard")({
   ssr: false,
