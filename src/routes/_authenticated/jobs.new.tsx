@@ -71,6 +71,7 @@ function NewJob() {
       await create({
         data: {
           client_id: clientId,
+          property_id: propertyId || null,
           service_type_id: serviceId,
           scheduled_start: startDate.toISOString(),
           scheduled_end: endDate.toISOString(),
