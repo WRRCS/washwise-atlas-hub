@@ -113,6 +113,23 @@ export const updateClient = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setClientColor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      color: z.union([z.string().trim().regex(/^#[0-9a-fA-F]{6}$/), z.null()]),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("clients")
+      .update({ color: data.color })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => input)

@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability } from "@/lib/jobs.functions";
-import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
+import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -27,11 +28,11 @@ function initials(name: string | null | undefined) {
   return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-// Deterministic color per client for chip fill (Homebase-style)
+// Palette users can pick from per client
 const CHIP_PALETTE = [
-  "#e11d48", "#7c3aed", "#0ea5e9", "#f59e0b", "#10b981",
-  "#f43f5e", "#8b5cf6", "#0891b2", "#ef4444", "#ec4899",
-  "#14b8a6", "#f97316", "#6366f1", "#22c55e", "#eab308",
+  "#e11d48", "#f43f5e", "#f97316", "#f59e0b", "#eab308",
+  "#22c55e", "#10b981", "#14b8a6", "#0ea5e9", "#0891b2",
+  "#6366f1", "#7c3aed", "#8b5cf6", "#ec4899", "#64748b",
 ];
 function chipColor(seed: string | null | undefined) {
   const s = seed ?? "x";
@@ -56,6 +57,18 @@ function SchedulePage() {
   const unavFn = useServerFn(listUnavailability);
   const moveFn = useServerFn(moveJob);
   const publishFn = useServerFn(publishSchedule);
+  const setColorFn = useServerFn(setClientColor);
+
+  const colorMut = useMutation({
+    mutationFn: (v: { clientId: string; color: string | null }) =>
+      setColorFn({ data: { id: v.clientId, color: v.color } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("Color saved for client");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save color"),
+  });
 
   const from = startOfDay(anchor).toISOString();
   const to = endOfDay(addDays(anchor, 6)).toISOString();
@@ -273,35 +286,75 @@ function SchedulePage() {
                               [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") ||
                               j.service?.name ||
                               "Shift";
-                            const c = chipColor(j.client?.id ?? j.notes);
+                            const clientId = j.client?.id as string | undefined;
+                            const customColor = j.client?.color as string | undefined | null;
+                            const c = customColor || chipColor(clientId ?? j.notes);
                             const draft = !j.published_at;
-                            // conflict: same emp, overlapping other shift in same day
                             const s = new Date(j.scheduled_start).getTime();
                             const e = new Date(j.scheduled_end).getTime();
                             const conflict = shifts.some((k: any) => k.id !== j.id && new Date(k.scheduled_start).getTime() < e && new Date(k.scheduled_end).getTime() > s);
                             return (
-                              <Link
-                                to="/jobs/$jobId"
-                                params={{ jobId: j.id }}
-                                key={j.id}
-                                draggable
-                                onDragStart={(ev) => {
-                                  ev.dataTransfer.setData(
-                                    "application/x-atlas-shift",
-                                    JSON.stringify({ id: j.id, srcDayKey: dayKey, startISO: j.scheduled_start, endISO: j.scheduled_end }),
-                                  );
-                                  ev.dataTransfer.effectAllowed = "move";
-                                }}
-                                className={`block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-grab active:cursor-grabbing hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
-                                style={{ backgroundColor: c }}
-                                title={`${label} — ${fmtTime(j.scheduled_start)}-${fmtTime(j.scheduled_end)}${draft ? " (draft)" : ""}`}
-                              >
-                                <div className="flex items-center gap-1 font-semibold">
-                                  {conflict && <AlertTriangle className="size-3 shrink-0" />}
-                                  <span>{fmtTime(j.scheduled_start)}-{fmtTime(j.scheduled_end)}</span>
-                                </div>
-                                <p className="uppercase font-semibold truncate">{label}</p>
-                              </Link>
+                              <Popover key={j.id}>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    draggable
+                                    onDragStart={(ev) => {
+                                      ev.dataTransfer.setData(
+                                        "application/x-atlas-shift",
+                                        JSON.stringify({ id: j.id, srcDayKey: dayKey, startISO: j.scheduled_start, endISO: j.scheduled_end }),
+                                      );
+                                      ev.dataTransfer.effectAllowed = "move";
+                                    }}
+                                    className={`w-full text-left block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
+                                    style={{ backgroundColor: c }}
+                                    title={`${label} — ${fmtTime(j.scheduled_start)}-${fmtTime(j.scheduled_end)}${draft ? " (draft)" : ""}`}
+                                  >
+                                    <div className="flex items-center gap-1 font-semibold">
+                                      {conflict && <AlertTriangle className="size-3 shrink-0" />}
+                                      <span>{fmtTime(j.scheduled_start)}-{fmtTime(j.scheduled_end)}</span>
+                                    </div>
+                                    <p className="uppercase font-semibold truncate">{label}</p>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-3" align="start">
+                                  <p className="text-xs font-semibold mb-1 truncate">{label}</p>
+                                  <p className="text-[11px] text-muted-foreground mb-2">
+                                    {clientId ? "Pick a color for this client — it applies to every appointment." : "Assign a client to save a persistent color."}
+                                  </p>
+                                  <div className="grid grid-cols-5 gap-1.5 mb-3">
+                                    {CHIP_PALETTE.map((swatch) => {
+                                      const selected = (customColor ?? "").toLowerCase() === swatch.toLowerCase();
+                                      return (
+                                        <button
+                                          key={swatch}
+                                          type="button"
+                                          disabled={!clientId || colorMut.isPending}
+                                          onClick={() => clientId && colorMut.mutate({ clientId, color: swatch })}
+                                          className="relative size-7 rounded-md ring-1 ring-black/10 disabled:opacity-50 hover:scale-105 transition"
+                                          style={{ backgroundColor: swatch }}
+                                          aria-label={`Set color ${swatch}`}
+                                        >
+                                          {selected && <Check className="size-4 text-white absolute inset-0 m-auto" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={!clientId || !customColor || colorMut.isPending}
+                                      onClick={() => clientId && colorMut.mutate({ clientId, color: null })}
+                                      className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                                    >
+                                      Reset to default
+                                    </button>
+                                    <Link to="/jobs/$jobId" params={{ jobId: j.id }} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
+                                      Open job <ExternalLink className="size-3" />
+                                    </Link>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             );
                           })}
                         {shifts.length === 0 && unavs.length === 0 && (
