@@ -49,7 +49,14 @@ function Employees() {
   const { data: ownerInfo } = useQuery({ queryKey: ["am_i_owner"], queryFn: () => ownerFn() });
   const isOwner = !!ownerInfo?.isOwner;
   const permsMap = new Map(
-    (permsData as Array<{ employee_id: string; can_view_employee_contacts: boolean; can_view_pricing: boolean }>).map((p) => [p.employee_id, p]),
+    (permsData as Array<{
+      employee_id: string;
+      can_view_employee_contacts: boolean;
+      can_view_pricing: boolean;
+      can_view_client_cpni: boolean;
+      can_schedule: boolean;
+      can_manage_clients_employees: boolean;
+    }>).map((p) => [p.employee_id, p]),
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -61,9 +68,17 @@ function Employees() {
 
   const employees = (data as Employee[]).filter((e) => e.role !== "owner");
   const owners = (data as Employee[]).filter((e) => e.role === "owner");
-  const roleLabel = (role: string) => role === "owner" ? "Owner" : role === "manager" ? "Manager" : "Employee";
 
-  const savePerms = async (employee_id: string, next: { can_view_employee_contacts: boolean; can_view_pricing: boolean }) => {
+  const savePerms = async (
+    employee_id: string,
+    next: {
+      can_view_employee_contacts: boolean;
+      can_view_pricing: boolean;
+      can_view_client_cpni: boolean;
+      can_schedule: boolean;
+      can_manage_clients_employees: boolean;
+    },
+  ) => {
     try {
       await savePermsFn({ data: { employee_id, ...next } });
       qc.invalidateQueries({ queryKey: ["employee_permissions"] });
