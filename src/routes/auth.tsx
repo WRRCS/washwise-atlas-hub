@@ -81,7 +81,7 @@ function AuthPage() {
               </div>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
-            <Button type="submit" disabled={loading} className="w-full bg-brand-accent text-brand-accent-foreground hover:opacity-90">
+            <Button type="submit" disabled={loading} className="w-full bg-brand text-brand-foreground hover:opacity-90">
               {loading ? "…" : "Sign in"}
             </Button>
 
