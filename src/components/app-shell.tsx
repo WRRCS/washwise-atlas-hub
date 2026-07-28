@@ -96,11 +96,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen">
         <aside className="hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
           <div className="p-6">
-            <div className="flex items-center gap-2.5 px-2">
-              <img src={wrrcLogo.url} alt="Wash Rinse Repeat" className="h-9 w-auto object-contain" />
-              <span className="font-medium tracking-tight text-lg">Atlas</span>
+            <div className="px-2">
+              <img src={wrrcLogo.url} alt="Wash Rinse Repeat Cleaning Services" className="w-full h-auto object-contain" />
             </div>
           </div>
+
 
           <nav className="flex-1 px-4 space-y-1">
             {(profile?.role === "employee" ? EMPLOYEE_NAV : OWNER_NAV).map((item) => {
@@ -166,9 +166,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* mobile top bar */}
         <div className="md:hidden fixed top-0 inset-x-0 z-20 bg-clay-100 border-b border-border/60 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={wrrcLogo.url} alt="Wash Rinse Repeat" className="h-7 w-auto object-contain" />
-            <span className="font-medium tracking-tight">Atlas</span>
+            <img src={wrrcLogo.url} alt="Wash Rinse Repeat Cleaning Services" className="h-8 w-auto object-contain" />
           </div>
+
           <button onClick={signOut} className="text-xs text-muted-foreground"><LogOut className="size-4" /></button>
         </div>
         {/* mobile bottom nav */}

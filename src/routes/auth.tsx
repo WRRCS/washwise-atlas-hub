@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import wrrcLogo from "@/assets/wrrcs-logo.png.asset.json";
+
 
 type AuthSearch = { redirect?: string };
 
@@ -57,14 +59,10 @@ function AuthPage() {
     <div className="min-h-screen bg-clay-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-2.5 mb-4">
-            <div className="size-7 rounded bg-brand grid place-items-center">
-              <div className="size-2 rounded-full bg-clay-50" />
-            </div>
-            <span className="text-xl font-medium tracking-tight">Atlas</span>
-          </div>
-          <p className="text-sm text-muted-foreground">Wash Rinse Repeat Cleaning · Ops</p>
+          <img src={wrrcLogo.url} alt="Wash Rinse Repeat Cleaning Services" className="mx-auto mb-4 h-24 w-auto object-contain" />
+          <p className="text-sm text-muted-foreground">Ops portal</p>
         </div>
+
 
         <div className="rounded-xl bg-card ring-1 ring-black/5 p-6 space-y-5">
           <h1 className="text-lg font-medium">Sign in</h1>
@@ -83,9 +81,10 @@ function AuthPage() {
               </div>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
-            <Button type="submit" disabled={loading} className="w-full bg-brand text-brand-foreground hover:opacity-90">
+            <Button type="submit" disabled={loading} className="w-full bg-brand-accent text-brand-accent-foreground hover:opacity-90">
               {loading ? "…" : "Sign in"}
             </Button>
+
           </form>
 
           <div className="relative">
