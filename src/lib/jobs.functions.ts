@@ -208,3 +208,43 @@ export const updateJobStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const moveJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; scheduled_start: string; scheduled_end: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("jobs")
+      .update({ scheduled_start: data.scheduled_start, scheduled_end: data.scheduled_end })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const publishSchedule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from: string; to: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("jobs")
+      .update({ published_at: new Date().toISOString() })
+      .is("published_at", null)
+      .gte("scheduled_start", data.from)
+      .lt("scheduled_start", data.to)
+      .select("id");
+    if (error) throw new Error(error.message);
+    return { count: rows?.length ?? 0 };
+  });
+
+export const listUnavailability = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from: string; to: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("employee_unavailability")
+      .select("id, employee_id, starts_at, ends_at, all_day, reason")
+      .gte("starts_at", data.from)
+      .lt("starts_at", data.to);
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
