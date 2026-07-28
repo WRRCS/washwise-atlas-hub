@@ -13,6 +13,7 @@ import {
   listRecentNotifications,
   type NotificationTemplate,
 } from "@/lib/notifications.functions";
+import { amIOwner } from "@/lib/entities.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffReminderPrefs } from "@/components/reminder-prefs-editor";
 import { BulkReminderPrefsEditor } from "@/components/bulk-reminder-prefs-editor";
