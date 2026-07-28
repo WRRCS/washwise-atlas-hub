@@ -9,6 +9,7 @@ import { AtlasChat } from "@/components/atlas-chat";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadCount } from "@/lib/sms.functions";
+import { amIClientChatCapable, getClientChatUnread } from "@/lib/client-chat.functions";
 import wrrcLogo from "@/assets/wrrc-logo.png.asset.json";
 
 const OWNER_NAV = [
@@ -16,6 +17,7 @@ const OWNER_NAV = [
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/messages", label: "Messages", icon: MessageSquare },
+  { to: "/client-chat", label: "Client chat", icon: MessageSquare },
   { to: "/leads", label: "Leads", icon: Inbox },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/services", label: "Services", icon: Sparkles },
@@ -86,6 +88,35 @@ export function AppShell({ children }: { children: ReactNode }) {
     refetchInterval: 20_000,
   });
 
+  const capableFn = useServerFn(amIClientChatCapable);
+  const { data: capable } = useQuery({
+    queryKey: ["client-chat-capable"],
+    queryFn: () => capableFn(),
+    enabled: !!profile,
+  });
+  const clientChatCapable = !!capable?.capable;
+
+  const clientChatUnreadFn = useServerFn(getClientChatUnread);
+  const { data: clientChatUnread } = useQuery({
+    queryKey: ["client-chat-unread"],
+    queryFn: () => clientChatUnreadFn(),
+    enabled: clientChatCapable,
+    refetchInterval: 20_000,
+  });
+  const clientChatUnreadCount = clientChatUnread?.count ?? 0;
+
+  const primaryNav = (() => {
+    if (profile?.role === "employee") {
+      const base = [...EMPLOYEE_NAV] as Array<{ to: string; label: string; icon: any }>;
+      if (clientChatCapable) {
+        base.splice(2, 0, { to: "/client-chat", label: "Client chat", icon: MessageSquare });
+      }
+      return base;
+    }
+    // owner: OWNER_NAV already includes /client-chat
+    return OWNER_NAV as ReadonlyArray<{ to: string; label: string; icon: any }>;
+  })();
+
   if (alreadyInsideShell) {
     return <>{children}</>;
   }
@@ -103,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 
           <nav className="flex-1 px-4 space-y-1">
-            {(profile?.role === "employee" ? EMPLOYEE_NAV : OWNER_NAV).map((item) => {
+            {primaryNav.map((item) => {
               const active = pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
@@ -119,6 +150,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   {item.to === "/messages" && unreadCount > 0 && (
                     <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                       {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                  {item.to === "/client-chat" && clientChatUnreadCount > 0 && (
+                    <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                      {clientChatUnreadCount > 99 ? "99+" : clientChatUnreadCount}
                     </span>
                   )}
                 </Link>
@@ -173,7 +209,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         {/* mobile bottom nav */}
         <div className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-clay-100 border-t border-border/60 flex">
-          {(profile?.role === "employee" ? EMPLOYEE_NAV : OWNER_NAV).slice(0, 5).map((item) => {
+          {primaryNav.slice(0, 5).map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
             return (

@@ -2910,6 +2910,7 @@ export type Database = {
         }[]
       }
       get_tenant_usage: { Args: { _tenant: string }; Returns: Json }
+      has_client_mgmt_permission: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
