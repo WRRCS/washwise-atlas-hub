@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
-  listEmployeePermissions, setEmployeePermissions, amIOwner,
+  listEmployeePermissions, setEmployeePermissions, myCapabilities,
 } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/employees")({
