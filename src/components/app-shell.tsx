@@ -204,7 +204,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         {/* mobile bottom nav */}
         <div className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-clay-100 border-t border-border/60 flex">
-          {(profile?.role === "employee" ? EMPLOYEE_NAV : OWNER_NAV).slice(0, 5).map((item) => {
+          {primaryNav.slice(0, 5).map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
