@@ -396,6 +396,12 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
                   checked={current.can_view_employee_contacts}
                   onChange={(v) => toggle("can_view_employee_contacts", v)}
                 />
+                <PermToggle
+                  label="View wages & hourly rates"
+                  hint="See team hourly pay and labor costs. Owner-only by default."
+                  checked={current.can_view_wages}
+                  onChange={(v) => toggle("can_view_wages", v)}
+                />
               </div>
             </PopoverContent>
           </Popover>
