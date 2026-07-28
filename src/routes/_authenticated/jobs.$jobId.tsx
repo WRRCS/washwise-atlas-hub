@@ -256,7 +256,7 @@ function JobDetail() {
                   </div>
                 )}
                 {!hasAny && (
-                  perms?.isOwner || perms?.canManageClientsEmployees ? (
+                  perms?.isOwner ? (
                     <div className="text-xs text-muted-foreground">
                       No access info on file.{" "}
                       {job.client?.id && (
