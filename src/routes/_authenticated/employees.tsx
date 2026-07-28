@@ -139,12 +139,13 @@ function Employees() {
     }
   };
 
-  const togglePromote = async (e: Employee) => {
-    const next = e.role === "owner" ? "employee" : "owner";
+  const changeRole = async (e: Employee, next: "owner" | "manager" | "employee") => {
+    if (next === e.role) return;
     try {
       await roleFn({ data: { user_id: e.id, role: next } });
       toast.success(`Set to ${next}`);
       qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["employee_permissions"] });
     } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
   };
 
