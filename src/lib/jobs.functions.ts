@@ -13,6 +13,7 @@ export type JobRow = {
   is_recurring: boolean;
   recurrence_rule: string | null;
   recurrence_end: string | null;
+  published_at: string | null;
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   service: { id: string; kind: string; name: string; color: string | null } | null;
   assignees: JobAssignee[];
