@@ -152,6 +152,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
+                  {item.to === "/client-chat" && clientChatUnreadCount > 0 && (
+                    <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                      {clientChatUnreadCount > 99 ? "99+" : clientChatUnreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
