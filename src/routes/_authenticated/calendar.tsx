@@ -286,35 +286,75 @@ function SchedulePage() {
                               [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") ||
                               j.service?.name ||
                               "Shift";
-                            const c = chipColor(j.client?.id ?? j.notes);
+                            const clientId = j.client?.id as string | undefined;
+                            const customColor = j.client?.color as string | undefined | null;
+                            const c = customColor || chipColor(clientId ?? j.notes);
                             const draft = !j.published_at;
-                            // conflict: same emp, overlapping other shift in same day
                             const s = new Date(j.scheduled_start).getTime();
                             const e = new Date(j.scheduled_end).getTime();
                             const conflict = shifts.some((k: any) => k.id !== j.id && new Date(k.scheduled_start).getTime() < e && new Date(k.scheduled_end).getTime() > s);
                             return (
-                              <Link
-                                to="/jobs/$jobId"
-                                params={{ jobId: j.id }}
-                                key={j.id}
-                                draggable
-                                onDragStart={(ev) => {
-                                  ev.dataTransfer.setData(
-                                    "application/x-atlas-shift",
-                                    JSON.stringify({ id: j.id, srcDayKey: dayKey, startISO: j.scheduled_start, endISO: j.scheduled_end }),
-                                  );
-                                  ev.dataTransfer.effectAllowed = "move";
-                                }}
-                                className={`block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-grab active:cursor-grabbing hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
-                                style={{ backgroundColor: c }}
-                                title={`${label} — ${fmtTime(j.scheduled_start)}-${fmtTime(j.scheduled_end)}${draft ? " (draft)" : ""}`}
-                              >
-                                <div className="flex items-center gap-1 font-semibold">
-                                  {conflict && <AlertTriangle className="size-3 shrink-0" />}
-                                  <span>{fmtTime(j.scheduled_start)}-{fmtTime(j.scheduled_end)}</span>
-                                </div>
-                                <p className="uppercase font-semibold truncate">{label}</p>
-                              </Link>
+                              <Popover key={j.id}>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    draggable
+                                    onDragStart={(ev) => {
+                                      ev.dataTransfer.setData(
+                                        "application/x-atlas-shift",
+                                        JSON.stringify({ id: j.id, srcDayKey: dayKey, startISO: j.scheduled_start, endISO: j.scheduled_end }),
+                                      );
+                                      ev.dataTransfer.effectAllowed = "move";
+                                    }}
+                                    className={`w-full text-left block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
+                                    style={{ backgroundColor: c }}
+                                    title={`${label} — ${fmtTime(j.scheduled_start)}-${fmtTime(j.scheduled_end)}${draft ? " (draft)" : ""}`}
+                                  >
+                                    <div className="flex items-center gap-1 font-semibold">
+                                      {conflict && <AlertTriangle className="size-3 shrink-0" />}
+                                      <span>{fmtTime(j.scheduled_start)}-{fmtTime(j.scheduled_end)}</span>
+                                    </div>
+                                    <p className="uppercase font-semibold truncate">{label}</p>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-3" align="start">
+                                  <p className="text-xs font-semibold mb-1 truncate">{label}</p>
+                                  <p className="text-[11px] text-muted-foreground mb-2">
+                                    {clientId ? "Pick a color for this client — it applies to every appointment." : "Assign a client to save a persistent color."}
+                                  </p>
+                                  <div className="grid grid-cols-5 gap-1.5 mb-3">
+                                    {CHIP_PALETTE.map((swatch) => {
+                                      const selected = (customColor ?? "").toLowerCase() === swatch.toLowerCase();
+                                      return (
+                                        <button
+                                          key={swatch}
+                                          type="button"
+                                          disabled={!clientId || colorMut.isPending}
+                                          onClick={() => clientId && colorMut.mutate({ clientId, color: swatch })}
+                                          className="relative size-7 rounded-md ring-1 ring-black/10 disabled:opacity-50 hover:scale-105 transition"
+                                          style={{ backgroundColor: swatch }}
+                                          aria-label={`Set color ${swatch}`}
+                                        >
+                                          {selected && <Check className="size-4 text-white absolute inset-0 m-auto" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={!clientId || !customColor || colorMut.isPending}
+                                      onClick={() => clientId && colorMut.mutate({ clientId, color: null })}
+                                      className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                                    >
+                                      Reset to default
+                                    </button>
+                                    <Link to="/jobs/$jobId" params={{ jobId: j.id }} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
+                                      Open job <ExternalLink className="size-3" />
+                                    </Link>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             );
                           })}
                         {shifts.length === 0 && unavs.length === 0 && (
