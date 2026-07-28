@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { PushToggle } from "@/components/push-toggle";
+import { ReminderPrefsEditor } from "@/components/reminder-prefs-editor";
+import type { ReminderChannel } from "@/lib/reminder-prefs.functions";
 
 export const Route = createFileRoute("/portal/dashboard")({
   ssr: false,
@@ -162,13 +164,14 @@ function PortalDashboard() {
           <PushToggle mode="portal" />
         </div>
         <Tabs defaultValue="jobs">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="invoices">
               Invoices{openInvoices.length > 0 && <Badge variant="secondary" className="ml-2">{openInvoices.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="request">Request service</TabsTrigger>
+            <TabsTrigger value="request">Request</TabsTrigger>
+            <TabsTrigger value="reminders">Reminders</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs" className="space-y-6 mt-6">
@@ -234,6 +237,29 @@ function PortalDashboard() {
               onSubmit={(v) => requestService.mutateAsync(v)}
               submitting={requestService.isPending}
               recent={requests.slice(0, 5)}
+            />
+          </TabsContent>
+
+          <TabsContent value="reminders" className="mt-6">
+            <ReminderPrefsEditor
+              title="Your reminder schedule"
+              description="Choose when you'd like us to remind you about upcoming visits."
+              queryKey={["portal-reminder-prefs", client.id] as const}
+              availableChannels={["email", "sms"]}
+              loader={async () => {
+                const { data, error } = await supabase.rpc("portal_get_reminder_prefs", { _client_id: client.id });
+                if (error) throw error;
+                return data as any;
+              }}
+              saver={async (prefs: { lead_minutes: number[]; channels: ReminderChannel[]; enabled: boolean }) => {
+                const { error } = await supabase.rpc("portal_upsert_reminder_prefs", {
+                  _client_id: client.id,
+                  _lead_minutes: prefs.lead_minutes,
+                  _channels: prefs.channels,
+                  _enabled: prefs.enabled,
+                });
+                if (error) throw error;
+              }}
             />
           </TabsContent>
         </Tabs>

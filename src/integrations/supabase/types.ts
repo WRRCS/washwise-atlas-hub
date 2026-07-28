@@ -1800,6 +1800,57 @@ export type Database = {
           },
         ]
       }
+      reminder_preferences: {
+        Row: {
+          channels: string[]
+          client_id: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          lead_minutes: number[]
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          channels?: string[]
+          client_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          lead_minutes?: number[]
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          channels?: string[]
+          client_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          lead_minutes?: number[]
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_preferences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_type_inventory_recipes: {
         Row: {
           created_at: string
@@ -2834,6 +2885,7 @@ export type Database = {
       }
       portal_email_is_client: { Args: { _email: string }; Returns: boolean }
       portal_get_data: { Args: never; Returns: Json }
+      portal_get_reminder_prefs: { Args: { _client_id: string }; Returns: Json }
       portal_request_service: {
         Args: {
           _client_id: string
@@ -2855,6 +2907,15 @@ export type Database = {
       portal_send_message: {
         Args: { _body: string; _client_id: string }
         Returns: string
+      }
+      portal_upsert_reminder_prefs: {
+        Args: {
+          _channels: string[]
+          _client_id: string
+          _enabled: boolean
+          _lead_minutes: number[]
+        }
+        Returns: Json
       }
       preview_plan_change: { Args: { _target_tier: string }; Returns: Json }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }

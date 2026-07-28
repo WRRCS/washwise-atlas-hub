@@ -14,6 +14,7 @@ import {
   type NotificationTemplate,
 } from "@/lib/notifications.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StaffReminderPrefs } from "@/components/reminder-prefs-editor";
 
 export const Route = createFileRoute("/_authenticated/settings/notifications")({
   component: NotificationsSettings,
@@ -59,9 +60,9 @@ function NotificationsSettings() {
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
         <div className="bg-card rounded-xl ring-1 ring-black/5 p-6">
-          <h3 className="text-sm font-semibold mb-1">Appointment reminders</h3>
+          <h3 className="text-sm font-semibold mb-1">Default client reminder lead time</h3>
           <p className="text-xs text-muted-foreground mb-4">
-            How far in advance to send client appointment reminders.
+            Used for clients who haven't set their own reminder schedule in the client portal.
           </p>
           <LeadEditor
             initial={lead.data?.reminder_lead_hours ?? 24}
@@ -72,6 +73,8 @@ function NotificationsSettings() {
             }}
           />
         </div>
+
+        <StaffReminderPrefs />
 
         <Tabs defaultValue="templates">
           <TabsList>
