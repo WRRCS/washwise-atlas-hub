@@ -237,6 +237,29 @@ function PortalDashboard() {
               recent={requests.slice(0, 5)}
             />
           </TabsContent>
+
+          <TabsContent value="reminders" className="mt-6">
+            <ReminderPrefsEditor
+              title="Your reminder schedule"
+              description="Choose when you'd like us to remind you about upcoming visits."
+              queryKey={["portal-reminder-prefs", client.id] as const}
+              availableChannels={["email", "sms"]}
+              loader={async () => {
+                const { data, error } = await supabase.rpc("portal_get_reminder_prefs", { _client_id: client.id });
+                if (error) throw error;
+                return data as any;
+              }}
+              saver={async (prefs) => {
+                const { error } = await supabase.rpc("portal_upsert_reminder_prefs", {
+                  _client_id: client.id,
+                  _lead_minutes: prefs.lead_minutes,
+                  _channels: prefs.channels,
+                  _enabled: prefs.enabled,
+                });
+                if (error) throw error;
+              }}
+            />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
