@@ -159,6 +159,28 @@ function JobDetail() {
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service address</h4>
             <p className="text-sm whitespace-pre-wrap">{job.client?.service_address ?? "—"}</p>
           </div>
+          <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service</h4>
+            <p className="text-sm font-medium">{job.service?.name ?? "—"}</p>
+            {(() => {
+              const mins =
+                job.service?.default_duration_minutes ??
+                Math.max(
+                  0,
+                  Math.round(
+                    (new Date(job.scheduled_end).getTime() -
+                      new Date(job.scheduled_start).getTime()) /
+                      60000,
+                  ),
+                );
+              const h = Math.floor(mins / 60);
+              const m = mins % 60;
+              const label = h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`;
+              return (
+                <p className="text-xs text-muted-foreground">Expected duration · {label}</p>
+              );
+            })()}
+          </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Assignment</h4>
             {job.assignees && job.assignees.length ? (
@@ -168,6 +190,39 @@ function JobDetail() {
               <p className="text-xs text-muted-foreground tabular-nums">Price · {fmtCents(job.price_cents)}</p>
             )}
           </div>
+
+          {(job as any).property_specs && (
+            (() => {
+              const s = (job as any).property_specs as {
+                key_location: string | null;
+                access_notes: string | null;
+                pets: string | null;
+                parking_notes: string | null;
+                special_instructions: string | null;
+              };
+              const rows: Array<[string, string | null]> = [
+                ["Door / key", s.key_location],
+                ["Access notes", s.access_notes],
+                ["Pets", s.pets],
+                ["Parking", s.parking_notes],
+                ["Special instructions", s.special_instructions],
+              ].filter(([, v]) => v && v.trim()) as Array<[string, string]>;
+              if (!rows.length) return null;
+              return (
+                <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
+                  <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Property details</h4>
+                  <dl className="space-y-2">
+                    {rows.map(([k, v]) => (
+                      <div key={k}>
+                        <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{k}</dt>
+                        <dd className="text-sm whitespace-pre-wrap">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              );
+            })()
+          )}
 
           {job.notes && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5">
