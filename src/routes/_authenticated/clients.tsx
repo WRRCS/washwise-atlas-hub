@@ -38,24 +38,33 @@ function ClientsPage() {
   });
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<"active" | "inactive" | "all">("active");
 
   if (ownerQ.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   if (ownerQ.data && !ownerQ.data.isOwner) return null;
 
 
+  const counts = useMemo(() => {
+    const active = data.filter((c) => c.is_active).length;
+    return { all: data.length, active, inactive: data.length - active };
+  }, [data]);
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return data;
-    return data.filter((c) =>
+    let rows = data;
+    if (status === "active") rows = rows.filter((c) => c.is_active);
+    else if (status === "inactive") rows = rows.filter((c) => !c.is_active);
+    if (!needle) return rows;
+    return rows.filter((c) =>
       [fullName(c), c.email, c.phone, c.service_address].some((v) => (v ?? "").toLowerCase().includes(needle)),
     );
-  }, [data, q]);
+  }, [data, q, status]);
 
   return (
     <>
       <PageHeader
         title="Clients"
-        subtitle={`${data.length} total`}
+        subtitle={`${counts.active} active · ${counts.inactive} inactive`}
         action={
           <Button onClick={() => setOpen(true)} className="bg-brand text-brand-foreground hover:opacity-90">
             <Plus className="size-4 mr-1.5" /> New client
@@ -63,9 +72,24 @@ function ClientsPage() {
         }
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">
-        <div className="relative max-w-sm">
-          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search clients…" className="pl-9" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-lg ring-1 ring-black/5 bg-card p-1 text-sm">
+            {(["active", "inactive", "all"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatus(s)}
+                className={`px-3 py-1.5 rounded-md capitalize transition-colors ${
+                  status === s ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s} <span className="ml-1 opacity-70">({counts[s]})</span>
+              </button>
+            ))}
+          </div>
+          <div className="relative max-w-sm flex-1 min-w-[200px]">
+            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search clients…" className="pl-9" />
+          </div>
         </div>
 
         <div className="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
