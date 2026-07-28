@@ -16,6 +16,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PortalDemoRouteImport } from './routes/portal.demo'
 import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
@@ -97,6 +98,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PortalDemoRoute = PortalDemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => PortalRoute,
 } as any)
 const PortalDashboardRoute = PortalDashboardRouteImport.update({
   id: '/dashboard',
@@ -385,6 +391,7 @@ export interface FileRoutesByFullPath {
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/portal/dashboard': typeof PortalDashboardRoute
+  '/portal/demo': typeof PortalDemoRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -439,6 +446,7 @@ export interface FileRoutesByTo {
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/portal/dashboard': typeof PortalDashboardRoute
+  '/portal/demo': typeof PortalDemoRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -496,6 +504,7 @@ export interface FileRoutesById {
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/portal/dashboard': typeof PortalDashboardRoute
+  '/portal/demo': typeof PortalDemoRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/_authenticated/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/portal/dashboard'
+    | '/portal/demo'
     | '/clients/$clientId'
     | '/inventory/recipes'
     | '/inventory/usage'
@@ -607,6 +617,7 @@ export interface FileRouteTypes {
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/portal/dashboard'
+    | '/portal/demo'
     | '/clients/$clientId'
     | '/inventory/recipes'
     | '/inventory/usage'
@@ -663,6 +674,7 @@ export interface FileRouteTypes {
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/portal/dashboard'
+    | '/portal/demo'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/inventory/recipes'
     | '/_authenticated/inventory/usage'
@@ -760,6 +772,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/portal/demo': {
+      id: '/portal/demo'
+      path: '/demo'
+      fullPath: '/portal/demo'
+      preLoaderRoute: typeof PortalDemoRouteImport
+      parentRoute: typeof PortalRoute
     }
     '/portal/dashboard': {
       id: '/portal/dashboard'
@@ -1241,10 +1260,12 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface PortalRouteChildren {
   PortalDashboardRoute: typeof PortalDashboardRoute
+  PortalDemoRoute: typeof PortalDemoRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
   PortalDashboardRoute: PortalDashboardRoute,
+  PortalDemoRoute: PortalDemoRoute,
 }
 
 const PortalRouteWithChildren =
