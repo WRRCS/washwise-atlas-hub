@@ -119,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
       return base;
     }
-    // owner: OWNER_NAV already includes /client-chat
+    // owner + manager: full nav
     return OWNER_NAV as ReadonlyArray<{ to: string; label: string; icon: any }>;
   })();
 
