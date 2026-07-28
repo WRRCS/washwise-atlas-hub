@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
-  listEmployeePermissions, setEmployeePermissions, amIOwner,
+  listEmployeePermissions, setEmployeePermissions, myCapabilities,
 } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -40,14 +40,15 @@ function Employees() {
   const updateFn = useServerFn(updateEmployee);
   const impersonateFn = useServerFn(impersonateEmployee);
   const roleFn = useServerFn(setRole);
+  const capsFn = useServerFn(myCapabilities);
   const permsFn = useServerFn(listEmployeePermissions);
   const savePermsFn = useServerFn(setEmployeePermissions);
-  const ownerFn = useServerFn(amIOwner);
 
   const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => listFn() });
   const { data: permsData = [] } = useQuery({ queryKey: ["employee_permissions"], queryFn: () => permsFn() });
-  const { data: ownerInfo } = useQuery({ queryKey: ["am_i_owner"], queryFn: () => ownerFn() });
-  const isOwner = !!ownerInfo?.isOwner;
+  const { data: caps } = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
+  const isOwner = !!caps?.isOwner;
+  const canManage = !!(caps?.isOwner || caps?.canManage);
   const permsMap = new Map(
     (permsData as Array<{
       employee_id: string;
@@ -56,6 +57,7 @@ function Employees() {
       can_view_client_cpni: boolean;
       can_schedule: boolean;
       can_manage_clients_employees: boolean;
+      can_view_wages: boolean;
     }>).map((p) => [p.employee_id, p]),
   );
 
@@ -77,6 +79,7 @@ function Employees() {
       can_view_client_cpni: boolean;
       can_schedule: boolean;
       can_manage_clients_employees: boolean;
+      can_view_wages: boolean;
     },
   ) => {
     try {
@@ -296,6 +299,7 @@ type PermsRow = {
   can_view_client_cpni: boolean;
   can_schedule: boolean;
   can_manage_clients_employees: boolean;
+  can_view_wages: boolean;
 };
 
 const EMPTY_PERMS = {
@@ -304,6 +308,7 @@ const EMPTY_PERMS = {
   can_view_client_cpni: false,
   can_schedule: false,
   can_manage_clients_employees: false,
+  can_view_wages: false,
 };
 
 function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onChangeRole }: {
@@ -323,6 +328,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
     can_view_client_cpni: perms?.can_view_client_cpni ?? false,
     can_schedule: perms?.can_schedule ?? false,
     can_manage_clients_employees: perms?.can_manage_clients_employees ?? false,
+    can_view_wages: perms?.can_view_wages ?? false,
   };
   const activeCount = Object.values(current).filter(Boolean).length;
   const summary = activeCount === 0 ? "Default" : `${activeCount} on`;
@@ -389,6 +395,12 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
                   hint="See phone & email of other employees."
                   checked={current.can_view_employee_contacts}
                   onChange={(v) => toggle("can_view_employee_contacts", v)}
+                />
+                <PermToggle
+                  label="View wages & hourly rates"
+                  hint="See team hourly pay and labor costs. Owner-only by default."
+                  checked={current.can_view_wages}
+                  onChange={(v) => toggle("can_view_wages", v)}
                 />
               </div>
             </PopoverContent>

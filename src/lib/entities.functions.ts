@@ -360,17 +360,23 @@ export const deleteServiceType = createServerFn({ method: "POST" })
 export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: profs }, { data: roles }] = await Promise.all([
+    const [{ data: profs }, { data: roles }, { data: isOwner }, { data: canViewWages }] = await Promise.all([
       context.supabase.from("profiles").select("id, full_name, email, phone, is_active, hourly_rate_cents").order("full_name"),
       context.supabase.from("user_roles").select("user_id, role"),
+      context.supabase.rpc("is_owner"),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_wages" }),
     ]);
     const rolesMap = new Map<string, string>();
     (roles ?? []).forEach((r) => rolesMap.set(r.user_id, r.role));
-    const list = (profs ?? []).map((p) => ({ ...p, role: rolesMap.get(p.id) ?? "employee" }));
+    const showWages = !!isOwner || !!canViewWages;
+    const list = (profs ?? []).map((p) => ({
+      ...p,
+      hourly_rate_cents: showWages ? p.hourly_rate_cents : 0,
+      role: rolesMap.get(p.id) ?? "employee",
+    }));
 
-    // Attach last_sign_in_at via admin (owner only; ignore errors for non-owners)
-    const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) return list.map((p) => ({ ...p, last_sign_in_at: null as string | null }));
+    const { data: isStaff } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isStaff) return list.map((p) => ({ ...p, last_sign_in_at: null as string | null }));
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
@@ -393,8 +399,8 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) throw new Error("Only owners can invite employees");
+    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+    if (!allowed) throw new Error("You don't have permission to invite employees");
 
     // Resolve the inviter's tenant so we can attach the new user to it
     // (the auth trigger only knows about the default tenant).
@@ -473,8 +479,8 @@ export const updateEmployee = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) throw new Error("Only owners can edit employees");
+    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+    if (!allowed) throw new Error("You don't have permission to edit employees");
     const patch: { phone?: string | null; is_active?: boolean; full_name?: string | null } = {};
     if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.is_active !== undefined) patch.is_active = data.is_active;
@@ -512,8 +518,14 @@ export const setRole = createServerFn({ method: "POST" })
     z.object({ user_id: z.string().uuid(), role: z.enum(["owner", "manager", "employee"]) }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    // Only owners can promote to owner. Managers with can_manage_clients_employees
+    // can toggle between employee and manager.
     const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) throw new Error("Forbidden");
+    if (data.role === "owner" && !isOwner) throw new Error("Only owners can grant the owner role");
+    if (!isOwner) {
+      const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+      if (!allowed) throw new Error("You don't have permission to change roles");
+    }
     const { data: prof } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
     await context.supabase.from("user_roles").delete().eq("user_id", data.user_id).eq("tenant_id", prof.tenant_id);
@@ -559,22 +571,57 @@ export const amIOwner = createServerFn({ method: "GET" })
     return { isOwner: !!data };
   });
 
+export const myCapabilities = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [
+      { data: isOwner },
+      { data: isStaff },
+      { data: canManage },
+      { data: canSchedule },
+      { data: canViewCpni },
+      { data: canViewPricing },
+      { data: canViewWages },
+      { data: canViewContacts },
+    ] = await Promise.all([
+      context.supabase.rpc("is_owner"),
+      context.supabase.rpc("is_owner_or_manager"),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_schedule" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_client_cpni" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_pricing" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_wages" }),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_view_employee_contacts" }),
+    ]);
+    return {
+      isOwner: !!isOwner,
+      isStaff: !!isStaff,
+      canManage: !!canManage,
+      canSchedule: !!canSchedule,
+      canViewCpni: !!canViewCpni,
+      canViewPricing: !!canViewPricing,
+      canViewWages: !!canViewWages,
+      canViewContacts: !!canViewContacts,
+    };
+  });
+
 
 export const listEmployeePermissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isOwner } = await context.supabase.rpc("is_owner");
-    if (!isOwner) return [] as Array<{
+    const { data: isStaff } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isStaff) return [] as Array<{
       employee_id: string;
       can_view_employee_contacts: boolean;
       can_view_pricing: boolean;
       can_view_client_cpni: boolean;
       can_schedule: boolean;
       can_manage_clients_employees: boolean;
+      can_view_wages: boolean;
     }>;
     const { data, error } = await context.supabase
       .from("employee_permissions")
-      .select("employee_id, can_view_employee_contacts, can_view_pricing, can_view_client_cpni, can_schedule, can_manage_clients_employees");
+      .select("employee_id, can_view_employee_contacts, can_view_pricing, can_view_client_cpni, can_schedule, can_manage_clients_employees, can_view_wages");
     if (error) throw new Error(error.message);
     return data ?? [];
   });
@@ -589,9 +636,12 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
       can_view_client_cpni: z.boolean(),
       can_schedule: z.boolean(),
       can_manage_clients_employees: z.boolean(),
+      can_view_wages: z.boolean(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    // Only owners can change permissions (specifically, granting can_view_wages).
+    // This ensures wages stay owner-controlled.
     const { data: isOwner } = await context.supabase.rpc("is_owner");
     if (!isOwner) throw new Error("Only owners can change permissions");
     const { data: prof, error: pErr } = await context.supabase
@@ -608,6 +658,7 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
           can_view_client_cpni: data.can_view_client_cpni,
           can_schedule: data.can_schedule,
           can_manage_clients_employees: data.can_manage_clients_employees,
+          can_view_wages: data.can_view_wages,
         } as any,
         { onConflict: "tenant_id,employee_id" },
       );

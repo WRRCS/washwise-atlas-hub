@@ -536,6 +536,7 @@ export type Database = {
           can_view_client_cpni: boolean
           can_view_employee_contacts: boolean
           can_view_pricing: boolean
+          can_view_wages: boolean
           employee_id: string
           id: string
           tenant_id: string
@@ -547,6 +548,7 @@ export type Database = {
           can_view_client_cpni?: boolean
           can_view_employee_contacts?: boolean
           can_view_pricing?: boolean
+          can_view_wages?: boolean
           employee_id: string
           id?: string
           tenant_id: string
@@ -558,6 +560,7 @@ export type Database = {
           can_view_client_cpni?: boolean
           can_view_employee_contacts?: boolean
           can_view_pricing?: boolean
+          can_view_wages?: boolean
           employee_id?: string
           id?: string
           tenant_id?: string
@@ -2911,6 +2914,7 @@ export type Database = {
       }
       get_tenant_usage: { Args: { _tenant: string }; Returns: Json }
       has_client_mgmt_permission: { Args: never; Returns: boolean }
+      has_employee_permission: { Args: { _flag: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2919,6 +2923,7 @@ export type Database = {
         Returns: boolean
       }
       is_owner: { Args: never; Returns: boolean }
+      is_owner_or_manager: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       log_platform_action: {
         Args: {

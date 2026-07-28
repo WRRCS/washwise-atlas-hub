@@ -65,7 +65,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         supabase.from("user_roles").select("role").eq("user_id", u.user.id),
       ]);
       const roleSet = new Set((roles ?? []).map((r: any) => r.role));
-      const primary = roleSet.has("owner") ? "owner" : roleSet.has("employee") ? "employee" : "employee";
+      const primary = roleSet.has("owner")
+        ? "owner"
+        : roleSet.has("manager")
+          ? "manager"
+          : roleSet.has("employee")
+            ? "employee"
+            : "employee";
       setProfile({
         full_name: p?.full_name ?? null,
         email: p?.email ?? u.user.email ?? null,
@@ -113,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
       return base;
     }
-    // owner: OWNER_NAV already includes /client-chat
+    // owner + manager: full nav
     return OWNER_NAV as ReadonlyArray<{ to: string; label: string; icon: any }>;
   })();
 
@@ -178,7 +184,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="p-4 border-t border-border/60">
             <div className="bg-clay-200/50 rounded-lg p-3 ring-1 ring-black/5">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                {profile?.isSuperAdmin ? "Super admin" : profile?.role === "owner" ? "Owner" : "Cleaner"}
+                {profile?.isSuperAdmin ? "Super admin" : profile?.role === "owner" ? "Owner" : profile?.role === "manager" ? "Manager" : "Cleaner"}
               </p>
               <div className="flex items-center gap-3 mb-3">
                 <div className="size-8 rounded-full bg-clay-200 grid place-items-center text-xs font-medium">

@@ -13,7 +13,7 @@ import {
   listRecentNotifications,
   type NotificationTemplate,
 } from "@/lib/notifications.functions";
-import { amIOwner } from "@/lib/entities.functions";
+import { myCapabilities } from "@/lib/entities.functions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffReminderPrefs } from "@/components/reminder-prefs-editor";
 import { BulkReminderPrefsEditor } from "@/components/bulk-reminder-prefs-editor";
@@ -49,13 +49,13 @@ function NotificationsSettings() {
   const leadFn = useServerFn(getReminderLead);
   const setLeadFn = useServerFn(setReminderLead);
   const logsFn = useServerFn(listRecentNotifications);
-  const ownerFn = useServerFn(amIOwner);
+  const capsFn = useServerFn(myCapabilities);
 
   const templates = useQuery<NotificationTemplate[]>({ queryKey: ["notification-templates"], queryFn: () => listFn() });
   const lead = useQuery<{ reminder_lead_hours: number }>({ queryKey: ["reminder-lead"], queryFn: () => leadFn() });
   const logs = useQuery<Array<{ id: string; template_name: string; channel: string; scheduled_for: string; status: string }>>({ queryKey: ["notifications-recent"], queryFn: () => logsFn() });
-  const ownerInfo = useQuery({ queryKey: ["am_i_owner"], queryFn: () => ownerFn() });
-  const isOwner = !!(ownerInfo.data as any)?.isOwner;
+  const capsInfo = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
+  const canBulkEdit = !!(capsInfo.data?.isOwner || capsInfo.data?.canManage);
 
   return (
     <>
@@ -81,7 +81,7 @@ function NotificationsSettings() {
 
         <StaffReminderPrefs />
 
-        {isOwner && <BulkReminderPrefsEditor />}
+        {canBulkEdit && <BulkReminderPrefsEditor />}
 
 
         <Tabs defaultValue="templates">
