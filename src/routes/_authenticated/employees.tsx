@@ -61,6 +61,7 @@ function Employees() {
 
   const employees = (data as Employee[]).filter((e) => e.role !== "owner");
   const owners = (data as Employee[]).filter((e) => e.role === "owner");
+  const roleLabel = (role: string) => role === "owner" ? "Owner" : role === "manager" ? "Manager" : "Employee";
 
   const savePerms = async (employee_id: string, next: { can_view_employee_contacts: boolean; can_view_pricing: boolean }) => {
     try {
