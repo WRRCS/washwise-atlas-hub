@@ -83,6 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#3b82f6" },
       { title: "Atlas — Wash Rinse Repeat Cleaning" },
       { name: "description", content: "Internal field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing." },
       { property: "og:title", content: "Atlas — Wash Rinse Repeat Cleaning" },
@@ -103,7 +104,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon.png" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/wrrc-apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
