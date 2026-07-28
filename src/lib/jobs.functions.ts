@@ -186,12 +186,21 @@ export const getJob = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!job) return null;
-    const { data: links } = await context.supabase
-      .from("job_employees")
-      .select("employee_id, profile:profiles!job_employees_employee_id_fkey(id, full_name)")
-      .eq("job_id", data.id);
+    const [{ data: links }, { data: specs }] = await Promise.all([
+      context.supabase
+        .from("job_employees")
+        .select("employee_id, profile:profiles!job_employees_employee_id_fkey(id, full_name)")
+        .eq("job_id", data.id),
+      job.client_id
+        ? context.supabase
+            .from("property_specs")
+            .select("key_location, access_notes, pets, parking_notes, special_instructions")
+            .eq("client_id", job.client_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
     const assignees: JobAssignee[] = (links ?? []).map((l: any) => l.profile).filter(Boolean);
-    return { ...job, assignees };
+    return { ...job, assignees, property_specs: specs ?? null };
   });
 
 export const updateJobStatus = createServerFn({ method: "POST" })
