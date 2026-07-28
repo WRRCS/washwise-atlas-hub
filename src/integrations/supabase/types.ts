@@ -2828,6 +2828,10 @@ export type Database = {
         Returns: string
       }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
+      portal_delete_push_subscription: {
+        Args: { _endpoint: string }
+        Returns: undefined
+      }
       portal_email_is_client: { Args: { _email: string }; Returns: boolean }
       portal_get_data: { Args: never; Returns: Json }
       portal_request_service: {
@@ -2836,6 +2840,15 @@ export type Database = {
           _notes: string
           _requested_date: string
           _service_type_id: string
+        }
+        Returns: string
+      }
+      portal_save_push_subscription: {
+        Args: {
+          _auth: string
+          _endpoint: string
+          _p256dh: string
+          _user_agent: string
         }
         Returns: string
       }
