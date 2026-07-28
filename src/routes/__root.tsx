@@ -176,6 +176,7 @@ function RootComponent() {
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
+    void import("@/lib/register-sw").then((m) => m.registerAppSW());
     return () => sub.subscription.unsubscribe();
   }, [router, queryClient]);
 

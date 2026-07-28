@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Offline — Atlas</title>
+    <meta name="theme-color" content="#E5893A" />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/wrrc-apple-touch-icon.png" />
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; height: 100%; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(180deg, #f7fafc 0%, #eef4f7 100%);
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card {
+        max-width: 420px;
+        width: 100%;
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 32px 28px;
+        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
+        text-align: center;
+      }
+      .icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 16px;
+        border-radius: 16px;
+        background: #E5893A;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 32px;
+      }
+      h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.01em; }
+      p { margin: 0 0 24px; color: #475569; line-height: 1.5; font-size: 15px; }
+      button {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: none;
+        background: #0891b2;
+        color: white;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:active { transform: scale(0.98); }
+      .status { margin-top: 16px; font-size: 13px; color: #64748b; }
+      .status.online { color: #059669; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon" aria-hidden="true">📡</div>
+      <h1>You're offline</h1>
+      <p>Atlas can't reach the network right now. Check your connection and we'll pick right back up where you left off.</p>
+      <button id="retry" type="button">Try again</button>
+      <div id="status" class="status">Waiting for connection…</div>
+    </div>
+    <script>
+      var statusEl = document.getElementById("status");
+      var retryEl = document.getElementById("retry");
+      function updateStatus() {
+        if (navigator.onLine) {
+          statusEl.textContent = "Back online — tap Try again";
+          statusEl.classList.add("online");
+        } else {
+          statusEl.textContent = "Waiting for connection…";
+          statusEl.classList.remove("online");
+        }
+      }
+      retryEl.addEventListener("click", function () { location.reload(); });
+      window.addEventListener("online", function () { updateStatus(); location.reload(); });
+      window.addEventListener("offline", updateStatus);
+      updateStatus();
+    </script>
+  </body>
+</html>
