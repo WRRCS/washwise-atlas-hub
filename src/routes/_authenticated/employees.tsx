@@ -183,7 +183,7 @@ function Employees() {
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
                 onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
-                onPromote={() => togglePromote(e)}
+                onChangeRole={(r) => changeRole(e, r)}
               />
             )}
           </Section>
