@@ -98,7 +98,7 @@ export const updateClient = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {
+    const patch = {
       first_name: data.first_name,
       last_name: data.last_name || null,
       email: data.email || null,
@@ -106,8 +106,8 @@ export const updateClient = createServerFn({ method: "POST" })
       billing_address: data.billing_address || null,
       service_address: data.service_address || null,
       is_active: data.is_active ?? true,
+      ...(data.client_sop !== undefined ? { client_sop: data.client_sop || null } : {}),
     };
-    if (data.client_sop !== undefined) patch.client_sop = data.client_sop || null;
     const { error } = await context.supabase.from("clients").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
