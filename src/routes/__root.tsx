@@ -83,6 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#3b82f6" },
       { title: "Atlas — Wash Rinse Repeat Cleaning" },
       { name: "description", content: "Internal field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing." },
       { property: "og:title", content: "Atlas — Wash Rinse Repeat Cleaning" },
