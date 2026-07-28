@@ -145,8 +145,14 @@ function JobDetail() {
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Client</h4>
             <div>
               <p className="text-sm font-medium">{[job.client?.first_name, job.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
-              <p className="text-xs text-muted-foreground">{job.client?.email ?? "—"}</p>
-              <p className="text-xs text-muted-foreground">{job.client?.phone ?? "—"}</p>
+              {perms?.isOwner ? (
+                <>
+                  <p className="text-xs text-muted-foreground">{job.client?.email ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">{job.client?.phone ?? "—"}</p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Contact info hidden — owners only</p>
+              )}
             </div>
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
