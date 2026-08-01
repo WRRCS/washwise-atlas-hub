@@ -2060,6 +2060,66 @@ export type Database = {
           },
         ]
       }
+      sms_messages: {
+        Row: {
+          body: string
+          client_id: string | null
+          created_at: string
+          direction: string
+          from_number: string
+          id: string
+          read_at: string | null
+          read_by: string | null
+          status: string
+          tenant_id: string
+          to_number: string
+          twilio_sid: string | null
+        }
+        Insert: {
+          body: string
+          client_id?: string | null
+          created_at?: string
+          direction: string
+          from_number: string
+          id?: string
+          read_at?: string | null
+          read_by?: string | null
+          status?: string
+          tenant_id: string
+          to_number: string
+          twilio_sid?: string | null
+        }
+        Update: {
+          body?: string
+          client_id?: string | null
+          created_at?: string
+          direction?: string
+          from_number?: string
+          id?: string
+          read_at?: string | null
+          read_by?: string | null
+          status?: string
+          tenant_id?: string
+          to_number?: string
+          twilio_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sop_attachments: {
         Row: {
           caption: string | null
