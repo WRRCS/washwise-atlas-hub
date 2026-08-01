@@ -2318,6 +2318,121 @@ export type Database = {
           },
         ]
       }
+      supply_request_items: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          item_name: string
+          quantity: number
+          request_id: string
+          tenant_id: string
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          item_name: string
+          quantity: number
+          request_id: string
+          tenant_id: string
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          item_name?: string
+          quantity?: number
+          request_id?: string
+          tenant_id?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_request_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_request_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "supply_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_request_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_requests: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          notes: string | null
+          requested_by: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["supply_request_status"]
+          tenant_id: string
+          updated_at: string
+          urgency: Database["public"]["Enums"]["supply_request_urgency"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          notes?: string | null
+          requested_by?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["supply_request_status"]
+          tenant_id: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["supply_request_urgency"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          notes?: string | null
+          requested_by?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["supply_request_status"]
+          tenant_id?: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["supply_request_urgency"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_messages: {
         Row: {
           body: string
@@ -3025,6 +3140,8 @@ export type Database = {
         | "post_construction"
         | "window_cleaning"
         | "carpet_cleaning"
+      supply_request_status: "pending" | "fulfilled" | "denied"
+      supply_request_urgency: "low" | "normal" | "high"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3190,6 +3307,8 @@ export const Constants = {
         "window_cleaning",
         "carpet_cleaning",
       ],
+      supply_request_status: ["pending", "fulfilled", "denied"],
+      supply_request_urgency: ["low", "normal", "high"],
     },
   },
 } as const
