@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { verifyTwilioSignature } from "@/lib/twilio-signature.server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { runVoiceTurn, xmlEscape, type VoiceChatMsg } from "@/lib/voice-ai.server";
@@ -10,6 +11,10 @@ export const Route = createFileRoute("/api/public/twilio/voice/$tenantId/gather"
       POST: async ({ request, params }) => {
         const tenantId = params.tenantId;
         const form = await request.formData();
+        // Reject anything not signed by Twilio with our account auth token.
+        if (!verifyTwilioSignature(request, form)) {
+          return new Response("Invalid signature", { status: 403 });
+        }
         const callSid = String(form.get("CallSid") ?? "");
         const speech = String(form.get("SpeechResult") ?? "").trim();
         const from = String(form.get("From") ?? "");

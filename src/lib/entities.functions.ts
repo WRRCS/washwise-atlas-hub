@@ -516,9 +516,23 @@ export const impersonateEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: isOwner } = await context.supabase.rpc("is_owner");
     if (!isOwner) throw new Error("Only owners can impersonate");
+
+    // Caller's own tenant — the impersonation target must belong to it.
+    const { data: me } = await context.supabase
+      .from("profiles")
+      .select("tenant_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (!me?.tenant_id) throw new Error("No profile");
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: prof } = await supabaseAdmin.from("profiles").select("email").eq("id", data.user_id).maybeSingle();
-    if (!prof?.email) throw new Error("Employee has no email");
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("email, tenant_id")
+      .eq("id", data.user_id)
+      .maybeSingle();
+    if (!prof || prof.tenant_id !== me.tenant_id) throw new Error("User not found in your business");
+    if (!prof.email) throw new Error("Employee has no email");
     const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email: prof.email,

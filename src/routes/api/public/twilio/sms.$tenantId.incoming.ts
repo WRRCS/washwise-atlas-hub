@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { verifyTwilioSignature } from "@/lib/twilio-signature.server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { normalizePhoneE164 } from "@/lib/phone";
@@ -12,6 +13,10 @@ export const Route = createFileRoute("/api/public/twilio/sms/$tenantId/incoming"
       POST: async ({ request, params }) => {
         const tenantId = params.tenantId;
         const form = await request.formData();
+        // Reject anything not signed by Twilio with our account auth token.
+        if (!verifyTwilioSignature(request, form)) {
+          return new Response("Invalid signature", { status: 403 });
+        }
         const from = String(form.get("From") ?? "");
         const to = String(form.get("To") ?? "");
         const body = String(form.get("Body") ?? "");
