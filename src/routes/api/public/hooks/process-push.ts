@@ -27,8 +27,14 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = request.headers.get("apikey");
-        if (!apiKey || apiKey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
+        // Private shared secret (not the publishable key, which anyone can read
+        // from the browser bundle). Set on the pg_cron job header.
+        const expected = process.env.PUSH_CRON_SECRET;
+        const provided = request.headers.get("x-cron-secret");
+        if (!expected || !provided) return new Response("Unauthorized", { status: 401 });
+        const a = Buffer.from(provided);
+        const b = Buffer.from(expected);
+        if (a.length !== b.length || !timingSafeEqual(a, b)) {
           return new Response("Unauthorized", { status: 401 });
         }
 
