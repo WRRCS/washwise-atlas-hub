@@ -2070,6 +2070,7 @@ export type Database = {
           id: string
           read_at: string | null
           read_by: string | null
+          sent_by: string | null
           status: string
           tenant_id: string
           to_number: string
@@ -2084,6 +2085,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           read_by?: string | null
+          sent_by?: string | null
           status?: string
           tenant_id: string
           to_number: string
@@ -2098,6 +2100,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           read_by?: string | null
+          sent_by?: string | null
           status?: string
           tenant_id?: string
           to_number?: string
