@@ -3,6 +3,23 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
+ * Server-side pricing-visibility check, shared by any server fn that returns
+ * price_cents (jobs.functions.ts). Owners always pass; everyone else needs
+ * employee_permissions.can_view_pricing. Callers must redact price_cents
+ * themselves — this only answers the yes/no question.
+ */
+export async function resolveCanViewPricing(context: { supabase: any; userId: string }): Promise<boolean> {
+  const { data: isOwnerRaw } = await context.supabase.rpc("is_owner");
+  if (isOwnerRaw) return true;
+  const { data: perm } = await context.supabase
+    .from("employee_permissions")
+    .select("can_view_pricing")
+    .eq("employee_id", context.userId)
+    .maybeSingle();
+  return !!perm?.can_view_pricing;
+}
+
+/**
  * Return the current viewer's role + employee_permissions flags.
  * Owners implicitly get both flags. Server-side is the source of truth —
  * clients must not decide these from cached role state alone.

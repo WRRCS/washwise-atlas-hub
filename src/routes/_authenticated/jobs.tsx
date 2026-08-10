@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, PageHeader, BrandButton } from "@/components/app-shell";
 import { listJobs } from "@/lib/jobs.functions";
+import { myPermissions } from "@/lib/team.functions";
 import { format, startOfDay, endOfDay, addDays, startOfWeek, isSameDay } from "date-fns";
 import { useState } from "react";
 
@@ -25,18 +26,22 @@ function fmtClient(c: { first_name: string | null; last_name: string | null } | 
   if (!c) return "—";
   return [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
 }
-function fmtCents(c: number) {
+function fmtCents(c: number | null) {
+  if (c == null) return "—";
   return `$${(c / 100).toFixed(2)}`;
 }
 
 function JobsPage() {
   const [selectedDay, setSelectedDay] = useState(() => startOfDay(new Date()));
   const fetchJobs = useServerFn(listJobs);
+  const permsFn = useServerFn(myPermissions);
   const dayKey = selectedDay.toISOString().slice(0, 10);
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["jobs", dayKey],
     queryFn: () => fetchJobs({ data: { from: startOfDay(selectedDay).toISOString(), to: endOfDay(selectedDay).toISOString() } }),
   });
+  const { data: perms } = useQuery({ queryKey: ["my-permissions"], queryFn: () => permsFn() });
+  const canSeePricing = !!(perms?.isOwner || perms?.canViewPricing);
 
   const weekStart = startOfWeek(selectedDay, { weekStartsOn: 1 });
   const week = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -122,7 +127,9 @@ function JobsPage() {
                       <div className={`size-1.5 rounded-full ${status.dot}`} />
                       {status.label}
                     </span>
-                    <span className="text-muted-foreground tabular-nums">{fmtCents(job.price_cents)}</span>
+                    {canSeePricing && (
+                      <span className="text-muted-foreground tabular-nums">{fmtCents(job.price_cents)}</span>
+                    )}
                   </div>
                 </Link>
               );

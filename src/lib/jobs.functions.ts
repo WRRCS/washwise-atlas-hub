@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { resolveCanViewPricing } from "@/lib/team.functions";
 
 export type JobAssignee = { id: string; full_name: string | null };
 export type JobRow = {
@@ -8,7 +9,7 @@ export type JobRow = {
   status: "scheduled" | "in_progress" | "completed" | "canceled";
   scheduled_start: string;
   scheduled_end: string;
-  price_cents: number;
+  price_cents: number | null;
   notes: string | null;
   is_recurring: boolean;
   recurrence_rule: string | null;
@@ -48,8 +49,15 @@ export const listJobs = createServerFn({ method: "POST" })
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     const jobs = rows ?? [];
-    const assigneeMap = await loadAssignees(context.supabase, jobs.map((j: any) => j.id));
-    return jobs.map((j: any) => ({ ...j, assignees: assigneeMap.get(j.id) ?? [] })) as JobRow[];
+    const [assigneeMap, canViewPricing] = await Promise.all([
+      loadAssignees(context.supabase, jobs.map((j: any) => j.id)),
+      resolveCanViewPricing(context),
+    ]);
+    return jobs.map((j: any) => ({
+      ...j,
+      price_cents: canViewPricing ? j.price_cents : null,
+      assignees: assigneeMap.get(j.id) ?? [],
+    })) as JobRow[];
   });
 
 const createJobSchema = z.object({
@@ -208,7 +216,14 @@ export const getJob = createServerFn({ method: "POST" })
         : Promise.resolve({ data: [] as Array<{ id: string; note: string; created_at: string }> }),
     ]);
     const assignees: JobAssignee[] = (links ?? []).map((l: any) => l.profile).filter(Boolean);
-    return { ...job, assignees, property_specs: specs ?? null, client_notes: clientNotes ?? [] };
+    const canViewPricing = await resolveCanViewPricing(context);
+    return {
+      ...job,
+      price_cents: canViewPricing ? job.price_cents : null,
+      assignees,
+      property_specs: specs ?? null,
+      client_notes: clientNotes ?? [],
+    };
   });
 
 export const updateJobStatus = createServerFn({ method: "POST" })

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
   notFoundComponent: () => <div className="p-8">Job not found.</div>,
 });
 
-function fmtCents(c: number) { return `$${(c / 100).toFixed(2)}`; }
+function fmtCents(c: number | null) { return c == null ? "—" : `$${(c / 100).toFixed(2)}`; }
 
 function JobDetail() {
   const { jobId } = useParams({ from: "/_authenticated/jobs/$jobId" });

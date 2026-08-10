@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
+import { myPermissions } from "@/lib/team.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -431,10 +432,13 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const empFn = useServerFn(listEmployees);
   const create = useServerFn(createJob);
   const check = useServerFn(checkConflicts);
+  const permsFn = useServerFn(myPermissions);
 
   const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn({}) });
   const { data: services = [] } = useQuery({ queryKey: ["services"], queryFn: () => svcFn({}) });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
+  const { data: perms } = useQuery({ queryKey: ["my-permissions"], queryFn: () => permsFn() });
+  const canSeePricing = !!(perms?.isOwner || perms?.canViewPricing);
 
   const cleaners = useMemo(() => employees.filter((e: any) => e.role === "employee" || e.role === "manager" || e.role === "owner"), [employees]);
 
@@ -544,9 +548,11 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
           <Field label="Duration (min)">
             <Input type="number" min={15} step={15} value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))} />
           </Field>
-          <Field label="Price ($)">
-            <Input type="number" min={0} step="0.01" value={(priceCents / 100).toFixed(2)} onChange={(e) => setPriceCents(Math.round(Number(e.target.value) * 100))} />
-          </Field>
+          {canSeePricing && (
+            <Field label="Price ($)">
+              <Input type="number" min={0} step="0.01" value={(priceCents / 100).toFixed(2)} onChange={(e) => setPriceCents(Math.round(Number(e.target.value) * 100))} />
+            </Field>
+          )}
         </div>
 
         <div>
