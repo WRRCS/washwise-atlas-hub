@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -98,9 +98,9 @@ function AuthPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          New to Atlas?{" "}
-          <Link to="/signup" className="underline hover:text-foreground">Start your free trial</Link>
+          Employees: use the invite link your manager emailed you to set a password, then sign in here.
         </p>
+
       </div>
     </div>
   );
