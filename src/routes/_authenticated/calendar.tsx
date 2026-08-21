@@ -383,7 +383,7 @@ function SchedulePage() {
 
             {/* Wages / hours footer */}
             <div className="grid border-t-2 border-border" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-              <div className="px-3 py-2 bg-clay-50">
+              <div className="sticky left-0 z-10 px-3 py-2 bg-clay-50 border-r border-border/60">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
               </div>
@@ -394,7 +394,8 @@ function SchedulePage() {
                 </div>
               ))}
             </div>
-          </div>
+          </ZoomPanSurface>
+
           <div className="mt-3 flex justify-end text-xs text-muted-foreground tabular-nums">
             <span>Week total: <span className="font-semibold text-foreground">${weekTotals.wages.toFixed(2)}</span> • {weekTotals.hours.toFixed(2)} hrs</span>
           </div>
