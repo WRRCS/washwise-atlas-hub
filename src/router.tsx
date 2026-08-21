@@ -25,7 +25,7 @@ export const getRouter = () => {
           import("@tanstack/query-sync-storage-persister"),
         ]);
         persistQueryClient({
-          queryClient,
+          queryClient: queryClient as never,
           persister: createSyncStoragePersister({ storage: window.localStorage, key: "atlas-offline-cache" }),
           maxAge: 1000 * 60 * 60 * 24 * 7,
         });
