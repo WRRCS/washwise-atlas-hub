@@ -18,6 +18,8 @@ import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, 
 import { toast } from "sonner";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
+import { ZoomPanSurface } from "@/components/zoom-pan-surface";
+
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   component: SchedulePage,
