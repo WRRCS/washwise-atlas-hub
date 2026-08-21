@@ -31,6 +31,8 @@ function JobDetail() {
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const setStatus = useServerFn(updateJobStatus);
+  const doClockIn = useServerFn(clockIn);
+  const [starting, setStarting] = useState(false);
   const permsFn = useServerFn(myPermissions);
 
   const { data: perms } = useQuery({
