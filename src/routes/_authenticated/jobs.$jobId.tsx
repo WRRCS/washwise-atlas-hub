@@ -65,6 +65,26 @@ function JobDetail() {
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
 
+  // Start job = GPS-verified clock in (same path as /my-jobs), not just a status flip.
+  const onStart = async () => {
+    setStarting(true);
+    try {
+      const res = await captureGps();
+      const gps = res.status === "ok" ? res.gps : null;
+      await doClockIn({ data: { job_id: jobId, gps } });
+      if (!gps) toast.warning("Clocked in without location");
+      else toast.success("Clocked in — job started");
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["my-jobs"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not start job");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+
 
   return (
     <>
