@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { OfflineBanner } from "@/components/offline-banner";
 import { AppSplash } from "@/components/app-splash";
 
 type IOSSplash = { device: string; w: number; h: number; ratio: number; dw: number; dh: number };
@@ -184,6 +185,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster />
+      <OfflineBanner />
       <AppSplash />
     </QueryClientProvider>
   );
