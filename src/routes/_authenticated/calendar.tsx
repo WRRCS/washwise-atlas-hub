@@ -31,11 +31,13 @@ function initials(name: string | null | undefined) {
   return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 }
 
-// Palette users can pick from per client
+// Palette users can pick from per client (24 distinct variations)
 const CHIP_PALETTE = [
-  "#e11d48", "#f43f5e", "#f97316", "#f59e0b", "#eab308",
+  "#e11d48", "#f43f5e", "#be123c", "#f97316", "#f59e0b", "#eab308",
   "#22c55e", "#10b981", "#14b8a6", "#0ea5e9", "#0891b2",
   "#6366f1", "#7c3aed", "#8b5cf6", "#ec4899", "#64748b",
+  "#65a30d", "#ca8a04", "#2563eb", "#4f46e5", "#7e22ce",
+  "#db2777", "#475569", "#c2410c",
 ];
 function chipColor(seed: string | null | undefined) {
   const s = seed ?? "x";
