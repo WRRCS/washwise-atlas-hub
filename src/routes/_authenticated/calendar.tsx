@@ -227,10 +227,14 @@ function SchedulePage() {
 
       {view === "grid" ? (
         <div className="w-full px-4 md:px-6 py-4">
-          <div className="rounded-xl ring-1 ring-black/10 bg-card overflow-hidden">
+          <p className="md:hidden text-[11px] text-muted-foreground mb-2">
+            Drag sideways to see the rest of the week · pinch to zoom
+          </p>
+          <ZoomPanSurface>
             {/* Header row */}
             <div className="grid" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-              <div className="px-3 py-3 text-xs font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
+              <div className="sticky left-0 z-20 px-3 py-3 text-xs font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
+
                 <Users className="size-3.5" /> Team members ({cleaners.length})
               </div>
               {days.map((d) => {
