@@ -277,7 +277,7 @@ function SchedulePage() {
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
                             <p className="font-semibold text-muted-foreground">Unavailable</p>
                             <p className="text-muted-foreground">
-                              {u.all_day ? "All Day" : `${fmtTime(u.starts_at)}-${fmtTime(u.ends_at)}`}
+                              {u.all_day ? "All Day" : `${fmtTimeTZ(u.starts_at, tz)}-${fmtTimeTZ(u.ends_at, tz)}`}
                             </p>
                           </div>
                         ))}
@@ -311,11 +311,11 @@ function SchedulePage() {
                                     }}
                                     className={`w-full text-left block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
                                     style={{ backgroundColor: c }}
-                                    title={`${label} — ${fmtTime(j.scheduled_start)}-${fmtTime(j.scheduled_end)}${draft ? " (draft)" : ""}`}
+                                    title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
                                   >
                                     <div className="flex items-center gap-1 font-semibold">
                                       {conflict && <AlertTriangle className="size-3 shrink-0" />}
-                                      <span>{fmtTime(j.scheduled_start)}-{fmtTime(j.scheduled_end)}</span>
+                                      <span>{fmtTimeTZ(j.scheduled_start, tz)}-{fmtTimeTZ(j.scheduled_end, tz)}</span>
                                     </div>
                                     <p className="uppercase font-semibold truncate">{label}</p>
                                   </button>
@@ -429,6 +429,7 @@ function SchedulePage() {
 
 function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const qc = useQueryClient();
+  const tz = useBusinessTz();
   const clientsFn = useServerFn(listClients);
   const svcFn = useServerFn(listServiceTypes);
   const empFn = useServerFn(listEmployees);
@@ -459,8 +460,8 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const [conflicts, setConflicts] = useState<{ employee_id: string }[] | null>(null);
 
   const selectedClient = clients.find((c: any) => c.id === clientId);
-  const startISO = new Date(`${dateStr}T${startTime}`).toISOString();
-  const endISO = new Date(new Date(`${dateStr}T${startTime}`).getTime() + durationMin * 60_000).toISOString();
+  const startISO = zonedToUTCISO(dateStr, startTime, tz);
+  const endISO = new Date(new Date(startISO).getTime() + durationMin * 60_000).toISOString();
 
   const onSelectService = (id: string) => {
     setServiceId(id);
