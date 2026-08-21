@@ -256,7 +256,7 @@ function SchedulePage() {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
               return (
                 <div key={emp.id} className="grid border-t border-border/60" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-                  <div className="px-3 py-3 flex items-center gap-2 bg-clay-50/50">
+                  <div className="sticky left-0 z-10 px-3 py-3 flex items-center gap-2 bg-clay-50 border-r border-border/60">
                     <div className="size-8 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
                       {initials(emp.full_name)}
                     </div>
