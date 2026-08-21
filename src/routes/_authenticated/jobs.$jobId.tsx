@@ -107,7 +107,7 @@ function JobDetail() {
               </Link>
             )}
             {job.status === "scheduled" && (
-              <button onClick={() => onStatus("in_progress")} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90">Start job</button>
+              <button onClick={onStart} disabled={starting} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">{starting ? "Starting…" : "Start job"}</button>
             )}
             {job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={() => onStatus("completed")} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90">Complete</button>
