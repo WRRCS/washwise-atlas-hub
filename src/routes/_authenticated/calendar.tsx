@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { useBusinessTz } from "@/hooks/use-business-tz";
+import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   component: SchedulePage,
@@ -42,13 +44,11 @@ function chipColor(seed: string | null | undefined) {
   return CHIP_PALETTE[h % CHIP_PALETTE.length];
 }
 
-function fmtTime(iso: string) {
-  const d = new Date(iso);
-  return format(d, "h:mma").toLowerCase().replace(":00", "");
-}
+
 
 function SchedulePage() {
   const qc = useQueryClient();
+  const tz = useBusinessTz();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [view, setView] = useState<View>("grid");
   const [dialogDate, setDialogDate] = useState<Date | null>(null);
@@ -107,7 +107,7 @@ function SchedulePage() {
   const jobsByEmpDay = useMemo(() => {
     const m = new Map<string, Map<string, any[]>>();
     for (const j of jobs) {
-      const dayKey = format(new Date(j.scheduled_start), "yyyy-MM-dd");
+      const dayKey = dayKeyTZ(j.scheduled_start, tz);
       for (const a of j.assignees) {
         if (!m.has(a.id)) m.set(a.id, new Map());
         const dm = m.get(a.id)!;
@@ -116,19 +116,19 @@ function SchedulePage() {
       }
     }
     return m;
-  }, [jobs]);
+  }, [jobs, tz]);
 
   const unavByEmpDay = useMemo(() => {
     const m = new Map<string, Map<string, any[]>>();
     for (const u of unavailability) {
-      const dayKey = format(new Date(u.starts_at), "yyyy-MM-dd");
+      const dayKey = dayKeyTZ(u.starts_at, tz);
       if (!m.has(u.employee_id)) m.set(u.employee_id, new Map());
       const dm = m.get(u.employee_id)!;
       if (!dm.has(dayKey)) dm.set(dayKey, []);
       dm.get(dayKey)!.push(u);
     }
     return m;
-  }, [unavailability]);
+  }, [unavailability, tz]);
 
   // Wages / hours per day, per employee (aggregate)
   const dailyTotals = useMemo(() => {
@@ -179,8 +179,10 @@ function SchedulePage() {
     // shift preserves time-of-day; only date changes
     const oldStart = new Date(startISO);
     const oldEnd = new Date(endISO);
-    const newStart = new Date(day);
-    newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+    const { hour, minute } = hourMinuteTZ(oldStart, tz);
+    const newStart = new Date(
+      zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz),
+    );
     const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
     moveMut.mutate({ id, start: newStart, end: newEnd });
     void employeeId; // move is at job level; assignees keep
@@ -398,8 +400,8 @@ function SchedulePage() {
             <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} className="block bg-card rounded-lg ring-1 ring-black/5 p-4 hover:ring-brand/30 transition">
               <div className="flex items-center gap-4">
                 <div className="w-24 shrink-0">
-                  <p className="text-xs text-muted-foreground">{format(new Date(j.scheduled_start), "EEE MMM d")}</p>
-                  <p className="text-sm font-medium tabular-nums">{format(new Date(j.scheduled_start), "h:mma")}</p>
+                  <p className="text-xs text-muted-foreground">{fmtDateTZ(j.scheduled_start, tz)}</p>
+                  <p className="text-sm font-medium tabular-nums">{fmtTimeTZ(j.scheduled_start, tz)}</p>
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: (j.service?.color ?? "#eee") + "22", color: j.service?.color ?? "#333" }}>
                   {j.service?.name}
