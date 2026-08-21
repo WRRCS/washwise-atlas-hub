@@ -3030,6 +3030,7 @@ export type Database = {
         }[]
       }
       admin_platform_stats: { Args: never; Returns: Json }
+      can_view_client_specs: { Args: { _client_id: string }; Returns: boolean }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_onboarding_completed: { Args: never; Returns: boolean }
       enqueue_notification: {
