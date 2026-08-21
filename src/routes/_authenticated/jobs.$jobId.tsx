@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
-import { listJobGps } from "@/lib/time.functions";
+import { listJobGps, clockIn } from "@/lib/time.functions";
+import { captureGps } from "@/lib/geolocation";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { myPermissions } from "@/lib/team.functions";
 import { directionsUrl } from "@/lib/maps";
@@ -30,6 +31,8 @@ function JobDetail() {
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const setStatus = useServerFn(updateJobStatus);
+  const doClockIn = useServerFn(clockIn);
+  const [starting, setStarting] = useState(false);
   const permsFn = useServerFn(myPermissions);
 
   const { data: perms } = useQuery({
@@ -62,6 +65,26 @@ function JobDetail() {
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
 
+  // Start job = GPS-verified clock in (same path as /my-jobs), not just a status flip.
+  const onStart = async () => {
+    setStarting(true);
+    try {
+      const res = await captureGps();
+      const gps = res.status === "ok" ? res.gps : null;
+      await doClockIn({ data: { job_id: jobId, gps } });
+      if (!gps) toast.warning("Clocked in without location");
+      else toast.success("Clocked in — job started");
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["my-jobs"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not start job");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+
 
   return (
     <>
@@ -84,7 +107,7 @@ function JobDetail() {
               </Link>
             )}
             {job.status === "scheduled" && (
-              <button onClick={() => onStatus("in_progress")} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90">Start job</button>
+              <button onClick={onStart} disabled={starting} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">{starting ? "Starting…" : "Start job"}</button>
             )}
             {job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={() => onStatus("completed")} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90">Complete</button>
