@@ -412,7 +412,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       email: z.string().trim().email(),
       full_name: z.string().trim().min(1).max(120),
       phone: z.string().trim().max(40).optional(),
-      redirect_to: z.string().url().optional(),
+      temporary_password: z.string().min(8).max(128),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -454,15 +454,18 @@ export const inviteEmployee = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let userId: string | undefined;
-    const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
-      data: { full_name: data.full_name },
-      redirectTo: data.redirect_to,
+    let createdNewUser = false;
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.temporary_password,
+      email_confirm: true,
+      user_metadata: { full_name: data.full_name },
     });
     if (error) {
       const alreadyExists = /already been registered|already registered|email_exists/i.test(error.message);
       if (!alreadyExists) throw new Error(error.message);
-      // Find the existing auth user and (re)attach them to this tenant, then
-      // send a sign-in link instead of a fresh invite.
+      // Find an existing app user so an owner can restore employee access
+      // without sending them through an external account-verification flow.
       const target = data.email.toLowerCase();
       let page = 1;
       while (!userId && page <= 20) {
@@ -484,13 +487,14 @@ export const inviteEmployee = createServerFn({ method: "POST" })
         throw new Error("That email already belongs to another workspace.");
       }
 
-      await supabaseAdmin.auth.admin.generateLink({
-        type: "magiclink",
-        email: data.email,
-        options: { redirectTo: data.redirect_to },
+      const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: data.temporary_password,
+        email_confirm: true,
       });
+      if (passwordError) throw new Error(passwordError.message);
     } else {
       userId = created.user?.id;
+      createdNewUser = true;
     }
     if (!userId) return { ok: true };
 
@@ -512,7 +516,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       .insert({ user_id: userId, tenant_id: tenantId, role: "employee" });
     if (roleErr) {
       // Roll back the invite if the limit trigger (or anything else) rejects.
-      await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (createdNewUser) await supabaseAdmin.auth.admin.deleteUser(userId);
       throw new Error(roleErr.message);
     }
 
