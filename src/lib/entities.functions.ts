@@ -453,13 +453,47 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let userId: string | undefined;
     const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
       data: { full_name: data.full_name },
       redirectTo: data.redirect_to,
     });
-    if (error) throw new Error(error.message);
-    const userId = created.user?.id;
+    if (error) {
+      const alreadyExists = /already been registered|already registered|email_exists/i.test(error.message);
+      if (!alreadyExists) throw new Error(error.message);
+      // Find the existing auth user and (re)attach them to this tenant, then
+      // send a sign-in link instead of a fresh invite.
+      const target = data.email.toLowerCase();
+      let page = 1;
+      while (!userId && page <= 20) {
+        const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+        if (listErr) throw new Error(listErr.message);
+        const match = (list?.users ?? []).find((u) => (u.email ?? "").toLowerCase() === target);
+        if (match) userId = match.id;
+        if (!list || (list.users?.length ?? 0) < 200) break;
+        page += 1;
+      }
+      if (!userId) throw new Error("That email is already registered, but the account could not be found.");
+
+      const { data: existingRole } = await supabaseAdmin
+        .from("user_roles")
+        .select("tenant_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existingRole?.tenant_id && existingRole.tenant_id !== tenantId) {
+        throw new Error("That email already belongs to another workspace.");
+      }
+
+      await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
+        email: data.email,
+        options: { redirectTo: data.redirect_to },
+      });
+    } else {
+      userId = created.user?.id;
+    }
     if (!userId) return { ok: true };
+
 
     // The auth trigger placed the new user in the default tenant via the
     // legacy path. Re-parent the profile to the inviter's tenant and move
