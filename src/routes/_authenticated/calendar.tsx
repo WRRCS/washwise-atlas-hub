@@ -18,6 +18,8 @@ import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, 
 import { toast } from "sonner";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
+import { ZoomPanSurface } from "@/components/zoom-pan-surface";
+
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   component: SchedulePage,
@@ -227,10 +229,14 @@ function SchedulePage() {
 
       {view === "grid" ? (
         <div className="w-full px-4 md:px-6 py-4">
-          <div className="rounded-xl ring-1 ring-black/10 bg-card overflow-hidden">
+          <p className="md:hidden text-[11px] text-muted-foreground mb-2">
+            Drag sideways to see the rest of the week · pinch to zoom
+          </p>
+          <ZoomPanSurface>
             {/* Header row */}
             <div className="grid" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-              <div className="px-3 py-3 text-xs font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
+              <div className="sticky left-0 z-20 px-3 py-3 text-xs font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
+
                 <Users className="size-3.5" /> Team members ({cleaners.length})
               </div>
               {days.map((d) => {
@@ -252,7 +258,7 @@ function SchedulePage() {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
               return (
                 <div key={emp.id} className="grid border-t border-border/60" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-                  <div className="px-3 py-3 flex items-center gap-2 bg-clay-50/50">
+                  <div className="sticky left-0 z-10 px-3 py-3 flex items-center gap-2 bg-clay-50 border-r border-border/60">
                     <div className="size-8 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
                       {initials(emp.full_name)}
                     </div>
@@ -379,7 +385,7 @@ function SchedulePage() {
 
             {/* Wages / hours footer */}
             <div className="grid border-t-2 border-border" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-              <div className="px-3 py-2 bg-clay-50">
+              <div className="sticky left-0 z-10 px-3 py-2 bg-clay-50 border-r border-border/60">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
               </div>
@@ -390,7 +396,8 @@ function SchedulePage() {
                 </div>
               ))}
             </div>
-          </div>
+          </ZoomPanSurface>
+
           <div className="mt-3 flex justify-end text-xs text-muted-foreground tabular-nums">
             <span>Week total: <span className="font-semibold text-foreground">${weekTotals.wages.toFixed(2)}</span> • {weekTotals.hours.toFixed(2)} hrs</span>
           </div>
