@@ -62,7 +62,7 @@ function Employees() {
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "" });
+  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "", temporary_password: "" });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
@@ -93,10 +93,10 @@ function Employees() {
   const submitInvite = async () => {
     setInviting(true);
     try {
-      await inviteFn({ data: { ...invite, redirect_to: window.location.origin + "/reset-password" } });
-      toast.success("Invitation sent");
+      await inviteFn({ data: invite });
+      toast.success("Employee app access created");
       setInviteOpen(false);
-      setInvite({ full_name: "", email: "", phone: "" });
+      setInvite({ full_name: "", email: "", phone: "", temporary_password: "" });
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to invite");
@@ -172,7 +172,7 @@ function Employees() {
       <PageHeader
         title="Employees"
         subtitle="Cleaners on your team"
-        action={<BrandButton onClick={() => setInviteOpen(true)}>Invite employee</BrandButton>}
+        action={<BrandButton onClick={() => setInviteOpen(true)}>Create employee access</BrandButton>}
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
         <Section title="Cleaners" rows={employees} empty="No cleaners yet. Invite your first team member.">
@@ -212,8 +212,8 @@ function Employees() {
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite employee</DialogTitle>
-            <DialogDescription>They'll get an email with a link to set their password and sign in.</DialogDescription>
+            <DialogTitle>Create employee app access</DialogTitle>
+            <DialogDescription>Create a temporary password, then share the email, password, and app link with the employee. No Lovable account is required.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -228,11 +228,23 @@ function Employees() {
               <Label htmlFor="ph">Phone</Label>
               <Input id="ph" value={invite.phone} onChange={(e) => setInvite({ ...invite, phone: e.target.value })} />
             </div>
+            <div>
+              <Label htmlFor="temporary-password">Temporary password</Label>
+              <Input
+                id="temporary-password"
+                type="password"
+                value={invite.temporary_password}
+                onChange={(e) => setInvite({ ...invite, temporary_password: e.target.value })}
+                minLength={8}
+                autoComplete="new-password"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">At least 8 characters. The employee can change it with “Forgot password?” after signing in.</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={submitInvite} disabled={inviting || !invite.email || !invite.full_name}>
-              {inviting ? "Sending..." : "Send invite"}
+            <Button onClick={submitInvite} disabled={inviting || !invite.email || !invite.full_name || invite.temporary_password.length < 8}>
+              {inviting ? "Creating..." : "Create access"}
             </Button>
           </DialogFooter>
         </DialogContent>
