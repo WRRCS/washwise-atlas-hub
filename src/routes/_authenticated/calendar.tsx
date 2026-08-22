@@ -381,7 +381,7 @@ function SchedulePage() {
                               </Popover>
                             );
                           })}
-                        {shifts.length === 0 && unavs.length === 0 && (
+                        {canManageSchedule && shifts.length === 0 && unavs.length === 0 && (
                           <button
                             onClick={() => setDialogDate(d)}
                             className="w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
