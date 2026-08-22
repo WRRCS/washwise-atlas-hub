@@ -213,19 +213,29 @@ function SchedulePage() {
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, -7))}>←</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
-            <Button
-              size="sm"
-              variant={draftCount ? "default" : "outline"}
-              onClick={() => publishMut.mutate()}
-              disabled={publishMut.isPending}
-              className={draftCount ? "bg-brand text-brand-foreground hover:opacity-90" : ""}
-            >
-              <Send className="size-3.5 mr-1" />
-              {draftCount ? `Publish (${draftCount})` : "Published"}
-            </Button>
-            <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogDate(new Date())}>
-              <Plus className="size-4" /> New Job
-            </Button>
+            {canManageSchedule ? (
+              <>
+                <Button
+                  size="sm"
+                  variant={draftCount ? "default" : "outline"}
+                  onClick={() => publishMut.mutate()}
+                  disabled={publishMut.isPending}
+                  className={draftCount ? "bg-brand text-brand-foreground hover:opacity-90" : ""}
+                >
+                  <Send className="size-3.5 mr-1" />
+                  {draftCount ? `Publish (${draftCount})` : "Published"}
+                </Button>
+                <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogDate(new Date())}>
+                  <Plus className="size-4" /> New Job
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="sm" className="bg-brand text-brand-foreground hover:opacity-90">
+                <Link to="/my-jobs">
+                  <Clock className="size-4" /> Clock in
+                </Link>
+              </Button>
+            )}
           </div>
         }
       />
