@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink } from "lucide-react";
+import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
@@ -63,6 +63,9 @@ function SchedulePage() {
   const moveFn = useServerFn(moveJob);
   const publishFn = useServerFn(publishSchedule);
   const setColorFn = useServerFn(setClientColor);
+  const permsHeaderFn = useServerFn(myPermissions);
+  const { data: headerPerms } = useQuery({ queryKey: ["my-permissions"], queryFn: () => permsHeaderFn() });
+  const canManageSchedule = !!headerPerms?.isOwner;
 
   const colorMut = useMutation({
     mutationFn: (v: { clientId: string; color: string | null }) =>
@@ -210,19 +213,29 @@ function SchedulePage() {
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, -7))}>←</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
-            <Button
-              size="sm"
-              variant={draftCount ? "default" : "outline"}
-              onClick={() => publishMut.mutate()}
-              disabled={publishMut.isPending}
-              className={draftCount ? "bg-brand text-brand-foreground hover:opacity-90" : ""}
-            >
-              <Send className="size-3.5 mr-1" />
-              {draftCount ? `Publish (${draftCount})` : "Published"}
-            </Button>
-            <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogDate(new Date())}>
-              <Plus className="size-4" /> New Job
-            </Button>
+            {canManageSchedule ? (
+              <>
+                <Button
+                  size="sm"
+                  variant={draftCount ? "default" : "outline"}
+                  onClick={() => publishMut.mutate()}
+                  disabled={publishMut.isPending}
+                  className={draftCount ? "bg-brand text-brand-foreground hover:opacity-90" : ""}
+                >
+                  <Send className="size-3.5 mr-1" />
+                  {draftCount ? `Publish (${draftCount})` : "Published"}
+                </Button>
+                <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogDate(new Date())}>
+                  <Plus className="size-4" /> New Job
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="sm" className="bg-brand text-brand-foreground hover:opacity-90">
+                <Link to="/my-jobs">
+                  <Clock className="size-4" /> Clock in
+                </Link>
+              </Button>
+            )}
           </div>
         }
       />
@@ -368,7 +381,7 @@ function SchedulePage() {
                               </Popover>
                             );
                           })}
-                        {shifts.length === 0 && unavs.length === 0 && (
+                        {canManageSchedule && shifts.length === 0 && unavs.length === 0 && (
                           <button
                             onClick={() => setDialogDate(d)}
                             className="w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
