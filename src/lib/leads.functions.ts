@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { clientContact, clientContactMap } from "@/lib/privacy";
 
 export type LeadStatus = "new" | "contacted" | "qualified" | "won" | "lost";
 
@@ -98,7 +99,13 @@ export const getLead = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Lead not found");
-    return row;
+    const contact = row.client_id
+      ? await clientContact(context.supabase, row.client_id)
+      : { email: null, phone: null, billing_address: null };
+    const client = row.client
+      ? { ...(row.client as Record<string, unknown>), email: contact.email, phone: contact.phone, billing_address: contact.billing_address }
+      : null;
+    return { ...row, client };
   });
 
 export const updateLeadStatus = createServerFn({ method: "POST" })

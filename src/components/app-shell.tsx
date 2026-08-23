@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return;
       const [{ data: p }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("full_name, email").eq("id", u.user.id).maybeSingle(),
+        supabase.rpc("my_profile"),
         supabase.from("user_roles").select("role").eq("user_id", u.user.id),
       ]);
       const roleSet = new Set((roles ?? []).map((r: any) => r.role));
