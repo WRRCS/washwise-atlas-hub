@@ -55,6 +55,10 @@ export const listLeads = createServerFn({ method: "POST" })
     }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
+    const contacts = await clientContactMap(
+      context.supabase,
+      (rows ?? []).map((r: any) => r.client_id),
+    );
     return (rows ?? []).map((r: any) => ({
       id: r.id,
       client_id: r.client_id,
@@ -67,8 +71,8 @@ export const listLeads = createServerFn({ method: "POST" })
       last_contacted_at: r.last_contacted_at,
       created_at: r.created_at,
       client_name: fullName(r.client),
-      client_email: r.client?.email ?? null,
-      client_phone: r.client?.phone ?? null,
+      client_email: contacts.get(r.client_id)?.email ?? null,
+      client_phone: contacts.get(r.client_id)?.phone ?? null,
     }));
   });
 
