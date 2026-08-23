@@ -304,10 +304,14 @@ export const sendClientEmail = createServerFn({ method: "POST" })
     const { data: prof } = await context.supabase
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
-    const { data: client } = await context.supabase
+    // Machinery read: the address is only used to deliver the email.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: client } = await supabaseAdmin
       .from("clients")
       .select("id, first_name, last_name, email")
-      .eq("id", data.client_id).maybeSingle();
+      .eq("id", data.client_id)
+      .eq("tenant_id", prof.tenant_id)
+      .maybeSingle();
     if (!client) throw new Error("Client not found");
     const { data: tmpl } = await context.supabase
       .from("email_templates").select("*").eq("id", data.template_id).maybeSingle();

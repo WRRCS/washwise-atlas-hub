@@ -195,7 +195,11 @@ export const sendSms = createServerFn({ method: "POST" })
     let destinationRaw: string | null = data.to_number ?? null;
     const clientId: string | null = data.client_id ?? null;
     if (clientId) {
-      const { data: client, error } = await context.supabase
+      // Machinery read: the number is used to address the SMS and is never
+      // returned to the caller, so it goes through the admin client (client
+      // phone numbers are not readable by staff without CPNI access).
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: client, error } = await supabaseAdmin
         .from("clients")
         .select("phone")
         .eq("id", clientId)
