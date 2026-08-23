@@ -475,9 +475,8 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const [durationMin, setDurationMin] = useState(120);
   const [priceCents, setPriceCents] = useState(0);
   const [notes, setNotes] = useState("");
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrence, setRecurrence] = useState<"weekly" | "biweekly" | "monthly">("weekly");
-  const [recurrenceEnd, setRecurrenceEnd] = useState(format(addDays(date, 90), "yyyy-MM-dd"));
+  const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(format(date, "yyyy-MM-dd")));
+
   const [saving, setSaving] = useState(false);
   const [conflicts, setConflicts] = useState<{ employee_id: string }[] | null>(null);
 
