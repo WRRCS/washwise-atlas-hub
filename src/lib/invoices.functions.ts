@@ -69,7 +69,7 @@ export const getInvoice = createServerFn({ method: "POST" })
       ? await clientContact(context.supabase, inv.client_id)
       : { email: null, phone: null, billing_address: null };
     const client = inv.client
-      ? { ...(inv.client as Record<string, unknown>), email: contact.email, phone: contact.phone, billing_address: contact.billing_address }
+      ? { ...(inv.client as { id: string; first_name: string | null; last_name: string | null; service_address: string | null }), email: contact.email, phone: contact.phone, billing_address: contact.billing_address }
       : null;
     return { ...inv, client, line_items: items ?? [] };
   });

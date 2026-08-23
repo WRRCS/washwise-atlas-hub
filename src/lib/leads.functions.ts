@@ -103,7 +103,7 @@ export const getLead = createServerFn({ method: "POST" })
       ? await clientContact(context.supabase, row.client_id)
       : { email: null, phone: null, billing_address: null };
     const client = row.client
-      ? { ...(row.client as Record<string, unknown>), email: contact.email, phone: contact.phone, billing_address: contact.billing_address }
+      ? { ...(row.client as { id: string; first_name: string | null; last_name: string | null; service_address: string | null }), email: contact.email, phone: contact.phone, billing_address: contact.billing_address }
       : null;
     return { ...row, client };
   });
