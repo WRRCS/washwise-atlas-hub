@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
+import { RecurrenceFields, defaultRecurrence, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
   component: NewJob,
