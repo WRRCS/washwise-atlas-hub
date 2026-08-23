@@ -69,8 +69,8 @@ function NewJob() {
     if (!clientId || !serviceId || !start) return;
     setSaving(true);
     try {
-      const startDate = new Date(start);
-      const endDate = new Date(startDate.getTime() + durationMin * 60_000);
+      const startDate2 = new Date(start);
+      const endDate = new Date(startDate2.getTime() + durationMin * 60_000);
       await create({
         data: {
           client_id: clientId,
