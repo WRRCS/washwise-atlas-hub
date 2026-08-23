@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { staffDirectory } from "@/lib/privacy";
 
 /**
  * Server-side pricing-visibility check, shared by any server fn that returns
@@ -65,39 +66,23 @@ export type TeamMember = {
 export const listTeamRoster = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isOwnerRaw } = await context.supabase.rpc("is_owner");
-    const isOwner = !!isOwnerRaw;
-
-    let canViewContacts = isOwner;
-    if (!canViewContacts) {
-      const { data: perm } = await context.supabase
-        .from("employee_permissions")
-        .select("can_view_employee_contacts")
-        .eq("employee_id", context.userId)
-        .maybeSingle();
-      canViewContacts = !!perm?.can_view_employee_contacts;
-    }
-
-    const [{ data: profs, error }, { data: roles }] = await Promise.all([
-      context.supabase
-        .from("profiles")
-        .select("id, full_name, email, phone, avatar_url, is_active")
-        .order("full_name"),
+    // staff_directory() applies the contact-info permission in the database.
+    const [profs, { data: roles }] = await Promise.all([
+      staffDirectory(context.supabase),
       context.supabase.from("user_roles").select("user_id, role"),
     ]);
-    if (error) throw new Error(error.message);
 
     const roleMap = new Map<string, string>();
     (roles ?? []).forEach((r) => roleMap.set(r.user_id, r.role));
 
-    return (profs ?? [])
+    return profs
       .filter((p) => p.is_active !== false)
       .map<TeamMember>((p) => ({
         id: p.id,
         full_name: p.full_name,
-        avatar_url: (p as { avatar_url?: string | null }).avatar_url ?? null,
-        email: canViewContacts ? p.email : null,
-        phone: canViewContacts ? (p as { phone?: string | null }).phone ?? null : null,
+        avatar_url: p.avatar_url,
+        email: p.email,
+        phone: p.phone,
         role: roleMap.get(p.id) ?? "employee",
       }));
   });

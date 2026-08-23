@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { clientContact, clientContactMap, staffDirectory } from "@/lib/privacy";
 
 // ============= Clients =============
 
@@ -9,10 +10,18 @@ export const listClients = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, email, phone, service_address, billing_address, is_active")
+      .select("id, first_name, last_name, service_address, is_active")
       .order("first_name");
     if (error) throw new Error(error.message);
-    return data ?? [];
+    // CPNI (email / phone / billing address) only comes back for owners and
+    // managers an owner granted client-privacy access.
+    const contacts = await clientContactMap(context.supabase);
+    return (data ?? []).map((c) => ({
+      ...c,
+      email: contacts.get(c.id)?.email ?? null,
+      phone: contacts.get(c.id)?.phone ?? null,
+      billing_address: contacts.get(c.id)?.billing_address ?? null,
+    }));
   });
 
 const clientSchema = z.object({
@@ -145,10 +154,11 @@ export const getClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: client, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, email, phone, service_address, billing_address, is_active, created_at, client_sop")
+      .select("id, first_name, last_name, service_address, is_active, created_at, client_sop")
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!client) return null;
+    const contact = await clientContact(context.supabase, data.id);
     const [{ data: spec }, { data: notes }, { data: photos }] = await Promise.all([
       context.supabase.from("property_specs").select("*").eq("client_id", data.id).maybeSingle(),
       context.supabase.from("client_notes").select("id, note, created_at, created_by").eq("client_id", data.id).order("created_at", { ascending: false }),
@@ -169,6 +179,9 @@ export const getClient = createServerFn({ method: "POST" })
     );
     return {
       ...client,
+      email: contact.email,
+      phone: contact.phone,
+      billing_address: contact.billing_address,
       spec: spec ?? null,
       notes: (notes ?? []).map((n) => ({ ...n, author: authorsMap.get(n.created_by ?? "") ?? null })),
       photos: signed,
@@ -377,18 +390,21 @@ export const deleteServiceType = createServerFn({ method: "POST" })
 export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: profs }, { data: roles }, { data: isOwner }, { data: canViewWages }] = await Promise.all([
-      context.supabase.from("profiles").select("id, full_name, email, phone, is_active, hourly_rate_cents").order("full_name"),
+    // staff_directory() redacts email/phone/wages in the database itself
+    // according to the viewer's role and granted permissions.
+    const [profs, { data: roles }] = await Promise.all([
+      staffDirectory(context.supabase),
       context.supabase.from("user_roles").select("user_id, role"),
-      context.supabase.rpc("is_owner"),
-      context.supabase.rpc("has_employee_permission", { _flag: "can_view_wages" }),
     ]);
     const rolesMap = new Map<string, string>();
     (roles ?? []).forEach((r) => rolesMap.set(r.user_id, r.role));
-    const showWages = !!isOwner || !!canViewWages;
-    const list = (profs ?? []).map((p) => ({
-      ...p,
-      hourly_rate_cents: showWages ? p.hourly_rate_cents : 0,
+    const list = profs.map((p) => ({
+      id: p.id,
+      full_name: p.full_name,
+      email: p.email,
+      phone: p.phone,
+      is_active: p.is_active,
+      hourly_rate_cents: p.hourly_rate_cents ?? 0,
       role: rolesMap.get(p.id) ?? "employee",
     }));
 
@@ -607,7 +623,8 @@ export const setRole = createServerFn({ method: "POST" })
         {
           tenant_id: prof.tenant_id,
           employee_id: data.user_id,
-          can_view_employee_contacts: true,
+          // Private data stays off by default — the owner grants it explicitly.
+          can_view_employee_contacts: false,
           can_view_pricing: false,
           can_view_client_cpni: false,
           can_schedule: true,

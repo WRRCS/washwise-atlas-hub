@@ -28,7 +28,8 @@ async function buildContext(supabase: any, tenantId: string): Promise<string> {
     supabase.from("tenants").select("name, ai_assistant_enabled").eq("id", tenantId).maybeSingle(),
     supabase.from("jobs").select("id, scheduled_start, status, notes, price_cents, client_id, clients(first_name,last_name)").eq("tenant_id", tenantId).order("scheduled_start", { ascending: false }).limit(30),
     supabase.from("invoices").select("number, status, total_cents, issue_date, due_date, paid_at, clients(first_name,last_name)").eq("tenant_id", tenantId).order("issue_date", { ascending: false }).limit(20),
-    supabase.from("clients").select("id, first_name, last_name, email, phone, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(50),
+    // No client CPNI (email/phone) is sent to the model.
+    supabase.from("clients").select("id, first_name, last_name, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(50),
     supabase.from("client_notes").select("content, created_at, client_id, clients(first_name,last_name)").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(20),
     supabase.from("sops").select("id, title, description").eq("tenant_id", tenantId).limit(20),
     supabase.from("inventory_items").select("name, quantity_on_hand, low_stock_threshold, unit").eq("tenant_id", tenantId),

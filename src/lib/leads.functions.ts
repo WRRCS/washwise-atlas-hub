@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { clientContact, clientContactMap } from "@/lib/privacy";
 
 export type LeadStatus = "new" | "contacted" | "qualified" | "won" | "lost";
 
@@ -44,7 +45,7 @@ export const listLeads = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<LeadRow[]> => {
     let q = context.supabase
       .from("leads")
-      .select("id, client_id, source, status, assigned_to, service_interest, notes, last_contacted_at, created_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(first_name, last_name, email, phone)")
+      .select("id, client_id, source, status, assigned_to, service_interest, notes, last_contacted_at, created_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(id, first_name, last_name)")
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.status) q = q.eq("status", data.status);
@@ -55,6 +56,10 @@ export const listLeads = createServerFn({ method: "POST" })
     }
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
+    const contacts = await clientContactMap(
+      context.supabase,
+      (rows ?? []).map((r: any) => r.client_id),
+    );
     return (rows ?? []).map((r: any) => ({
       id: r.id,
       client_id: r.client_id,
@@ -67,8 +72,8 @@ export const listLeads = createServerFn({ method: "POST" })
       last_contacted_at: r.last_contacted_at,
       created_at: r.created_at,
       client_name: fullName(r.client),
-      client_email: r.client?.email ?? null,
-      client_phone: r.client?.phone ?? null,
+      client_email: contacts.get(r.client_id)?.email ?? null,
+      client_phone: contacts.get(r.client_id)?.phone ?? null,
     }));
   });
 
@@ -89,12 +94,18 @@ export const getLead = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("leads")
-      .select("id, tenant_id, client_id, source, status, assigned_to, service_interest, notes, payload, last_contacted_at, created_at, updated_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(id, first_name, last_name, email, phone, service_address, billing_address)")
+      .select("id, tenant_id, client_id, source, status, assigned_to, service_interest, notes, payload, last_contacted_at, created_at, updated_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(id, first_name, last_name, service_address)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Lead not found");
-    return row;
+    const contact = row.client_id
+      ? await clientContact(context.supabase, row.client_id)
+      : { email: null, phone: null, billing_address: null };
+    const client = row.client
+      ? { ...(row.client as { id: string; first_name: string | null; last_name: string | null; service_address: string | null }), email: contact.email, phone: contact.phone, billing_address: contact.billing_address }
+      : null;
+    return { ...row, client };
   });
 
 export const updateLeadStatus = createServerFn({ method: "POST" })

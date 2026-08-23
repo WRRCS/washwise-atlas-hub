@@ -98,10 +98,9 @@ async function requireOwnerTenant(context: any) {
     _user_id: context.userId, _role: "owner",
   });
   if (!isOwner) throw new Error("Only the workspace owner can change plans.");
-  const { data: profile } = await context.supabase
-    .from("profiles").select("tenant_id, email, full_name").eq("id", context.userId).maybeSingle();
-  if (!profile?.tenant_id) throw new Error("No workspace found");
-  return profile;
+  const { data: profile } = await context.supabase.rpc("my_profile");
+  if (!(profile as any)?.tenant_id) throw new Error("No workspace found");
+  return profile as { tenant_id: string; email: string | null; full_name: string | null };
 }
 
 export const createSubscriptionCheckout = createServerFn({ method: "POST" })
