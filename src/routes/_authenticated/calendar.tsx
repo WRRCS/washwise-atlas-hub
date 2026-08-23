@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { ZoomPanSurface } from "@/components/zoom-pan-surface";
+import { RecurrenceFields, defaultRecurrence, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
+
 
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -475,9 +477,8 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const [durationMin, setDurationMin] = useState(120);
   const [priceCents, setPriceCents] = useState(0);
   const [notes, setNotes] = useState("");
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrence, setRecurrence] = useState<"weekly" | "biweekly" | "monthly">("weekly");
-  const [recurrenceEnd, setRecurrenceEnd] = useState(format(addDays(date, 90), "yyyy-MM-dd"));
+  const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(format(date, "yyyy-MM-dd")));
+
   const [saving, setSaving] = useState(false);
   const [conflicts, setConflicts] = useState<{ employee_id: string }[] | null>(null);
 
@@ -520,12 +521,12 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
           assigned_employee_ids: assignees,
           notes: notes || undefined,
           price_cents: priceCents,
-          is_recurring: isRecurring,
-          recurrence_rule: isRecurring ? recurrence : null,
-          recurrence_end: isRecurring ? recurrenceEnd : null,
+          is_recurring: recur.mode === "recurring",
+          recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
+          recurrence_end: recurrenceEndValue(recur, dateStr),
         },
       });
-      toast.success(isRecurring ? "Recurring jobs created" : "Job created");
+      toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
       qc.invalidateQueries({ queryKey: ["jobs"] });
       onClose();
     } catch (err) {
@@ -597,26 +598,8 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
           <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Access code, special instructions…" />
         </Field>
 
-        <div className="rounded-md border border-input p-3 space-y-3">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <Checkbox checked={isRecurring} onCheckedChange={(v) => setIsRecurring(Boolean(v))} />
-            <span>Recurring job</span>
-          </label>
-          {isRecurring && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Frequency">
-                <select value={recurrence} onChange={(e) => setRecurrence(e.target.value as any)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Bi-weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </Field>
-              <Field label="Repeat until">
-                <Input type="date" value={recurrenceEnd} onChange={(e) => setRecurrenceEnd(e.target.value)} />
-              </Field>
-            </div>
-          )}
-        </div>
+        <RecurrenceFields value={recur} onChange={setRecur} startDate={dateStr} />
+
 
         {conflicts && conflicts.length > 0 && (
           <div className="rounded-md bg-destructive/10 text-destructive p-3 text-sm flex items-start gap-2">

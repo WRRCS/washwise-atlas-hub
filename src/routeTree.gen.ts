@@ -58,6 +58,7 @@ import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_aut
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksProcessPushRouteImport } from './routes/api/public/hooks/process-push'
+import { Route as ApiPublicHooksExtendRecurringRouteImport } from './routes/api/public/hooks/extend-recurring'
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
@@ -326,6 +327,12 @@ const ApiPublicHooksProcessPushRoute =
     path: '/api/public/hooks/process-push',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksExtendRecurringRoute =
+  ApiPublicHooksExtendRecurringRouteImport.update({
+    id: '/api/public/hooks/extend-recurring',
+    path: '/api/public/hooks/extend-recurring',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedSuperAdminTenantsTenantIdRoute =
   AuthenticatedSuperAdminTenantsTenantIdRouteImport.update({
     id: '/tenants/$tenantId',
@@ -423,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
+  '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
@@ -480,6 +488,7 @@ export interface FileRoutesByTo {
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
+  '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
@@ -540,6 +549,7 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
+  '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
@@ -600,6 +610,7 @@ export interface FileRouteTypes {
     | '/super-admin/audit'
     | '/super-admin/'
     | '/super-admin/tenants/$tenantId'
+    | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
@@ -657,6 +668,7 @@ export interface FileRouteTypes {
     | '/super-admin/audit'
     | '/super-admin'
     | '/super-admin/tenants/$tenantId'
+    | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
@@ -716,6 +728,7 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin/audit'
     | '/_authenticated/super-admin/'
     | '/_authenticated/super-admin/tenants/$tenantId'
+    | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
     | '/api/public/payments/webhook'
     | '/api/public/hooks/lead/$tenantId'
@@ -737,6 +750,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
+  ApiPublicHooksExtendRecurringRoute: typeof ApiPublicHooksExtendRecurringRoute
   ApiPublicHooksProcessPushRoute: typeof ApiPublicHooksProcessPushRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
@@ -1093,6 +1107,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessPushRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/extend-recurring': {
+      id: '/api/public/hooks/extend-recurring'
+      path: '/api/public/hooks/extend-recurring'
+      fullPath: '/api/public/hooks/extend-recurring'
+      preLoaderRoute: typeof ApiPublicHooksExtendRecurringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/super-admin/tenants/$tenantId': {
       id: '/_authenticated/super-admin/tenants/$tenantId'
       path: '/tenants/$tenantId'
@@ -1323,6 +1344,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
+  ApiPublicHooksExtendRecurringRoute: ApiPublicHooksExtendRecurringRoute,
   ApiPublicHooksProcessPushRoute: ApiPublicHooksProcessPushRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,

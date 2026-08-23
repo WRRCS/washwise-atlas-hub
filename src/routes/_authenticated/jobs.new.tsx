@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
+import { RecurrenceFields, defaultRecurrence, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
   component: NewJob,
@@ -40,6 +41,9 @@ function NewJob() {
   const [durationMin, setDurationMin] = useState(120);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const startDate = start.slice(0, 10);
+  const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(new Date().toISOString().slice(0, 10)));
+
 
   const propsFn = useServerFn(listClientProperties);
   const { data: properties = [] } = useQuery({
@@ -66,20 +70,23 @@ function NewJob() {
     if (!clientId || !serviceId || !start) return;
     setSaving(true);
     try {
-      const startDate = new Date(start);
-      const endDate = new Date(startDate.getTime() + durationMin * 60_000);
+      const startDate2 = new Date(start);
+      const endDate = new Date(startDate2.getTime() + durationMin * 60_000);
       await create({
         data: {
           client_id: clientId,
           property_id: propertyId || null,
           service_type_id: serviceId,
-          scheduled_start: startDate.toISOString(),
+          scheduled_start: startDate2.toISOString(),
           scheduled_end: endDate.toISOString(),
           assigned_employee_ids: assignee ? [assignee] : [],
           notes: notes || undefined,
+          is_recurring: recur.mode === "recurring",
+          recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
+          recurrence_end: recurrenceEndValue(recur, startDate),
         },
       });
-      toast.success("Job created");
+      toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
       navigate({ to: "/jobs" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -152,6 +159,7 @@ function NewJob() {
           <Field label="Notes">
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Access code, special instructions…" />
           </Field>
+          <RecurrenceFields value={recur} onChange={setRecur} startDate={startDate} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => navigate({ to: "/jobs" })}>Cancel</Button>
             <Button type="submit" disabled={saving} className="bg-brand text-brand-foreground hover:opacity-90">{saving ? "…" : "Create job"}</Button>
