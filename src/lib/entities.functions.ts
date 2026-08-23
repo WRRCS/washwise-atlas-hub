@@ -154,10 +154,11 @@ export const getClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: client, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, email, phone, service_address, billing_address, is_active, created_at, client_sop")
+      .select("id, first_name, last_name, service_address, is_active, created_at, client_sop")
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!client) return null;
+    const contact = await clientContact(context.supabase, data.id);
     const [{ data: spec }, { data: notes }, { data: photos }] = await Promise.all([
       context.supabase.from("property_specs").select("*").eq("client_id", data.id).maybeSingle(),
       context.supabase.from("client_notes").select("id, note, created_at, created_by").eq("client_id", data.id).order("created_at", { ascending: false }),
@@ -178,6 +179,9 @@ export const getClient = createServerFn({ method: "POST" })
     );
     return {
       ...client,
+      email: contact.email,
+      phone: contact.phone,
+      billing_address: contact.billing_address,
       spec: spec ?? null,
       notes: (notes ?? []).map((n) => ({ ...n, author: authorsMap.get(n.created_by ?? "") ?? null })),
       photos: signed,
