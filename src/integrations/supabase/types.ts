@@ -3031,6 +3031,15 @@ export type Database = {
       }
       admin_platform_stats: { Args: never; Returns: Json }
       can_view_client_specs: { Args: { _client_id: string }; Returns: boolean }
+      client_contact_info: {
+        Args: { _ids?: string[] }
+        Returns: {
+          billing_address: string
+          email: string
+          id: string
+          phone: string
+        }[]
+      }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_onboarding_completed: { Args: never; Returns: boolean }
       enqueue_notification: {
@@ -3117,6 +3126,7 @@ export type Database = {
         }
         Returns: string
       }
+      my_profile: { Args: never; Returns: Json }
       next_invoice_number: { Args: { _tenant: string }; Returns: string }
       portal_delete_push_subscription: {
         Args: { _endpoint: string }
@@ -3158,6 +3168,19 @@ export type Database = {
       }
       preview_plan_change: { Args: { _target_tier: string }; Returns: Json }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
+      staff_directory: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          hourly_rate_cents: number
+          id: string
+          is_active: boolean
+          phone: string
+          tenant_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "owner" | "employee" | "super_admin" | "manager"
