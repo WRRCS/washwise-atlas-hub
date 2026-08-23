@@ -71,16 +71,9 @@ const createJobSchema = z.object({
   price_cents: z.number().int().nonnegative().optional(),
   is_recurring: z.boolean().default(false),
   recurrence_rule: z.enum(["weekly", "biweekly", "monthly"]).nullable().optional(),
+  /** null = open-ended series (auto-extends into future schedules) */
   recurrence_end: z.string().nullable().optional(),
 });
-
-function addRecurrence(date: Date, rule: "weekly" | "biweekly" | "monthly") {
-  const d = new Date(date);
-  if (rule === "weekly") d.setDate(d.getDate() + 7);
-  else if (rule === "biweekly") d.setDate(d.getDate() + 14);
-  else d.setMonth(d.getMonth() + 1);
-  return d;
-}
 
 export const checkConflicts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -110,25 +103,38 @@ export const createJob = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: prof } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
-    const { data: st } = await context.supabase.from("service_types").select("default_price_cents, sop_steps").eq("id", data.service_type_id).maybeSingle();
+    const [{ data: st }, { data: tenant }] = await Promise.all([
+      context.supabase.from("service_types").select("default_price_cents, sop_steps").eq("id", data.service_type_id).maybeSingle(),
+      context.supabase.from("tenants").select("timezone").eq("id", prof.tenant_id).maybeSingle(),
+    ]);
+    const tz = (tenant as any)?.timezone || DEFAULT_TZ;
     const price = data.price_cents ?? st?.default_price_cents ?? 0;
     const steps = (st?.sop_steps as string[] | null) ?? [];
 
-    // Build occurrences
+    // Build occurrences (wall-clock stable in the business timezone).
     const start0 = new Date(data.scheduled_start);
     const end0 = new Date(data.scheduled_end);
     const dur = end0.getTime() - start0.getTime();
     const occurrences: { start: Date; end: Date }[] = [{ start: start0, end: end0 }];
-    if (data.is_recurring && data.recurrence_rule && data.recurrence_end) {
-      const endBoundary = new Date(data.recurrence_end + "T23:59:59");
-      let next = addRecurrence(start0, data.recurrence_rule);
-      while (next.getTime() <= endBoundary.getTime() && occurrences.length < 60) {
-        occurrences.push({ start: next, end: new Date(next.getTime() + dur) });
-        next = addRecurrence(next, data.recurrence_rule);
+    const recurring = data.is_recurring && !!data.recurrence_rule;
+    if (recurring) {
+      const horizon = addMonthsISO(new Date().toISOString(), RECURRENCE_HORIZON_MONTHS);
+      const seriesEnd = data.recurrence_end ? new Date(data.recurrence_end + "T23:59:59Z").toISOString() : null;
+      const throughISO =
+        seriesEnd && new Date(seriesEnd).getTime() < new Date(horizon).getTime() ? seriesEnd : horizon;
+      for (const iso of generateOccurrences({
+        anchorISO: start0.toISOString(),
+        rule: data.recurrence_rule as RecurrenceRule,
+        afterISO: start0.toISOString(),
+        throughISO,
+        tz,
+      })) {
+        const s = new Date(iso);
+        occurrences.push({ start: s, end: new Date(s.getTime() + dur) });
       }
     }
 
-    const groupId = data.is_recurring ? crypto.randomUUID() : null;
+    const groupId = recurring ? crypto.randomUUID() : null;
     const firstIds: string[] = [];
 
     for (const occ of occurrences) {
@@ -144,9 +150,9 @@ export const createJob = createServerFn({ method: "POST" })
           assigned_to: data.assigned_employee_ids[0] ?? null,
           notes: data.notes ?? null,
           price_cents: price,
-          is_recurring: data.is_recurring,
-          recurrence_rule: data.recurrence_rule ?? null,
-          recurrence_end: data.recurrence_end ?? null,
+          is_recurring: recurring,
+          recurrence_rule: recurring ? data.recurrence_rule : null,
+          recurrence_end: recurring ? (data.recurrence_end ?? null) : null,
           recurrence_group_id: groupId,
         })
         .select("id")
@@ -166,6 +172,7 @@ export const createJob = createServerFn({ method: "POST" })
     }
     return { id: firstIds[0], count: firstIds.length };
   });
+
 
 export const toggleSopItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
