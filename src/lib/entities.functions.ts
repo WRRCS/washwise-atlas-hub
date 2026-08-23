@@ -623,7 +623,8 @@ export const setRole = createServerFn({ method: "POST" })
         {
           tenant_id: prof.tenant_id,
           employee_id: data.user_id,
-          can_view_employee_contacts: true,
+          // Private data stays off by default — the owner grants it explicitly.
+          can_view_employee_contacts: false,
           can_view_pricing: false,
           can_view_client_cpni: false,
           can_schedule: true,
