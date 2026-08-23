@@ -73,8 +73,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             ? "employee"
             : "employee";
       setProfile({
-        full_name: p?.full_name ?? null,
-        email: p?.email ?? u.user.email ?? null,
+        full_name: (p as any)?.full_name ?? null,
+        email: (p as any)?.email ?? u.user.email ?? null,
         role: primary,
         isSuperAdmin: roleSet.has("super_admin"),
       });
