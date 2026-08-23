@@ -76,13 +76,16 @@ function NewJob() {
           client_id: clientId,
           property_id: propertyId || null,
           service_type_id: serviceId,
-          scheduled_start: startDate.toISOString(),
+          scheduled_start: startDate2.toISOString(),
           scheduled_end: endDate.toISOString(),
           assigned_employee_ids: assignee ? [assignee] : [],
           notes: notes || undefined,
+          is_recurring: recur.mode === "recurring",
+          recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
+          recurrence_end: recurrenceEndValue(recur, startDate),
         },
       });
-      toast.success("Job created");
+      toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
       navigate({ to: "/jobs" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
