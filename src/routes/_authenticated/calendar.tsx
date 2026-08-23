@@ -596,26 +596,8 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
           <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Access code, special instructions…" />
         </Field>
 
-        <div className="rounded-md border border-input p-3 space-y-3">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <Checkbox checked={isRecurring} onCheckedChange={(v) => setIsRecurring(Boolean(v))} />
-            <span>Recurring job</span>
-          </label>
-          {isRecurring && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Frequency">
-                <select value={recurrence} onChange={(e) => setRecurrence(e.target.value as any)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Bi-weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </Field>
-              <Field label="Repeat until">
-                <Input type="date" value={recurrenceEnd} onChange={(e) => setRecurrenceEnd(e.target.value)} />
-              </Field>
-            </div>
-          )}
-        </div>
+        <RecurrenceFields value={recur} onChange={setRecur} startDate={dateStr} />
+
 
         {conflicts && conflicts.length > 0 && (
           <div className="rounded-md bg-destructive/10 text-destructive p-3 text-sm flex items-start gap-2">
