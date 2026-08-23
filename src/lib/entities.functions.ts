@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { clientContact, clientContactMap, staffDirectory } from "@/lib/privacy";
 
 // ============= Clients =============
 
@@ -9,10 +10,18 @@ export const listClients = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, email, phone, service_address, billing_address, is_active")
+      .select("id, first_name, last_name, service_address, is_active")
       .order("first_name");
     if (error) throw new Error(error.message);
-    return data ?? [];
+    // CPNI (email / phone / billing address) only comes back for owners and
+    // managers an owner granted client-privacy access.
+    const contacts = await clientContactMap(context.supabase);
+    return (data ?? []).map((c) => ({
+      ...c,
+      email: contacts.get(c.id)?.email ?? null,
+      phone: contacts.get(c.id)?.phone ?? null,
+      billing_address: contacts.get(c.id)?.billing_address ?? null,
+    }));
   });
 
 const clientSchema = z.object({
