@@ -296,3 +296,14 @@ export const listUnavailability = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
+
+/** Owner/manager action: top up recurring series into future schedules now. */
+export const extendRecurringNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: prof } = await context.supabase
+      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (!prof?.tenant_id) throw new Error("No workspace");
+    const { extendRecurringSeries } = await import("@/lib/recurrence.server");
+    return await extendRecurringSeries(context.supabase, { tenantId: prof.tenant_id, maxGroups: 100 });
+  });
