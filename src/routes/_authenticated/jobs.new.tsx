@@ -158,6 +158,7 @@ function NewJob() {
           <Field label="Notes">
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Access code, special instructions…" />
           </Field>
+          <RecurrenceFields value={recur} onChange={setRecur} startDate={startDate} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => navigate({ to: "/jobs" })}>Cancel</Button>
             <Button type="submit" disabled={saving} className="bg-brand text-brand-foreground hover:opacity-90">{saving ? "…" : "Create job"}</Button>
