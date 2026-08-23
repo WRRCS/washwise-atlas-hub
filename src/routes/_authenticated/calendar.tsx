@@ -519,12 +519,12 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
           assigned_employee_ids: assignees,
           notes: notes || undefined,
           price_cents: priceCents,
-          is_recurring: isRecurring,
-          recurrence_rule: isRecurring ? recurrence : null,
-          recurrence_end: isRecurring ? recurrenceEnd : null,
+          is_recurring: recur.mode === "recurring",
+          recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
+          recurrence_end: recurrenceEndValue(recur, dateStr),
         },
       });
-      toast.success(isRecurring ? "Recurring jobs created" : "Job created");
+      toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
       qc.invalidateQueries({ queryKey: ["jobs"] });
       onClose();
     } catch (err) {
