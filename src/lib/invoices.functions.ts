@@ -50,7 +50,7 @@ export const getInvoice = createServerFn({ method: "POST" })
     const [{ data: inv, error }, { data: items, error: ie }] = await Promise.all([
       context.supabase
         .from("invoices")
-        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, email, phone, billing_address, service_address)")
+        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, service_address)")
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
@@ -63,7 +63,14 @@ export const getInvoice = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (ie) throw new Error(ie.message);
     if (!inv) return null;
-    return { ...inv, line_items: items ?? [] };
+    // CPNI is merged in only for viewers allowed to see it.
+    const contact = inv.client_id
+      ? await clientContact(context.supabase, inv.client_id)
+      : { email: null, phone: null, billing_address: null };
+    const client = inv.client
+      ? { ...(inv.client as Record<string, unknown>), email: contact.email, phone: contact.phone, billing_address: contact.billing_address }
+      : null;
+    return { ...inv, client, line_items: items ?? [] };
   });
 
 // ============= Toggle card surcharge =============

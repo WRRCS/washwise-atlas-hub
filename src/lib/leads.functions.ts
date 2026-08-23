@@ -44,7 +44,7 @@ export const listLeads = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<LeadRow[]> => {
     let q = context.supabase
       .from("leads")
-      .select("id, client_id, source, status, assigned_to, service_interest, notes, last_contacted_at, created_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(first_name, last_name, email, phone)")
+      .select("id, client_id, source, status, assigned_to, service_interest, notes, last_contacted_at, created_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(id, first_name, last_name)")
       .order("created_at", { ascending: false })
       .limit(500);
     if (data.status) q = q.eq("status", data.status);
@@ -89,7 +89,7 @@ export const getLead = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("leads")
-      .select("id, tenant_id, client_id, source, status, assigned_to, service_interest, notes, payload, last_contacted_at, created_at, updated_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(id, first_name, last_name, email, phone, service_address, billing_address)")
+      .select("id, tenant_id, client_id, source, status, assigned_to, service_interest, notes, payload, last_contacted_at, created_at, updated_at, assignee:profiles!leads_assigned_to_fkey(full_name), client:clients(id, first_name, last_name, service_address)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);

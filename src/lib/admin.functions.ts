@@ -90,7 +90,8 @@ export const getAuditLog = createServerFn({ method: "POST" })
     const tenantIds = Array.from(new Set((rows ?? []).map((r: any) => r.target_tenant_id).filter(Boolean)));
     const [actors, tenants] = await Promise.all([
       actorIds.length
-        ? context.supabase.from("profiles").select("id, full_name, email").in("id", actorIds)
+        ? (await import("@/integrations/supabase/client.server")).supabaseAdmin
+            .from("profiles").select("id, full_name, email").in("id", actorIds)
         : Promise.resolve({ data: [] }),
       tenantIds.length
         ? context.supabase.from("tenants").select("id, name").in("id", tenantIds)

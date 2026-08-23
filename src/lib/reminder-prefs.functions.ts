@@ -100,12 +100,10 @@ export const listEmployeeReminderPrefs = createServerFn({ method: "GET" })
     const tenantId = await tenantIdFor(context);
     const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
     if (!allowed) throw new Error("Forbidden");
-    const { data: profiles, error } = await context.supabase
-      .from("profiles")
-      .select("id, full_name, email, is_active")
-      .eq("tenant_id", tenantId)
-      .eq("is_active", true);
+    // Emails come back only when the viewer is allowed to see team contacts.
+    const { data: directory, error } = await context.supabase.rpc("staff_directory");
     if (error) throw new Error(error.message);
+    const profiles = ((directory ?? []) as any[]).filter((p) => p.is_active !== false);
     const ids = (profiles ?? []).map((p: any) => p.id);
     if (ids.length === 0) return [];
     const { data: prefs } = await context.supabase
