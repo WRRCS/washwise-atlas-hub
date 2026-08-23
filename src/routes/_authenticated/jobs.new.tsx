@@ -40,6 +40,9 @@ function NewJob() {
   const [durationMin, setDurationMin] = useState(120);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const startDate = start.slice(0, 10);
+  const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(new Date().toISOString().slice(0, 10)));
+
 
   const propsFn = useServerFn(listClientProperties);
   const { data: properties = [] } = useQuery({
