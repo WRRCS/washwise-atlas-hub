@@ -390,18 +390,21 @@ export const deleteServiceType = createServerFn({ method: "POST" })
 export const listEmployees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: profs }, { data: roles }, { data: isOwner }, { data: canViewWages }] = await Promise.all([
-      context.supabase.from("profiles").select("id, full_name, email, phone, is_active, hourly_rate_cents").order("full_name"),
+    // staff_directory() redacts email/phone/wages in the database itself
+    // according to the viewer's role and granted permissions.
+    const [profs, { data: roles }] = await Promise.all([
+      staffDirectory(context.supabase),
       context.supabase.from("user_roles").select("user_id, role"),
-      context.supabase.rpc("is_owner"),
-      context.supabase.rpc("has_employee_permission", { _flag: "can_view_wages" }),
     ]);
     const rolesMap = new Map<string, string>();
     (roles ?? []).forEach((r) => rolesMap.set(r.user_id, r.role));
-    const showWages = !!isOwner || !!canViewWages;
-    const list = (profs ?? []).map((p) => ({
-      ...p,
-      hourly_rate_cents: showWages ? p.hourly_rate_cents : 0,
+    const list = profs.map((p) => ({
+      id: p.id,
+      full_name: p.full_name,
+      email: p.email,
+      phone: p.phone,
+      is_active: p.is_active,
+      hourly_rate_cents: p.hourly_rate_cents ?? 0,
       role: rolesMap.get(p.id) ?? "employee",
     }));
 
