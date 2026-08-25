@@ -3010,6 +3010,8 @@ export type Database = {
     }
     Functions: {
       _client_name: { Args: { _client_id: string }; Returns: string }
+      _reports_can_cpni: { Args: never; Returns: boolean }
+      _reports_guard: { Args: never; Returns: undefined }
       admin_get_tenant: { Args: { _tenant: string }; Returns: Json }
       admin_list_tenants: {
         Args: never
@@ -3168,6 +3170,108 @@ export type Database = {
       }
       preview_plan_change: { Args: { _target_tier: string }; Returns: Json }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
+      report_client_account: { Args: { _client_id: string }; Returns: Json }
+      report_client_balances: {
+        Args: never
+        Returns: {
+          avg_payment_days: number
+          balance_cents: number
+          client_id: string
+          client_name: string
+          email: string
+          invoice_count: number
+          invoiced_cents: number
+          last_invoice_date: string
+          last_paid_at: string
+          late_balance_cents: number
+          paid_cents: number
+          phone: string
+        }[]
+      }
+      report_client_communications: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          channel: string
+          client_id: string
+          client_name: string
+          direction: string
+          sent_on: string
+          status: string
+          subject: string
+        }[]
+      }
+      report_client_directory: {
+        Args: never
+        Returns: {
+          billing_address: string
+          client_id: string
+          client_name: string
+          created_at: string
+          email: string
+          first_name: string
+          has_sop: boolean
+          is_active: boolean
+          is_airbnb_host: boolean
+          jobs_count: number
+          last_job_at: string
+          last_name: string
+          lifetime_revenue_cents: number
+          phone: string
+          properties: Json
+          service_address: string
+        }[]
+      }
+      report_invoices: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          billing_address: string
+          client_email: string
+          client_id: string
+          client_name: string
+          client_phone: string
+          due_date: string
+          id: string
+          issue_date: string
+          job_id: string
+          number: string
+          paid_at: string
+          paid_cents: number
+          sent_at: string
+          status: string
+          subtotal_cents: number
+          total_cents: number
+        }[]
+      }
+      report_timesheets: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          ended_at: string
+          entry_id: string
+          full_name: string
+          hours: number
+          job_id: string
+          job_label: string
+          note: string
+          started_at: string
+          user_id: string
+          work_date: string
+        }[]
+      }
+      report_transactions: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          amount_cents: number
+          client_id: string
+          client_name: string
+          invoice_id: string
+          invoice_number: string
+          job_id: string
+          kind: string
+          method: string
+          occurred_on: string
+          status: string
+        }[]
+      }
       staff_directory: {
         Args: never
         Returns: {

@@ -41,6 +41,7 @@ import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedClientChatRouteImport } from './routes/_authenticated/client-chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedSuperAdminIndexRouteImport } from './routes/_authenticated/super-admin.index'
+import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedSuperAdminAuditRouteImport } from './routes/_authenticated/super-admin.audit'
 import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
 import { Route as AuthenticatedSettingsTemplatesRouteImport } from './routes/_authenticated/settings.templates'
@@ -49,6 +50,12 @@ import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/
 import { Route as AuthenticatedSettingsBusinessRouteImport } from './routes/_authenticated/settings.business'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings.billing'
 import { Route as AuthenticatedSettingsAiRouteImport } from './routes/_authenticated/settings.ai'
+import { Route as AuthenticatedReportsTransactionsRouteImport } from './routes/_authenticated/reports.transactions'
+import { Route as AuthenticatedReportsTimesheetsRouteImport } from './routes/_authenticated/reports.timesheets'
+import { Route as AuthenticatedReportsInvoicesRouteImport } from './routes/_authenticated/reports.invoices'
+import { Route as AuthenticatedReportsCommunicationsRouteImport } from './routes/_authenticated/reports.communications'
+import { Route as AuthenticatedReportsClientsRouteImport } from './routes/_authenticated/reports.clients'
+import { Route as AuthenticatedReportsBalancesRouteImport } from './routes/_authenticated/reports.balances'
 import { Route as AuthenticatedLeadsLeadIdRouteImport } from './routes/_authenticated/leads.$leadId'
 import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticated/jobs.new'
 import { Route as AuthenticatedJobsJobIdRouteImport } from './routes/_authenticated/jobs.$jobId'
@@ -60,6 +67,7 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicHooksProcessPushRouteImport } from './routes/api/public/hooks/process-push'
 import { Route as ApiPublicHooksExtendRecurringRouteImport } from './routes/api/public/hooks/extend-recurring'
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
+import { Route as AuthenticatedReportsClientClientIdRouteImport } from './routes/_authenticated/reports.client.$clientId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
 import { Route as ApiPublicTwilioVoiceTenantIdStatusRouteImport } from './routes/api/public/twilio/voice.$tenantId.status'
@@ -228,6 +236,12 @@ const AuthenticatedSuperAdminIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
   } as any)
+const AuthenticatedReportsIndexRoute =
+  AuthenticatedReportsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedSuperAdminAuditRoute =
   AuthenticatedSuperAdminAuditRouteImport.update({
     id: '/audit',
@@ -275,6 +289,42 @@ const AuthenticatedSettingsAiRoute = AuthenticatedSettingsAiRouteImport.update({
   path: '/settings/ai',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReportsTransactionsRoute =
+  AuthenticatedReportsTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsTimesheetsRoute =
+  AuthenticatedReportsTimesheetsRouteImport.update({
+    id: '/timesheets',
+    path: '/timesheets',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsInvoicesRoute =
+  AuthenticatedReportsInvoicesRouteImport.update({
+    id: '/invoices',
+    path: '/invoices',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsCommunicationsRoute =
+  AuthenticatedReportsCommunicationsRouteImport.update({
+    id: '/communications',
+    path: '/communications',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsClientsRoute =
+  AuthenticatedReportsClientsRouteImport.update({
+    id: '/clients',
+    path: '/clients',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
+const AuthenticatedReportsBalancesRoute =
+  AuthenticatedReportsBalancesRouteImport.update({
+    id: '/balances',
+    path: '/balances',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedLeadsLeadIdRoute =
   AuthenticatedLeadsLeadIdRouteImport.update({
     id: '/$leadId',
@@ -339,6 +389,12 @@ const AuthenticatedSuperAdminTenantsTenantIdRoute =
     path: '/tenants/$tenantId',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
   } as any)
+const AuthenticatedReportsClientClientIdRoute =
+  AuthenticatedReportsClientClientIdRouteImport.update({
+    id: '/client/$clientId',
+    path: '/client/$clientId',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const ApiPublicHooksTurnoTenantIdRoute =
   ApiPublicHooksTurnoTenantIdRouteImport.update({
     id: '/api/public/hooks/turno/$tenantId',
@@ -401,7 +457,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof AuthenticatedMessagesRoute
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/reports': typeof AuthenticatedReportsRoute
+  '/reports': typeof AuthenticatedReportsRouteWithChildren
   '/requests': typeof AuthenticatedRequestsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/sops': typeof AuthenticatedSopsRoute
@@ -420,6 +476,12 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/reports/balances': typeof AuthenticatedReportsBalancesRoute
+  '/reports/clients': typeof AuthenticatedReportsClientsRoute
+  '/reports/communications': typeof AuthenticatedReportsCommunicationsRoute
+  '/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
+  '/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
+  '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/business': typeof AuthenticatedSettingsBusinessRoute
@@ -428,7 +490,9 @@ export interface FileRoutesByFullPath {
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/reports/': typeof AuthenticatedReportsIndexRoute
   '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
+  '/reports/client/$clientId': typeof AuthenticatedReportsClientClientIdRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
@@ -460,7 +524,6 @@ export interface FileRoutesByTo {
   '/messages': typeof AuthenticatedMessagesRoute
   '/my-jobs': typeof AuthenticatedMyJobsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/reports': typeof AuthenticatedReportsRoute
   '/requests': typeof AuthenticatedRequestsRoute
   '/services': typeof AuthenticatedServicesRoute
   '/sops': typeof AuthenticatedSopsRoute
@@ -478,6 +541,12 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/reports/balances': typeof AuthenticatedReportsBalancesRoute
+  '/reports/clients': typeof AuthenticatedReportsClientsRoute
+  '/reports/communications': typeof AuthenticatedReportsCommunicationsRoute
+  '/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
+  '/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
+  '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/business': typeof AuthenticatedSettingsBusinessRoute
@@ -486,7 +555,9 @@ export interface FileRoutesByTo {
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/reports': typeof AuthenticatedReportsIndexRoute
   '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
+  '/reports/client/$clientId': typeof AuthenticatedReportsClientClientIdRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
@@ -520,7 +591,7 @@ export interface FileRoutesById {
   '/_authenticated/messages': typeof AuthenticatedMessagesRoute
   '/_authenticated/my-jobs': typeof AuthenticatedMyJobsRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
-  '/_authenticated/reports': typeof AuthenticatedReportsRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRouteWithChildren
   '/_authenticated/requests': typeof AuthenticatedRequestsRoute
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/sops': typeof AuthenticatedSopsRoute
@@ -539,6 +610,12 @@ export interface FileRoutesById {
   '/_authenticated/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
   '/_authenticated/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
+  '/_authenticated/reports/balances': typeof AuthenticatedReportsBalancesRoute
+  '/_authenticated/reports/clients': typeof AuthenticatedReportsClientsRoute
+  '/_authenticated/reports/communications': typeof AuthenticatedReportsCommunicationsRoute
+  '/_authenticated/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
+  '/_authenticated/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
+  '/_authenticated/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/_authenticated/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/_authenticated/settings/business': typeof AuthenticatedSettingsBusinessRoute
@@ -547,7 +624,9 @@ export interface FileRoutesById {
   '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
+  '/_authenticated/reports/client/$clientId': typeof AuthenticatedReportsClientClientIdRoute
   '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
@@ -600,6 +679,12 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/leads/$leadId'
+    | '/reports/balances'
+    | '/reports/clients'
+    | '/reports/communications'
+    | '/reports/invoices'
+    | '/reports/timesheets'
+    | '/reports/transactions'
     | '/settings/ai'
     | '/settings/billing'
     | '/settings/business'
@@ -608,7 +693,9 @@ export interface FileRouteTypes {
     | '/settings/templates'
     | '/settings/voice'
     | '/super-admin/audit'
+    | '/reports/'
     | '/super-admin/'
+    | '/reports/client/$clientId'
     | '/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
@@ -640,7 +727,6 @@ export interface FileRouteTypes {
     | '/messages'
     | '/my-jobs'
     | '/onboarding'
-    | '/reports'
     | '/requests'
     | '/services'
     | '/sops'
@@ -658,6 +744,12 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/leads/$leadId'
+    | '/reports/balances'
+    | '/reports/clients'
+    | '/reports/communications'
+    | '/reports/invoices'
+    | '/reports/timesheets'
+    | '/reports/transactions'
     | '/settings/ai'
     | '/settings/billing'
     | '/settings/business'
@@ -666,7 +758,9 @@ export interface FileRouteTypes {
     | '/settings/templates'
     | '/settings/voice'
     | '/super-admin/audit'
+    | '/reports'
     | '/super-admin'
+    | '/reports/client/$clientId'
     | '/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
@@ -718,6 +812,12 @@ export interface FileRouteTypes {
     | '/_authenticated/jobs/$jobId'
     | '/_authenticated/jobs/new'
     | '/_authenticated/leads/$leadId'
+    | '/_authenticated/reports/balances'
+    | '/_authenticated/reports/clients'
+    | '/_authenticated/reports/communications'
+    | '/_authenticated/reports/invoices'
+    | '/_authenticated/reports/timesheets'
+    | '/_authenticated/reports/transactions'
     | '/_authenticated/settings/ai'
     | '/_authenticated/settings/billing'
     | '/_authenticated/settings/business'
@@ -726,7 +826,9 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/templates'
     | '/_authenticated/settings/voice'
     | '/_authenticated/super-admin/audit'
+    | '/_authenticated/reports/'
     | '/_authenticated/super-admin/'
+    | '/_authenticated/reports/client/$clientId'
     | '/_authenticated/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
@@ -988,6 +1090,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSuperAdminIndexRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
     }
+    '/_authenticated/reports/': {
+      id: '/_authenticated/reports/'
+      path: '/'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/super-admin/audit': {
       id: '/_authenticated/super-admin/audit'
       path: '/audit'
@@ -1043,6 +1152,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/ai'
       preLoaderRoute: typeof AuthenticatedSettingsAiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/transactions': {
+      id: '/_authenticated/reports/transactions'
+      path: '/transactions'
+      fullPath: '/reports/transactions'
+      preLoaderRoute: typeof AuthenticatedReportsTransactionsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/timesheets': {
+      id: '/_authenticated/reports/timesheets'
+      path: '/timesheets'
+      fullPath: '/reports/timesheets'
+      preLoaderRoute: typeof AuthenticatedReportsTimesheetsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/invoices': {
+      id: '/_authenticated/reports/invoices'
+      path: '/invoices'
+      fullPath: '/reports/invoices'
+      preLoaderRoute: typeof AuthenticatedReportsInvoicesRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/communications': {
+      id: '/_authenticated/reports/communications'
+      path: '/communications'
+      fullPath: '/reports/communications'
+      preLoaderRoute: typeof AuthenticatedReportsCommunicationsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/clients': {
+      id: '/_authenticated/reports/clients'
+      path: '/clients'
+      fullPath: '/reports/clients'
+      preLoaderRoute: typeof AuthenticatedReportsClientsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
+    '/_authenticated/reports/balances': {
+      id: '/_authenticated/reports/balances'
+      path: '/balances'
+      fullPath: '/reports/balances'
+      preLoaderRoute: typeof AuthenticatedReportsBalancesRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
     }
     '/_authenticated/leads/$leadId': {
       id: '/_authenticated/leads/$leadId'
@@ -1120,6 +1271,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/super-admin/tenants/$tenantId'
       preLoaderRoute: typeof AuthenticatedSuperAdminTenantsTenantIdRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
+    }
+    '/_authenticated/reports/client/$clientId': {
+      id: '/_authenticated/reports/client/$clientId'
+      path: '/client/$clientId'
+      fullPath: '/reports/client/$clientId'
+      preLoaderRoute: typeof AuthenticatedReportsClientClientIdRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
     }
     '/api/public/hooks/turno/$tenantId': {
       id: '/api/public/hooks/turno/$tenantId'
@@ -1237,6 +1395,33 @@ const AuthenticatedLeadsRouteChildren: AuthenticatedLeadsRouteChildren = {
 const AuthenticatedLeadsRouteWithChildren =
   AuthenticatedLeadsRoute._addFileChildren(AuthenticatedLeadsRouteChildren)
 
+interface AuthenticatedReportsRouteChildren {
+  AuthenticatedReportsBalancesRoute: typeof AuthenticatedReportsBalancesRoute
+  AuthenticatedReportsClientsRoute: typeof AuthenticatedReportsClientsRoute
+  AuthenticatedReportsCommunicationsRoute: typeof AuthenticatedReportsCommunicationsRoute
+  AuthenticatedReportsInvoicesRoute: typeof AuthenticatedReportsInvoicesRoute
+  AuthenticatedReportsTimesheetsRoute: typeof AuthenticatedReportsTimesheetsRoute
+  AuthenticatedReportsTransactionsRoute: typeof AuthenticatedReportsTransactionsRoute
+  AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
+  AuthenticatedReportsClientClientIdRoute: typeof AuthenticatedReportsClientClientIdRoute
+}
+
+const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
+  AuthenticatedReportsBalancesRoute: AuthenticatedReportsBalancesRoute,
+  AuthenticatedReportsClientsRoute: AuthenticatedReportsClientsRoute,
+  AuthenticatedReportsCommunicationsRoute:
+    AuthenticatedReportsCommunicationsRoute,
+  AuthenticatedReportsInvoicesRoute: AuthenticatedReportsInvoicesRoute,
+  AuthenticatedReportsTimesheetsRoute: AuthenticatedReportsTimesheetsRoute,
+  AuthenticatedReportsTransactionsRoute: AuthenticatedReportsTransactionsRoute,
+  AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
+  AuthenticatedReportsClientClientIdRoute:
+    AuthenticatedReportsClientClientIdRoute,
+}
+
+const AuthenticatedReportsRouteWithChildren =
+  AuthenticatedReportsRoute._addFileChildren(AuthenticatedReportsRouteChildren)
+
 interface AuthenticatedSuperAdminRouteChildren {
   AuthenticatedSuperAdminAuditRoute: typeof AuthenticatedSuperAdminAuditRoute
   AuthenticatedSuperAdminIndexRoute: typeof AuthenticatedSuperAdminIndexRoute
@@ -1269,7 +1454,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
   AuthenticatedMyJobsRoute: typeof AuthenticatedMyJobsRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
-  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRouteWithChildren
   AuthenticatedRequestsRoute: typeof AuthenticatedRequestsRoute
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedSopsRoute: typeof AuthenticatedSopsRoute
@@ -1299,7 +1484,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
   AuthenticatedMyJobsRoute: AuthenticatedMyJobsRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
-  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRouteWithChildren,
   AuthenticatedRequestsRoute: AuthenticatedRequestsRoute,
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedSopsRoute: AuthenticatedSopsRoute,
