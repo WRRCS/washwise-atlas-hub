@@ -23,7 +23,7 @@ const searchSchema = z.object({
   to: fallback(z.string(), "").default(""),
 });
 
-export const Route = createFileRoute("/_authenticated/reports")({
+export const Route = createFileRoute("/_authenticated/reports/")({
   validateSearch: zodValidator(searchSchema),
   component: ReportsPage,
   errorComponent: ({ error }) => (
@@ -53,7 +53,7 @@ const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#e
 
 function ReportsPage() {
   const search = Route.useSearch();
-  const navigate = useNavigate({ from: "/reports" });
+  const navigate = useNavigate({ from: "/reports/" });
   const defaults = defaultRange();
   const from = search.from || defaults.from;
   const to = search.to || defaults.to;
