@@ -36,7 +36,7 @@ function BalancesReport() {
   const columns: Column<ClientBalanceRow>[] = [
     {
       key: "name", header: "Name",
-      cell: (r) => <Link to="/reports/client/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline">{r.client_name}</Link>,
+      cell: (r) => <Link to="/reports/account/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline">{r.client_name}</Link>,
       csv: (r) => r.client_name,
     },
     { key: "email", header: "Email", cell: (r) => r.email ?? "—", csv: (r) => r.email },

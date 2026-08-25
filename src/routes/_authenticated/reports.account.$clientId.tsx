@@ -5,7 +5,7 @@ import { useState } from "react";
 import { reportClientAccount, type ClientAccount } from "@/lib/owner-reports.functions";
 import { Kpi, fmtDate, fmtMoney } from "@/components/report-ui";
 
-export const Route = createFileRoute("/_authenticated/reports/client/$clientId")({
+export const Route = createFileRoute("/_authenticated/reports/account/$clientId")({
   component: ClientAccountPage,
 });
 
