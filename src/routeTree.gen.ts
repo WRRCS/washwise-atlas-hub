@@ -67,7 +67,7 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicHooksProcessPushRouteImport } from './routes/api/public/hooks/process-push'
 import { Route as ApiPublicHooksExtendRecurringRouteImport } from './routes/api/public/hooks/extend-recurring'
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
-import { Route as AuthenticatedReportsClientClientIdRouteImport } from './routes/_authenticated/reports.client.$clientId'
+import { Route as AuthenticatedReportsAccountClientIdRouteImport } from './routes/_authenticated/reports.account.$clientId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
 import { Route as ApiPublicTwilioVoiceTenantIdStatusRouteImport } from './routes/api/public/twilio/voice.$tenantId.status'
@@ -389,10 +389,10 @@ const AuthenticatedSuperAdminTenantsTenantIdRoute =
     path: '/tenants/$tenantId',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
   } as any)
-const AuthenticatedReportsClientClientIdRoute =
-  AuthenticatedReportsClientClientIdRouteImport.update({
-    id: '/client/$clientId',
-    path: '/client/$clientId',
+const AuthenticatedReportsAccountClientIdRoute =
+  AuthenticatedReportsAccountClientIdRouteImport.update({
+    id: '/account/$clientId',
+    path: '/account/$clientId',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
 const ApiPublicHooksTurnoTenantIdRoute =
@@ -492,7 +492,7 @@ export interface FileRoutesByFullPath {
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
   '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
-  '/reports/client/$clientId': typeof AuthenticatedReportsClientClientIdRoute
+  '/reports/account/$clientId': typeof AuthenticatedReportsAccountClientIdRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
@@ -557,7 +557,7 @@ export interface FileRoutesByTo {
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
-  '/reports/client/$clientId': typeof AuthenticatedReportsClientClientIdRoute
+  '/reports/account/$clientId': typeof AuthenticatedReportsAccountClientIdRoute
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
@@ -626,7 +626,7 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
-  '/_authenticated/reports/client/$clientId': typeof AuthenticatedReportsClientClientIdRoute
+  '/_authenticated/reports/account/$clientId': typeof AuthenticatedReportsAccountClientIdRoute
   '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
@@ -695,7 +695,7 @@ export interface FileRouteTypes {
     | '/super-admin/audit'
     | '/reports/'
     | '/super-admin/'
-    | '/reports/client/$clientId'
+    | '/reports/account/$clientId'
     | '/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
@@ -760,7 +760,7 @@ export interface FileRouteTypes {
     | '/super-admin/audit'
     | '/reports'
     | '/super-admin'
-    | '/reports/client/$clientId'
+    | '/reports/account/$clientId'
     | '/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
@@ -828,7 +828,7 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin/audit'
     | '/_authenticated/reports/'
     | '/_authenticated/super-admin/'
-    | '/_authenticated/reports/client/$clientId'
+    | '/_authenticated/reports/account/$clientId'
     | '/_authenticated/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
@@ -1272,11 +1272,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSuperAdminTenantsTenantIdRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
     }
-    '/_authenticated/reports/client/$clientId': {
-      id: '/_authenticated/reports/client/$clientId'
-      path: '/client/$clientId'
-      fullPath: '/reports/client/$clientId'
-      preLoaderRoute: typeof AuthenticatedReportsClientClientIdRouteImport
+    '/_authenticated/reports/account/$clientId': {
+      id: '/_authenticated/reports/account/$clientId'
+      path: '/account/$clientId'
+      fullPath: '/reports/account/$clientId'
+      preLoaderRoute: typeof AuthenticatedReportsAccountClientIdRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
     '/api/public/hooks/turno/$tenantId': {
@@ -1403,7 +1403,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsTimesheetsRoute: typeof AuthenticatedReportsTimesheetsRoute
   AuthenticatedReportsTransactionsRoute: typeof AuthenticatedReportsTransactionsRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
-  AuthenticatedReportsClientClientIdRoute: typeof AuthenticatedReportsClientClientIdRoute
+  AuthenticatedReportsAccountClientIdRoute: typeof AuthenticatedReportsAccountClientIdRoute
 }
 
 const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
@@ -1415,8 +1415,8 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsTimesheetsRoute: AuthenticatedReportsTimesheetsRoute,
   AuthenticatedReportsTransactionsRoute: AuthenticatedReportsTransactionsRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
-  AuthenticatedReportsClientClientIdRoute:
-    AuthenticatedReportsClientClientIdRoute,
+  AuthenticatedReportsAccountClientIdRoute:
+    AuthenticatedReportsAccountClientIdRoute,
 }
 
 const AuthenticatedReportsRouteWithChildren =
