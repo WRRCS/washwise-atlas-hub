@@ -37,7 +37,7 @@ function ClientDirectoryReport() {
     {
       key: "name", header: "Client",
       cell: (r) => (
-        <Link to="/reports/client/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline font-medium">
+        <Link to="/reports/account/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline font-medium">
           {r.client_name}
         </Link>
       ),

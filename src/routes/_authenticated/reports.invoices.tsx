@@ -45,7 +45,7 @@ function InvoicesReport() {
     {
       key: "client", header: "Client",
       cell: (r) => r.client_id
-        ? <Link to="/reports/client/$clientId" params={{ clientId: r.client_id }} className="hover:underline">{r.client_name}</Link>
+        ? <Link to="/reports/account/$clientId" params={{ clientId: r.client_id }} className="hover:underline">{r.client_name}</Link>
         : (r.client_name ?? "—"),
       csv: (r) => r.client_name,
     },
