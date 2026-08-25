@@ -35,7 +35,7 @@ function CommunicationsReport() {
     { key: "dir", header: "Direction", cell: (r) => <span className="capitalize">{r.direction}</span>, csv: (r) => r.direction },
     { key: "subject", header: "Subject / preview", cell: (r) => r.subject ?? "—", csv: (r) => r.subject },
     { key: "status", header: "Status", cell: (r) => <span className="capitalize">{r.status ?? "—"}</span>, csv: (r) => r.status },
-    { key: "at", header: "Date", cell: (r) => fmtDate(r.occurred_at), csv: (r) => r.occurred_at },
+    { key: "at", header: "Date", cell: (r) => fmtDate(r.sent_on), csv: (r) => r.sent_on },
   ];
 
   return (
