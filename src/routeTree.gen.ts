@@ -52,6 +52,7 @@ import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsAiRouteImport } from './routes/_authenticated/settings.ai'
 import { Route as AuthenticatedReportsTransactionsRouteImport } from './routes/_authenticated/reports.transactions'
 import { Route as AuthenticatedReportsInvoicesRouteImport } from './routes/_authenticated/reports.invoices'
+import { Route as AuthenticatedReportsClientsRouteImport } from './routes/_authenticated/reports.clients'
 import { Route as AuthenticatedReportsBalancesRouteImport } from './routes/_authenticated/reports.balances'
 import { Route as AuthenticatedLeadsLeadIdRouteImport } from './routes/_authenticated/leads.$leadId'
 import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticated/jobs.new'
@@ -297,6 +298,12 @@ const AuthenticatedReportsInvoicesRoute =
     path: '/invoices',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsClientsRoute =
+  AuthenticatedReportsClientsRouteImport.update({
+    id: '/clients',
+    path: '/clients',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsBalancesRoute =
   AuthenticatedReportsBalancesRouteImport.update({
     id: '/balances',
@@ -449,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/reports/balances': typeof AuthenticatedReportsBalancesRoute
+  '/reports/clients': typeof AuthenticatedReportsClientsRoute
   '/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
   '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
@@ -510,6 +518,7 @@ export interface FileRoutesByTo {
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/reports/balances': typeof AuthenticatedReportsBalancesRoute
+  '/reports/clients': typeof AuthenticatedReportsClientsRoute
   '/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
   '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
@@ -575,6 +584,7 @@ export interface FileRoutesById {
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
   '/_authenticated/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
   '/_authenticated/reports/balances': typeof AuthenticatedReportsBalancesRoute
+  '/_authenticated/reports/clients': typeof AuthenticatedReportsClientsRoute
   '/_authenticated/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
   '/_authenticated/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/_authenticated/settings/ai': typeof AuthenticatedSettingsAiRoute
@@ -640,6 +650,7 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/leads/$leadId'
     | '/reports/balances'
+    | '/reports/clients'
     | '/reports/invoices'
     | '/reports/transactions'
     | '/settings/ai'
@@ -701,6 +712,7 @@ export interface FileRouteTypes {
     | '/jobs/new'
     | '/leads/$leadId'
     | '/reports/balances'
+    | '/reports/clients'
     | '/reports/invoices'
     | '/reports/transactions'
     | '/settings/ai'
@@ -765,6 +777,7 @@ export interface FileRouteTypes {
     | '/_authenticated/jobs/new'
     | '/_authenticated/leads/$leadId'
     | '/_authenticated/reports/balances'
+    | '/_authenticated/reports/clients'
     | '/_authenticated/reports/invoices'
     | '/_authenticated/reports/transactions'
     | '/_authenticated/settings/ai'
@@ -1115,6 +1128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsInvoicesRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/clients': {
+      id: '/_authenticated/reports/clients'
+      path: '/clients'
+      fullPath: '/reports/clients'
+      preLoaderRoute: typeof AuthenticatedReportsClientsRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/balances': {
       id: '/_authenticated/reports/balances'
       path: '/balances'
@@ -1317,6 +1337,7 @@ const AuthenticatedLeadsRouteWithChildren =
 
 interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsBalancesRoute: typeof AuthenticatedReportsBalancesRoute
+  AuthenticatedReportsClientsRoute: typeof AuthenticatedReportsClientsRoute
   AuthenticatedReportsInvoicesRoute: typeof AuthenticatedReportsInvoicesRoute
   AuthenticatedReportsTransactionsRoute: typeof AuthenticatedReportsTransactionsRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
@@ -1324,6 +1345,7 @@ interface AuthenticatedReportsRouteChildren {
 
 const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsBalancesRoute: AuthenticatedReportsBalancesRoute,
+  AuthenticatedReportsClientsRoute: AuthenticatedReportsClientsRoute,
   AuthenticatedReportsInvoicesRoute: AuthenticatedReportsInvoicesRoute,
   AuthenticatedReportsTransactionsRoute: AuthenticatedReportsTransactionsRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
