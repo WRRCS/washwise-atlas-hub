@@ -202,13 +202,26 @@ export const getJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => input)
   .handler(async ({ data, context }) => {
+    // Client CPNI (email/phone/billing address) is not column-readable via the
+    // Data API; it is merged in below through the permission-checked RPC.
     const { data: job, error } = await context.supabase
       .from("jobs")
-      .select("*, client:clients(*), service:service_types(*), sop:job_sop_items(*)")
+      .select("*, client:clients(id, first_name, last_name, service_address, color, client_sop), service:service_types(*), sop:job_sop_items(*)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!job) return null;
+    const contact = job.client_id
+      ? await clientContact(context.supabase, job.client_id)
+      : null;
+    const jobClient = job.client
+      ? {
+          ...(job.client as Record<string, unknown>),
+          email: contact?.email ?? null,
+          phone: contact?.phone ?? null,
+          billing_address: contact?.billing_address ?? null,
+        }
+      : null;
     const [{ data: links }, { data: specs }, { data: clientNotes }] = await Promise.all([
       context.supabase
         .from("job_employees")
