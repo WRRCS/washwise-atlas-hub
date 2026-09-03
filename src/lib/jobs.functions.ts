@@ -247,6 +247,7 @@ export const getJob = createServerFn({ method: "POST" })
     const canViewPricing = await resolveCanViewPricing(context);
     return {
       ...job,
+      client: jobClient,
       price_cents: canViewPricing ? job.price_cents : null,
       assignees,
       property_specs: specs ?? null,
