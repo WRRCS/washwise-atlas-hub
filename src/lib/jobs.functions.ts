@@ -215,9 +215,20 @@ export const getJob = createServerFn({ method: "POST" })
     const contact = job.client_id
       ? await clientContact(context.supabase, job.client_id)
       : null;
-    const jobClient = job.client
+    type JobClient = {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      service_address: string | null;
+      color: string | null;
+      client_sop: string | null;
+      email: string | null;
+      phone: string | null;
+      billing_address: string | null;
+    };
+    const jobClient: JobClient | null = job.client
       ? {
-          ...(job.client as Record<string, unknown>),
+          ...(job.client as Omit<JobClient, "email" | "phone" | "billing_address">),
           email: contact?.email ?? null,
           phone: contact?.phone ?? null,
           billing_address: contact?.billing_address ?? null,
