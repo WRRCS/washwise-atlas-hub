@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCanViewPricing } from "@/lib/team.functions";
+import { clientContact } from "@/lib/privacy";
 import { DEFAULT_TZ } from "@/lib/tz";
 import {
   addMonthsISO,
@@ -202,13 +203,37 @@ export const getJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => input)
   .handler(async ({ data, context }) => {
+    // Client CPNI (email/phone/billing address) is not column-readable via the
+    // Data API; it is merged in below through the permission-checked RPC.
     const { data: job, error } = await context.supabase
       .from("jobs")
-      .select("*, client:clients(*), service:service_types(*), sop:job_sop_items(*)")
+      .select("*, client:clients(id, first_name, last_name, service_address, color, client_sop), service:service_types(*), sop:job_sop_items(*)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!job) return null;
+    const contact = job.client_id
+      ? await clientContact(context.supabase, job.client_id)
+      : null;
+    type JobClient = {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      service_address: string | null;
+      color: string | null;
+      client_sop: string | null;
+      email: string | null;
+      phone: string | null;
+      billing_address: string | null;
+    };
+    const jobClient: JobClient | null = job.client
+      ? {
+          ...(job.client as Omit<JobClient, "email" | "phone" | "billing_address">),
+          email: contact?.email ?? null,
+          phone: contact?.phone ?? null,
+          billing_address: contact?.billing_address ?? null,
+        }
+      : null;
     const [{ data: links }, { data: specs }, { data: clientNotes }] = await Promise.all([
       context.supabase
         .from("job_employees")
@@ -234,6 +259,7 @@ export const getJob = createServerFn({ method: "POST" })
     const canViewPricing = await resolveCanViewPricing(context);
     return {
       ...job,
+      client: jobClient,
       price_cents: canViewPricing ? job.price_cents : null,
       assignees,
       property_specs: specs ?? null,
