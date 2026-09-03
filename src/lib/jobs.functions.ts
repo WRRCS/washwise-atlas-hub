@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCanViewPricing } from "@/lib/team.functions";
+import { clientContact } from "@/lib/privacy";
 import { DEFAULT_TZ } from "@/lib/tz";
 import {
   addMonthsISO,
