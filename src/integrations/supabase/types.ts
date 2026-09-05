@@ -3112,6 +3112,17 @@ export type Database = {
           total_revenue_cents: number
         }[]
       }
+      get_sales_summary: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          day: string
+          jobs_completed_count: number
+          labor_cost_cents: number
+          labor_hours: number
+          labor_pct_of_sales: number
+          sales_cents: number
+        }[]
+      }
       get_tenant_usage: { Args: { _tenant: string }; Returns: Json }
       has_client_mgmt_permission: { Args: never; Returns: boolean }
       has_employee_permission: { Args: { _flag: string }; Returns: boolean }
