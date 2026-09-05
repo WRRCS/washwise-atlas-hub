@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import { reportSalesSummary, type SalesSummaryRow } from "@/lib/owner-reports.functions";
-import { Column, Kpi, RangeBar, ReportTable, fmtDate, fmtMoney, useDateRange } from "@/components/report-ui";
+import { ArchiveButton, ArchiveNotice, Column, Kpi, RangeBar, ReportTable, fmtDate, fmtMoney, useArchiveGate, useDateRange } from "@/components/report-ui";
 
 export const Route = createFileRoute("/_authenticated/reports/sales")({
   component: SalesSummaryReport,
@@ -14,10 +14,12 @@ export const Route = createFileRoute("/_authenticated/reports/sales")({
 
 function SalesSummaryReport() {
   const { from, to, setRange } = useDateRange(0.25); // ~1 week back
+  const gate = useArchiveGate(from);
   const fetchRows = useServerFn(reportSalesSummary);
   const query = useQuery<SalesSummaryRow[]>({
     queryKey: ["report-sales-summary", from, to],
     queryFn: () => fetchRows({ data: { from, to } }),
+    enabled: gate.allowed,
   });
 
   const rows = useMemo(() => [...(query.data ?? [])].reverse(), [query.data]); // table newest first
