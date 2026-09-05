@@ -142,6 +142,33 @@ export type TimesheetRow = {
   note: string | null;
 };
 
+export type SalesSummaryRow = {
+  day: string;
+  sales_cents: number;
+  labor_cost_cents: number;
+  labor_hours: number;
+  labor_pct_of_sales: number;
+  jobs_completed_count: number;
+};
+
+export const reportSalesSummary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => rangeSchema.parse(input))
+  .handler(async ({ data, context }): Promise<SalesSummaryRow[]> => {
+    const { data: rows, error } = await (context.supabase as any).rpc("get_sales_summary", {
+      _from: data.from, _to: data.to,
+    });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r: any) => ({
+      day: r.day,
+      sales_cents: Number(r.sales_cents),
+      labor_cost_cents: Number(r.labor_cost_cents),
+      labor_hours: Number(r.labor_hours),
+      labor_pct_of_sales: Number(r.labor_pct_of_sales),
+      jobs_completed_count: Number(r.jobs_completed_count),
+    }));
+  });
+
 export const reportTimesheets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rangeSchema.parse(input))
