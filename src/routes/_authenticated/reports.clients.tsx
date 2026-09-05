@@ -62,12 +62,33 @@ function ClientDirectoryReport() {
     {
       key: "name", header: "Client",
       cell: (r) => (
-        <Link to="/reports/account/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline font-medium">
-          {r.client_name}
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link to="/reports/account/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline font-medium">
+            {r.client_name}
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label={`Options for ${r.client_name}`}>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {r.is_active === false ? (
+                <DropdownMenuItem onClick={() => archive.mutate({ id: r.client_id, archived: false })}>
+                  <RotateCcw className="size-4 mr-2" /> Move back to current clients
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => archive.mutate({ id: r.client_id, archived: true })}>
+                  <Archive className="size-4 mr-2" /> Move to Previous Clients
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
       csv: (r) => r.client_name,
     },
+
     { key: "email", header: "Email", cell: (r) => r.email ?? "—", csv: (r) => r.email },
     { key: "phone", header: "Phone", cell: (r) => r.phone ?? "—", csv: (r) => r.phone },
     { key: "service", header: "Service address", cell: (r) => r.service_address ?? "—", csv: (r) => r.service_address },
