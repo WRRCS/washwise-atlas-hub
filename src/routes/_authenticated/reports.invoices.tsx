@@ -72,7 +72,14 @@ function InvoicesReport() {
         >
           {STATUSES.map((s) => <option key={s} value={s}>{s === "all" ? "All statuses" : s}</option>)}
         </select>
+        <ArchiveButton archive={gate.archive} onToggle={() => gate.setArchive(!gate.archive)} />
       </RangeBar>
+
+      {gate.isArchived && !gate.archive ? (
+        <ArchiveNotice onEnable={() => gate.setArchive(true)} />
+      ) : (
+      <>
+      {gate.isArchived ? <p className="text-xs text-muted-foreground">Viewing archived data (older than 6 months).</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Kpi label="Invoices issued" value={fmtMoney(issued)} />
