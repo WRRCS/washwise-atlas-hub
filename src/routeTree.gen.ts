@@ -55,6 +55,7 @@ import { Route as AuthenticatedReportsInvoicesRouteImport } from './routes/_auth
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsTimesheetsRouteImport } from './routes/_authenticated/reports.timesheets'
 import { Route as AuthenticatedReportsTransactionsRouteImport } from './routes/_authenticated/reports.transactions'
+import { Route as AuthenticatedReportsWeeklyRouteImport } from './routes/_authenticated/reports.weekly'
 import { Route as AuthenticatedSettingsAiRouteImport } from './routes/_authenticated/settings.ai'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings.billing'
 import { Route as AuthenticatedSettingsBusinessRouteImport } from './routes/_authenticated/settings.business'
@@ -319,6 +320,12 @@ const AuthenticatedReportsTransactionsRoute =
     path: '/transactions',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsWeeklyRoute =
+  AuthenticatedReportsWeeklyRouteImport.update({
+    id: '/weekly',
+    path: '/weekly',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedSettingsAiRoute = AuthenticatedSettingsAiRouteImport.update({
   id: '/settings/ai',
   path: '/settings/ai',
@@ -490,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
   '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
+  '/reports/weekly': typeof AuthenticatedReportsWeeklyRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/business': typeof AuthenticatedSettingsBusinessRoute
@@ -556,6 +564,7 @@ export interface FileRoutesByTo {
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
   '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
+  '/reports/weekly': typeof AuthenticatedReportsWeeklyRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/business': typeof AuthenticatedSettingsBusinessRoute
@@ -626,6 +635,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
   '/_authenticated/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
+  '/_authenticated/reports/weekly': typeof AuthenticatedReportsWeeklyRoute
   '/_authenticated/settings/ai': typeof AuthenticatedSettingsAiRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/_authenticated/settings/business': typeof AuthenticatedSettingsBusinessRoute
@@ -696,6 +706,7 @@ export interface FileRouteTypes {
     | '/reports/sales'
     | '/reports/timesheets'
     | '/reports/transactions'
+    | '/reports/weekly'
     | '/settings/ai'
     | '/settings/billing'
     | '/settings/business'
@@ -762,6 +773,7 @@ export interface FileRouteTypes {
     | '/reports/sales'
     | '/reports/timesheets'
     | '/reports/transactions'
+    | '/reports/weekly'
     | '/settings/ai'
     | '/settings/billing'
     | '/settings/business'
@@ -831,6 +843,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/sales'
     | '/_authenticated/reports/timesheets'
     | '/_authenticated/reports/transactions'
+    | '/_authenticated/reports/weekly'
     | '/_authenticated/settings/ai'
     | '/_authenticated/settings/billing'
     | '/_authenticated/settings/business'
@@ -1201,6 +1214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsTransactionsRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/weekly': {
+      id: '/_authenticated/reports/weekly'
+      path: '/weekly'
+      fullPath: '/reports/weekly'
+      preLoaderRoute: typeof AuthenticatedReportsWeeklyRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/settings/ai': {
       id: '/_authenticated/settings/ai'
       path: '/settings/ai'
@@ -1423,6 +1443,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedReportsTimesheetsRoute: typeof AuthenticatedReportsTimesheetsRoute
   AuthenticatedReportsTransactionsRoute: typeof AuthenticatedReportsTransactionsRoute
+  AuthenticatedReportsWeeklyRoute: typeof AuthenticatedReportsWeeklyRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
   AuthenticatedReportsAccountClientIdRoute: typeof AuthenticatedReportsAccountClientIdRoute
 }
@@ -1436,6 +1457,7 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedReportsTimesheetsRoute: AuthenticatedReportsTimesheetsRoute,
   AuthenticatedReportsTransactionsRoute: AuthenticatedReportsTransactionsRoute,
+  AuthenticatedReportsWeeklyRoute: AuthenticatedReportsWeeklyRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
   AuthenticatedReportsAccountClientIdRoute:
     AuthenticatedReportsAccountClientIdRoute,
