@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
@@ -8,9 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { listClients, createClient, myCapabilities } from "@/lib/entities.functions";
-import { Plus, Search, MapPin, Mail, Phone } from "lucide-react";
+import { listClients, createClient, myCapabilities, setClientArchived } from "@/lib/entities.functions";
+import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/clients")({
   component: ClientsPage,
