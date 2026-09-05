@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { reportCommunications, type CommunicationRow } from "@/lib/owner-reports.functions";
-import { Column, Kpi, RangeBar, ReportTable, fmtDate, useDateRange } from "@/components/report-ui";
+import { ArchiveButton, ArchiveNotice, Column, Kpi, RangeBar, ReportTable, fmtDate, useArchiveGate, useDateRange } from "@/components/report-ui";
 
 export const Route = createFileRoute("/_authenticated/reports/communications")({
   component: CommunicationsReport,
@@ -12,11 +12,13 @@ export const Route = createFileRoute("/_authenticated/reports/communications")({
 
 function CommunicationsReport() {
   const { from, to, setRange } = useDateRange(1);
+  const gate = useArchiveGate(from);
   const [q, setQ] = useState("");
   const fetchRows = useServerFn(reportCommunications);
   const query = useQuery<CommunicationRow[]>({
     queryKey: ["report-communications", from, to],
     queryFn: () => fetchRows({ data: { from, to } }),
+    enabled: gate.allowed,
   });
 
   const all = query.data ?? [];
@@ -42,7 +44,14 @@ function CommunicationsReport() {
     <div className="max-w-7xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">
       <RangeBar from={from} to={to} onChange={(p) => setRange((prev) => ({ ...prev, ...p }))}>
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search client or subject…" className="h-8 w-64" />
+        <ArchiveButton archive={gate.archive} onToggle={() => gate.setArchive(!gate.archive)} />
       </RangeBar>
+
+      {gate.isArchived && !gate.archive ? (
+        <ArchiveNotice onEnable={() => gate.setArchive(true)} />
+      ) : (
+      <>
+      {gate.isArchived ? <p className="text-xs text-muted-foreground">Viewing archived data (older than 6 months).</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-4">
         <Kpi label="Emails" value={String(count("email"))} />
@@ -58,6 +67,8 @@ function CommunicationsReport() {
         filename={`communications-${from}-to-${to}.csv`}
         loading={query.isLoading}
       />
+      </>
+      )}
     </div>
   );
 }
