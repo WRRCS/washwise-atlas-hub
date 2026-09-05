@@ -106,32 +106,43 @@ function ClientDirectoryReport() {
   return (
     <div className="max-w-7xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-lg ring-1 ring-black/5 bg-card p-1 text-sm">
+          {([["current", "Current clients"], ["previous", "Previous Clients"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFolder(key)}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                folder === key ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+              {key === "previous" ? <span className="ml-1 opacity-70">({previousCount})</span> : null}
+            </button>
+          ))}
+        </div>
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name, email, phone, address, property…"
           className="h-8 w-80"
         />
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} />
-          Active only
-        </label>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Kpi label="Clients" value={String(rows.length)} />
+        <Kpi label={folder === "previous" ? "Previous clients" : "Clients"} value={String(rows.length)} />
         <Kpi label="Jobs on file" value={String(rows.reduce((s, r) => s + r.jobs_count, 0))} />
         <Kpi label="Lifetime collected" value={fmtMoney(rows.reduce((s, r) => s + r.lifetime_revenue_cents, 0))} tone="good" />
       </div>
 
       <ReportTable
-        title="Client contact info"
+        title={folder === "previous" ? "Previous Clients — contact info on file" : "Client contact info"}
         rows={rows}
         columns={columns}
-        filename="client-directory.csv"
+        filename={folder === "previous" ? "previous-clients.csv" : "client-directory.csv"}
         loading={query.isLoading}
-        empty="No clients match that search."
+        empty={folder === "previous" ? "No previous clients yet." : "No clients match that search."}
       />
+
     </div>
   );
 }
