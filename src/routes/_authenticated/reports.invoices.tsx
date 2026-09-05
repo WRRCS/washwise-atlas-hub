@@ -100,6 +100,8 @@ function InvoicesReport() {
         filename={`invoices-${from}-to-${to}.csv`}
         loading={query.isLoading}
       />
+      </>
+      )}
     </div>
   );
 }
