@@ -1,9 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { MoreHorizontal, Archive, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { reportClientDirectory, type ClientDirectoryRow } from "@/lib/owner-reports.functions";
+import { setClientArchived } from "@/lib/entities.functions";
 import { Column, Kpi, ReportTable, fmtDate, fmtMoney } from "@/components/report-ui";
 
 export const Route = createFileRoute("/_authenticated/reports/clients")({
@@ -12,18 +22,32 @@ export const Route = createFileRoute("/_authenticated/reports/clients")({
 
 function ClientDirectoryReport() {
   const [q, setQ] = useState("");
-  const [activeOnly, setActiveOnly] = useState(true);
+  const [folder, setFolder] = useState<"current" | "previous">("current");
   const fetchRows = useServerFn(reportClientDirectory);
+  const qc = useQueryClient();
   const query = useQuery<ClientDirectoryRow[]>({
     queryKey: ["report-client-directory"],
     queryFn: () => fetchRows(),
   });
 
+  const archiveFn = useServerFn(setClientArchived);
+  const archive = useMutation({
+    mutationFn: (vars: { id: string; archived: boolean }) => archiveFn({ data: vars }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.archived ? "Moved to Previous Clients" : "Moved back to current clients");
+      qc.invalidateQueries({ queryKey: ["report-client-directory"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   const all = query.data ?? [];
+  const previousCount = all.filter((r) => r.is_active === false).length;
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return all.filter((r) => {
-      if (activeOnly && r.is_active === false) return false;
+      const isPrevious = r.is_active === false;
+      if (folder === "previous" ? !isPrevious : isPrevious) return false;
       if (!needle) return true;
       const hay = [
         r.client_name, r.email, r.phone, r.service_address, r.billing_address,
@@ -31,18 +55,40 @@ function ClientDirectoryReport() {
       ];
       return hay.some((v) => (v ?? "").toLowerCase().includes(needle));
     });
-  }, [all, q, activeOnly]);
+  }, [all, q, folder]);
+
 
   const columns: Column<ClientDirectoryRow>[] = [
     {
       key: "name", header: "Client",
       cell: (r) => (
-        <Link to="/reports/account/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline font-medium">
-          {r.client_name}
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link to="/reports/account/$clientId" params={{ clientId: r.client_id }} className="text-brand hover:underline font-medium">
+            {r.client_name}
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label={`Options for ${r.client_name}`}>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {r.is_active === false ? (
+                <DropdownMenuItem onClick={() => archive.mutate({ id: r.client_id, archived: false })}>
+                  <RotateCcw className="size-4 mr-2" /> Move back to current clients
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => archive.mutate({ id: r.client_id, archived: true })}>
+                  <Archive className="size-4 mr-2" /> Move to Previous Clients
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
       csv: (r) => r.client_name,
     },
+
     { key: "email", header: "Email", cell: (r) => r.email ?? "—", csv: (r) => r.email },
     { key: "phone", header: "Phone", cell: (r) => r.phone ?? "—", csv: (r) => r.phone },
     { key: "service", header: "Service address", cell: (r) => r.service_address ?? "—", csv: (r) => r.service_address },
@@ -60,32 +106,43 @@ function ClientDirectoryReport() {
   return (
     <div className="max-w-7xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-lg ring-1 ring-black/5 bg-card p-1 text-sm">
+          {([["current", "Current clients"], ["previous", "Previous Clients"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFolder(key)}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                folder === key ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+              {key === "previous" ? <span className="ml-1 opacity-70">({previousCount})</span> : null}
+            </button>
+          ))}
+        </div>
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name, email, phone, address, property…"
           className="h-8 w-80"
         />
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} />
-          Active only
-        </label>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Kpi label="Clients" value={String(rows.length)} />
+        <Kpi label={folder === "previous" ? "Previous clients" : "Clients"} value={String(rows.length)} />
         <Kpi label="Jobs on file" value={String(rows.reduce((s, r) => s + r.jobs_count, 0))} />
         <Kpi label="Lifetime collected" value={fmtMoney(rows.reduce((s, r) => s + r.lifetime_revenue_cents, 0))} tone="good" />
       </div>
 
       <ReportTable
-        title="Client contact info"
+        title={folder === "previous" ? "Previous Clients — contact info on file" : "Client contact info"}
         rows={rows}
         columns={columns}
-        filename="client-directory.csv"
+        filename={folder === "previous" ? "previous-clients.csv" : "client-directory.csv"}
         loading={query.isLoading}
-        empty="No clients match that search."
+        empty={folder === "previous" ? "No previous clients yet." : "No clients match that search."}
       />
+
     </div>
   );
 }

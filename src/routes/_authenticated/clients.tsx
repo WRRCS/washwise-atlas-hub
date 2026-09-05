@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
@@ -8,9 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { listClients, createClient, myCapabilities } from "@/lib/entities.functions";
-import { Plus, Search, MapPin, Mail, Phone } from "lucide-react";
+import { listClients, createClient, myCapabilities, setClientArchived } from "@/lib/entities.functions";
+import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/clients")({
   component: ClientsPage,
@@ -37,9 +44,21 @@ function ClientsPage() {
     queryFn: () => listFn({}),
     enabled: canAccess,
   });
+  const qc = useQueryClient();
+  const archiveFn = useServerFn(setClientArchived);
+  const archive = useMutation({
+    mutationFn: (vars: { id: string; archived: boolean }) => archiveFn({ data: vars }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.archived ? "Moved to Previous Clients" : "Moved back to current clients");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["report-client-directory"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"active" | "inactive" | "all">("active");
+
 
   const counts = useMemo(() => {
     const active = data.filter((c) => c.is_active).length;
@@ -65,7 +84,7 @@ function ClientsPage() {
     <>
       <PageHeader
         title="Clients"
-        subtitle={`${counts.active} active · ${counts.inactive} inactive`}
+        subtitle={`${counts.active} current · ${counts.inactive} previous`}
         action={
           <Button onClick={() => setOpen(true)} className="bg-brand text-brand-foreground hover:opacity-90">
             <Plus className="size-4 mr-1.5" /> New client
@@ -75,18 +94,19 @@ function ClientsPage() {
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex rounded-lg ring-1 ring-black/5 bg-card p-1 text-sm">
-            {(["active", "inactive", "all"] as const).map((s) => (
+            {([["active", "Current"], ["inactive", "Previous Clients"], ["all", "All"]] as const).map(([s, label]) => (
               <button
                 key={s}
                 onClick={() => setStatus(s)}
-                className={`px-3 py-1.5 rounded-md capitalize transition-colors ${
+                className={`px-3 py-1.5 rounded-md transition-colors ${
                   status === s ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s} <span className="ml-1 opacity-70">({counts[s]})</span>
+                {label} <span className="ml-1 opacity-70">({counts[s]})</span>
               </button>
             ))}
           </div>
+
           <div className="relative max-w-sm flex-1 min-w-[200px]">
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search clients…" className="pl-9" />
@@ -108,6 +128,7 @@ function ClientsPage() {
                   <th className="text-left px-5 py-3 font-medium hidden md:table-cell">Email</th>
                   <th className="text-left px-5 py-3 font-medium hidden md:table-cell">Phone</th>
                   <th className="text-left px-5 py-3 font-medium">Service address</th>
+                  <th className="w-10 px-2 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -117,15 +138,36 @@ function ClientsPage() {
                       <Link to="/clients/$clientId" params={{ clientId: c.id }} className="font-medium hover:text-brand">
                         {fullName(c)}
                       </Link>
-                      {!c.is_active && <span className="ml-2 text-[10px] uppercase text-muted-foreground">inactive</span>}
+                      {!c.is_active && <span className="ml-2 text-[10px] uppercase text-muted-foreground">previous</span>}
                     </td>
                     <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{c.email ?? "—"}</td>
                     <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{c.phone ?? "—"}</td>
                     <td className="px-5 py-3 text-muted-foreground truncate max-w-[300px]">{c.service_address ?? "—"}</td>
+                    <td className="px-2 py-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-8" aria-label={`Options for ${fullName(c)}`}>
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {c.is_active ? (
+                            <DropdownMenuItem onClick={() => archive.mutate({ id: c.id, archived: true })}>
+                              <Archive className="size-4 mr-2" /> Move to Previous Clients
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => archive.mutate({ id: c.id, archived: false })}>
+                              <RotateCcw className="size-4 mr-2" /> Move back to current clients
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
           )}
         </div>
 
