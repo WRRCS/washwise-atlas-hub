@@ -108,6 +108,7 @@ function ClientsPage() {
                   <th className="text-left px-5 py-3 font-medium hidden md:table-cell">Email</th>
                   <th className="text-left px-5 py-3 font-medium hidden md:table-cell">Phone</th>
                   <th className="text-left px-5 py-3 font-medium">Service address</th>
+                  <th className="w-10 px-2 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -117,15 +118,36 @@ function ClientsPage() {
                       <Link to="/clients/$clientId" params={{ clientId: c.id }} className="font-medium hover:text-brand">
                         {fullName(c)}
                       </Link>
-                      {!c.is_active && <span className="ml-2 text-[10px] uppercase text-muted-foreground">inactive</span>}
+                      {!c.is_active && <span className="ml-2 text-[10px] uppercase text-muted-foreground">previous</span>}
                     </td>
                     <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{c.email ?? "—"}</td>
                     <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{c.phone ?? "—"}</td>
                     <td className="px-5 py-3 text-muted-foreground truncate max-w-[300px]">{c.service_address ?? "—"}</td>
+                    <td className="px-2 py-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-8" aria-label={`Options for ${fullName(c)}`}>
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {c.is_active ? (
+                            <DropdownMenuItem onClick={() => archive.mutate({ id: c.id, archived: true })}>
+                              <Archive className="size-4 mr-2" /> Move to Previous Clients
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => archive.mutate({ id: c.id, archived: false })}>
+                              <RotateCcw className="size-4 mr-2" /> Move back to current clients
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
           )}
         </div>
 
