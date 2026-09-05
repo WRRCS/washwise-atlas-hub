@@ -52,6 +52,7 @@ import { Route as AuthenticatedReportsBalancesRouteImport } from './routes/_auth
 import { Route as AuthenticatedReportsClientsRouteImport } from './routes/_authenticated/reports.clients'
 import { Route as AuthenticatedReportsCommunicationsRouteImport } from './routes/_authenticated/reports.communications'
 import { Route as AuthenticatedReportsInvoicesRouteImport } from './routes/_authenticated/reports.invoices'
+import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsTimesheetsRouteImport } from './routes/_authenticated/reports.timesheets'
 import { Route as AuthenticatedReportsTransactionsRouteImport } from './routes/_authenticated/reports.transactions'
 import { Route as AuthenticatedSettingsAiRouteImport } from './routes/_authenticated/settings.ai'
@@ -300,6 +301,12 @@ const AuthenticatedReportsInvoicesRoute =
     path: '/invoices',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const AuthenticatedReportsSalesRoute =
+  AuthenticatedReportsSalesRouteImport.update({
+    id: '/sales',
+    path: '/sales',
+    getParentRoute: () => AuthenticatedReportsRoute,
+  } as any)
 const AuthenticatedReportsTimesheetsRoute =
   AuthenticatedReportsTimesheetsRouteImport.update({
     id: '/timesheets',
@@ -480,6 +487,7 @@ export interface FileRoutesByFullPath {
   '/reports/clients': typeof AuthenticatedReportsClientsRoute
   '/reports/communications': typeof AuthenticatedReportsCommunicationsRoute
   '/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
+  '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
   '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
@@ -545,6 +553,7 @@ export interface FileRoutesByTo {
   '/reports/clients': typeof AuthenticatedReportsClientsRoute
   '/reports/communications': typeof AuthenticatedReportsCommunicationsRoute
   '/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
+  '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
   '/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/settings/ai': typeof AuthenticatedSettingsAiRoute
@@ -614,6 +623,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/clients': typeof AuthenticatedReportsClientsRoute
   '/_authenticated/reports/communications': typeof AuthenticatedReportsCommunicationsRoute
   '/_authenticated/reports/invoices': typeof AuthenticatedReportsInvoicesRoute
+  '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/reports/timesheets': typeof AuthenticatedReportsTimesheetsRoute
   '/_authenticated/reports/transactions': typeof AuthenticatedReportsTransactionsRoute
   '/_authenticated/settings/ai': typeof AuthenticatedSettingsAiRoute
@@ -683,6 +693,7 @@ export interface FileRouteTypes {
     | '/reports/clients'
     | '/reports/communications'
     | '/reports/invoices'
+    | '/reports/sales'
     | '/reports/timesheets'
     | '/reports/transactions'
     | '/settings/ai'
@@ -748,6 +759,7 @@ export interface FileRouteTypes {
     | '/reports/clients'
     | '/reports/communications'
     | '/reports/invoices'
+    | '/reports/sales'
     | '/reports/timesheets'
     | '/reports/transactions'
     | '/settings/ai'
@@ -816,6 +828,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/clients'
     | '/_authenticated/reports/communications'
     | '/_authenticated/reports/invoices'
+    | '/_authenticated/reports/sales'
     | '/_authenticated/reports/timesheets'
     | '/_authenticated/reports/transactions'
     | '/_authenticated/settings/ai'
@@ -1167,6 +1180,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsInvoicesRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/_authenticated/reports/sales': {
+      id: '/_authenticated/reports/sales'
+      path: '/sales'
+      fullPath: '/reports/sales'
+      preLoaderRoute: typeof AuthenticatedReportsSalesRouteImport
+      parentRoute: typeof AuthenticatedReportsRoute
+    }
     '/_authenticated/reports/timesheets': {
       id: '/_authenticated/reports/timesheets'
       path: '/timesheets'
@@ -1400,6 +1420,7 @@ interface AuthenticatedReportsRouteChildren {
   AuthenticatedReportsClientsRoute: typeof AuthenticatedReportsClientsRoute
   AuthenticatedReportsCommunicationsRoute: typeof AuthenticatedReportsCommunicationsRoute
   AuthenticatedReportsInvoicesRoute: typeof AuthenticatedReportsInvoicesRoute
+  AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedReportsTimesheetsRoute: typeof AuthenticatedReportsTimesheetsRoute
   AuthenticatedReportsTransactionsRoute: typeof AuthenticatedReportsTransactionsRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
@@ -1412,6 +1433,7 @@ const AuthenticatedReportsRouteChildren: AuthenticatedReportsRouteChildren = {
   AuthenticatedReportsCommunicationsRoute:
     AuthenticatedReportsCommunicationsRoute,
   AuthenticatedReportsInvoicesRoute: AuthenticatedReportsInvoicesRoute,
+  AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedReportsTimesheetsRoute: AuthenticatedReportsTimesheetsRoute,
   AuthenticatedReportsTransactionsRoute: AuthenticatedReportsTransactionsRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
