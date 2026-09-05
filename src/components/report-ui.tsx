@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Archive, Download } from "lucide-react";
 import { downloadCsv } from "@/lib/csv";
 
 export function fmtMoney(cents: number | null | undefined) {
@@ -45,6 +45,41 @@ export function RangeBar({
         <label className="text-xs text-muted-foreground">To</label>
         <Input type="date" value={to} onChange={(e) => onChange({ to: e.target.value })} className="h-8 w-40" />
       </div>
+    </div>
+  );
+}
+
+// ---------- rolling 6-month archive gate ----------
+export function sixMonthCutoff() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setMonth(d.getMonth() - 6);
+  return isoDate(d);
+}
+
+export function useArchiveGate(from: string) {
+  const [archive, setArchive] = useState(false);
+  const isArchived = from < sixMonthCutoff();
+  return { archive, setArchive, isArchived, allowed: !isArchived || archive };
+}
+
+export function ArchiveButton({ archive, onToggle }: { archive: boolean; onToggle: () => void }) {
+  return (
+    <Button variant={archive ? "default" : "outline"} size="sm" className="h-8" onClick={onToggle}>
+      <Archive className="size-4 mr-1.5" />
+      {archive ? "Archive retrieval on" : "Archive retrieval"}
+    </Button>
+  );
+}
+
+export function ArchiveNotice({ onEnable }: { onEnable: () => void }) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-8 text-center space-y-3">
+      <Archive className="size-6 mx-auto text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">
+        This range is older than 6 months and has been archived. Turn on Archive retrieval to view it.
+      </p>
+      <Button size="sm" onClick={onEnable}>Retrieve from archive</Button>
     </div>
   );
 }

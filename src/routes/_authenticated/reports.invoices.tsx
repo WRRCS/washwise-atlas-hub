@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { reportInvoices, type InvoiceReportRow } from "@/lib/owner-reports.functions";
-import { Column, Kpi, RangeBar, ReportTable, fmtDate, fmtMoney, useDateRange } from "@/components/report-ui";
+import { ArchiveButton, ArchiveNotice, Column, Kpi, RangeBar, ReportTable, fmtDate, fmtMoney, useArchiveGate, useDateRange } from "@/components/report-ui";
 
 export const Route = createFileRoute("/_authenticated/reports/invoices")({
   component: InvoicesReport,
@@ -14,12 +14,14 @@ const STATUSES = ["all", "draft", "sent", "overdue", "paid", "cancelled"] as con
 
 function InvoicesReport() {
   const { from, to, setRange } = useDateRange(1);
+  const gate = useArchiveGate(from);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
   const fetchRows = useServerFn(reportInvoices);
   const query = useQuery<InvoiceReportRow[]>({
     queryKey: ["report-invoices", from, to],
     queryFn: () => fetchRows({ data: { from, to } }),
+    enabled: gate.allowed,
   });
 
   const all = query.data ?? [];
@@ -70,7 +72,14 @@ function InvoicesReport() {
         >
           {STATUSES.map((s) => <option key={s} value={s}>{s === "all" ? "All statuses" : s}</option>)}
         </select>
+        <ArchiveButton archive={gate.archive} onToggle={() => gate.setArchive(!gate.archive)} />
       </RangeBar>
+
+      {gate.isArchived && !gate.archive ? (
+        <ArchiveNotice onEnable={() => gate.setArchive(true)} />
+      ) : (
+      <>
+      {gate.isArchived ? <p className="text-xs text-muted-foreground">Viewing archived data (older than 6 months).</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Kpi label="Invoices issued" value={fmtMoney(issued)} />
@@ -91,6 +100,8 @@ function InvoicesReport() {
         filename={`invoices-${from}-to-${to}.csv`}
         loading={query.isLoading}
       />
+      </>
+      )}
     </div>
   );
 }
