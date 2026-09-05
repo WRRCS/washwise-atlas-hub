@@ -44,9 +44,21 @@ function ClientsPage() {
     queryFn: () => listFn({}),
     enabled: canAccess,
   });
+  const qc = useQueryClient();
+  const archiveFn = useServerFn(setClientArchived);
+  const archive = useMutation({
+    mutationFn: (vars: { id: string; archived: boolean }) => archiveFn({ data: vars }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.archived ? "Moved to Previous Clients" : "Moved back to current clients");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["report-client-directory"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"active" | "inactive" | "all">("active");
+
 
   const counts = useMemo(() => {
     const active = data.filter((c) => c.is_active).length;
