@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Archive, Download } from "lucide-react";
 import { downloadCsv } from "@/lib/csv";
 
 export function fmtMoney(cents: number | null | undefined) {
