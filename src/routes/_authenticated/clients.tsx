@@ -84,7 +84,7 @@ function ClientsPage() {
     <>
       <PageHeader
         title="Clients"
-        subtitle={`${counts.active} active · ${counts.inactive} inactive`}
+        subtitle={`${counts.active} current · ${counts.inactive} previous`}
         action={
           <Button onClick={() => setOpen(true)} className="bg-brand text-brand-foreground hover:opacity-90">
             <Plus className="size-4 mr-1.5" /> New client
@@ -94,18 +94,19 @@ function ClientsPage() {
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex rounded-lg ring-1 ring-black/5 bg-card p-1 text-sm">
-            {(["active", "inactive", "all"] as const).map((s) => (
+            {([["active", "Current"], ["inactive", "Previous Clients"], ["all", "All"]] as const).map(([s, label]) => (
               <button
                 key={s}
                 onClick={() => setStatus(s)}
-                className={`px-3 py-1.5 rounded-md capitalize transition-colors ${
+                className={`px-3 py-1.5 rounded-md transition-colors ${
                   status === s ? "bg-brand text-brand-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s} <span className="ml-1 opacity-70">({counts[s]})</span>
+                {label} <span className="ml-1 opacity-70">({counts[s]})</span>
               </button>
             ))}
           </div>
+
           <div className="relative max-w-sm flex-1 min-w-[200px]">
             <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search clients…" className="pl-9" />
