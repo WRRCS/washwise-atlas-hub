@@ -1,9 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { MoreHorizontal, Archive, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { reportClientDirectory, type ClientDirectoryRow } from "@/lib/owner-reports.functions";
+import { setClientArchived } from "@/lib/entities.functions";
 import { Column, Kpi, ReportTable, fmtDate, fmtMoney } from "@/components/report-ui";
 
 export const Route = createFileRoute("/_authenticated/reports/clients")({
@@ -12,18 +22,32 @@ export const Route = createFileRoute("/_authenticated/reports/clients")({
 
 function ClientDirectoryReport() {
   const [q, setQ] = useState("");
-  const [activeOnly, setActiveOnly] = useState(true);
+  const [folder, setFolder] = useState<"current" | "previous">("current");
   const fetchRows = useServerFn(reportClientDirectory);
+  const qc = useQueryClient();
   const query = useQuery<ClientDirectoryRow[]>({
     queryKey: ["report-client-directory"],
     queryFn: () => fetchRows(),
   });
 
+  const archiveFn = useServerFn(setClientArchived);
+  const archive = useMutation({
+    mutationFn: (vars: { id: string; archived: boolean }) => archiveFn({ data: vars }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.archived ? "Moved to Previous Clients" : "Moved back to current clients");
+      qc.invalidateQueries({ queryKey: ["report-client-directory"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   const all = query.data ?? [];
+  const previousCount = all.filter((r) => r.is_active === false).length;
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return all.filter((r) => {
-      if (activeOnly && r.is_active === false) return false;
+      const isPrevious = r.is_active === false;
+      if (folder === "previous" ? !isPrevious : isPrevious) return false;
       if (!needle) return true;
       const hay = [
         r.client_name, r.email, r.phone, r.service_address, r.billing_address,
@@ -31,7 +55,8 @@ function ClientDirectoryReport() {
       ];
       return hay.some((v) => (v ?? "").toLowerCase().includes(needle));
     });
-  }, [all, q, activeOnly]);
+  }, [all, q, folder]);
+
 
   const columns: Column<ClientDirectoryRow>[] = [
     {
