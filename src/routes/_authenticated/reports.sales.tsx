@@ -62,7 +62,15 @@ function SalesSummaryReport() {
 
   return (
     <div className="max-w-7xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">
-      <RangeBar from={from} to={to} onChange={(p) => setRange((prev) => ({ ...prev, ...p }))} />
+      <RangeBar from={from} to={to} onChange={(p) => setRange((prev) => ({ ...prev, ...p }))}>
+        <ArchiveButton archive={gate.archive} onToggle={() => gate.setArchive(!gate.archive)} />
+      </RangeBar>
+
+      {gate.isArchived && !gate.archive ? (
+        <ArchiveNotice onEnable={() => gate.setArchive(true)} />
+      ) : (
+      <>
+      {gate.isArchived ? <p className="text-xs text-muted-foreground">Viewing archived data (older than 6 months).</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Kpi label="Sales" value={fmtMoney(totalSales)} tone="good" />
@@ -111,6 +119,8 @@ function SalesSummaryReport() {
           </div>
         }
       />
+      </>
+      )}
     </div>
   );
 }
