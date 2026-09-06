@@ -207,7 +207,7 @@ export const getJob = createServerFn({ method: "POST" })
     // Data API; it is merged in below through the permission-checked RPC.
     const { data: job, error } = await context.supabase
       .from("jobs")
-      .select("*, client:clients(id, first_name, last_name, service_address, color, client_sop), service:service_types(*), sop:job_sop_items(*)")
+      .select("*, client:clients(id, first_name, last_name, service_address, color), service:service_types(*), sop:job_sop_items(*)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -228,10 +228,11 @@ export const getJob = createServerFn({ method: "POST" })
     };
     const jobClient: JobClient | null = job.client
       ? {
-          ...(job.client as Omit<JobClient, "email" | "phone" | "billing_address">),
+          ...(job.client as Omit<JobClient, "email" | "phone" | "billing_address" | "client_sop">),
           email: contact?.email ?? null,
           phone: contact?.phone ?? null,
           billing_address: contact?.billing_address ?? null,
+          client_sop: contact?.client_sop ?? null,
         }
       : null;
     const [{ data: links }, { data: specs }, { data: clientNotes }] = await Promise.all([

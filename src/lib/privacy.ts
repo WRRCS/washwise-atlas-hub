@@ -13,9 +13,10 @@ export type ClientContact = {
   email: string | null;
   phone: string | null;
   billing_address: string | null;
+  client_sop: string | null;
 };
 
-const EMPTY: ClientContact = { id: "", email: null, phone: null, billing_address: null };
+const EMPTY: ClientContact = { id: "", email: null, phone: null, billing_address: null, client_sop: null };
 
 /** Map of client_id -> contact info. Empty when the caller lacks CPNI access. */
 export async function clientContactMap(

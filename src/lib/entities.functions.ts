@@ -190,7 +190,7 @@ export const getClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: client, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, service_address, is_active, created_at, client_sop")
+      .select("id, first_name, last_name, service_address, is_active, created_at")
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!client) return null;
@@ -218,6 +218,7 @@ export const getClient = createServerFn({ method: "POST" })
       email: contact.email,
       phone: contact.phone,
       billing_address: contact.billing_address,
+      client_sop: contact.client_sop,
       spec: spec ?? null,
       notes: (notes ?? []).map((n) => ({ ...n, author: authorsMap.get(n.created_by ?? "") ?? null })),
       photos: signed,
