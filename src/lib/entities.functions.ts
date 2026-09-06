@@ -197,7 +197,7 @@ export const getClient = createServerFn({ method: "POST" })
     const contact = await clientContact(context.supabase, data.id);
     const [{ data: spec }, { data: notes }, { data: photos }] = await Promise.all([
       context.supabase.from("property_specs").select("*").eq("client_id", data.id).maybeSingle(),
-      context.supabase.from("client_notes").select("id, note, created_at, created_by").eq("client_id", data.id).order("created_at", { ascending: false }),
+      context.supabase.from("client_notes").select("id, note, created_at, created_by, visibility, property_id, job_id").eq("client_id", data.id).order("created_at", { ascending: false }),
       context.supabase.from("client_photos").select("id, storage_path, caption, uploaded_at").eq("client_id", data.id).order("uploaded_at", { ascending: false }),
     ]);
     const authorIds = Array.from(new Set((notes ?? []).map((n) => n.created_by).filter((v): v is string => !!v)));
@@ -267,17 +267,45 @@ export const upsertPropertySpec = createServerFn({ method: "POST" })
 export const addClientNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ client_id: z.string().uuid(), note: z.string().trim().min(1).max(2000) }).parse(input),
+    z.object({
+      client_id: z.string().uuid(),
+      note: z.string().trim().min(1).max(2000),
+      visibility: z.enum(["management", "team", "client"]).default("management"),
+      property_id: z.string().uuid().nullable().optional(),
+      job_id: z.string().uuid().nullable().optional(),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { data: prof } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
     const { data: row, error } = await context.supabase
       .from("client_notes")
-      .insert({ tenant_id: prof.tenant_id, client_id: data.client_id, note: data.note, created_by: context.userId })
+      .insert({
+        tenant_id: prof.tenant_id,
+        client_id: data.client_id,
+        note: data.note,
+        created_by: context.userId,
+        visibility: data.visibility,
+        property_id: data.property_id ?? null,
+        job_id: data.job_id ?? null,
+      })
       .select("id").single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+export const setClientNoteVisibility = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), visibility: z.enum(["management", "team", "client"]) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("client_notes")
+      .update({ visibility: data.visibility })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const deleteClientNote = createServerFn({ method: "POST" })

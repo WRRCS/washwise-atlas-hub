@@ -10,6 +10,8 @@ export type ClientProperty = {
   notes: string | null;
   is_primary: boolean;
   is_active: boolean;
+  property_type: string | null;
+  service_frequency: string | null;
 };
 
 export const listClientProperties = createServerFn({ method: "POST" })
@@ -18,7 +20,7 @@ export const listClientProperties = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ClientProperty[]> => {
     const { data: rows, error } = await context.supabase
       .from("client_properties")
-      .select("id, client_id, label, address, notes, is_primary, is_active")
+      .select("id, client_id, label, address, notes, is_primary, is_active, property_type, service_frequency")
       .eq("client_id", data.client_id)
       .eq("is_active", true)
       .order("is_primary", { ascending: false })
@@ -35,6 +37,8 @@ const upsertSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
   is_primary: z.boolean().optional(),
   is_active: z.boolean().optional(),
+  property_type: z.string().trim().max(60).optional(),
+  service_frequency: z.string().trim().max(60).optional(),
 });
 
 export const upsertClientProperty = createServerFn({ method: "POST" })
@@ -61,6 +65,8 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
           notes: data.notes ?? null,
           is_primary: data.is_primary ?? false,
           is_active: data.is_active ?? true,
+          property_type: data.property_type ?? null,
+          service_frequency: data.service_frequency ?? null,
         })
         .eq("id", data.id);
       if (error) throw new Error(error.message);
@@ -76,6 +82,8 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
         notes: data.notes ?? null,
         is_primary: data.is_primary ?? false,
         is_active: data.is_active ?? true,
+        property_type: data.property_type ?? null,
+        service_frequency: data.service_frequency ?? null,
       })
       .select("id").single();
     if (error) throw new Error(error.message);
