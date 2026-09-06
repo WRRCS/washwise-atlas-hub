@@ -41,7 +41,13 @@ const clientSchema = z.object({
   pets: z.string().trim().max(200).optional(),
   parking_notes: z.string().trim().max(200).optional(),
   special_instructions: z.string().trim().max(1000).optional(),
+  // first property/location (optional, created and linked to this client)
+  property_label: z.string().trim().max(80).optional(),
+  property_type: z.string().trim().max(60).optional(),
+  property_address: z.string().trim().max(400).optional(),
+  service_frequency: z.string().trim().max(60).optional(),
 });
+
 
 export const createClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
