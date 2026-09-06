@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { listClients, createClient, myCapabilities, setClientArchived } from "@/lib/entities.functions";
-import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw } from "lucide-react";
+import { listClientProperties } from "@/lib/client-properties.functions";
+import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw, ChevronRight, ChevronDown } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/clients")({
@@ -58,6 +59,7 @@ function ClientsPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"active" | "inactive" | "all">("active");
+  const [expanded, setExpanded] = useState<string | null>(null);
 
 
   const counts = useMemo(() => {
@@ -124,6 +126,7 @@ function ClientsPage() {
             <table className="w-full text-sm">
               <thead className="bg-clay-100/50 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
+                  <th className="w-8 px-2 py-3" />
                   <th className="text-left px-5 py-3 font-medium">Name</th>
                   <th className="text-left px-5 py-3 font-medium hidden md:table-cell">Email</th>
                   <th className="text-left px-5 py-3 font-medium hidden md:table-cell">Phone</th>
@@ -133,7 +136,17 @@ function ClientsPage() {
               </thead>
               <tbody>
                 {filtered.map((c) => (
+                  <>
                   <tr key={c.id} className="border-t border-border/60 hover:bg-clay-100/40 transition-colors">
+                    <td className="px-2 py-3">
+                      <button
+                        onClick={() => setExpanded(expanded === c.id ? null : c.id)}
+                        aria-label={`Show properties for ${fullName(c)}`}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        {expanded === c.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                      </button>
+                    </td>
                     <td className="px-5 py-3">
                       <Link to="/clients/$clientId" params={{ clientId: c.id }} className="font-medium hover:text-brand">
                         {fullName(c)}
@@ -164,6 +177,15 @@ function ClientsPage() {
                       </DropdownMenu>
                     </td>
                   </tr>
+                  {expanded === c.id && (
+                    <tr key={`${c.id}-props`} className="bg-clay-100/30 border-t border-border/60">
+                      <td />
+                      <td colSpan={4} className="px-5 py-3">
+                        <PropertyRows clientId={c.id} />
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 ))}
               </tbody>
             </table>
