@@ -248,7 +248,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
     first_name: "", last_name: "", email: "", phone: "",
     billing_address: "", service_address: "",
     property_label: "", property_type: "", service_frequency: "",
-    property_label: "", property_type: "", service_frequency: "",
+
     square_footage: "", bedrooms: "", bathrooms: "",
     key_location: "", access_notes: "", pets: "", parking_notes: "", special_instructions: "",
   });
