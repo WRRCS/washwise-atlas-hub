@@ -94,7 +94,23 @@ export const createClient = createServerFn({ method: "POST" })
         });
       if (se) throw new Error(se.message);
     }
+
+    const propAddress = (data.property_address || data.service_address || "").trim();
+    if (propAddress) {
+      const { error: pe } = await context.supabase.from("client_properties").insert({
+        tenant_id: prof.tenant_id,
+        client_id: row.id,
+        label: data.property_label?.trim() || "Primary",
+        address: propAddress,
+        property_type: data.property_type?.trim() || null,
+        service_frequency: data.service_frequency?.trim() || null,
+        is_primary: true,
+        is_active: true,
+      });
+      if (pe) throw new Error(pe.message);
+    }
     return row;
+
   });
 
 export const updateClient = createServerFn({ method: "POST" })
