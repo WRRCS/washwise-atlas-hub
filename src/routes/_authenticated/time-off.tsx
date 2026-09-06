@@ -23,7 +23,7 @@ import { listTeamRoster } from "@/lib/team.functions";
 export const Route = createFileRoute("/_authenticated/time-off")({
   head: () => ({
     meta: [
-      { title: "Time Off & Swaps · Atlas" },
+      { title: "Time Off & Swaps · WRRCS.com" },
       { name: "description", content: "Request time off and shift swaps." },
     ],
   }),

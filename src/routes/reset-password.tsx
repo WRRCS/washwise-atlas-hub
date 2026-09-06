@@ -10,8 +10,8 @@ export const Route = createFileRoute("/reset-password")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Set a new password — Atlas" },
-      { name: "description", content: "Choose a new password for your Atlas account." },
+      { title: "Set a new password — WRRCS.com" },
+      { name: "description", content: "Choose a new password for your WRRCS.com account." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -74,7 +74,7 @@ function ResetPasswordPage() {
             <div className="size-7 rounded bg-brand grid place-items-center">
               <div className="size-2 rounded-full bg-clay-50" />
             </div>
-            <span className="text-xl font-medium tracking-tight">Atlas</span>
+            <span className="text-xl font-medium tracking-tight">WRRCS.com</span>
           </div>
           <p className="text-sm text-muted-foreground">Set a new password</p>
         </div>

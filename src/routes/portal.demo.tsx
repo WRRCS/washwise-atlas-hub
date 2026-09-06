@@ -12,8 +12,8 @@ export const Route = createFileRoute("/portal/demo")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Client Portal Preview — Atlas" },
-      { name: "description", content: "Preview of the Atlas client portal experience." },
+      { title: "Client Portal Preview — WRRCS.com" },
+      { name: "description", content: "Preview of the WRRCS.com client portal experience." },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

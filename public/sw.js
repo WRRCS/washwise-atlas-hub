@@ -1,4 +1,4 @@
-// Offline shell + runtime cache for the Atlas PWA.
+// Offline shell + runtime cache for the WRRCS.com PWA.
 const CACHE = "atlas-shell-v1";
 const OFFLINE_URL = "/offline.html";
 

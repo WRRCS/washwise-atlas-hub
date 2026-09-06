@@ -1,4 +1,4 @@
-// Dedicated Web Push messaging service worker for Atlas.
+// Dedicated Web Push messaging service worker for WRRCS.com.
 // This is NOT an app-shell cache; its only jobs are receiving push events
 // and opening the right URL when the user taps a notification.
 
@@ -15,9 +15,9 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch (e) {
-    payload = { title: "Atlas", body: event.data ? event.data.text() : "" };
+    payload = { title: "WRRCS.com", body: event.data ? event.data.text() : "" };
   }
-  const title = payload.title || "Atlas";
+  const title = payload.title || "WRRCS.com";
   const options = {
     body: payload.body || "",
     icon: "/wrrc-icon-192.png",

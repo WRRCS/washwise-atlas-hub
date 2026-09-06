@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { getAtlasSettings, setAtlasEnabled, getAtlasUsage } from "@/lib/atlas-ai.functions";
+import { getAiSettings, setAiEnabled, getAiUsage } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/ai")({
   component: AiSettingsPage,
@@ -11,18 +11,18 @@ export const Route = createFileRoute("/_authenticated/settings/ai")({
 
 function AiSettingsPage() {
   const qc = useQueryClient();
-  const fetchSettings = useServerFn(getAtlasSettings);
-  const updateEnabled = useServerFn(setAtlasEnabled);
-  const fetchUsage = useServerFn(getAtlasUsage);
+  const fetchSettings = useServerFn(getAiSettings);
+  const updateEnabled = useServerFn(setAiEnabled);
+  const fetchUsage = useServerFn(getAiUsage);
 
-  const settings = useQuery({ queryKey: ["atlas-settings"], queryFn: () => fetchSettings() });
-  const usage = useQuery({ queryKey: ["atlas-usage"], queryFn: () => fetchUsage() });
+  const settings = useQuery({ queryKey: ["ai-settings"], queryFn: () => fetchSettings() });
+  const usage = useQuery({ queryKey: ["ai-usage"], queryFn: () => fetchUsage() });
 
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => updateEnabled({ data: { enabled } }),
     onSuccess: () => {
       toast.success("Saved");
-      qc.invalidateQueries({ queryKey: ["atlas-settings"] });
+      qc.invalidateQueries({ queryKey: ["ai-settings"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to save"),
   });
@@ -31,14 +31,14 @@ function AiSettingsPage() {
 
   return (
     <AppShell>
-      <PageHeader title="AI Assistant" subtitle="Configure Atlas AI for your workspace" />
+      <PageHeader title="AI Assistant" subtitle="Configure WRRCS AI for your workspace" />
       <div className="max-w-3xl mx-auto p-6 md:p-8 space-y-6">
         <section className="bg-clay-100 rounded-lg ring-1 ring-black/5 p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-medium">Enable Atlas AI</h2>
+              <h2 className="font-medium">Enable WRRCS AI</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Allow team members to ask Atlas questions about your business data. When off, the "Ask Atlas" button is hidden and no AI calls are made.
+                Allow team members to ask WRRCS questions about your business data. When off, the "Ask WRRCS" button is hidden and no AI calls are made.
               </p>
             </div>
             <label className="inline-flex items-center cursor-pointer shrink-0">
@@ -78,7 +78,7 @@ function AiSettingsPage() {
 
         <section className="bg-clay-100 rounded-lg ring-1 ring-black/5 p-5 text-sm text-muted-foreground space-y-2">
           <h2 className="font-medium text-foreground">Privacy</h2>
-          <p>Atlas only sees data belonging to your workspace. Requests are strictly scoped by your tenant — no cross-business data is ever shared with the model.</p>
+          <p>WRRCS only sees data belonging to your workspace. Requests are strictly scoped by your tenant — no cross-business data is ever shared with the model.</p>
           <p>Conversations are stored per user; you can delete individual conversations from the chat panel at any time.</p>
         </section>
       </div>

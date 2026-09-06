@@ -70,8 +70,8 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
               .eq("channel", "push")
               .eq("name", n.template_name)
               .maybeSingle();
-            const t = (tpl as TemplateRow | null) ?? { subject: "Atlas", body: "" };
-            const title = render(t.subject ?? "Atlas", n.payload);
+            const t = (tpl as TemplateRow | null) ?? { subject: "WRRCS.com", body: "" };
+            const title = render(t.subject ?? "WRRCS.com", n.payload);
             const body = render(t.body ?? "", n.payload);
             const url = pickUrl(n);
 

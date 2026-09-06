@@ -4,7 +4,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Atlas — Wash Rinse Repeat design system. Warm rhythmic operator. */
+/* WRRCS.com — Wash Rinse Repeat design system. Warm rhythmic operator. */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

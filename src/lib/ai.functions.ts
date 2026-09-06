@@ -85,7 +85,7 @@ async function buildContext(supabase: any, tenantId: string): Promise<string> {
   return lines.join("\n");
 }
 
-export const sendAtlasMessage = createServerFn({ method: "POST" })
+export const sendAiMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => sendSchema.parse(i))
   .handler(async ({ data, context }) => {
@@ -101,7 +101,7 @@ export const sendAtlasMessage = createServerFn({ method: "POST" })
 
     const { data: tenant } = await context.supabase
       .from("tenants").select("name, ai_assistant_enabled").eq("id", tenantId).maybeSingle();
-    if (!tenant?.ai_assistant_enabled) throw new Error("Atlas AI is disabled for this workspace");
+    if (!tenant?.ai_assistant_enabled) throw new Error("WRRCS AI is disabled for this workspace");
 
     // Load or create conversation
     let convoId = data.conversation_id;
@@ -115,7 +115,7 @@ export const sendAtlasMessage = createServerFn({ method: "POST" })
     }
 
     const context_str = await buildContext(context.supabase, tenantId);
-    const systemPrompt = `You are Atlas AI assistant for ${tenant?.name ?? "this cleaning business"}, a cleaning business.
+    const systemPrompt = `You are WRRCS AI assistant for ${tenant?.name ?? "this cleaning business"}, a cleaning business.
 You have access to recent jobs, invoices, clients, notes, SOPs and inventory data scoped strictly to this tenant.
 
 Help the owner or employee with tasks like:
@@ -147,7 +147,7 @@ ${context_str}
     });
     if (!resp.ok) {
       const text = await resp.text();
-      if (resp.status === 429) throw new Error("Atlas AI is rate limited — please retry shortly.");
+      if (resp.status === 429) throw new Error("WRRCS AI is rate limited — please retry shortly.");
       if (resp.status === 402) throw new Error("AI credits exhausted — please add credits in workspace billing.");
       throw new Error(`AI error: ${text.slice(0, 200)}`);
     }
@@ -187,7 +187,7 @@ ${context_str}
     return { reply, conversation_id: convoId, messages: nextHistory };
   });
 
-export const listAtlasConversations = createServerFn({ method: "GET" })
+export const listAiConversations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
@@ -200,7 +200,7 @@ export const listAtlasConversations = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
-export const getAtlasConversation = createServerFn({ method: "POST" })
+export const getAiConversation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
@@ -210,7 +210,7 @@ export const getAtlasConversation = createServerFn({ method: "POST" })
     return c;
   });
 
-export const deleteAtlasConversation = createServerFn({ method: "POST" })
+export const deleteAiConversation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
@@ -220,7 +220,7 @@ export const deleteAtlasConversation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const getAtlasSettings = createServerFn({ method: "GET" })
+export const getAiSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data: profile } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
@@ -232,7 +232,7 @@ export const getAtlasSettings = createServerFn({ method: "GET" })
     return { enabled: !!tenant?.ai_assistant_enabled, isOwner: !!isOwner };
   });
 
-export const setAtlasEnabled = createServerFn({ method: "POST" })
+export const setAiEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ enabled: z.boolean() }).parse(i))
   .handler(async ({ data, context }) => {
@@ -245,7 +245,7 @@ export const setAtlasEnabled = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const getAtlasUsage = createServerFn({ method: "GET" })
+export const getAiUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase

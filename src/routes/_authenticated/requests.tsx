@@ -15,7 +15,7 @@ import {
 export const Route = createFileRoute("/_authenticated/requests")({
   head: () => ({
     meta: [
-      { title: "Requests · Atlas" },
+      { title: "Requests · WRRCS.com" },
       { name: "description", content: "Approve or deny time-off and shift-swap requests." },
     ],
   }),

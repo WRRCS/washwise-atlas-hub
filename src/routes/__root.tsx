@@ -54,7 +54,7 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-medium text-foreground tracking-tight">404</h1>
         <h2 className="mt-4 text-xl font-medium text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          That page doesn't exist in Atlas.
+          That page doesn't exist in WRRCS.com.
         </p>
         <div className="mt-6">
           <Link
@@ -118,18 +118,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-      { name: "apple-mobile-web-app-title", content: "Atlas" },
-      { name: "application-name", content: "Atlas" },
+      { name: "apple-mobile-web-app-title", content: "WRRCS.com" },
+      { name: "application-name", content: "WRRCS.com" },
       { name: "format-detection", content: "telephone=no" },
-      { title: "Atlas — Wash Rinse Repeat Cleaning" },
-      { name: "description", content: "Internal field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing." },
-      { property: "og:title", content: "Atlas — Wash Rinse Repeat Cleaning" },
-      { property: "og:description", content: "Internal field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing." },
+      { title: "WRRCS.com — Wash Rinse Repeat Cleaning" },
+      { name: "description", content: "Internal field service management for WRRCS.com: jobs, scheduling, SOPs, invoicing." },
+      { property: "og:title", content: "WRRCS.com — Wash Rinse Repeat Cleaning" },
+      { property: "og:description", content: "Internal field service management for WRRCS.com: jobs, scheduling, SOPs, invoicing." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
-      { name: "twitter:title", content: "Atlas — Wash Rinse Repeat Cleaning" },
-      { name: "twitter:description", content: "Internal field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing." },
+      { name: "twitter:title", content: "WRRCS.com — Wash Rinse Repeat Cleaning" },
+      { name: "twitter:description", content: "Internal field service management for WRRCS.com: jobs, scheduling, SOPs, invoicing." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/50f631e2-33dd-4294-85d7-ff8b3e23ce39/id-preview-ab85c438--d344868a-ce88-407a-a141-0f3d42ef0e99.lovable.app-1783111080692.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/50f631e2-33dd-4294-85d7-ff8b3e23ce39/id-preview-ab85c438--d344868a-ce88-407a-a141-0f3d42ef0e99.lovable.app-1783111080692.png" },
     ],

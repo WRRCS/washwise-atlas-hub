@@ -117,7 +117,7 @@ export function PushToggle({ mode, className }: Props) {
             <Bell className="h-3.5 w-3.5" /> Install to enable notifications
           </div>
           On iPhone/iPad, tap Share → <span className="font-medium">Add to Home Screen</span>, then
-          open Atlas from your home screen to turn on notifications.
+          open WRRCS.com from your home screen to turn on notifications.
         </div>
       </div>
     );
