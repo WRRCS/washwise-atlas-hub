@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,8 +136,8 @@ function ClientsPage() {
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <>
-                  <tr key={c.id} className="border-t border-border/60 hover:bg-clay-100/40 transition-colors">
+                  <Fragment key={c.id}>
+                  <tr className="border-t border-border/60 hover:bg-clay-100/40 transition-colors">
                     <td className="px-2 py-3">
                       <button
                         onClick={() => setExpanded(expanded === c.id ? null : c.id)}
@@ -178,14 +178,14 @@ function ClientsPage() {
                     </td>
                   </tr>
                   {expanded === c.id && (
-                    <tr key={`${c.id}-props`} className="bg-clay-100/30 border-t border-border/60">
+                    <tr className="bg-clay-100/30 border-t border-border/60">
                       <td />
                       <td colSpan={4} className="px-5 py-3">
                         <PropertyRows clientId={c.id} />
                       </td>
                     </tr>
                   )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -202,13 +202,44 @@ function ClientsPage() {
   );
 }
 
+function PropertyRows({ clientId }: { clientId: string }) {
+  const listFn = useServerFn(listClientProperties);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["client-properties", clientId],
+    queryFn: () => listFn({ data: { client_id: clientId } }),
+  });
+  if (isLoading) return <div className="text-xs text-muted-foreground">Loading properties…</div>;
+  if (data.length === 0) return <div className="text-xs text-muted-foreground">No properties yet for this client.</div>;
+  return (
+    <ul className="space-y-1.5">
+      {data.map((p) => (
+        <li key={p.id} className="text-sm">
+          <Link
+            to="/clients/$clientId"
+            params={{ clientId }}
+            search={{ property: p.id }}
+            className="inline-flex items-center gap-2 hover:text-brand"
+          >
+            <MapPin className="size-3.5 text-muted-foreground" />
+            <span className="font-medium">{p.label}</span>
+            <span className="text-muted-foreground">{p.address}</span>
+            {p.service_frequency && <span className="text-xs text-muted-foreground">· {p.service_frequency}</span>}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const create = useServerFn(createClient);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     first_name: "", last_name: "", email: "", phone: "",
     billing_address: "", service_address: "",
+    property_label: "", property_type: "", service_frequency: "",
     square_footage: "", bedrooms: "", bathrooms: "",
     key_location: "", access_notes: "", pets: "", parking_notes: "", special_instructions: "",
   });
@@ -216,6 +247,8 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   const reset = () => setForm({
     first_name: "", last_name: "", email: "", phone: "",
     billing_address: "", service_address: "",
+    property_label: "", property_type: "", service_frequency: "",
+    property_label: "", property_type: "", service_frequency: "",
     square_footage: "", bedrooms: "", bathrooms: "",
     key_location: "", access_notes: "", pets: "", parking_notes: "", special_instructions: "",
   });
@@ -226,10 +259,18 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
       toast.error("First name is required");
       return;
     }
+    if (!form.service_address.trim()) {
+      toast.error("A service address is required — it creates the client's first property");
+      return;
+    }
     setSaving(true);
     try {
-      await create({
+      const created = await create({
         data: {
+          property_label: form.property_label.trim() || undefined,
+          property_type: form.property_type.trim() || undefined,
+          property_address: form.service_address.trim() || undefined,
+          service_frequency: form.service_frequency.trim() || undefined,
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
           email: form.email.trim() || undefined,
@@ -250,6 +291,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
       qc.invalidateQueries({ queryKey: ["clients"] });
       reset();
       onOpenChange(false);
+      if (created?.id) navigate({ to: "/clients/$clientId", params: { clientId: created.id } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -278,8 +320,13 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
           </section>
 
           <section className="space-y-3">
-            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Addresses</h4>
-            <Field label="Service address"><Textarea rows={2} value={form.service_address} onChange={upd("service_address")} /></Field>
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">First property / location</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Field label="Property name"><Input value={form.property_label} onChange={upd("property_label")} placeholder="Home, Beach Bum…" /></Field>
+              <Field label="Property type"><Input value={form.property_type} onChange={upd("property_type")} placeholder="Residence, Airbnb…" /></Field>
+              <Field label="Service frequency"><Input value={form.service_frequency} onChange={upd("service_frequency")} placeholder="Weekly, bi-weekly…" /></Field>
+            </div>
+            <Field label="Service address *"><Textarea rows={2} value={form.service_address} onChange={upd("service_address")} /></Field>
             <Field label="Billing address"><Textarea rows={2} value={form.billing_address} onChange={upd("billing_address")} placeholder="Leave blank if same as service" /></Field>
           </section>
 
