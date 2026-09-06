@@ -54,7 +54,7 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-medium text-foreground tracking-tight">404</h1>
         <h2 className="mt-4 text-xl font-medium text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          That page doesn't exist in Atlas.
+          That page doesn't exist in WRRCS.com.
         </p>
         <div className="mt-6">
           <Link

@@ -114,7 +114,7 @@ SUPABASE_URL="https://<project-ref>.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="<anon/publishable key>"
 SUPABASE_SERVICE_ROLE_KEY="<service role key>"   # server only, used by admin flows
 
-# Atlas AI (optional — required for AI assistant)
+# WRRCS AI (optional — required for AI assistant)
 LOVABLE_API_KEY="<AI gateway key>"
 # Or swap to OpenAI/Anthropic by editing src/lib/atlas-ai.functions.ts
 

@@ -273,7 +273,7 @@ function VenmoSection({ onChanged }: { onChanged: () => void }) {
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Venmo's Business API is closed to most integrators, so Atlas uses Venmo pay-link deep links: a
+        Venmo's Business API is closed to most integrators, so WRRCS.com uses Venmo pay-link deep links: a
         <code className="mx-1 px-1 rounded bg-clay-200 text-[11px]">venmo.com/&lt;handle&gt;</code>
         URL that opens the Venmo app pre-filled with the invoice amount and number. You mark payments as received manually from the invoice.
       </p>
@@ -397,7 +397,7 @@ function TurnoSection() {
         {!status?.connected ? (
           <>
             <p className="text-xs text-muted-foreground">
-              Atlas listens for Turno reservation webhooks and auto-schedules turnovers. No Turno API key required —
+              WRRCS.com listens for Turno reservation webhooks and auto-schedules turnovers. No Turno API key required —
               you'll paste a webhook URL and secret into Turno (or a Zapier/Make step forwarding Turno events).
             </p>
             <Button onClick={connect} disabled={busy} className="bg-brand text-brand-foreground hover:opacity-90">
