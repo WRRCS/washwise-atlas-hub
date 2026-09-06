@@ -18,7 +18,6 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedClientChatRouteImport } from './routes/_authenticated/client-chat'
-import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
@@ -40,6 +39,7 @@ import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
 import { Route as PortalDemoRouteImport } from './routes/portal.demo'
+import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_authenticated/inventory.recipes'
 import { Route as AuthenticatedInventoryUsageRouteImport } from './routes/_authenticated/inventory.usage'
@@ -120,11 +120,6 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
 const AuthenticatedClientChatRoute = AuthenticatedClientChatRouteImport.update({
   id: '/client-chat',
   path: '/client-chat',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -232,11 +227,17 @@ const PortalDemoRoute = PortalDemoRouteImport.update({
   path: '/demo',
   getParentRoute: () => PortalRoute,
 } as any)
+const AuthenticatedClientsIndexRoute =
+  AuthenticatedClientsIndexRouteImport.update({
+    id: '/clients/',
+    path: '/clients/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsClientIdRoute =
   AuthenticatedClientsClientIdRouteImport.update({
-    id: '/$clientId',
-    path: '/$clientId',
-    getParentRoute: () => AuthenticatedClientsRoute,
+    id: '/clients/$clientId',
+    path: '/clients/$clientId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedInventoryRecipesRoute =
   AuthenticatedInventoryRecipesRouteImport.update({
@@ -461,7 +462,6 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
-  '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/inventory': typeof AuthenticatedInventoryRouteWithChildren
@@ -506,6 +506,7 @@ export interface FileRoutesByFullPath {
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/clients/': typeof AuthenticatedClientsIndexRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
   '/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/reports/account/$clientId': typeof AuthenticatedReportsAccountClientIdRoute
@@ -530,7 +531,6 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
-  '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/inventory': typeof AuthenticatedInventoryRouteWithChildren
@@ -573,6 +573,7 @@ export interface FileRoutesByTo {
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/clients': typeof AuthenticatedClientsIndexRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/super-admin': typeof AuthenticatedSuperAdminIndexRoute
   '/reports/account/$clientId': typeof AuthenticatedReportsAccountClientIdRoute
@@ -599,7 +600,6 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/client-chat': typeof AuthenticatedClientChatRoute
-  '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRouteWithChildren
@@ -644,6 +644,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/super-admin/': typeof AuthenticatedSuperAdminIndexRoute
   '/_authenticated/reports/account/$clientId': typeof AuthenticatedReportsAccountClientIdRoute
@@ -670,7 +671,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/client-chat'
-    | '/clients'
     | '/dashboard'
     | '/employees'
     | '/inventory'
@@ -715,6 +715,7 @@ export interface FileRouteTypes {
     | '/settings/templates'
     | '/settings/voice'
     | '/super-admin/audit'
+    | '/clients/'
     | '/reports/'
     | '/super-admin/'
     | '/reports/account/$clientId'
@@ -739,7 +740,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/client-chat'
-    | '/clients'
     | '/dashboard'
     | '/employees'
     | '/inventory'
@@ -782,6 +782,7 @@ export interface FileRouteTypes {
     | '/settings/templates'
     | '/settings/voice'
     | '/super-admin/audit'
+    | '/clients'
     | '/reports'
     | '/super-admin'
     | '/reports/account/$clientId'
@@ -807,7 +808,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/calendar'
     | '/_authenticated/client-chat'
-    | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/employees'
     | '/_authenticated/inventory'
@@ -852,6 +852,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/templates'
     | '/_authenticated/settings/voice'
     | '/_authenticated/super-admin/audit'
+    | '/_authenticated/clients/'
     | '/_authenticated/reports/'
     | '/_authenticated/super-admin/'
     | '/_authenticated/reports/account/$clientId'
@@ -953,13 +954,6 @@ declare module '@tanstack/react-router' {
       path: '/client-chat'
       fullPath: '/client-chat'
       preLoaderRoute: typeof AuthenticatedClientChatRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/clients': {
-      id: '/_authenticated/clients'
-      path: '/clients'
-      fullPath: '/clients'
-      preLoaderRoute: typeof AuthenticatedClientsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -1109,12 +1103,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalDemoRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/_authenticated/clients/': {
+      id: '/_authenticated/clients/'
+      path: '/clients'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof AuthenticatedClientsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/$clientId': {
       id: '/_authenticated/clients/$clientId'
-      path: '/$clientId'
+      path: '/clients/$clientId'
       fullPath: '/clients/$clientId'
       preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
-      parentRoute: typeof AuthenticatedClientsRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/inventory/recipes': {
       id: '/_authenticated/inventory/recipes'
@@ -1371,17 +1372,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedClientsRouteChildren {
-  AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
-}
-
-const AuthenticatedClientsRouteChildren: AuthenticatedClientsRouteChildren = {
-  AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
-}
-
-const AuthenticatedClientsRouteWithChildren =
-  AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
-
 interface AuthenticatedInventoryRouteChildren {
   AuthenticatedInventoryRecipesRoute: typeof AuthenticatedInventoryRecipesRoute
   AuthenticatedInventoryUsageRoute: typeof AuthenticatedInventoryUsageRoute
@@ -1488,7 +1478,6 @@ const AuthenticatedSuperAdminRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedClientChatRoute: typeof AuthenticatedClientChatRoute
-  AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRouteWithChildren
@@ -1506,6 +1495,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedTimeOffRoute: typeof AuthenticatedTimeOffRoute
   AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
+  AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
   AuthenticatedSettingsAiRoute: typeof AuthenticatedSettingsAiRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
   AuthenticatedSettingsBusinessRoute: typeof AuthenticatedSettingsBusinessRoute
@@ -1513,12 +1503,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
   AuthenticatedSettingsTemplatesRoute: typeof AuthenticatedSettingsTemplatesRoute
   AuthenticatedSettingsVoiceRoute: typeof AuthenticatedSettingsVoiceRoute
+  AuthenticatedClientsIndexRoute: typeof AuthenticatedClientsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedClientChatRoute: AuthenticatedClientChatRoute,
-  AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRouteWithChildren,
@@ -1536,6 +1526,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedTimeOffRoute: AuthenticatedTimeOffRoute,
   AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
+  AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
   AuthenticatedSettingsAiRoute: AuthenticatedSettingsAiRoute,
   AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
   AuthenticatedSettingsBusinessRoute: AuthenticatedSettingsBusinessRoute,
@@ -1545,6 +1536,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedSettingsNotificationsRoute,
   AuthenticatedSettingsTemplatesRoute: AuthenticatedSettingsTemplatesRoute,
   AuthenticatedSettingsVoiceRoute: AuthenticatedSettingsVoiceRoute,
+  AuthenticatedClientsIndexRoute: AuthenticatedClientsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
