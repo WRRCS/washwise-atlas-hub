@@ -20,7 +20,7 @@ import { listClientProperties } from "@/lib/client-properties.functions";
 import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw, ChevronRight, ChevronDown } from "lucide-react";
 
 
-export const Route = createFileRoute("/_authenticated/clients")({
+export const Route = createFileRoute("/_authenticated/clients/")({
   component: ClientsPage,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
 });
