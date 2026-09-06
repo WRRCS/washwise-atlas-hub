@@ -3073,6 +3073,7 @@ export type Database = {
         Args: { _ids?: string[] }
         Returns: {
           billing_address: string
+          client_sop: string
           email: string
           id: string
           phone: string
