@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { getAtlasSettings, setAtlasEnabled, getAtlasUsage } from "@/lib/atlas-ai.functions";
+import { getAiSettings, setAiEnabled, getAiUsage } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/ai")({
   component: AiSettingsPage,
@@ -11,18 +11,18 @@ export const Route = createFileRoute("/_authenticated/settings/ai")({
 
 function AiSettingsPage() {
   const qc = useQueryClient();
-  const fetchSettings = useServerFn(getAtlasSettings);
-  const updateEnabled = useServerFn(setAtlasEnabled);
-  const fetchUsage = useServerFn(getAtlasUsage);
+  const fetchSettings = useServerFn(getAiSettings);
+  const updateEnabled = useServerFn(setAiEnabled);
+  const fetchUsage = useServerFn(getAiUsage);
 
-  const settings = useQuery({ queryKey: ["atlas-settings"], queryFn: () => fetchSettings() });
-  const usage = useQuery({ queryKey: ["atlas-usage"], queryFn: () => fetchUsage() });
+  const settings = useQuery({ queryKey: ["ai-settings"], queryFn: () => fetchSettings() });
+  const usage = useQuery({ queryKey: ["ai-usage"], queryFn: () => fetchUsage() });
 
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => updateEnabled({ data: { enabled } }),
     onSuccess: () => {
       toast.success("Saved");
-      qc.invalidateQueries({ queryKey: ["atlas-settings"] });
+      qc.invalidateQueries({ queryKey: ["ai-settings"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to save"),
   });

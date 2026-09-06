@@ -116,7 +116,7 @@ SUPABASE_SERVICE_ROLE_KEY="<service role key>"   # server only, used by admin fl
 
 # WRRCS AI (optional — required for AI assistant)
 LOVABLE_API_KEY="<AI gateway key>"
-# Or swap to OpenAI/Anthropic by editing src/lib/atlas-ai.functions.ts
+# Or swap to OpenAI/Anthropic by editing the AI assistant module
 
 # Stripe (optional — required for invoice payments)
 VITE_PAYMENTS_CLIENT_TOKEN="pk_test_..."

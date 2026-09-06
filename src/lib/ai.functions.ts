@@ -85,7 +85,7 @@ async function buildContext(supabase: any, tenantId: string): Promise<string> {
   return lines.join("\n");
 }
 
-export const sendAtlasMessage = createServerFn({ method: "POST" })
+export const sendAiMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => sendSchema.parse(i))
   .handler(async ({ data, context }) => {
@@ -187,7 +187,7 @@ ${context_str}
     return { reply, conversation_id: convoId, messages: nextHistory };
   });
 
-export const listAtlasConversations = createServerFn({ method: "GET" })
+export const listAiConversations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
@@ -200,7 +200,7 @@ export const listAtlasConversations = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
-export const getAtlasConversation = createServerFn({ method: "POST" })
+export const getAiConversation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
@@ -210,7 +210,7 @@ export const getAtlasConversation = createServerFn({ method: "POST" })
     return c;
   });
 
-export const deleteAtlasConversation = createServerFn({ method: "POST" })
+export const deleteAiConversation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
@@ -220,7 +220,7 @@ export const deleteAtlasConversation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const getAtlasSettings = createServerFn({ method: "GET" })
+export const getAiSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data: profile } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
@@ -232,7 +232,7 @@ export const getAtlasSettings = createServerFn({ method: "GET" })
     return { enabled: !!tenant?.ai_assistant_enabled, isOwner: !!isOwner };
   });
 
-export const setAtlasEnabled = createServerFn({ method: "POST" })
+export const setAiEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ enabled: z.boolean() }).parse(i))
   .handler(async ({ data, context }) => {
@@ -245,7 +245,7 @@ export const setAtlasEnabled = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const getAtlasUsage = createServerFn({ method: "GET" })
+export const getAiUsage = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase

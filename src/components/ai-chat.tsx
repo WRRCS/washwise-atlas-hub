@@ -3,13 +3,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { MessageCircle, X, Send, Plus, Trash2, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
-  sendAtlasMessage,
-  listAtlasConversations,
-  getAtlasConversation,
-  deleteAtlasConversation,
-  getAtlasSettings,
+  sendAiMessage,
+  listAiConversations,
+  getAiConversation,
+  deleteAiConversation,
+  getAiSettings,
   type ChatMessage,
-} from "@/lib/atlas-ai.functions";
+} from "@/lib/ai.functions";
 
 const SUGGESTED = [
   "Which clients haven't booked this month?",
@@ -17,7 +17,7 @@ const SUGGESTED = [
   "Summarize my top revenue clients",
 ];
 
-export function AtlasChat() {
+export function AiChat() {
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -28,11 +28,11 @@ export function AtlasChat() {
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const send = useServerFn(sendAtlasMessage);
-  const list = useServerFn(listAtlasConversations);
-  const load = useServerFn(getAtlasConversation);
-  const del = useServerFn(deleteAtlasConversation);
-  const settings = useServerFn(getAtlasSettings);
+  const send = useServerFn(sendAiMessage);
+  const list = useServerFn(listAiConversations);
+  const load = useServerFn(getAiConversation);
+  const del = useServerFn(deleteAiConversation);
+  const settings = useServerFn(getAiSettings);
 
   useEffect(() => {
     settings().then((s) => setEnabled(s.enabled)).catch(() => setEnabled(false));
