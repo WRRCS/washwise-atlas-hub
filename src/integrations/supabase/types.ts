@@ -2106,6 +2106,7 @@ export type Database = {
           id: string
           read_at: string | null
           read_by: string | null
+          sent_by: string | null
           status: string
           tenant_id: string
           to_number: string
@@ -2120,6 +2121,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           read_by?: string | null
+          sent_by?: string | null
           status?: string
           tenant_id: string
           to_number: string
@@ -2134,6 +2136,7 @@ export type Database = {
           id?: string
           read_at?: string | null
           read_by?: string | null
+          sent_by?: string | null
           status?: string
           tenant_id?: string
           to_number?: string
@@ -2145,6 +2148,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
