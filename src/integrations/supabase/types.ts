@@ -201,24 +201,33 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          job_id: string | null
           note: string
+          property_id: string | null
           tenant_id: string
+          visibility: string
         }
         Insert: {
           client_id: string
           created_at?: string
           created_by?: string | null
           id?: string
+          job_id?: string | null
           note: string
+          property_id?: string | null
           tenant_id?: string
+          visibility?: string
         }
         Update: {
           client_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
+          job_id?: string | null
           note?: string
+          property_id?: string | null
           tenant_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -226,6 +235,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_notes_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_notes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "client_properties"
             referencedColumns: ["id"]
           },
         ]
@@ -278,6 +301,8 @@ export type Database = {
           is_primary: boolean
           label: string
           notes: string | null
+          property_type: string | null
+          service_frequency: string | null
           tenant_id: string
           updated_at: string
         }
@@ -290,6 +315,8 @@ export type Database = {
           is_primary?: boolean
           label: string
           notes?: string | null
+          property_type?: string | null
+          service_frequency?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -302,6 +329,8 @@ export type Database = {
           is_primary?: boolean
           label?: string
           notes?: string | null
+          property_type?: string | null
+          service_frequency?: string | null
           tenant_id?: string
           updated_at?: string
         }
