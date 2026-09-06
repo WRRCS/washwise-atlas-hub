@@ -110,7 +110,7 @@ function OnboardingPage() {
     else if (step === 5) {
       await busy.mutateAsync("done");
       await qc.invalidateQueries({ queryKey: ["onboarding-state"] });
-      toast.success("You're all set. Welcome to Atlas.");
+      toast.success("You're all set. Welcome to WRRCS.com.");
       navigate({ to: "/dashboard", replace: true });
       return;
     }
@@ -134,7 +134,7 @@ function OnboardingPage() {
             <div className="size-7 rounded bg-brand grid place-items-center">
               <div className="size-2 rounded-full bg-clay-50" />
             </div>
-            <span className="text-xl font-medium tracking-tight">Atlas</span>
+            <span className="text-xl font-medium tracking-tight">WRRCS.com</span>
           </div>
           <p className="text-sm text-muted-foreground">Let's set up your workspace ({step + 1} of {STEPS.length})</p>
         </div>
@@ -288,7 +288,7 @@ function OnboardingPage() {
           <div className="flex justify-between pt-4 border-t border-black/5">
             <Button variant="ghost" onClick={back} disabled={step === 0 || busy.isPending}>Back</Button>
             <Button onClick={next} disabled={!canProceed || busy.isPending}>
-              {busy.isPending ? "Saving…" : step === STEPS.length - 1 ? "Enter Atlas" : "Continue"}
+              {busy.isPending ? "Saving…" : step === STEPS.length - 1 ? "Enter WRRCS.com" : "Continue"}
               {!busy.isPending && step < STEPS.length - 1 && <ChevronRight className="ml-1 size-4" />}
             </Button>
           </div>

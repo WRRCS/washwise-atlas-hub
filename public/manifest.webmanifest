@@ -1,7 +1,7 @@
 {
-  "name": "Atlas — Wash Rinse Repeat Cleaning",
-  "short_name": "Atlas",
-  "description": "Field service management for Wash Rinse Repeat Cleaning: jobs, scheduling, SOPs, invoicing.",
+  "name": "WRRCS.com — Wash Rinse Repeat Cleaning",
+  "short_name": "WRRCS",
+  "description": "Field service management for WRRCS.com: jobs, scheduling, SOPs, invoicing.",
   "start_url": "/?utm_source=pwa",
   "id": "/",
   "display": "standalone",

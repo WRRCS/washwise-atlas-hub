@@ -79,7 +79,7 @@ export const sendTestPush = createServerFn({ method: "POST" })
       try {
         const result = await sendWebPush(
           { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
-          { title: "Atlas test", body: "Push notifications are working.", url: "/my-jobs" },
+          { title: "WRRCS.com test", body: "Push notifications are working.", url: "/my-jobs" },
         );
         if (result === "sent") sent += 1;
         if (result === "gone") goneEndpoints.push(s.endpoint);

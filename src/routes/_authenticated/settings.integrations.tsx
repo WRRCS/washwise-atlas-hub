@@ -63,7 +63,7 @@ function IntegrationsPage() {
 
   return (
     <>
-      <PageHeader title="Integrations" subtitle="Connect Atlas to your other business tools" />
+      <PageHeader title="Integrations" subtitle="Connect WRRCS.com to your other business tools" />
       <div className="max-w-5xl mx-auto w-full px-6 md:px-8 py-8 space-y-4">
         {providers.map((p) => {
           const row = byProvider.get(p);

@@ -212,7 +212,7 @@ export const sendTestLeadWebhook = createServerFn({ method: "POST" })
         email: "test@example.com",
         phone: "(555) 555-0100",
         service: "House Cleaning",
-        message: "This is a test submission from Atlas.",
+        message: "This is a test submission from WRRCS.com.",
         source: "godaddy_website",
         _test: "true",
       }),

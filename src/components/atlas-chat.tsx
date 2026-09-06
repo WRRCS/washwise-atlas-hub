@@ -94,10 +94,10 @@ export function AtlasChat() {
       <button
         onClick={() => setOpen(true)}
         className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-30 flex items-center gap-2 bg-brand text-brand-foreground rounded-full px-4 py-3 shadow-lg hover:opacity-90 transition-opacity text-sm font-medium"
-        aria-label="Ask Atlas"
+        aria-label="Ask WRRCS"
       >
         <MessageCircle className="size-4" />
-        Ask Atlas
+        Ask WRRCS
       </button>
 
       {open && (
@@ -108,7 +108,7 @@ export function AtlasChat() {
           >
             <header className="p-4 border-b border-border/60 flex items-center justify-between">
               <div>
-                <h2 className="font-medium tracking-tight">Atlas AI</h2>
+                <h2 className="font-medium tracking-tight">WRRCS AI</h2>
                 <p className="text-xs text-muted-foreground">Ask about your business data</p>
               </div>
               <div className="flex items-center gap-1">
@@ -173,7 +173,7 @@ export function AtlasChat() {
 
               {sending && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="size-3 animate-spin" /> Atlas is thinking…
+                  <Loader2 className="size-3 animate-spin" /> WRRCS AI is thinking…
                 </div>
               )}
 
@@ -187,7 +187,7 @@ export function AtlasChat() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Atlas anything…"
+                placeholder="Ask WRRCS anything…"
                 className="flex-1 text-sm bg-clay-100 rounded-lg px-3 py-2 ring-1 ring-black/5 focus:outline-none focus:ring-brand"
                 disabled={sending}
               />

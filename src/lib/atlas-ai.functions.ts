@@ -101,7 +101,7 @@ export const sendAtlasMessage = createServerFn({ method: "POST" })
 
     const { data: tenant } = await context.supabase
       .from("tenants").select("name, ai_assistant_enabled").eq("id", tenantId).maybeSingle();
-    if (!tenant?.ai_assistant_enabled) throw new Error("Atlas AI is disabled for this workspace");
+    if (!tenant?.ai_assistant_enabled) throw new Error("WRRCS AI is disabled for this workspace");
 
     // Load or create conversation
     let convoId = data.conversation_id;
@@ -115,7 +115,7 @@ export const sendAtlasMessage = createServerFn({ method: "POST" })
     }
 
     const context_str = await buildContext(context.supabase, tenantId);
-    const systemPrompt = `You are Atlas AI assistant for ${tenant?.name ?? "this cleaning business"}, a cleaning business.
+    const systemPrompt = `You are WRRCS AI assistant for ${tenant?.name ?? "this cleaning business"}, a cleaning business.
 You have access to recent jobs, invoices, clients, notes, SOPs and inventory data scoped strictly to this tenant.
 
 Help the owner or employee with tasks like:
@@ -147,7 +147,7 @@ ${context_str}
     });
     if (!resp.ok) {
       const text = await resp.text();
-      if (resp.status === 429) throw new Error("Atlas AI is rate limited — please retry shortly.");
+      if (resp.status === 429) throw new Error("WRRCS AI is rate limited — please retry shortly.");
       if (resp.status === 402) throw new Error("AI credits exhausted — please add credits in workspace billing.");
       throw new Error(`AI error: ${text.slice(0, 200)}`);
     }

@@ -1,6 +1,6 @@
-# Atlas — AI Operating System for Service Businesses
+# WRRCS.com — AI Operating System for Service Businesses
 
-Atlas is a full-stack SaaS platform for service businesses (cleaning, HVAC, landscaping, pest control, handyman, mobile detailing, home services, and any field-service operation): scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, lead capture webhooks, and an AI assistant ("Atlas AI") grounded in tenant business data.
+WRRCS.com is a full-stack SaaS platform for service businesses (cleaning, HVAC, landscaping, pest control, handyman, mobile detailing, home services, and any field-service operation): scheduling, CRM, invoicing, payments, inventory, SOPs, employee time tracking, lead capture webhooks, and an AI assistant ("WRRCS AI") grounded in tenant business data.
 
 Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + Auth + RLS + Storage), **Tailwind CSS v4**, and **shadcn/ui**. Deploys to Cloudflare Workers via Nitro.
 
@@ -18,7 +18,7 @@ Built with **TanStack Start v1** (React 19 + Vite 7), **Supabase** (Postgres + A
 - **SOPs** — standard operating procedures library
 - **Employees** — time tracking, productivity reports
 - **Leads** — inbound webhook capture (per-tenant URL) + Turno integration
-- **Atlas AI** — Gemini-powered assistant with tenant-scoped context (jobs, invoices, clients, SOPs, inventory)
+- **WRRCS AI** — Gemini-powered assistant with tenant-scoped context (jobs, invoices, clients, SOPs, inventory)
 - **Super Admin** — cross-tenant audit, tenant management
 - **Onboarding wizard** — required before first tenant use
 - **Reports** — revenue, retention, employee productivity, inventory usage
