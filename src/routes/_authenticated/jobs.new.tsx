@@ -42,6 +42,12 @@ function NewJob() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const startDate = start.slice(0, 10);
+  const lengthHours = (() => {
+    const s = new Date(start).getTime();
+    let e = new Date(`${startDate}T${endTime}`).getTime();
+    if (e <= s) e += 86_400_000;
+    return ((e - s) / 3_600_000).toFixed(2).replace(/\.00$/, "");
+  })();
   const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(new Date().toISOString().slice(0, 10)));
 
 
