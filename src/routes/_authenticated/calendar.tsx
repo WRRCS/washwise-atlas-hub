@@ -104,6 +104,27 @@ function SchedulePage() {
     onError: (e: any) => toast.error(e?.message ?? "Move failed"),
   });
 
+  const dupFn = useServerFn(duplicateJobToEmployee);
+  const dupMut = useMutation({
+    mutationFn: (v: { id: string; employeeId: string; start: Date; end: Date }) =>
+      dupFn({ data: { id: v.id, employee_id: v.employeeId, scheduled_start: v.start.toISOString(), scheduled_end: v.end.toISOString() } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Shift copied to team member");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Copy failed"),
+  });
+
+  const deleteFn = useServerFn(deleteJob);
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Shift deleted");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
+  });
+
   const publishMut = useMutation({
     mutationFn: () => publishFn({ data: { from, to } }),
     onSuccess: (r) => {
