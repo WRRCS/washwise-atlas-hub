@@ -38,7 +38,7 @@ function NewJob() {
     const d = new Date(); d.setHours(9, 0, 0, 0);
     return d.toISOString().slice(0, 16);
   });
-  const [durationMin, setDurationMin] = useState(120);
+  const [endTime, setEndTime] = useState("11:00");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const startDate = start.slice(0, 10);
