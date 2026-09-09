@@ -182,10 +182,11 @@ function SchedulePage() {
     e.preventDefault();
     const data = e.dataTransfer.getData("application/x-atlas-shift");
     if (!data) return;
-    const { id, srcDayKey, startISO, endISO } = JSON.parse(data);
+    const { id, srcDayKey, srcEmpId, startISO, endISO } = JSON.parse(data);
     const dayKey = format(day, "yyyy-MM-dd");
-    if (dayKey === srcDayKey) return; // no-op
-    // shift preserves time-of-day; only date changes
+    const sameEmp = !srcEmpId || srcEmpId === employeeId;
+    if (dayKey === srcDayKey && sameEmp) return; // no-op
+    // preserve time-of-day; only date changes
     const oldStart = new Date(startISO);
     const oldEnd = new Date(endISO);
     const { hour, minute } = hourMinuteTZ(oldStart, tz);
@@ -193,8 +194,12 @@ function SchedulePage() {
       zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz),
     );
     const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
-    moveMut.mutate({ id, start: newStart, end: newEnd });
-    void employeeId; // move is at job level; assignees keep
+    if (!canManageSchedule) return;
+    if (sameEmp) {
+      moveMut.mutate({ id, start: newStart, end: newEnd });
+    } else {
+      dupMut.mutate({ id, employeeId, start: newStart, end: newEnd });
+    }
   };
 
   return (
