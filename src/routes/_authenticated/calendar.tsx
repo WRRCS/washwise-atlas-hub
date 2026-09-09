@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability } from "@/lib/jobs.functions";
+import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock } from "lucide-react";
+import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
@@ -104,6 +104,27 @@ function SchedulePage() {
     onError: (e: any) => toast.error(e?.message ?? "Move failed"),
   });
 
+  const dupFn = useServerFn(duplicateJobToEmployee);
+  const dupMut = useMutation({
+    mutationFn: (v: { id: string; employeeId: string; start: Date; end: Date }) =>
+      dupFn({ data: { id: v.id, employee_id: v.employeeId, scheduled_start: v.start.toISOString(), scheduled_end: v.end.toISOString() } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Shift copied to team member");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Copy failed"),
+  });
+
+  const deleteFn = useServerFn(deleteJob);
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Shift deleted");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
+  });
+
   const publishMut = useMutation({
     mutationFn: () => publishFn({ data: { from, to } }),
     onSuccess: (r) => {
@@ -182,10 +203,11 @@ function SchedulePage() {
     e.preventDefault();
     const data = e.dataTransfer.getData("application/x-atlas-shift");
     if (!data) return;
-    const { id, srcDayKey, startISO, endISO } = JSON.parse(data);
+    const { id, srcDayKey, srcEmpId, startISO, endISO } = JSON.parse(data);
     const dayKey = format(day, "yyyy-MM-dd");
-    if (dayKey === srcDayKey) return; // no-op
-    // shift preserves time-of-day; only date changes
+    const sameEmp = !srcEmpId || srcEmpId === employeeId;
+    if (dayKey === srcDayKey && sameEmp) return; // no-op
+    // preserve time-of-day; only date changes
     const oldStart = new Date(startISO);
     const oldEnd = new Date(endISO);
     const { hour, minute } = hourMinuteTZ(oldStart, tz);
@@ -193,8 +215,12 @@ function SchedulePage() {
       zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz),
     );
     const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
-    moveMut.mutate({ id, start: newStart, end: newEnd });
-    void employeeId; // move is at job level; assignees keep
+    if (!canManageSchedule) return;
+    if (sameEmp) {
+      moveMut.mutate({ id, start: newStart, end: newEnd });
+    } else {
+      dupMut.mutate({ id, employeeId, start: newStart, end: newEnd });
+    }
   };
 
   return (
@@ -328,7 +354,7 @@ function SchedulePage() {
                                     onDragStart={(ev) => {
                                       ev.dataTransfer.setData(
                                         "application/x-atlas-shift",
-                                        JSON.stringify({ id: j.id, srcDayKey: dayKey, startISO: j.scheduled_start, endISO: j.scheduled_end }),
+                                        JSON.stringify({ id: j.id, srcDayKey: dayKey, srcEmpId: emp.id, startISO: j.scheduled_start, endISO: j.scheduled_end }),
                                       );
                                       ev.dataTransfer.effectAllowed = "move";
                                     }}
@@ -379,6 +405,23 @@ function SchedulePage() {
                                       Open job <ExternalLink className="size-3" />
                                     </Link>
                                   </div>
+                                  {canManageSchedule && (
+                                    <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                                      <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                                        <Copy className="size-3" /> Drag this shift onto another team member to copy it.
+                                      </p>
+                                      <button
+                                        type="button"
+                                        disabled={deleteMut.isPending}
+                                        onClick={() => {
+                                          if (window.confirm("Delete this shift? This cannot be undone.")) deleteMut.mutate(j.id);
+                                        }}
+                                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 text-destructive text-[11px] font-medium py-1.5 hover:bg-destructive/10 disabled:opacity-50"
+                                      >
+                                        <Trash2 className="size-3" /> Delete shift
+                                      </button>
+                                    </div>
+                                  )}
                                 </PopoverContent>
                               </Popover>
                             );

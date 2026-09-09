@@ -334,3 +334,64 @@ export const extendRecurringNow = createServerFn({ method: "POST" })
     const { extendRecurringSeries } = await import("@/lib/recurrence.server");
     return await extendRecurringSeries(context.supabase, { tenantId: prof.tenant_id, maxGroups: 100 });
   });
+
+/** Owner/manager action: permanently remove a scheduled shift. */
+export const deleteJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data, context }) => {
+    await context.supabase.from("job_employees").delete().eq("job_id", data.id);
+    await context.supabase.from("job_sop_items").delete().eq("job_id", data.id);
+    const { error } = await context.supabase.from("jobs").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Copy an existing shift onto another employee (optionally another day). */
+export const duplicateJobToEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; employee_id: string; scheduled_start?: string; scheduled_end?: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: src, error: srcErr } = await context.supabase
+      .from("jobs")
+      .select("tenant_id, client_id, property_id, service_type_id, scheduled_start, scheduled_end, notes, price_cents")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (srcErr) throw new Error(srcErr.message);
+    if (!src) throw new Error("Shift not found");
+
+    const start = data.scheduled_start ?? src.scheduled_start;
+    const end = data.scheduled_end ?? src.scheduled_end;
+
+    const { data: job, error } = await context.supabase
+      .from("jobs")
+      .insert({
+        tenant_id: src.tenant_id,
+        client_id: src.client_id,
+        property_id: src.property_id,
+        service_type_id: src.service_type_id,
+        scheduled_start: start,
+        scheduled_end: end,
+        notes: src.notes,
+        price_cents: src.price_cents,
+        assigned_to: data.employee_id,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+
+    await context.supabase
+      .from("job_employees")
+      .insert({ tenant_id: src.tenant_id, job_id: job.id, employee_id: data.employee_id });
+
+    const { data: steps } = await context.supabase
+      .from("job_sop_items")
+      .select("position, label")
+      .eq("job_id", data.id);
+    if (steps?.length) {
+      await context.supabase.from("job_sop_items").insert(
+        steps.map((s: any) => ({ tenant_id: src.tenant_id, job_id: job.id, position: s.position, label: s.label })),
+      );
+    }
+    return { id: job.id };
+  });
