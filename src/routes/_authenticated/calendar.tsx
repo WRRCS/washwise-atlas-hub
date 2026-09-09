@@ -354,7 +354,7 @@ function SchedulePage() {
                                     onDragStart={(ev) => {
                                       ev.dataTransfer.setData(
                                         "application/x-atlas-shift",
-                                        JSON.stringify({ id: j.id, srcDayKey: dayKey, startISO: j.scheduled_start, endISO: j.scheduled_end }),
+                                        JSON.stringify({ id: j.id, srcDayKey: dayKey, srcEmpId: emp.id, startISO: j.scheduled_start, endISO: j.scheduled_end }),
                                       );
                                       ev.dataTransfer.effectAllowed = "move";
                                     }}
@@ -405,6 +405,23 @@ function SchedulePage() {
                                       Open job <ExternalLink className="size-3" />
                                     </Link>
                                   </div>
+                                  {canManageSchedule && (
+                                    <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                                      <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                                        <Copy className="size-3" /> Drag this shift onto another team member to copy it.
+                                      </p>
+                                      <button
+                                        type="button"
+                                        disabled={deleteMut.isPending}
+                                        onClick={() => {
+                                          if (window.confirm("Delete this shift? This cannot be undone.")) deleteMut.mutate(j.id);
+                                        }}
+                                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 text-destructive text-[11px] font-medium py-1.5 hover:bg-destructive/10 disabled:opacity-50"
+                                      >
+                                        <Trash2 className="size-3" /> Delete shift
+                                      </button>
+                                    </div>
+                                  )}
                                 </PopoverContent>
                               </Popover>
                             );
