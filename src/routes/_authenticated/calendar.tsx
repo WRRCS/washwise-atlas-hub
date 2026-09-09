@@ -517,7 +517,7 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const [assignees, setAssignees] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("09:00");
   const [dateStr, setDateStr] = useState(format(date, "yyyy-MM-dd"));
-  const [durationMin, setDurationMin] = useState(120);
+  const [endTime, setEndTime] = useState("11:00");
   const [priceCents, setPriceCents] = useState(0);
   const [notes, setNotes] = useState("");
   const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(format(date, "yyyy-MM-dd")));
@@ -527,13 +527,24 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
 
   const selectedClient = clients.find((c: any) => c.id === clientId);
   const startISO = zonedToUTCISO(dateStr, startTime, tz);
-  const endISO = new Date(new Date(startISO).getTime() + durationMin * 60_000).toISOString();
+  const endBase = zonedToUTCISO(dateStr, endTime, tz);
+  // If the end time is at or before the start, treat it as the next day.
+  const endISO = new Date(endBase).getTime() <= new Date(startISO).getTime()
+    ? new Date(new Date(endBase).getTime() + 86_400_000).toISOString()
+    : endBase;
+  const lengthMin = Math.round((new Date(endISO).getTime() - new Date(startISO).getTime()) / 60_000);
+
+  const addMinutesToTime = (time: string, mins: number) => {
+    const [h, m] = time.split(":").map(Number);
+    const total = ((h * 60 + m + mins) % 1440 + 1440) % 1440;
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  };
 
   const onSelectService = (id: string) => {
     setServiceId(id);
     const s = services.find((x: any) => x.id === id);
     if (s) {
-      setDurationMin(s.default_duration_minutes);
+      setEndTime(addMinutesToTime(startTime, s.default_duration_minutes));
       setPriceCents(s.default_price_cents);
     }
   };
