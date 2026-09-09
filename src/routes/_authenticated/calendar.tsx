@@ -625,8 +625,11 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
           <Field label="Start time">
             <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           </Field>
-          <Field label="Duration (min)">
-            <Input type="number" min={15} step={15} value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))} />
+          <Field label="End time">
+            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              {(lengthMin / 60).toFixed(2).replace(/\.00$/, "")} hours
+            </p>
           </Field>
           {canSeePricing && (
             <Field label="Price ($)">
