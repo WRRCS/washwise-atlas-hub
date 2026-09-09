@@ -71,7 +71,10 @@ function NewJob() {
     setSaving(true);
     try {
       const startDate2 = new Date(start);
-      const endDate = new Date(startDate2.getTime() + durationMin * 60_000);
+      let endDate = new Date(`${startDate}T${endTime}`);
+      if (endDate.getTime() <= startDate2.getTime()) {
+        endDate = new Date(endDate.getTime() + 86_400_000);
+      }
       await create({
         data: {
           client_id: clientId,
