@@ -140,7 +140,11 @@ function NewJob() {
               <select value={serviceId} onChange={(e) => {
                 setServiceId(e.target.value);
                 const s = services.find((x) => x.id === e.target.value);
-                if (s) setDurationMin(s.default_duration_minutes);
+                if (s) {
+                  const [h, m] = start.slice(11, 16).split(":").map(Number);
+                  const total = ((h * 60 + m + s.default_duration_minutes) % 1440 + 1440) % 1440;
+                  setEndTime(`${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`);
+                }
               }} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
                 <option value="">Select…</option>
                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -155,8 +159,9 @@ function NewJob() {
             <Field label="Start">
               <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} required />
             </Field>
-            <Field label="Duration (min)">
-              <Input type="number" min={30} step={15} value={durationMin} onChange={(e) => setDurationMin(Number(e.target.value))} />
+            <Field label="End time">
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+              <p className="text-xs text-muted-foreground">{lengthHours} hours</p>
             </Field>
           </div>
           <Field label="Notes">
