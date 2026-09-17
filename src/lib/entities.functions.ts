@@ -655,7 +655,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     const [assigned, crew, times] = await Promise.all([
       context.supabase.from("jobs").select("id", { count: "exact", head: true }).eq("assigned_to", data.id),
       context.supabase.from("job_employees").select("job_id", { count: "exact", head: true }).eq("employee_id", data.id),
-      context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("employee_id", data.id),
+      context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("user_id", data.id),
     ]);
     const history = (assigned.count ?? 0) + (crew.count ?? 0) + (times.count ?? 0);
     if (history > 0) {
