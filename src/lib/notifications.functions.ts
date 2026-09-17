@@ -24,6 +24,7 @@ export type NotificationRow = {
   status: "pending" | "sent" | "failed";
   error: string | null;
   created_at: string;
+  recalled_at?: string | null;
 };
 
 export const listTemplates = createServerFn({ method: "GET" })
