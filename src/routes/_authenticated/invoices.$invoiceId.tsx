@@ -204,7 +204,7 @@ function InvoiceDetailPage() {
 
 
 
-        <PaymentLinksCard invoiceId={inv.id} status={inv.status} onPaid={refresh} />
+        <PaymentLinksCard invoiceId={inv.id} status={inv.status} totalCents={inv.total_cents} onPaid={refresh} />
 
         {inv.job_id && (
           <div className="text-xs text-muted-foreground">
