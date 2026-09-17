@@ -327,8 +327,8 @@ function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId
             </p>
             <div className="flex gap-2">
               <input readOnly value={payUrl} className="flex-1 font-mono text-xs px-3 py-2 rounded-lg bg-background border border-input" />
-              <Button variant="outline" onClick={copyPayLink}><Copy className="size-4" /></Button>
-              <Button variant="outline" onClick={() => window.open(payUrl, "_blank")}><ExternalLink className="size-4" /></Button>
+              <Button variant="outline" onClick={() => setCardConfirm("copy")}><Copy className="size-4" /></Button>
+              <Button variant="outline" onClick={() => setCardConfirm("open")}><ExternalLink className="size-4" /></Button>
             </div>
           </div>
         )}
