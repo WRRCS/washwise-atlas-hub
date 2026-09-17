@@ -19,6 +19,7 @@ export type ClientChatMessage = {
   body: string;
   created_at: string;
   read_at: string | null;
+  retracted_at: string | null;
   sender_name: string | null;
 };
 
@@ -110,7 +111,7 @@ export const getClientChatThread = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ClientChatMessage[]> => {
     const { data: msgs, error } = await context.supabase
       .from("client_messages")
-      .select("id, client_id, sender_type, sender_user_id, body, created_at, read_at")
+      .select("id, client_id, sender_type, sender_user_id, body, created_at, read_at, retracted_at")
       .eq("client_id", data.client_id)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
@@ -175,4 +176,21 @@ export const sendClientChatMessage = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return { id: (row as any).id };
+  });
+
+/** Retract a message the business sent — it disappears from the client portal. */
+export const retractClientChatMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) =>
+    z.object({ id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("client_messages")
+      .update({ retracted_at: new Date().toISOString(), retracted_by: context.userId } as never)
+      .eq("id", data.id)
+      .eq("sender_type", "business")
+      .is("retracted_at", null);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
