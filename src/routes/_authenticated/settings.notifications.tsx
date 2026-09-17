@@ -79,6 +79,8 @@ function NotificationsSettings() {
           />
         </div>
 
+        <OutboxCard />
+
         <StaffReminderPrefs />
 
         {canBulkEdit && <BulkReminderPrefsEditor />}
