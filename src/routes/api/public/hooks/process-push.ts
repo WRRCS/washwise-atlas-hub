@@ -48,6 +48,7 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
           .select("id,tenant_id,recipient_type,recipient_id,template_name,payload")
           .eq("channel", "push")
           .eq("status", "pending")
+          .is("recalled_at", null)
           .lte("scheduled_for", new Date().toISOString())
           .order("scheduled_for", { ascending: true })
           .limit(50);

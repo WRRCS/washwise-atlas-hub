@@ -204,7 +204,7 @@ function InvoiceDetailPage() {
 
 
 
-        <PaymentLinksCard invoiceId={inv.id} status={inv.status} onPaid={refresh} />
+        <PaymentLinksCard invoiceId={inv.id} status={inv.status} totalCents={inv.total_cents} onPaid={refresh} />
 
         {inv.job_id && (
           <div className="text-xs text-muted-foreground">
@@ -223,7 +223,7 @@ function InvoiceDetailPage() {
 
 
 
-function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; status: string; onPaid: () => void }) {
+function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId: string; status: string; totalCents: number; onPaid: () => void }) {
   const qc = useQueryClient();
   const listPayFn = useServerFn(listInvoicePayments);
   const manualFn = useServerFn(recordManualPayment);
@@ -238,6 +238,7 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
   const [venmoTest, setVenmoTest] = useState(false);
   const [venmoBusy, setVenmoBusy] = useState(false);
   const [venmoNote, setVenmoNote] = useState("");
+  const [cardConfirm, setCardConfirm] = useState<null | "copy" | "open">(null);
 
   const { data: payments = [] } = useQuery({
     queryKey: ["invoice-payments", invoiceId],
@@ -252,6 +253,13 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
   const copyPayLink = async () => {
     await navigator.clipboard.writeText(payUrl);
     toast.success("Payment link copied");
+  };
+
+  const confirmCard = async () => {
+    const action = cardConfirm;
+    setCardConfirm(null);
+    if (action === "copy") await copyPayLink();
+    if (action === "open") window.open(payUrl, "_blank");
   };
 
   const submitManual = async () => {
@@ -319,8 +327,8 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
             </p>
             <div className="flex gap-2">
               <input readOnly value={payUrl} className="flex-1 font-mono text-xs px-3 py-2 rounded-lg bg-background border border-input" />
-              <Button variant="outline" onClick={copyPayLink}><Copy className="size-4" /></Button>
-              <Button variant="outline" onClick={() => window.open(payUrl, "_blank")}><ExternalLink className="size-4" /></Button>
+              <Button variant="outline" onClick={() => setCardConfirm("copy")}><Copy className="size-4" /></Button>
+              <Button variant="outline" onClick={() => setCardConfirm("open")}><ExternalLink className="size-4" /></Button>
             </div>
           </div>
         )}
@@ -355,6 +363,24 @@ function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; st
           </div>
         )}
       </div>
+
+      <Dialog open={!!cardConfirm} onOpenChange={(o) => !o && setCardConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify before charging a card</DialogTitle>
+            <DialogDescription>
+              Double-check the amount before this card link goes out. The client will be charged{" "}
+              <span className="font-medium text-foreground">{money(totalCents)}</span> for invoice {invoiceId.slice(0, 8)}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCardConfirm(null)}>Cancel</Button>
+            <Button onClick={confirmCard} className="bg-brand text-brand-foreground hover:opacity-90">
+              Yes, amount is correct
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!placeholder} onOpenChange={(o) => !o && setPlaceholder(null)}>
         <DialogContent>

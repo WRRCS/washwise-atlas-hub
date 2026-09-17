@@ -11,6 +11,8 @@ import {
   getReminderLead,
   setReminderLead,
   listRecentNotifications,
+  listRecallableEmails,
+  recallEmail,
   type NotificationTemplate,
 } from "@/lib/notifications.functions";
 import { myCapabilities } from "@/lib/entities.functions";
@@ -40,6 +42,73 @@ const SAMPLE: Record<string, string> = {
 
 function render(body: string, vars: Record<string, string>) {
   return body.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => vars[k] ?? `{{${k}}}`);
+}
+
+function OutboxCard() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listRecallableEmails);
+  const recallFn = useServerFn(recallEmail);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const outbox = useQuery({
+    queryKey: ["email-outbox"],
+    queryFn: () => listFn(),
+    refetchInterval: 20_000,
+  });
+
+  const rows = outbox.data ?? [];
+
+  const doRecall = async (id: string) => {
+    setBusy(id);
+    try {
+      const r = await recallFn({ data: { id } });
+      if ("error" in r) toast.error(r.error);
+      else toast.success("Email recalled — it won't be sent");
+      qc.invalidateQueries({ queryKey: ["email-outbox"] });
+      qc.invalidateQueries({ queryKey: ["notifications-recent"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="bg-card rounded-xl ring-1 ring-black/5 p-6">
+      <h3 className="text-sm font-semibold mb-1">Outbox — recall a sent email</h3>
+      <p className="text-xs text-muted-foreground mb-4">
+        Emails to clients wait 10 minutes before going out. Anything still waiting can be pulled back here.
+      </p>
+      {outbox.isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : !rows.length ? (
+        <p className="text-sm text-muted-foreground">Nothing waiting to go out.</p>
+      ) : (
+        <ul className="divide-y divide-border/50">
+          {rows.map((n) => (
+            <li key={n.id} className="flex items-center justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {n.client_name ?? n.recipient_type}
+                  <span className="text-muted-foreground font-normal"> · {n.template_name.replace(/_/g, " ")}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Sends {format(new Date(n.scheduled_for), "MMM d, h:mm a")}
+                </p>
+              </div>
+              <button
+                onClick={() => doRecall(n.id)}
+                disabled={busy === n.id}
+                className="text-xs px-3 py-1.5 rounded-lg border border-input hover:bg-muted disabled:opacity-50"
+              >
+                {busy === n.id ? "…" : "Recall"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function NotificationsSettings() {
@@ -78,6 +147,8 @@ function NotificationsSettings() {
             }}
           />
         </div>
+
+        <OutboxCard />
 
         <StaffReminderPrefs />
 
