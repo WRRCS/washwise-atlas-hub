@@ -154,6 +154,8 @@ export type Database = {
           created_at: string
           id: string
           read_at: string | null
+          retracted_at: string | null
+          retracted_by: string | null
           sender_type: string
           sender_user_id: string | null
           tenant_id: string
@@ -164,6 +166,8 @@ export type Database = {
           created_at?: string
           id?: string
           read_at?: string | null
+          retracted_at?: string | null
+          retracted_by?: string | null
           sender_type: string
           sender_user_id?: string | null
           tenant_id: string
@@ -174,6 +178,8 @@ export type Database = {
           created_at?: string
           id?: string
           read_at?: string | null
+          retracted_at?: string | null
+          retracted_by?: string | null
           sender_type?: string
           sender_user_id?: string | null
           tenant_id?: string
