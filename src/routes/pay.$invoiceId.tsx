@@ -29,6 +29,7 @@ function PayInvoicePage() {
   const { invoiceId } = Route.useParams();
   const getFn = useServerFn(getPublicInvoice);
   const createFn = useServerFn(createInvoiceCheckout);
+  const [confirmed, setConfirmed] = useState(false);
 
   const { data: inv, isLoading } = useQuery({
     queryKey: ["public-invoice", invoiceId],
