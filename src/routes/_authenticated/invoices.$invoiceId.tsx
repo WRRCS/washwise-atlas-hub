@@ -254,6 +254,13 @@ function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId
     toast.success("Payment link copied");
   };
 
+  const confirmCard = async () => {
+    const action = cardConfirm;
+    setCardConfirm(null);
+    if (action === "copy") await copyPayLink();
+    if (action === "open") window.open(payUrl, "_blank");
+  };
+
   const submitManual = async () => {
     try {
       await manualFn({ data: { invoice_id: invoiceId, method, note: note || undefined } });
