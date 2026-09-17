@@ -10,12 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
-  listEmployeePermissions, setEmployeePermissions, myCapabilities,
+  listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
 } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -43,6 +43,7 @@ function Employees() {
   const capsFn = useServerFn(myCapabilities);
   const permsFn = useServerFn(listEmployeePermissions);
   const savePermsFn = useServerFn(setEmployeePermissions);
+  const deleteFn = useServerFn(deleteEmployee);
 
   const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => listFn() });
   const { data: permsData = [] } = useQuery({ queryKey: ["employee_permissions"], queryFn: () => permsFn() });
@@ -146,6 +147,19 @@ function Employees() {
     }
   };
 
+  const removeEmployee = async (e: Employee) => {
+    const who = e.full_name ?? e.email ?? "this person";
+    if (!confirm(`Permanently delete ${who}? This only works if they have no job or time history. This can't be undone.`)) return;
+    try {
+      await deleteFn({ data: { id: e.id } });
+      toast.success("Employee deleted");
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["employee_permissions"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
+    }
+  };
+
   const impersonate = async (e: Employee) => {
     if (!confirm(`Open ${e.full_name ?? e.email}'s session in a new tab? A one-time sign-in link will be generated.`)) return;
     try {
@@ -185,6 +199,7 @@ function Employees() {
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
+              onDelete={() => removeEmployee(e)}
               onChangeRole={(r) => changeRole(e, r)}
             />
           )}
@@ -455,6 +470,17 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
         <Button size="sm" variant="outline" onClick={onDeactivate} className={e.is_active ? "text-destructive hover:text-destructive" : ""}>
           {e.is_active ? "Deactivate" : "Reactivate"}
         </Button>
+        {isOwnerViewer && onDelete && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDelete}
+            className="text-destructive hover:text-destructive"
+            title="Permanently delete (only possible with no job or time history)"
+          >
+            <Trash2 className="size-3.5 mr-1.5" /> Delete
+          </Button>
+        )}
       </div>
     </div>
   );
