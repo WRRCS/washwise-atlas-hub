@@ -223,7 +223,7 @@ function InvoiceDetailPage() {
 
 
 
-function PaymentLinksCard({ invoiceId, status, onPaid }: { invoiceId: string; status: string; onPaid: () => void }) {
+function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId: string; status: string; totalCents: number; onPaid: () => void }) {
   const qc = useQueryClient();
   const listPayFn = useServerFn(listInvoicePayments);
   const manualFn = useServerFn(recordManualPayment);
