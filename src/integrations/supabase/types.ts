@@ -1420,6 +1420,8 @@ export type Database = {
           error: string | null
           id: string
           payload: Json
+          recalled_at: string | null
+          recalled_by: string | null
           recipient_id: string
           recipient_type: Database["public"]["Enums"]["notification_recipient_type"]
           scheduled_for: string
@@ -1435,6 +1437,8 @@ export type Database = {
           error?: string | null
           id?: string
           payload?: Json
+          recalled_at?: string | null
+          recalled_by?: string | null
           recipient_id: string
           recipient_type: Database["public"]["Enums"]["notification_recipient_type"]
           scheduled_for?: string
@@ -1450,6 +1454,8 @@ export type Database = {
           error?: string | null
           id?: string
           payload?: Json
+          recalled_at?: string | null
+          recalled_by?: string | null
           recipient_id?: string
           recipient_type?: Database["public"]["Enums"]["notification_recipient_type"]
           scheduled_for?: string
