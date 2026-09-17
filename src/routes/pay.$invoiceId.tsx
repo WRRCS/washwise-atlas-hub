@@ -86,6 +86,21 @@ function PayInvoicePage() {
             <div className="bg-muted rounded-xl p-6 text-center text-sm text-muted-foreground">
               This invoice is no longer payable.
             </div>
+          ) : !confirmed ? (
+            <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 text-center space-y-4">
+              <p className="text-sm font-medium">Please verify before paying</p>
+              <p className="text-sm text-muted-foreground">
+                Your card will be charged{" "}
+                <span className="font-medium text-foreground">{money(inv.total_cents, inv.currency)}</span> for invoice {inv.number}.
+                Nothing is charged until you confirm.
+              </p>
+              <button
+                onClick={() => setConfirmed(true)}
+                className="w-full rounded-lg bg-brand text-brand-foreground px-4 py-3 text-sm font-medium hover:opacity-90"
+              >
+                Confirm amount and continue to payment
+              </button>
+            </div>
           ) : (
             <div className="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
               <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret }}>
