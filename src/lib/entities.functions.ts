@@ -627,6 +627,54 @@ export const updateEmployee = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Permanently delete an employee. Owners only, and only when the person has no
+ * history (no jobs, job assignments, or time entries) — otherwise we keep the
+ * record and the caller should deactivate instead.
+ */
+export const deleteEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) throw new Error("Only owners can delete an employee");
+    if (data.id === context.userId) throw new Error("You can't delete your own account");
+
+    const { data: me } = await context.supabase
+      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (!me?.tenant_id) throw new Error("No profile");
+
+    const { data: target } = await context.supabase
+      .from("profiles").select("tenant_id, full_name, email").eq("id", data.id).maybeSingle();
+    if (!target || target.tenant_id !== me.tenant_id) throw new Error("Employee not found in your business");
+
+    const { data: targetIsOwner } = await context.supabase
+      .from("user_roles").select("user_id").eq("user_id", data.id).eq("role", "owner").maybeSingle();
+    if (targetIsOwner) throw new Error("Remove the owner role before deleting this person");
+
+    const [assigned, crew, times] = await Promise.all([
+      context.supabase.from("jobs").select("id", { count: "exact", head: true }).eq("assigned_to", data.id),
+      context.supabase.from("job_employees").select("job_id", { count: "exact", head: true }).eq("employee_id", data.id),
+      context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("employee_id", data.id),
+    ]);
+    const history = (assigned.count ?? 0) + (crew.count ?? 0) + (times.count ?? 0);
+    if (history > 0) {
+      throw new Error(
+        "This person has job or time history, so their record can't be deleted. Deactivate them instead to keep your records intact.",
+      );
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("employee_permissions").delete().eq("employee_id", data.id);
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.id);
+    await supabaseAdmin.from("profiles").delete().eq("id", data.id);
+    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(data.id);
+    if (authErr && !/not found/i.test(authErr.message)) throw new Error(authErr.message);
+    return { ok: true };
+  });
+
+
+
 export const impersonateEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
