@@ -238,6 +238,7 @@ function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId
   const [venmoTest, setVenmoTest] = useState(false);
   const [venmoBusy, setVenmoBusy] = useState(false);
   const [venmoNote, setVenmoNote] = useState("");
+  const [cardConfirm, setCardConfirm] = useState<null | "copy" | "open">(null);
 
   const { data: payments = [] } = useQuery({
     queryKey: ["invoice-payments", invoiceId],
