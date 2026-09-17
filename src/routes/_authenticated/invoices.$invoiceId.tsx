@@ -364,6 +364,24 @@ function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId
         )}
       </div>
 
+      <Dialog open={!!cardConfirm} onOpenChange={(o) => !o && setCardConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify before charging a card</DialogTitle>
+            <DialogDescription>
+              Double-check the amount before this card link goes out. The client will be charged{" "}
+              <span className="font-medium text-foreground">{money(totalCents)}</span> for invoice {invoiceId.slice(0, 8)}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCardConfirm(null)}>Cancel</Button>
+            <Button onClick={confirmCard} className="bg-brand text-brand-foreground hover:opacity-90">
+              Yes, amount is correct
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!placeholder} onOpenChange={(o) => !o && setPlaceholder(null)}>
         <DialogContent>
           <DialogHeader>
