@@ -179,6 +179,18 @@ function InvoiceDetailPage() {
             )}
             {(inv.status === "sent" || inv.status === "overdue") && (
               <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!confirm("Un-send this invoice? It goes back to draft and the client can no longer see or pay it.")) return;
+                  try { await unsendFn({ data: { id: inv.id } }); toast.success("Invoice un-sent"); refresh(); }
+                  catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+                }}
+              >
+                <Undo2 className="size-4 mr-1.5" /> Un-send
+              </Button>
+            )}
+            {(inv.status === "sent" || inv.status === "overdue") && (
+              <Button
                 onClick={async () => {
                   try { await paidFn({ data: { id: inv.id } }); toast.success("Marked paid"); refresh(); }
                   catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
