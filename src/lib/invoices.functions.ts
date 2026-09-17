@@ -173,6 +173,45 @@ export const sendInvoice = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ============= Un-send =============
+
+/** Pull a sent invoice back: it returns to draft and disappears from the client portal. */
+export const unsendInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: inv, error: ge } = await context.supabase
+      .from("invoices")
+      .select("id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!inv) throw new Error("Invoice not found");
+    if (inv.status !== "sent" && inv.status !== "overdue")
+      throw new Error("Only a sent invoice can be un-sent");
+
+    const { error } = await context.supabase
+      .from("invoices")
+      .update({ status: "draft", sent_at: null })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    // Stop any invoice email that hasn't gone out yet.
+    await context.supabase
+      .from("notifications")
+      .update({
+        status: "failed",
+        error: "Invoice un-sent by staff",
+        recalled_at: new Date().toISOString(),
+        recalled_by: context.userId,
+      } as never)
+      .eq("status", "pending")
+      .eq("recipient_type", "client")
+      .contains("payload", { invoice_id: data.id } as never);
+
+    return { ok: true };
+  });
+
 // ============= Mark paid / cancel =============
 
 export const markInvoicePaid = createServerFn({ method: "POST" })

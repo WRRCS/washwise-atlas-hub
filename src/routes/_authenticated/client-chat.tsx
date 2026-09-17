@@ -9,8 +9,9 @@ import {
   listClientChats,
   markClientChatRead,
   sendClientChatMessage,
+  retractClientChatMessage,
 } from "@/lib/client-chat.functions";
-import { MessageSquare, Send, ShieldAlert } from "lucide-react";
+import { MessageSquare, Send, ShieldAlert, Undo2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/client-chat")({
   component: ClientChatPage,
@@ -28,6 +29,7 @@ function ClientChatPage() {
   const threadFn = useServerFn(getClientChatThread);
   const readFn = useServerFn(markClientChatRead);
   const sendFn = useServerFn(sendClientChatMessage);
+  const retractFn = useServerFn(retractClientChatMessage);
   const qc = useQueryClient();
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -65,6 +67,14 @@ function ClientChatPage() {
       sendFn({ data: { client_id: selected!, body } }),
     onSuccess: () => {
       setDraft("");
+      qc.invalidateQueries({ queryKey: ["client-chat-thread", selected] });
+      qc.invalidateQueries({ queryKey: ["client-chat-list"] });
+    },
+  });
+
+  const retract = useMutation({
+    mutationFn: (id: string) => retractFn({ data: { id } }),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["client-chat-thread", selected] });
       qc.invalidateQueries({ queryKey: ["client-chat-list"] });
     },
@@ -179,10 +189,29 @@ function ClientChatPage() {
                             {m.sender_name}
                           </p>
                         )}
-                        <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                        <p className="text-[10px] mt-1 opacity-60">
-                          {new Date(m.created_at).toLocaleString()}
+                        <p className={`whitespace-pre-wrap break-words ${m.retracted_at ? "italic opacity-60 line-through" : ""}`}>
+                          {m.body}
                         </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-[10px] opacity-60">
+                            {new Date(m.created_at).toLocaleString()}
+                          </p>
+                          {mine && (m.retracted_at ? (
+                            <span className="text-[10px] opacity-70">Retracted</span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={retract.isPending}
+                              onClick={() => {
+                                if (!confirm("Retract this message? The client will no longer see it.")) return;
+                                retract.mutate(m.id);
+                              }}
+                              className="text-[10px] underline opacity-70 hover:opacity-100 inline-flex items-center gap-1"
+                            >
+                              <Undo2 className="size-3" /> Retract
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   );

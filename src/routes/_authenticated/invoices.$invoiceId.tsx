@@ -10,11 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
-  getInvoice, sendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge,
+  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge,
 } from "@/lib/invoices.functions";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
 import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functions";
-import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   component: InvoiceDetailPage,
@@ -43,6 +43,7 @@ function InvoiceDetailPage() {
   const qc = useQueryClient();
   const getFn = useServerFn(getInvoice);
   const sendFn = useServerFn(sendInvoice);
+  const unsendFn = useServerFn(unsendInvoice);
   const paidFn = useServerFn(markInvoicePaid);
   const cancelFn = useServerFn(cancelInvoice);
   const toggleFn = useServerFn(setCardSurcharge);
@@ -175,6 +176,18 @@ function InvoiceDetailPage() {
                 className="bg-brand text-brand-foreground hover:opacity-90"
               >
                 <Send className="size-4 mr-1.5" /> Send
+              </Button>
+            )}
+            {(inv.status === "sent" || inv.status === "overdue") && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!confirm("Un-send this invoice? It goes back to draft and the client can no longer see or pay it.")) return;
+                  try { await unsendFn({ data: { id: inv.id } }); toast.success("Invoice un-sent"); refresh(); }
+                  catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+                }}
+              >
+                <Undo2 className="size-4 mr-1.5" /> Un-send
               </Button>
             )}
             {(inv.status === "sent" || inv.status === "overdue") && (
