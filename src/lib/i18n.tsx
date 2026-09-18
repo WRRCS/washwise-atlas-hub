@@ -176,11 +176,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       lang,
-      ready: hydrated && !q.isLoading,
-      needsSetup: !q.isLoading && !q.isError && (q.data?.language ?? null) === null,
+      ready: hydrated && (!signedIn || !q.isLoading),
+      needsSetup: signedIn && q.isSuccess && (q.data?.language ?? null) === null,
       setLang,
     }),
-    [lang, hydrated, q.isLoading, q.isError, q.data?.language, setLang],
+    [lang, hydrated, signedIn, q.isLoading, q.isSuccess, q.data?.language, setLang],
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
