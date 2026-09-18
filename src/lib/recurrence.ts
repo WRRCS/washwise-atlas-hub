@@ -118,10 +118,11 @@ export function generateOccurrences(opts: {
   const throughMs = new Date(opts.throughISO).getTime();
 
   const out: string[] = [];
-  let day = dayKeyTZ(opts.anchorISO, tz);
+  const anchorDay = dayKeyTZ(opts.anchorISO, tz);
+  let day = anchorDay;
   // Walk forward from the anchor day.
   for (let i = 0; i < max * 4; i++) {
-    day = addCalendar(day, opts.rule);
+    day = addCalendar(day, opts.rule, anchorDay);
     const iso = zonedToUTCISO(day, time, tz);
     const ms = new Date(iso).getTime();
     if (ms > throughMs) break;
