@@ -38,6 +38,7 @@ function statusBadge(status: string) {
 }
 
 function TimeOffPage() {
+  const t = useT();
   const qc = useQueryClient();
   const listTimeOff = useServerFn(listMyTimeOff);
   const listSwaps = useServerFn(listMyShiftSwaps);
