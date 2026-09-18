@@ -18,6 +18,8 @@ export type SopStep = {
   step_number: number;
   title: string;
   description: string | null;
+  title_uk: string | null;
+  description_uk: string | null;
   reference_photo_path: string | null;
   reference_photo_url: string | null;
 };
@@ -107,7 +109,7 @@ async function fetchSopDetail(context: any, sopId: string): Promise<SopDetail | 
   if (!sop) return null;
   const [{ data: steps }, { data: atts }] = await Promise.all([
     context.supabase.from("sop_steps")
-      .select("id, step_number, title, description, reference_photo_path")
+      .select("id, step_number, title, description, title_uk, description_uk, reference_photo_path")
       .eq("sop_id", sopId).order("step_number", { ascending: true }),
     context.supabase.from("sop_attachments")
       .select("id, storage_path, original_filename, caption, uploaded_at")
@@ -172,6 +174,8 @@ export const createSopUploadUrl = createServerFn({ method: "POST" })
 const stepInput = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(3000).optional().default(""),
+  title_uk: z.string().trim().max(200).optional().default(""),
+  description_uk: z.string().trim().max(3000).optional().default(""),
   reference_photo_path: z.string().optional().nullable(),
 });
 const attachmentInput = z.object({
@@ -213,6 +217,8 @@ export const createSop = createServerFn({ method: "POST" })
         step_number: i + 1,
         title: s.title,
         description: s.description || null,
+        title_uk: s.title_uk || null,
+        description_uk: s.description_uk || null,
         reference_photo_path: s.reference_photo_path || null,
       }));
       const { error: se } = await context.supabase.from("sop_steps").insert(rows);
@@ -261,6 +267,8 @@ export const updateSop = createServerFn({ method: "POST" })
         step_number: i + 1,
         title: s.title,
         description: s.description || null,
+        title_uk: s.title_uk || null,
+        description_uk: s.description_uk || null,
         reference_photo_path: s.reference_photo_path || null,
       }));
       const { error: se } = await context.supabase.from("sop_steps").insert(rows);
