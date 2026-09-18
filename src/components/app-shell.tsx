@@ -3,13 +3,15 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe,
 } from "lucide-react";
 import { AiChat } from "@/components/ai-chat";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadCount } from "@/lib/sms.functions";
 import { amIClientChatCapable, getClientChatUnread } from "@/lib/client-chat.functions";
+import { LanguageProvider, useT } from "@/lib/i18n";
+import { LanguageSetupDialog } from "@/components/language-setup-dialog";
 import wrrcLogo from "@/assets/wrrc-logo.png.asset.json";
 
 const OWNER_NAV = [
