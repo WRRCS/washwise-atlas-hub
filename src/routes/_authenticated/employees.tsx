@@ -33,6 +33,8 @@ type Employee = {
   last_sign_in_at: string | null;
 };
 
+const DEFAULT_TEMP_PASSWORD = "WRRCS2026!";
+
 function Employees() {
   const qc = useQueryClient();
   const listFn = useServerFn(listEmployees);
