@@ -628,13 +628,16 @@ export const updateEmployee = createServerFn({ method: "POST" })
   });
 
 /**
- * Permanently delete an employee. Owners only, and only when the person has no
- * history (no jobs, job assignments, or time entries) — otherwise we keep the
- * record and the caller should deactivate instead.
+ * Permanently delete an employee. Owners only.
+ * By default we refuse when the person has job/time history; pass force to
+ * delete anyway — history rows are detached (past jobs keep their record but
+ * lose the assignee) and everything personal is removed.
  */
 export const deleteEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), force: z.boolean().optional() }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { data: isOwner } = await context.supabase.rpc("is_owner");
     if (!isOwner) throw new Error("Only owners can delete an employee");
@@ -658,13 +661,31 @@ export const deleteEmployee = createServerFn({ method: "POST" })
       context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("user_id", data.id),
     ]);
     const history = (assigned.count ?? 0) + (crew.count ?? 0) + (times.count ?? 0);
-    if (history > 0) {
-      throw new Error(
-        "This person has job or time history, so their record can't be deleted. Deactivate them instead to keep your records intact.",
-      );
+    if (history > 0 && !data.force) {
+      throw new Error("HAS_HISTORY");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (history > 0) {
+      // Detach references that would otherwise block the delete.
+      await Promise.all([
+        supabaseAdmin.from("jobs").update({ assigned_to: null }).eq("assigned_to", data.id),
+        supabaseAdmin.from("leads").update({ assigned_to: null }).eq("assigned_to", data.id),
+        supabaseAdmin.from("sms_messages").update({ sent_by: null }).eq("sent_by", data.id),
+        supabaseAdmin.from("job_employees").delete().eq("employee_id", data.id),
+      ]);
+    }
+    // These columns block deletion of the auth user (no cascade), so clear them.
+    await Promise.all([
+      supabaseAdmin.from("job_sop_items").update({ completed_by: null }).eq("completed_by", data.id),
+      supabaseAdmin.from("payments").update({ recorded_by: null }).eq("recorded_by", data.id),
+      supabaseAdmin.from("shift_swap_requests").update({ reviewed_by: null }).eq("reviewed_by", data.id),
+      supabaseAdmin.from("sms_messages").update({ read_by: null }).eq("read_by", data.id),
+      supabaseAdmin.from("sop_attachments").update({ uploaded_by: null }).eq("uploaded_by", data.id),
+      supabaseAdmin.from("time_off_requests").update({ reviewed_by: null }).eq("reviewed_by", data.id),
+    ]);
+
     await supabaseAdmin.from("employee_permissions").delete().eq("employee_id", data.id);
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.id);
     await supabaseAdmin.from("profiles").delete().eq("id", data.id);
@@ -672,6 +693,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     if (authErr && !/not found/i.test(authErr.message)) throw new Error(authErr.message);
     return { ok: true };
   });
+
 
 
 
