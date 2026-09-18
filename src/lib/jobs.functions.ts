@@ -79,7 +79,7 @@ const createJobSchema = z.object({
   notes: z.string().optional(),
   price_cents: z.number().int().nonnegative().optional(),
   is_recurring: z.boolean().default(false),
-  recurrence_rule: z.enum(["weekly", "biweekly", "monthly"]).nullable().optional(),
+  recurrence_rule: z.enum(["weekly", "biweekly", "every3weeks", "every4weeks", "monthly", "monthly_dow"]).nullable().optional(),
   /** null = open-ended series (auto-extends into future schedules) */
   recurrence_end: z.string().nullable().optional(),
 });

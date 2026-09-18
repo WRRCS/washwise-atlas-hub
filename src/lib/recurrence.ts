@@ -4,12 +4,30 @@
 
 import { DEFAULT_TZ, dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 
-export type RecurrenceRule = "weekly" | "biweekly" | "monthly";
+export type RecurrenceRule =
+  | "weekly"
+  | "biweekly"
+  | "every3weeks"
+  | "every4weeks"
+  | "monthly"
+  | "monthly_dow";
 
 export const RECURRENCE_LABELS: Record<RecurrenceRule, string> = {
-  weekly: "Weekly",
+  weekly: "Every week",
   biweekly: "Every 2 weeks",
-  monthly: "Monthly",
+  every3weeks: "Every 3 weeks",
+  every4weeks: "Every 4 weeks",
+  monthly: "Monthly (same date)",
+  monthly_dow: "Monthly (same weekday)",
+};
+
+export const WEEKDAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+const WEEK_STEP: Partial<Record<RecurrenceRule, number>> = {
+  weekly: 7,
+  biweekly: 14,
+  every3weeks: 21,
+  every4weeks: 28,
 };
 
 /** How far ahead we materialize an open-ended series (months). */
@@ -18,13 +36,53 @@ export const RECURRENCE_HORIZON_MONTHS = 6;
 /** Max occurrences created in one pass (safety bound). */
 export const RECURRENCE_MAX_OCCURRENCES = 200;
 
-function addCalendar(dateStr: string, rule: RecurrenceRule): string {
+function parseDay(dateStr: string): Date {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  if (rule === "weekly") dt.setUTCDate(dt.getUTCDate() + 7);
-  else if (rule === "biweekly") dt.setUTCDate(dt.getUTCDate() + 14);
-  else {
-    const day = dt.getUTCDate();
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+/** 0 = Sunday … 6 = Saturday, for a "yyyy-MM-dd" date. */
+export function weekdayOfDate(dateStr: string): number {
+  return parseDay(dateStr).getUTCDay();
+}
+
+/** First date on or after `dateStr` that falls on `weekday` (0-6). */
+export function shiftToWeekday(dateStr: string, weekday: number): string {
+  const dt = parseDay(dateStr);
+  const diff = (weekday - dt.getUTCDay() + 7) % 7;
+  dt.setUTCDate(dt.getUTCDate() + diff);
+  return dt.toISOString().slice(0, 10);
+}
+
+/** Which occurrence of its weekday a date is within its month (1-5). */
+export function weekdayOrdinal(dateStr: string): number {
+  return Math.floor((parseDay(dateStr).getUTCDate() - 1) / 7) + 1;
+}
+
+export const ORDINAL_LABELS = ["", "1st", "2nd", "3rd", "4th", "5th"];
+
+/** nth (1-5) weekday of a month, clamped to the last matching weekday. */
+function nthWeekdayOfMonth(year: number, monthIdx: number, weekday: number, nth: number): string {
+  const first = new Date(Date.UTC(year, monthIdx, 1));
+  const offset = (weekday - first.getUTCDay() + 7) % 7;
+  let day = 1 + offset + (nth - 1) * 7;
+  const lastDay = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate();
+  while (day > lastDay) day -= 7;
+  return new Date(Date.UTC(year, monthIdx, day)).toISOString().slice(0, 10);
+}
+
+function addCalendar(dateStr: string, rule: RecurrenceRule, anchorDay: string): string {
+  const step = WEEK_STEP[rule];
+  const dt = parseDay(dateStr);
+  if (step) {
+    dt.setUTCDate(dt.getUTCDate() + step);
+  } else if (rule === "monthly_dow") {
+    const weekday = weekdayOfDate(anchorDay);
+    const nth = weekdayOrdinal(anchorDay);
+    const next = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1));
+    return nthWeekdayOfMonth(next.getUTCFullYear(), next.getUTCMonth(), weekday, nth);
+  } else {
+    const day = parseDay(anchorDay).getUTCDate();
     dt.setUTCDate(1);
     dt.setUTCMonth(dt.getUTCMonth() + 1);
     const last = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).getUTCDate();
@@ -32,6 +90,7 @@ function addCalendar(dateStr: string, rule: RecurrenceRule): string {
   }
   return dt.toISOString().slice(0, 10);
 }
+
 
 export function addMonthsISO(iso: string, months: number): string {
   const d = new Date(iso);
@@ -59,10 +118,11 @@ export function generateOccurrences(opts: {
   const throughMs = new Date(opts.throughISO).getTime();
 
   const out: string[] = [];
-  let day = dayKeyTZ(opts.anchorISO, tz);
+  const anchorDay = dayKeyTZ(opts.anchorISO, tz);
+  let day = anchorDay;
   // Walk forward from the anchor day.
   for (let i = 0; i < max * 4; i++) {
-    day = addCalendar(day, opts.rule);
+    day = addCalendar(day, opts.rule, anchorDay);
     const iso = zonedToUTCISO(day, time, tz);
     const ms = new Date(iso).getTime();
     if (ms > throughMs) break;

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
-import { RecurrenceFields, defaultRecurrence, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
+import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
   component: NewJob,
@@ -76,8 +76,9 @@ function NewJob() {
     if (!clientId || !serviceId || !start) return;
     setSaving(true);
     try {
-      const startDate2 = new Date(start);
-      let endDate = new Date(`${startDate}T${endTime}`);
+      const effDate = effectiveStartDate(recur, startDate);
+      const startDate2 = new Date(`${effDate}T${start.slice(11, 16)}`);
+      let endDate = new Date(`${effDate}T${endTime}`);
       if (endDate.getTime() <= startDate2.getTime()) {
         endDate = new Date(endDate.getTime() + 86_400_000);
       }
