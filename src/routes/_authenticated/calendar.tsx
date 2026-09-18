@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy } from "lucide-react";
+import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy, ClipboardPaste, X } from "lucide-react";
 import { toast } from "sonner";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
@@ -198,6 +198,21 @@ function SchedulePage() {
   }, [cleaners, jobsByEmpDay]);
 
   const draftCount = jobs.filter((j: any) => !j.published_at).length;
+
+  const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string } | null>(null);
+
+  const pasteShift = (employeeId: string, day: Date) => {
+    if (!copiedShift || !canManageSchedule) return;
+    const oldStart = new Date(copiedShift.startISO);
+    const oldEnd = new Date(copiedShift.endISO);
+    const dayKey = format(day, "yyyy-MM-dd");
+    const { hour, minute } = hourMinuteTZ(oldStart, tz);
+    const newStart = new Date(
+      zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz),
+    );
+    const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
+    dupMut.mutate({ id: copiedShift.id, employeeId, start: newStart, end: newEnd });
+  };
 
   const onDropOnCell = (e: React.DragEvent, employeeId: string, day: Date) => {
     e.preventDefault();
