@@ -526,8 +526,9 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
   const [conflicts, setConflicts] = useState<{ employee_id: string }[] | null>(null);
 
   const selectedClient = clients.find((c: any) => c.id === clientId);
-  const startISO = zonedToUTCISO(dateStr, startTime, tz);
-  const endBase = zonedToUTCISO(dateStr, endTime, tz);
+  const effDate = effectiveStartDate(recur, dateStr);
+  const startISO = zonedToUTCISO(effDate, startTime, tz);
+  const endBase = zonedToUTCISO(effDate, endTime, tz);
   // If the end time is at or before the start, treat it as the next day.
   const endISO = new Date(endBase).getTime() <= new Date(startISO).getTime()
     ? new Date(new Date(endBase).getTime() + 86_400_000).toISOString()
