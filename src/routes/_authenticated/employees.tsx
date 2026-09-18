@@ -181,24 +181,19 @@ function Employees() {
       qc.invalidateQueries({ queryKey: ["employee_permissions"] });
     };
     try {
-      await deleteFn({ data: { id: e.id } });
-      done();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to delete";
-      if (!msg.includes("HAS_HISTORY")) {
-        toast.error(msg);
+      const res = await deleteFn({ data: { id: e.id } });
+      if (res?.ok) {
+        done();
         return;
       }
       const ok = confirm(
         `${who} has past jobs or timesheets. Deleting removes them completely — those past jobs and hours stay in your records but will no longer show a name. Archive instead if you want to keep the name on the history.\n\nDelete permanently?`,
       );
       if (!ok) return;
-      try {
-        await deleteFn({ data: { id: e.id, force: true } });
-        done();
-      } catch (err2) {
-        toast.error(err2 instanceof Error ? err2.message : "Failed to delete");
-      }
+      await deleteFn({ data: { id: e.id, force: true } });
+      done();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
     }
   };
 
