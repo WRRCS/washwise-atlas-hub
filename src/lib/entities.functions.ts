@@ -534,6 +534,16 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Invitation-only sign-in: put the email on the allowlist first, otherwise
+    // the auth trigger refuses to create staff accounts.
+    await supabaseAdmin
+      .from("allowed_signins")
+      .upsert(
+        { email: data.email.trim().toLowerCase(), tenant_id: tenantId, invited_by: context.userId },
+        { onConflict: "email" },
+      );
+
     let userId: string | undefined;
     let createdNewUser = false;
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
