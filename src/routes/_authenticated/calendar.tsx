@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy } from "lucide-react";
+import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy, ClipboardPaste, X } from "lucide-react";
 import { toast } from "sonner";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
@@ -198,6 +198,21 @@ function SchedulePage() {
   }, [cleaners, jobsByEmpDay]);
 
   const draftCount = jobs.filter((j: any) => !j.published_at).length;
+
+  const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string } | null>(null);
+
+  const pasteShift = (employeeId: string, day: Date) => {
+    if (!copiedShift || !canManageSchedule) return;
+    const oldStart = new Date(copiedShift.startISO);
+    const oldEnd = new Date(copiedShift.endISO);
+    const dayKey = format(day, "yyyy-MM-dd");
+    const { hour, minute } = hourMinuteTZ(oldStart, tz);
+    const newStart = new Date(
+      zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz),
+    );
+    const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
+    dupMut.mutate({ id: copiedShift.id, employeeId, start: newStart, end: newEnd });
+  };
 
   const onDropOnCell = (e: React.DragEvent, employeeId: string, day: Date) => {
     e.preventDefault();
@@ -407,9 +422,19 @@ function SchedulePage() {
                                   </div>
                                   {canManageSchedule && (
                                     <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
-                                      <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                                        <Copy className="size-3" /> Drag this shift onto another team member to copy it.
-                                      </p>
+                                       <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                                         <Copy className="size-3" /> Drag this shift onto another team member to copy it.
+                                       </p>
+                                       <button
+                                         type="button"
+                                         onClick={() => {
+                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label });
+                                           toast.success("Shift copied — tap \"Paste here\" on any day/team member to place it.");
+                                         }}
+                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
+                                       >
+                                         <Copy className="size-3" /> Copy shift
+                                       </button>
                                       <button
                                         type="button"
                                         disabled={deleteMut.isPending}
@@ -426,9 +451,20 @@ function SchedulePage() {
                               </Popover>
                             );
                           })}
-                        {canManageSchedule && (
-                          <button
-                            onClick={() => setDialogSeed({ date: d, employeeId: emp.id })}
+                         {canManageSchedule && copiedShift && (
+                           <button
+                             type="button"
+                             onClick={() => pasteShift(emp.id, d)}
+                             disabled={dupMut.isPending}
+                             title={`Paste "${copiedShift.label}" here`}
+                             className="w-full rounded-md border border-dashed border-brand/60 text-brand text-[10px] font-medium py-1 inline-flex items-center justify-center gap-1 hover:bg-brand/10 transition disabled:opacity-50"
+                           >
+                             <ClipboardPaste className="size-3" /> Paste here
+                           </button>
+                         )}
+                         {canManageSchedule && (
+                           <button
+                             onClick={() => setDialogSeed({ date: d, employeeId: emp.id })}
                             title={`Add a shift for ${emp.full_name ?? "this team member"}`}
                             className={
                               shifts.length === 0 && unavs.length === 0
@@ -500,6 +536,20 @@ function SchedulePage() {
           employeeId={dialogSeed.employeeId}
           onClose={() => setDialogSeed(null)}
         />
+      )}
+      {copiedShift && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-brand text-white text-xs font-medium pl-3 pr-1.5 py-1.5 shadow-lg">
+          <ClipboardPaste className="size-3.5" />
+          <span className="max-w-48 truncate">“{copiedShift.label}” copied — tap Paste here on any day</span>
+          <button
+            type="button"
+            onClick={() => setCopiedShift(null)}
+            className="rounded-full p-1 hover:bg-white/20"
+            aria-label="Clear copied shift"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
       )}
     </>
   );
