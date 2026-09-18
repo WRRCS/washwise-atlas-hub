@@ -196,6 +196,8 @@ function SopWizard({
       id: crypto.randomUUID(),
       title: s.title,
       description: s.description ?? "",
+      title_uk: s.title_uk ?? "",
+      description_uk: s.description_uk ?? "",
       reference_photo_path: s.reference_photo_path,
       reference_photo_preview: s.reference_photo_url,
       uploading: false,
@@ -214,7 +216,7 @@ function SopWizard({
 
   const addStep = () => setSteps((prev) => [
     ...prev,
-    { id: crypto.randomUUID(), title: "", description: "", reference_photo_path: null, reference_photo_preview: null, uploading: false },
+    { id: crypto.randomUUID(), title: "", description: "", title_uk: "", description_uk: "", reference_photo_path: null, reference_photo_preview: null, uploading: false },
   ]);
   const removeStep = (id: string) => setSteps((prev) => prev.filter((s) => s.id !== id));
   const updateStep = (id: string, patch: Partial<WizardStepDraft>) =>
@@ -246,6 +248,8 @@ function SopWizard({
         steps: steps.map((s) => ({
           title: s.title.trim(),
           description: s.description.trim(),
+          title_uk: s.title_uk.trim(),
+          description_uk: s.description_uk.trim(),
           reference_photo_path: s.reference_photo_path,
         })),
         attachments: attachments.map((a) => ({
@@ -463,6 +467,11 @@ function StepRow({
         <div className="flex-1 min-w-0 space-y-2">
           <Input placeholder="Step title" value={step.title} onChange={(e) => onChange({ title: e.target.value })} />
           <Textarea rows={2} placeholder="Details (optional)" value={step.description} onChange={(e) => onChange({ description: e.target.value })} />
+          <div className="rounded-md bg-clay-200/40 p-2 space-y-2">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Ukrainian (optional)</p>
+            <Input placeholder="Назва кроку" value={step.title_uk} onChange={(e) => onChange({ title_uk: e.target.value })} />
+            <Textarea rows={2} placeholder="Деталі (необов'язково)" value={step.description_uk} onChange={(e) => onChange({ description_uk: e.target.value })} />
+          </div>
           <div className="flex items-center gap-3">
             <input
               ref={fileRef}
