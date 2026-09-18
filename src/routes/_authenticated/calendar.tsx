@@ -482,12 +482,12 @@ function SchedulePage() {
             {/* Wages / hours footer */}
             <div className="grid w-full border-t-2 border-border" style={{ gridTemplateColumns: `minmax(112px, 1.15fr) repeat(7, minmax(0, 1fr))` }}>
               <div className="sticky left-0 z-10 px-2 py-2 bg-clay-50 border-r border-border/60">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>
+                {canSeeWages && <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>}
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
               </div>
               {dailyTotals.map((t) => (
                 <div key={t.dayKey} className="min-w-0 px-1 py-2 border-l border-border/60 bg-clay-50 text-right tabular-nums overflow-hidden">
-                  <p className="text-[10px] font-semibold truncate">${t.wages.toFixed(2)}</p>
+                  {canSeeWages && <p className="text-[10px] font-semibold truncate">${t.wages.toFixed(2)}</p>}
                   <p className="text-[10px] text-muted-foreground truncate">{t.hours.toFixed(2)}</p>
                 </div>
               ))}
@@ -495,7 +495,15 @@ function SchedulePage() {
           </ZoomPanSurface>
 
           <div className="mt-3 flex justify-end text-xs text-muted-foreground tabular-nums">
-            <span>Week total: <span className="font-semibold text-foreground">${weekTotals.wages.toFixed(2)}</span> • {weekTotals.hours.toFixed(2)} hrs</span>
+            <span>
+              Week total:{" "}
+              {canSeeWages && (
+                <>
+                  <span className="font-semibold text-foreground">${weekTotals.wages.toFixed(2)}</span> •{" "}
+                </>
+              )}
+              {weekTotals.hours.toFixed(2)} hrs
+            </span>
           </div>
         </div>
       ) : (
