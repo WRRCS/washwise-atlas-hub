@@ -213,7 +213,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
                 onClick={signOut}
                 className="w-full flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                <LogOut className="size-3" /> Sign out
+                <LogOut className="size-3" /> {t("Sign out")}
               </button>
             </div>
           </div>
@@ -235,7 +235,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
             return (
               <Link key={item.to} to={item.to} className={`relative flex-1 flex flex-col items-center py-2 text-[10px] ${active ? "text-brand" : "text-muted-foreground"}`}>
                 <Icon className="size-4 mb-0.5" />
-                {item.label}
+                {t(item.label)}
                 {item.to === "/messages" && unreadCount > 0 && (
                   <span className="absolute top-1 right-1/3 bg-brand text-brand-foreground text-[9px] font-medium rounded-full size-3.5 grid place-items-center">
                     {unreadCount > 9 ? "9+" : unreadCount}
