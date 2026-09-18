@@ -61,6 +61,7 @@ export function RecurrenceFields({
 }) {
   const set = (patch: Partial<RecurrenceValue>) => onChange({ ...value, ...patch });
   const recurring = value.mode === "recurring";
+  const effStart = effectiveStartDate({ ...value, mode: "recurring" }, startDate);
 
   return (
     <div className="rounded-md border border-input p-3 space-y-3">
