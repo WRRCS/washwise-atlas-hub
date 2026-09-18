@@ -22,12 +22,24 @@ export function ZoomPanSurface({
 }) {
   const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
-  const zoomRef = useRef(1);
-  const [initialized, setInitialized] = useState(false);
+  // Restore the saved zoom (default 100%) so it survives navigation and app restarts.
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = Number(window.localStorage.getItem(STORAGE_KEY));
+    return Number.isFinite(saved) && saved > 0 ? clamp(saved, MIN_ZOOM, MAX_ZOOM) : 1;
+  });
+  const zoomRef = useRef(zoom);
+  const [initialized, setInitialized] = useState(
+    () => typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY) !== null,
+  );
 
   useEffect(() => {
     zoomRef.current = zoom;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, String(zoom));
+    } catch {
+      /* storage unavailable */
+    }
   }, [zoom]);
 
   // Fit the content to the viewport width the first time we know the form factor.
