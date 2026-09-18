@@ -13,7 +13,7 @@ import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen,
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SopViewer } from "@/components/sop-viewer";
 import { PushToggle } from "@/components/push-toggle";
-import { useT, usePick } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/my-jobs")({
   component: MyJobsPage,
