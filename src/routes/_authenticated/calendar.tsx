@@ -285,22 +285,19 @@ function SchedulePage() {
 
       {view === "grid" ? (
         <div className="w-full px-4 md:px-6 py-4">
-          <p className="md:hidden text-[11px] text-muted-foreground mb-2">
-            Drag sideways to see the rest of the week · pinch to zoom
-          </p>
           <ZoomPanSurface>
             {/* Header row */}
-            <div className="grid" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-              <div className="sticky left-0 z-20 px-3 py-3 text-xs font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
+            <div className="grid w-full" style={{ gridTemplateColumns: `minmax(112px, 1.15fr) repeat(7, minmax(0, 1fr))` }}>
+              <div className="sticky left-0 z-20 px-2 py-2 text-[11px] font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
                 <Users className="size-3.5" /> Team members ({cleaners.length})
               </div>
               {days.map((d) => {
                 const today = isSameDay(d, new Date());
                 return (
-                  <div key={d.toISOString()} className={`px-3 py-3 text-center border-b border-l border-border/60 ${today ? "bg-brand/5" : "bg-clay-50"}`}>
-                    <p className={`text-[10px] uppercase tracking-widest ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE")}</p>
-                    <p className={`text-lg font-semibold ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
+                  <div key={d.toISOString()} className={`min-w-0 px-1 py-2 text-center border-b border-l border-border/60 ${today ? "bg-brand/5" : "bg-clay-50"}`}>
+                    <p className={`text-[9px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE")}</p>
+                    <p className={`text-base font-semibold ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
                   </div>
                 );
               })}
@@ -313,14 +310,14 @@ function SchedulePage() {
             {cleaners.map((emp: any) => {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
               return (
-                <div key={emp.id} className="grid border-t border-border/60" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-                  <div className="sticky left-0 z-10 px-3 py-3 flex items-center gap-2 bg-clay-50 border-r border-border/60">
-                    <div className="size-8 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
+                <div key={emp.id} className="grid w-full border-t border-border/60" style={{ gridTemplateColumns: `minmax(112px, 1.15fr) repeat(7, minmax(0, 1fr))` }}>
+                  <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
+                    <div className="size-7 rounded-full bg-brand/15 text-brand grid place-items-center text-[10px] font-semibold shrink-0">
                       {initials(emp.full_name)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{emp.full_name ?? emp.email}</p>
-                      <p className="text-[10px] text-muted-foreground tabular-nums">
+                      <p className="text-xs font-medium truncate">{emp.full_name ?? emp.email}</p>
+                      <p className="text-[9px] text-muted-foreground tabular-nums truncate">
                         {totals.hours.toFixed(2)} hrs / ${totals.wages.toFixed(2)}
                       </p>
                     </div>
@@ -335,7 +332,7 @@ function SchedulePage() {
                         key={dayKey}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => onDropOnCell(e, emp.id, d)}
-                        className={`border-l border-border/60 p-1.5 space-y-1 min-h-[110px] ${today ? "bg-brand/[0.02]" : ""}`}
+                        className={`min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[100px] ${today ? "bg-brand/[0.02]" : ""}`}
                       >
                         {unavs.map((u: any) => (
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
@@ -483,15 +480,15 @@ function SchedulePage() {
             })}
 
             {/* Wages / hours footer */}
-            <div className="grid border-t-2 border-border" style={{ gridTemplateColumns: `220px repeat(7, minmax(140px, 1fr))` }}>
-              <div className="sticky left-0 z-10 px-3 py-2 bg-clay-50 border-r border-border/60">
+            <div className="grid w-full border-t-2 border-border" style={{ gridTemplateColumns: `minmax(112px, 1.15fr) repeat(7, minmax(0, 1fr))` }}>
+              <div className="sticky left-0 z-10 px-2 py-2 bg-clay-50 border-r border-border/60">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
               </div>
               {dailyTotals.map((t) => (
-                <div key={t.dayKey} className="px-2 py-2 border-l border-border/60 bg-clay-50 text-right tabular-nums">
-                  <p className="text-xs font-semibold">${t.wages.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground">{t.hours.toFixed(2)}</p>
+                <div key={t.dayKey} className="min-w-0 px-1 py-2 border-l border-border/60 bg-clay-50 text-right tabular-nums overflow-hidden">
+                  <p className="text-[10px] font-semibold truncate">${t.wages.toFixed(2)}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{t.hours.toFixed(2)}</p>
                 </div>
               ))}
             </div>
