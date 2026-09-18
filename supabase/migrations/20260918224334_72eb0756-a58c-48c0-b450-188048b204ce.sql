@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.tg_profiles_protect_privileged_fields() FROM PUBLIC, anon, authenticated;
