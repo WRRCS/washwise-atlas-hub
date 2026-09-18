@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, PackageOpen, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe,
 } from "lucide-react";
 import { AiChat } from "@/components/ai-chat";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ const OWNER_NAV = [
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/team", label: "Team", icon: Users2 },
   { to: "/inventory", label: "Inventory", icon: Package },
+  { to: "/caddies", label: "Caddy supplies", icon: PackageOpen },
   { to: "/invoices", label: "Invoices", icon: Receipt },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/requests", label: "Requests", icon: ClipboardCheck },
@@ -47,6 +48,7 @@ const EMPLOYEE_NAV = [
   { to: "/my-jobs", label: "My jobs", icon: ClipboardList },
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/team", label: "Team", icon: Users2 },
+  { to: "/caddies", label: "My caddy", icon: PackageOpen },
   { to: "/time-off", label: "Time off & swaps", icon: CalendarClock },
   { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
