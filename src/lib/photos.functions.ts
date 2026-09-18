@@ -148,6 +148,38 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       .eq("id", data.job_id);
     if (je) throw new Error(je.message);
 
+    // Prepare a "job complete" message for the client — saved as a DRAFT only.
+    // Nothing goes out until an owner or manager reviews and sends it.
+    try {
+      const { data: job } = await context.supabase
+        .from("jobs")
+        .select("client_id, scheduled_date")
+        .eq("id", data.job_id)
+        .maybeSingle();
+      if (job?.client_id) {
+        const when = (job as any).scheduled_date
+          ? new Date(`${(job as any).scheduled_date}T12:00:00`).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+            })
+          : "today";
+        await context.supabase.from("client_message_drafts").insert({
+          tenant_id: prof.tenant_id,
+          client_id: job.client_id,
+          job_id: data.job_id,
+          subject: "Your cleaning is complete",
+          body:
+            `Hi! Our team finished your service on ${when}.` +
+            (photoIds.length ? ` We've attached ${photoIds.length} photo${photoIds.length === 1 ? "" : "s"} from the visit.` : "") +
+            `\n\nThank you for your business — please let us know if there's anything you'd like us to revisit.`,
+          photo_ids: photoIds,
+          created_by: context.userId,
+        } as never);
+      }
+    } catch {
+      /* a draft failure must never block finishing the job */
+    }
+
     return { ok: true };
   });
 
