@@ -59,12 +59,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const alreadyInsideShell = useContext(AppShellNestingContext);
   if (alreadyInsideShell) return <>{children}</>;
   return (
-    <LanguageProvider>
-      <AppShellNestingContext.Provider value={true}>
-        <LanguageSetupDialog />
-        <AppShellInner>{children}</AppShellInner>
-      </AppShellNestingContext.Provider>
-    </LanguageProvider>
+    <AppShellNestingContext.Provider value={true}>
+      <LanguageSetupDialog />
+      <AppShellInner>{children}</AppShellInner>
+    </AppShellNestingContext.Provider>
   );
 }
 
