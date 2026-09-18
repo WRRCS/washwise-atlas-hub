@@ -98,6 +98,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
     if (!prof) throw new Error("No profile");
     const endedAt = new Date().toISOString();
 
+    const photoIds: string[] = [];
     if (data.photos.length) {
       const rows = data.photos.map((p) => ({
         tenant_id: prof.tenant_id,
@@ -107,8 +108,9 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
         photo_type: p.photo_type,
         uploaded_by: context.userId,
       }));
-      const { error: pe } = await context.supabase.from("job_photos").insert(rows);
+      const { data: inserted, error: pe } = await context.supabase.from("job_photos").insert(rows).select("id");
       if (pe) throw new Error(pe.message);
+      for (const r of inserted ?? []) photoIds.push(r.id as string);
     }
 
     if (data.entry_id) {
