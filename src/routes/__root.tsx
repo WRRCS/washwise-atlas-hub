@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 import { OfflineBanner } from "@/components/offline-banner";
 import { AppSplash } from "@/components/app-splash";
+import { LanguageProvider } from "@/lib/i18n";
 
 type IOSSplash = { device: string; w: number; h: number; ratio: number; dw: number; dh: number };
 const IOS_SPLASH: IOSSplash[] = [
@@ -183,7 +184,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <LanguageProvider>
+        <Outlet />
+      </LanguageProvider>
       <Toaster />
       <OfflineBanner />
       <AppSplash />

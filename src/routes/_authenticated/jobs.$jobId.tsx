@@ -11,6 +11,7 @@ import { directionsUrl } from "@/lib/maps";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
+import { usePick } from "@/lib/i18n";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { Check, MessageSquare, Navigation, Send, Trash2, X } from "lucide-react";
@@ -49,6 +50,7 @@ function JobDetail() {
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   if (!job) return <div className="p-8">Not found.</div>;
 
+  const pick = usePick();
   const sop = (job.sop ?? []).slice().sort((a, b) => a.position - b.position);
   const done = sop.filter((s) => s.completed).length;
 
@@ -147,7 +149,7 @@ function JobDetail() {
                       >
                         {s.completed && <Check className="size-3 text-brand-foreground" strokeWidth={3} />}
                       </button>
-                      <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>{s.label}</span>
+                      <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>{pick(s.label, (s as { label_uk?: string | null }).label_uk)}</span>
                     </li>
                   ))}
                 </ul>

@@ -386,11 +386,11 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
 
     const { data: steps } = await context.supabase
       .from("job_sop_items")
-      .select("position, label")
+      .select("position, label, label_uk")
       .eq("job_id", data.id);
     if (steps?.length) {
       await context.supabase.from("job_sop_items").insert(
-        steps.map((s: any) => ({ tenant_id: src.tenant_id, job_id: job.id, position: s.position, label: s.label })),
+        steps.map((s: any) => ({ tenant_id: src.tenant_id, job_id: job.id, position: s.position, label: s.label, label_uk: s.label_uk ?? null })),
       );
     }
     return { id: job.id };

@@ -13,6 +13,7 @@ import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen,
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SopViewer } from "@/components/sop-viewer";
 import { PushToggle } from "@/components/push-toggle";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/my-jobs")({
   component: MyJobsPage,
@@ -133,6 +134,7 @@ function UpNextHero({
   onCompleteNow: () => void;
   onOpenSop: () => void;
 }) {
+  const t = useT();
   const address = job.client?.service_address ?? null;
   const notes = collectStaffNotes(job);
   const isToday = new Date(job.scheduled_start).toDateString() === new Date().toDateString();
@@ -141,7 +143,7 @@ function UpNextHero({
     <section className="mb-6 rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/10 via-clay-50 to-clay-50 p-5 md:p-6 ring-1 ring-brand/10 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-          {isOpen ? "Currently on the clock" : isToday ? "Up next today" : "Your next appointment"}
+          {isOpen ? t("Currently on the clock") : isToday ? t("Up next today") : t("Your next appointment")}
         </span>
         <StatusPill status={job.status} />
       </div>
@@ -163,19 +165,19 @@ function UpNextHero({
                 className="inline-flex items-start gap-2 text-brand hover:underline"
               >
                 <Navigation className="size-4 mt-0.5 shrink-0" />
-                <span>{address}<span className="ml-2 text-xs text-muted-foreground">Tap for directions</span></span>
+                <span>{address}<span className="ml-2 text-xs text-muted-foreground">{t("Tap for directions")}</span></span>
               </a>
             )}
           </div>
           {notes.length > 0 && (
             <div className="mt-4 rounded-lg bg-clay-100/70 p-3">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                <StickyNote className="size-3.5" /> Notes for this visit
+                <StickyNote className="size-3.5" /> {t("Notes for this visit")}
               </div>
               <ul className="space-y-1.5 text-sm">
                 {notes.map((n, i) => (
                   <li key={i}>
-                    <span className="font-medium">{n.label}:</span>{" "}
+                    <span className="font-medium">{t(n.label)}:</span>{" "}
                     <span className="text-muted-foreground">{n.text}</span>
                   </li>
                 ))}
@@ -190,28 +192,28 @@ function UpNextHero({
               onClick={onClockOut}
               className="inline-flex items-center justify-center gap-2 bg-orange-600 text-white text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
             >
-              <Square className="size-5" /> Clock out
+              <Square className="size-5" /> {t("Clock out")}
             </button>
           ) : (
             <button
               onClick={onClockIn}
               className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
             >
-              <Play className="size-5" /> Clock in
+              <Play className="size-5" /> {t("Clock in")}
             </button>
           )}
           <button
             onClick={onOpenSop}
             className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-brand hover:underline"
           >
-            <BookOpen className="size-3.5" /> View SOP
+            <BookOpen className="size-3.5" /> {t("View SOP")}
           </button>
           {!isOpen && (
             <button
               onClick={onCompleteNow}
               className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
-              <Camera className="size-3" /> Complete with photos
+              <Camera className="size-3" /> {t("Complete with photos")}
             </button>
           )}
         </div>
@@ -224,23 +226,24 @@ function UpNextHero({
 
 function MyJobsPage() {
   const [tab, setTab] = useState<Tab>("today");
+  const t = useT();
   return (
     <AppShell>
-      <PageHeader title="My jobs" subtitle="Your assigned work and time tracking" />
+      <PageHeader title={t("My jobs")} subtitle={t("Your assigned work and time tracking")} />
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 pt-4">
         <PushToggle mode="app" />
       </div>
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
         <div className="flex gap-1 mb-6 bg-clay-100 p-1 rounded-lg w-fit">
-          {(["today", "schedule", "timesheet"] as Tab[]).map((t) => (
+          {(["today", "schedule", "timesheet"] as Tab[]).map((tb) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tb}
+              onClick={() => setTab(tb)}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                tab === t ? "bg-clay-50 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                tab === tb ? "bg-clay-50 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t === "today" ? "Today & upcoming" : t === "schedule" ? "My schedule" : "My timesheet"}
+              {tb === "today" ? t("Today & upcoming") : tb === "schedule" ? t("My schedule") : t("My timesheet")}
             </button>
           ))}
         </div>
@@ -253,6 +256,7 @@ function MyJobsPage() {
 }
 
 function TodayView() {
+  const t = useT();
   const qc = useQueryClient();
   const list = useServerFn(listMyJobs);
   const doClockIn = useServerFn(clockIn);
@@ -297,20 +301,20 @@ function TodayView() {
     }
     try {
       await doClockIn({ data: { job_id, gps } });
-      toast.success(gps ? "Clocked in · 📍 Location captured" : "Clocked in");
+      toast.success(gps ? `${t("Clocked in")} · 📍 ${t("Location captured")}` : t("Clocked in"));
       qc.invalidateQueries({ queryKey: ["my-jobs"] });
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to clock in");
+      toast.error(e?.message ?? t("Failed to clock in"));
     }
   };
 
   const [completeFor, setCompleteFor] = useState<{ jobId: string; entryId: string | null; startedAt: string | null; serviceTypeId: string | null } | null>(null);
   const [sopFor, setSopFor] = useState<{ jobId: string; serviceTypeId: string | null; label: string } | null>(null);
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <p className="text-sm text-muted-foreground">{t("Loading…")}</p>;
   if (q.error) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>;
   const jobs = q.data ?? [];
-  if (!jobs.length) return <p className="text-sm text-muted-foreground">No upcoming jobs assigned to you.</p>;
+  if (!jobs.length) return <p className="text-sm text-muted-foreground">{t("No upcoming jobs assigned to you.")}</p>;
 
   const groups = new Map<string, MyJobRow[]>();
   for (const j of jobs) {
@@ -401,7 +405,7 @@ function TodayView() {
                         onClick={() => setSopFor({ jobId: j.id, serviceTypeId: j.service?.id ?? null, label: j.service?.name ?? "SOP" })}
                         className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
                       >
-                        <BookOpen className="size-3.5" /> View SOP
+                        <BookOpen className="size-3.5" /> {t("View SOP")}
                       </button>
                     </div>
                     <div className="shrink-0 flex flex-col items-end gap-2">
@@ -418,10 +422,10 @@ function TodayView() {
                             }
                             className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
                           >
-                            <Square className="size-4" /> Clock out
+                            <Square className="size-4" /> {t("Clock out")}
                           </button>
                           {j.open_entry.has_gps && (
-                            <span className="text-[11px] text-emerald-700 inline-flex items-center gap-1">📍 Location captured</span>
+                            <span className="text-[11px] text-emerald-700 inline-flex items-center gap-1">📍 {t("Location captured")}</span>
                           )}
                         </>
                       ) : j.status === "scheduled" || j.status === "in_progress" ? (
@@ -430,17 +434,17 @@ function TodayView() {
                             onClick={() => handleClockIn(j.id)}
                             className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
                           >
-                            <Play className="size-4" /> Clock in
+                            <Play className="size-4" /> {t("Clock in")}
                           </button>
                           <button
                             onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null, serviceTypeId: j.service?.id ?? null })}
                             className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
                           >
-                            <Camera className="size-3" /> Complete with photos
+                            <Camera className="size-3" /> {t("Complete with photos")}
                           </button>
                         </>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Done</span>
+                        <span className="text-xs text-muted-foreground">{t("Done")}</span>
                       )}
                     </div>
                   </div>
@@ -506,6 +510,7 @@ function CompleteJobDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const t = useT();
   const createUploadUrl = useServerFn(createJobPhotoUploadUrl);
   const complete = useServerFn(completeJobWithPhotos);
   const doLogConsent = useServerFn(logGpsConsent);
@@ -598,11 +603,11 @@ function CompleteJobDialog({
             .map(([item_id, quantity]) => ({ item_id, quantity })),
         },
       });
-      toast.success(clockOutGps ? "Job completed · 📍 Location captured" : "Job completed");
+      toast.success(clockOutGps ? `${t("Job completed")} · 📍 ${t("Location captured")}` : t("Job completed"));
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       onDone();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to complete job");
+      toast.error(e.message ?? t("Failed to complete job"));
     } finally {
       setSaving(false);
     }
@@ -614,17 +619,17 @@ function CompleteJobDialog({
         className="bg-clay-50 rounded-xl border border-border/60 w-full max-w-xl p-6 my-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-medium mb-1">Complete job</h3>
+        <h3 className="text-lg font-medium mb-1">{t("Complete job")}</h3>
         {hours !== null ? (
           <p className="text-sm text-muted-foreground mb-4">
             You worked <strong className="text-foreground">{hours.toFixed(2)} hours</strong> (since {fmtTime(startedAt!)}).
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground mb-4">Attach any before/after photos before marking complete.</p>
+          <p className="text-sm text-muted-foreground mb-4">{t("Attach any before/after photos before marking complete.")}</p>
         )}
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Photos</label>
+          <label className="block text-sm font-medium mb-2">{t("Photos")}</label>
           <div className="flex gap-2 mb-3">
             <input
               ref={cameraRef}

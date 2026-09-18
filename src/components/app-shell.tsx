@@ -3,13 +3,15 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe,
 } from "lucide-react";
 import { AiChat } from "@/components/ai-chat";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadCount } from "@/lib/sms.functions";
 import { amIClientChatCapable, getClientChatUnread } from "@/lib/client-chat.functions";
+import { useT } from "@/lib/i18n";
+import { LanguageSetupDialog } from "@/components/language-setup-dialog";
 import wrrcLogo from "@/assets/wrrc-logo.png.asset.json";
 
 const OWNER_NAV = [
@@ -35,6 +37,7 @@ const OWNER_NAV = [
   { to: "/settings/integrations", label: "Integrations", icon: Plug },
   { to: "/settings/ai", label: "AI Assistant", icon: Bot },
   { to: "/settings/billing", label: "Billing & plan", icon: CreditCard },
+  { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 
 // Employees intentionally do NOT see /messages (client SMS inbox) or
@@ -45,6 +48,7 @@ const EMPLOYEE_NAV = [
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/team", label: "Team", icon: Users2 },
   { to: "/time-off", label: "Time off & swaps", icon: CalendarClock },
+  { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 
 const SUPER_ADMIN_NAV_ITEM = { to: "/super-admin", label: "Platform console", icon: Shield } as const;
@@ -53,6 +57,17 @@ const AppShellNestingContext = createContext(false);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const alreadyInsideShell = useContext(AppShellNestingContext);
+  if (alreadyInsideShell) return <>{children}</>;
+  return (
+    <AppShellNestingContext.Provider value={true}>
+      <LanguageSetupDialog />
+      <AppShellInner>{children}</AppShellInner>
+    </AppShellNestingContext.Provider>
+  );
+}
+
+function AppShellInner({ children }: { children: ReactNode }) {
+  const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string; isSuperAdmin: boolean } | null>(null);
@@ -124,12 +139,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     return OWNER_NAV as ReadonlyArray<{ to: string; label: string; icon: any }>;
   })();
 
-  if (alreadyInsideShell) {
-    return <>{children}</>;
-  }
-
   return (
-    <AppShellNestingContext.Provider value={true}>
+    <>
       <div className="min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand">
       <div className="flex min-h-screen">
         <aside className="hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
@@ -153,7 +164,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {item.label}
+                  {t(item.label)}
                   {item.to === "/messages" && unreadCount > 0 && (
                     <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                       {unreadCount > 99 ? "99+" : unreadCount}
@@ -200,7 +211,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onClick={signOut}
                 className="w-full flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                <LogOut className="size-3" /> Sign out
+                <LogOut className="size-3" /> {t("Sign out")}
               </button>
             </div>
           </div>
@@ -222,7 +233,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             return (
               <Link key={item.to} to={item.to} className={`relative flex-1 flex flex-col items-center py-2 text-[10px] ${active ? "text-brand" : "text-muted-foreground"}`}>
                 <Icon className="size-4 mb-0.5" />
-                {item.label}
+                {t(item.label)}
                 {item.to === "/messages" && unreadCount > 0 && (
                   <span className="absolute top-1 right-1/3 bg-brand text-brand-foreground text-[9px] font-medium rounded-full size-3.5 grid place-items-center">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -239,7 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <AiChat />
       </div>
-    </AppShellNestingContext.Provider>
+    </>
   );
 }
 

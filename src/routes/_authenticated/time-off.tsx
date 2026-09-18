@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ function statusBadge(status: string) {
 }
 
 function TimeOffPage() {
+  const t = useT();
   const qc = useQueryClient();
   const listTimeOff = useServerFn(listMyTimeOff);
   const listSwaps = useServerFn(listMyShiftSwaps);
@@ -80,11 +82,11 @@ function TimeOffPage() {
 
   return (
     <>
-      <PageHeader title="Time off & swaps" subtitle="Request days off or ask a teammate to cover a shift." />
+      <PageHeader title={t("Time off & swaps")} subtitle={t("Request days off or ask a teammate to cover a shift.")} />
       <div className="max-w-4xl mx-auto px-6 md:px-8 py-6 space-y-8">
         {/* Time off request */}
         <Card>
-          <CardHeader><CardTitle>Request time off</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("Request time off")}</CardTitle></CardHeader>
           <CardContent>
             <form
               className="space-y-4"

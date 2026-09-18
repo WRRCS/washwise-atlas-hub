@@ -11,6 +11,7 @@ import {
   type TeamMember,
   type TeamThread,
 } from "@/lib/team.functions";
+import { useT } from "@/lib/i18n";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Phone, Send, Users2, Megaphone } from "lucide-react";
 import { format } from "date-fns";
@@ -24,14 +25,15 @@ export const Route = createFileRoute("/_authenticated/team")({
 });
 
 function TeamPage() {
+  const t = useT();
   return (
     <AppShell>
-      <PageHeader title="Team" subtitle="Your teammates and internal chat" />
+      <PageHeader title={t("Team")} subtitle={t("Your teammates and internal chat")} />
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
         <Tabs defaultValue="roster">
           <TabsList>
-            <TabsTrigger value="roster">Roster</TabsTrigger>
-            <TabsTrigger value="messages">Team messages</TabsTrigger>
+            <TabsTrigger value="roster">{t("Roster")}</TabsTrigger>
+            <TabsTrigger value="messages">{t("Team messages")}</TabsTrigger>
           </TabsList>
           <TabsContent value="roster" className="mt-4">
             <RosterView />
