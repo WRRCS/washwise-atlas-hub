@@ -57,7 +57,7 @@ function SchedulePage() {
   const tz = useBusinessTz();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [view, setView] = useState<View>("grid");
-  const [dialogDate, setDialogDate] = useState<Date | null>(null);
+  const [dialogSeed, setDialogSeed] = useState<{ date: Date; employeeId?: string } | null>(null);
 
   const jobsFn = useServerFn(listJobs);
   const empFn = useServerFn(listEmployees);
@@ -253,7 +253,7 @@ function SchedulePage() {
                   <Send className="size-3.5 mr-1" />
                   {draftCount ? `Publish (${draftCount})` : "Published"}
                 </Button>
-                <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogDate(new Date())}>
+                <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogSeed({ date: new Date() })}>
                   <Plus className="size-4" /> New Job
                 </Button>
               </>
@@ -426,10 +426,15 @@ function SchedulePage() {
                               </Popover>
                             );
                           })}
-                        {canManageSchedule && shifts.length === 0 && unavs.length === 0 && (
+                        {canManageSchedule && (
                           <button
-                            onClick={() => setDialogDate(d)}
-                            className="w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
+                            onClick={() => setDialogSeed({ date: d, employeeId: emp.id })}
+                            title={`Add a shift for ${emp.full_name ?? "this team member"}`}
+                            className={
+                              shifts.length === 0 && unavs.length === 0
+                                ? "w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
+                                : "w-full rounded-md border border-dashed border-border/70 text-muted-foreground text-[10px] py-1 opacity-60 hover:opacity-100 hover:border-brand hover:text-brand transition"
+                            }
                           >
                             + Add shift
                           </button>
@@ -489,12 +494,18 @@ function SchedulePage() {
         </div>
       )}
 
-      {dialogDate && <NewJobDialog date={dialogDate} onClose={() => setDialogDate(null)} />}
+      {dialogSeed && (
+        <NewJobDialog
+          date={dialogSeed.date}
+          employeeId={dialogSeed.employeeId}
+          onClose={() => setDialogSeed(null)}
+        />
+      )}
     </>
   );
 }
 
-function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
+function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: string; onClose: () => void }) {
   const qc = useQueryClient();
   const tz = useBusinessTz();
   const clientsFn = useServerFn(listClients);
