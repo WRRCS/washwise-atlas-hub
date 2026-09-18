@@ -80,7 +80,7 @@ function TimeOffPage() {
 
   return (
     <>
-      <PageHeader title="Time off & swaps" subtitle="Request days off or ask a teammate to cover a shift." />
+      <PageHeader title={t("Time off & swaps")} subtitle={t("Request days off or ask a teammate to cover a shift.")} />
       <div className="max-w-4xl mx-auto px-6 md:px-8 py-6 space-y-8">
         {/* Time off request */}
         <Card>
