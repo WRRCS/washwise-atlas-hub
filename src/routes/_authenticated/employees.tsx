@@ -69,8 +69,33 @@ function Employees() {
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
   const [saving, setSaving] = useState(false);
 
-  const employees = (data as Employee[]).filter((e) => e.role !== "owner");
+  const staff = (data as Employee[]).filter((e) => e.role !== "owner");
+  const employees = staff.filter((e) => e.is_active);
+  const archived = staff.filter((e) => !e.is_active);
   const owners = (data as Employee[]).filter((e) => e.role === "owner");
+
+  const appUrl = typeof window !== "undefined" ? window.location.origin : "https://wrrcs.com";
+  const inviteText = (e?: Employee) =>
+    [
+      "You've been added to our team app.",
+      "",
+      `1. Open ${appUrl}/auth on your phone or computer.`,
+      e?.email ? `2. Sign in with your email: ${e.email}` : "2. Sign in with your work email.",
+      "3. Use the temporary password you were given, then tap \"Forgot password?\" to set your own.",
+      "4. On your phone, add it to your home screen so it opens like an app (iPhone: Share → Add to Home Screen. Android: menu → Install app).",
+      "",
+      "You'll see your schedule, clock in/out, job notes and photos there.",
+    ].join("\n");
+
+  const copyInvite = async (e?: Employee) => {
+    try {
+      await navigator.clipboard.writeText(inviteText(e));
+      toast.success("Invite link & instructions copied");
+    } catch {
+      toast.error("Couldn't copy — you can select the text manually");
+    }
+  };
+
 
   const savePerms = async (
     employee_id: string,
