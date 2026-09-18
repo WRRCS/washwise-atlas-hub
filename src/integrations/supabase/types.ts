@@ -147,6 +147,90 @@ export type Database = {
           },
         ]
       }
+      allowed_signins: {
+        Row: {
+          created_at: string
+          email: string
+          invited_by: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          invited_by?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          invited_by?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
+      client_message_drafts: {
+        Row: {
+          body: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string | null
+          photo_ids: string[]
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string | null
+          photo_ids?: string[]
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string | null
+          photo_ids?: string[]
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_message_drafts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_message_drafts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_messages: {
         Row: {
           body: string

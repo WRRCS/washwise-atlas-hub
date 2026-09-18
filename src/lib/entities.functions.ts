@@ -534,6 +534,16 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Invitation-only sign-in: put the email on the allowlist first, otherwise
+    // the auth trigger refuses to create staff accounts.
+    await supabaseAdmin
+      .from("allowed_signins")
+      .upsert(
+        { email: data.email.trim().toLowerCase(), tenant_id: tenantId, invited_by: context.userId },
+        { onConflict: "email" },
+      );
+
     let userId: string | undefined;
     let createdNewUser = false;
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
@@ -688,6 +698,12 @@ export const deleteEmployee = createServerFn({ method: "POST" })
       supabaseAdmin.from("sop_attachments").update({ uploaded_by: null }).eq("uploaded_by", data.id),
       supabaseAdmin.from("time_off_requests").update({ reviewed_by: null }).eq("reviewed_by", data.id),
     ]);
+
+    // Take them off the invite allowlist so the account can't be recreated.
+    const { data: gone } = await supabaseAdmin.from("profiles").select("email").eq("id", data.id).maybeSingle();
+    if (gone?.email) {
+      await supabaseAdmin.from("allowed_signins").delete().eq("email", String(gone.email).toLowerCase());
+    }
 
     await supabaseAdmin.from("employee_permissions").delete().eq("employee_id", data.id);
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.id);

@@ -98,6 +98,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
     if (!prof) throw new Error("No profile");
     const endedAt = new Date().toISOString();
 
+    const photoIds: string[] = [];
     if (data.photos.length) {
       const rows = data.photos.map((p) => ({
         tenant_id: prof.tenant_id,
@@ -107,8 +108,9 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
         photo_type: p.photo_type,
         uploaded_by: context.userId,
       }));
-      const { error: pe } = await context.supabase.from("job_photos").insert(rows);
+      const { data: inserted, error: pe } = await context.supabase.from("job_photos").insert(rows).select("id");
       if (pe) throw new Error(pe.message);
+      for (const r of inserted ?? []) photoIds.push(r.id as string);
     }
 
     if (data.entry_id) {
@@ -145,6 +147,38 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       .update({ status: "completed", actual_end: endedAt })
       .eq("id", data.job_id);
     if (je) throw new Error(je.message);
+
+    // Prepare a "job complete" message for the client — saved as a DRAFT only.
+    // Nothing goes out until an owner or manager reviews and sends it.
+    try {
+      const { data: job } = await context.supabase
+        .from("jobs")
+        .select("client_id, scheduled_start")
+        .eq("id", data.job_id)
+        .maybeSingle();
+      if (job?.client_id) {
+        const when = job.scheduled_start
+          ? new Date(job.scheduled_start).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+            })
+          : "today";
+        await context.supabase.from("client_message_drafts").insert({
+          tenant_id: prof.tenant_id,
+          client_id: job.client_id,
+          job_id: data.job_id,
+          subject: "Your cleaning is complete",
+          body:
+            `Hi! Our team finished your service on ${when}.` +
+            (photoIds.length ? ` We've attached ${photoIds.length} photo${photoIds.length === 1 ? "" : "s"} from the visit.` : "") +
+            `\n\nThank you for your business — please let us know if there's anything you'd like us to revisit.`,
+          photo_ids: photoIds,
+          created_by: context.userId,
+        } as never);
+      }
+    } catch {
+      /* a draft failure must never block finishing the job */
+    }
 
     return { ok: true };
   });

@@ -32,6 +32,15 @@ function AuthPage() {
     });
   }, [navigate, redirect]);
 
+  // The database only creates accounts for invited emails, so an uninvited
+  // sign-in comes back as a generic account-creation failure. Say it plainly.
+  const INVITE_ONLY_MSG =
+    "This app is invite only. Ask your manager to send you an invite link before signing in.";
+  const friendlyAuthError = (message: string | undefined) =>
+    message && /database error|invitation only|unexpected_failure|saving new user/i.test(message)
+      ? INVITE_ONLY_MSG
+      : message ?? "Sign-in failed";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -40,7 +49,7 @@ function AuthPage() {
       if (error) throw error;
       navigate({ to: redirect ?? "/jobs", replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sign-in failed");
+      toast.error(friendlyAuthError(err instanceof Error ? err.message : undefined));
     } finally {
       setLoading(false);
     }
@@ -50,7 +59,10 @@ function AuthPage() {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error) toast.error(result.error.message ?? "Google sign-in failed");
+    if (result.error) {
+      toast.error(friendlyAuthError(result.error.message));
+      return;
+    }
     if (result.redirected) return;
     navigate({ to: redirect ?? "/jobs", replace: true });
   };
