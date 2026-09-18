@@ -63,7 +63,7 @@ function Employees() {
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "", temporary_password: "" });
+  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
