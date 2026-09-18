@@ -1,10 +1,22 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { endDateFrom, RECURRENCE_LABELS, type EndUnit, type RecurrenceRule } from "@/lib/recurrence";
+import {
+  endDateFrom,
+  ORDINAL_LABELS,
+  RECURRENCE_LABELS,
+  shiftToWeekday,
+  weekdayOfDate,
+  weekdayOrdinal,
+  WEEKDAY_LABELS,
+  type EndUnit,
+  type RecurrenceRule,
+} from "@/lib/recurrence";
 
 export type RecurrenceValue = {
   mode: "one_off" | "recurring";
   rule: RecurrenceRule;
+  /** 0-6 (Sun-Sat); null = use the start date's own weekday. */
+  weekday: number | null;
   endMode: "never" | "after" | "on";
   endCount: number;
   endUnit: EndUnit;
@@ -15,6 +27,7 @@ export function defaultRecurrence(startDate: string): RecurrenceValue {
   return {
     mode: "one_off",
     rule: "weekly",
+    weekday: null,
     endMode: "never",
     endCount: 6,
     endUnit: "months",
@@ -22,12 +35,20 @@ export function defaultRecurrence(startDate: string): RecurrenceValue {
   };
 }
 
+/** The date the series should actually start on, honouring the chosen weekday. */
+export function effectiveStartDate(v: RecurrenceValue, startDate: string): string {
+  if (v.mode !== "recurring" || v.weekday === null) return startDate;
+  return shiftToWeekday(startDate, v.weekday);
+}
+
 /** The recurrence_end value to send to createJob (null = open-ended). */
 export function recurrenceEndValue(v: RecurrenceValue, startDate: string): string | null {
   if (v.mode !== "recurring" || v.endMode === "never") return null;
-  if (v.endMode === "after") return endDateFrom(startDate, v.endCount, v.endUnit);
+  const from = effectiveStartDate(v, startDate);
+  if (v.endMode === "after") return endDateFrom(from, v.endCount, v.endUnit);
   return v.endDate;
 }
+
 
 export function RecurrenceFields({
   value,
