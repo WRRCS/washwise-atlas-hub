@@ -16,6 +16,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as AuthenticatedCaddiesRouteImport } from './routes/_authenticated/caddies'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedClientChatRouteImport } from './routes/_authenticated/client-chat'
 import { Route as AuthenticatedClientDraftsRouteImport } from './routes/_authenticated/client-drafts'
@@ -113,6 +114,11 @@ const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedCaddiesRoute = AuthenticatedCaddiesRouteImport.update({
+  id: '/caddies',
+  path: '/caddies',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
@@ -474,6 +480,7 @@ export interface FileRoutesByFullPath {
   '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/caddies': typeof AuthenticatedCaddiesRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
   '/client-drafts': typeof AuthenticatedClientDraftsRoute
@@ -545,6 +552,7 @@ export interface FileRoutesByTo {
   '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/caddies': typeof AuthenticatedCaddiesRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
   '/client-drafts': typeof AuthenticatedClientDraftsRoute
@@ -616,6 +624,7 @@ export interface FileRoutesById {
   '/portal': typeof PortalRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/_authenticated/caddies': typeof AuthenticatedCaddiesRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/client-chat': typeof AuthenticatedClientChatRoute
   '/_authenticated/client-drafts': typeof AuthenticatedClientDraftsRoute
@@ -689,6 +698,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/reset-password'
     | '/signup'
+    | '/caddies'
     | '/calendar'
     | '/client-chat'
     | '/client-drafts'
@@ -760,6 +770,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/reset-password'
     | '/signup'
+    | '/caddies'
     | '/calendar'
     | '/client-chat'
     | '/client-drafts'
@@ -830,6 +841,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/reset-password'
     | '/signup'
+    | '/_authenticated/caddies'
     | '/_authenticated/calendar'
     | '/_authenticated/client-chat'
     | '/_authenticated/client-drafts'
@@ -967,6 +979,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/caddies': {
+      id: '/_authenticated/caddies'
+      path: '/caddies'
+      fullPath: '/caddies'
+      preLoaderRoute: typeof AuthenticatedCaddiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/calendar': {
       id: '/_authenticated/calendar'
@@ -1516,6 +1535,7 @@ const AuthenticatedSuperAdminRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCaddiesRoute: typeof AuthenticatedCaddiesRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedClientChatRoute: typeof AuthenticatedClientChatRoute
   AuthenticatedClientDraftsRoute: typeof AuthenticatedClientDraftsRoute
@@ -1549,6 +1569,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCaddiesRoute: AuthenticatedCaddiesRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedClientChatRoute: AuthenticatedClientChatRoute,
   AuthenticatedClientDraftsRoute: AuthenticatedClientDraftsRoute,

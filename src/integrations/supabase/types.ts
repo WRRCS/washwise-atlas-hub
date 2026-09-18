@@ -168,6 +168,53 @@ export type Database = {
         }
         Relationships: []
       }
+      caddy_template_items: {
+        Row: {
+          created_at: string
+          default_qty: number
+          id: string
+          inventory_item_id: string | null
+          is_active: boolean
+          name: string
+          sort_order: number
+          tenant_id: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_qty?: number
+          id?: string
+          inventory_item_id?: string | null
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          tenant_id: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_qty?: number
+          id?: string
+          inventory_item_id?: string | null
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          tenant_id?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caddy_template_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_message_drafts: {
         Row: {
           body: string
@@ -650,6 +697,73 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_caddy_items: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          inventory_item_id: string | null
+          name: string
+          notes: string | null
+          qty: number
+          sort_order: number
+          template_item_id: string | null
+          tenant_id: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          inventory_item_id?: string | null
+          name: string
+          notes?: string | null
+          qty?: number
+          sort_order?: number
+          template_item_id?: string | null
+          tenant_id: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          inventory_item_id?: string | null
+          name?: string
+          notes?: string | null
+          qty?: number
+          sort_order?: number
+          template_item_id?: string | null
+          tenant_id?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_caddy_items_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_caddy_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_caddy_items_template_item_id_fkey"
+            columns: ["template_item_id"]
+            isOneToOne: false
+            referencedRelation: "caddy_template_items"
             referencedColumns: ["id"]
           },
         ]
