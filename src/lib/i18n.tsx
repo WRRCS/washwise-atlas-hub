@@ -129,6 +129,7 @@ function readStored(): Lang | null {
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
   const [hydrated, setHydrated] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const getFn = useServerFn(getMyLanguage);
   const setFn = useServerFn(setMyLanguage);
 
@@ -138,9 +139,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => active && setSignedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setSignedIn(!!session));
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   const q = useQuery({
     queryKey: ["my-language"],
     queryFn: () => getFn(),
+    enabled: signedIn,
     staleTime: 5 * 60_000,
   });
 
