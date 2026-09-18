@@ -75,9 +75,10 @@ function OutboxCard() {
 
   return (
     <div className="bg-card rounded-xl ring-1 ring-black/5 p-6">
-      <h3 className="text-sm font-semibold mb-1">Outbox — recall a sent email</h3>
+      <h3 className="text-sm font-semibold mb-1">Outbox — scheduled emails</h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Emails to clients wait 10 minutes before going out. Anything still waiting can be pulled back here.
+        Emails send right away, so most never appear here. Scheduled items such as appointment reminders wait
+        until their send time and can be stopped below.
       </p>
       {outbox.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
