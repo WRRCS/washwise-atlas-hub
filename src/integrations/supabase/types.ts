@@ -147,6 +147,27 @@ export type Database = {
           },
         ]
       }
+      allowed_signins: {
+        Row: {
+          created_at: string
+          email: string
+          invited_by: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          invited_by?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          invited_by?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       client_messages: {
         Row: {
           body: string
