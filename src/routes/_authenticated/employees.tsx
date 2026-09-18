@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck, Trash2 } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -69,8 +69,33 @@ function Employees() {
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
   const [saving, setSaving] = useState(false);
 
-  const employees = (data as Employee[]).filter((e) => e.role !== "owner");
+  const staff = (data as Employee[]).filter((e) => e.role !== "owner");
+  const employees = staff.filter((e) => e.is_active);
+  const archived = staff.filter((e) => !e.is_active);
   const owners = (data as Employee[]).filter((e) => e.role === "owner");
+
+  const appUrl = typeof window !== "undefined" ? window.location.origin : "https://wrrcs.com";
+  const inviteText = (e?: Employee) =>
+    [
+      "You've been added to our team app.",
+      "",
+      `1. Open ${appUrl}/auth on your phone or computer.`,
+      e?.email ? `2. Sign in with your email: ${e.email}` : "2. Sign in with your work email.",
+      "3. Use the temporary password you were given, then tap \"Forgot password?\" to set your own.",
+      "4. On your phone, add it to your home screen so it opens like an app (iPhone: Share → Add to Home Screen. Android: menu → Install app).",
+      "",
+      "You'll see your schedule, clock in/out, job notes and photos there.",
+    ].join("\n");
+
+  const copyInvite = async (e?: Employee) => {
+    try {
+      await navigator.clipboard.writeText(inviteText(e));
+      toast.success("Invite link & instructions copied");
+    } catch {
+      toast.error("Couldn't copy — you can select the text manually");
+    }
+  };
+
 
   const savePerms = async (
     employee_id: string,
@@ -127,10 +152,10 @@ function Employees() {
   };
 
   const deactivate = async (e: Employee) => {
-    if (!confirm(`Deactivate ${e.full_name ?? e.email}? They'll keep their history but can't sign in.`)) return;
+    if (!confirm(`Archive ${e.full_name ?? e.email}? They keep all their history but can't sign in. You can restore them any time.`)) return;
     try {
       await updateFn({ data: { id: e.id, is_active: false } });
-      toast.success("Deactivated");
+      toast.success("Moved to Archived");
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -140,7 +165,7 @@ function Employees() {
   const reactivate = async (e: Employee) => {
     try {
       await updateFn({ data: { id: e.id, is_active: true } });
-      toast.success("Reactivated");
+      toast.success("Restored");
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -149,16 +174,34 @@ function Employees() {
 
   const removeEmployee = async (e: Employee) => {
     const who = e.full_name ?? e.email ?? "this person";
-    if (!confirm(`Permanently delete ${who}? This only works if they have no job or time history. This can't be undone.`)) return;
-    try {
-      await deleteFn({ data: { id: e.id } });
+    if (!confirm(`Permanently delete ${who}? Their login, contact details and access are removed for good. This can't be undone.`)) return;
+    const done = () => {
       toast.success("Employee deleted");
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["employee_permissions"] });
+    };
+    try {
+      await deleteFn({ data: { id: e.id } });
+      done();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete");
+      const msg = err instanceof Error ? err.message : "Failed to delete";
+      if (!msg.includes("HAS_HISTORY")) {
+        toast.error(msg);
+        return;
+      }
+      const ok = confirm(
+        `${who} has past jobs or timesheets. Deleting removes them completely — those past jobs and hours stay in your records but will no longer show a name. Archive instead if you want to keep the name on the history.\n\nDelete permanently?`,
+      );
+      if (!ok) return;
+      try {
+        await deleteFn({ data: { id: e.id, force: true } });
+        done();
+      } catch (err2) {
+        toast.error(err2 instanceof Error ? err2.message : "Failed to delete");
+      }
     }
   };
+
 
   const impersonate = async (e: Employee) => {
     if (!confirm(`Open ${e.full_name ?? e.email}'s session in a new tab? A one-time sign-in link will be generated.`)) return;
@@ -189,7 +232,22 @@ function Employees() {
         action={<BrandButton onClick={() => setInviteOpen(true)}>Create employee access</BrandButton>}
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
-        <Section title="Cleaners" rows={employees} empty="No cleaners yet. Invite your first team member.">
+        {canManage && (
+          <div className="bg-white rounded-xl ring-1 ring-black/5 p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Team app link</div>
+              <div className="text-sm text-muted-foreground">
+                Your team signs in at <span className="font-medium text-foreground">{appUrl}/auth</span> with their work email
+                and the temporary password you set. Copy the link with step-by-step instructions to text or email them.
+              </div>
+            </div>
+            <Button variant="outline" onClick={() => copyInvite()} className="shrink-0">
+              <Copy className="size-3.5 mr-1.5" /> Copy link & instructions
+            </Button>
+          </div>
+        )}
+
+        <Section title="Team" rows={employees} empty="No team members yet. Invite your first team member.">
           {(e) => (
             <EmployeeRow
               e={e}
@@ -198,12 +256,32 @@ function Employees() {
               onSavePerms={(next) => savePerms(e.id, next)}
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
+              onCopyInvite={() => copyInvite(e)}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
               onDelete={() => removeEmployee(e)}
               onChangeRole={(r) => changeRole(e, r)}
             />
           )}
         </Section>
+
+        {archived.length > 0 && (
+          <Section title="Archived" rows={archived} empty="">
+            {(e) => (
+              <EmployeeRow
+                e={e}
+                isOwnerViewer={isOwner}
+                perms={permsMap.get(e.id) ?? null}
+                onSavePerms={(next) => savePerms(e.id, next)}
+                onEdit={() => openEdit(e)}
+                onImpersonate={() => impersonate(e)}
+                onCopyInvite={() => copyInvite(e)}
+                onDeactivate={() => reactivate(e)}
+                onDelete={() => removeEmployee(e)}
+                onChangeRole={(r) => changeRole(e, r)}
+              />
+            )}
+          </Section>
+        )}
 
         {owners.length > 0 && (
           <Section title="Owners" rows={owners} empty="">
@@ -215,6 +293,7 @@ function Employees() {
                 onSavePerms={() => {}}
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
+                onCopyInvite={() => copyInvite(e)}
                 onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
                 onChangeRole={(r) => changeRole(e, r)}
               />
@@ -222,6 +301,7 @@ function Employees() {
           </Section>
         )}
       </div>
+
 
       {/* Invite dialog */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
@@ -338,15 +418,17 @@ const EMPTY_PERMS = {
   can_view_wages: false,
 };
 
-function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onDelete, onChangeRole }: {
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onDeactivate, onDelete, onChangeRole }: {
   e: Employee;
   isOwnerViewer: boolean;
   perms: PermsRow | null;
   onSavePerms: (next: typeof EMPTY_PERMS) => void;
   onEdit: () => void;
   onImpersonate: () => void;
+  onCopyInvite: () => void;
   onDeactivate: () => void;
   onDelete?: () => void;
+
   onChangeRole: (r: Role) => void;
 }) {
   const showAccess = isOwnerViewer && e.role !== "owner";
@@ -445,11 +527,14 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       <div className="text-sm text-muted-foreground">{e.phone ?? "—"}</div>
       <div>
         <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${e.is_active ? "bg-emerald-50 text-emerald-700" : "bg-clay-200 text-muted-foreground"}`}>
-          {e.is_active ? "Active" : "Inactive"}
+          {e.is_active ? "Active" : "Archived"}
         </span>
       </div>
       <div className="text-sm text-muted-foreground">{formatLast(e.last_sign_in_at)}</div>
       <div className="flex items-center gap-2 justify-end flex-wrap">
+        <Button size="sm" variant="ghost" onClick={onCopyInvite} title="Copy the app link and sign-in steps for this person">
+          <Copy className="size-3.5 mr-1.5" /> Invite
+        </Button>
         <Button size="sm" variant="ghost" onClick={onImpersonate} title="Open a sign-in link in a new tab">
           <LogIn className="size-3.5 mr-1.5" /> Impersonate
         </Button>
@@ -468,8 +553,8 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             <option value="owner">Owner</option>
           </select>
         )}
-        <Button size="sm" variant="outline" onClick={onDeactivate} className={e.is_active ? "text-destructive hover:text-destructive" : ""}>
-          {e.is_active ? "Deactivate" : "Reactivate"}
+        <Button size="sm" variant="outline" onClick={onDeactivate}>
+          {e.is_active ? (<><Archive className="size-3.5 mr-1.5" /> Archive</>) : (<><ArchiveRestore className="size-3.5 mr-1.5" /> Restore</>)}
         </Button>
         {isOwnerViewer && onDelete && (
           <Button
@@ -477,12 +562,13 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             variant="ghost"
             onClick={onDelete}
             className="text-destructive hover:text-destructive"
-            title="Permanently delete (only possible with no job or time history)"
+            title="Permanently delete this person"
           >
             <Trash2 className="size-3.5 mr-1.5" /> Delete
           </Button>
         )}
       </div>
+
     </div>
   );
 }
