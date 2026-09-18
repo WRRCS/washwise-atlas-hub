@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/team")({
 });
 
 function TeamPage() {
+  const t = useT();
   return (
     <AppShell>
       <PageHeader title={t("Team")} subtitle={t("Your teammates and internal chat")} />
