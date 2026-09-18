@@ -643,13 +643,17 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     if (!isOwner) throw new Error("Only owners can delete an employee");
     if (data.id === context.userId) throw new Error("You can't delete your own account");
 
-    const { data: me } = await context.supabase
-      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
-    if (!me?.tenant_id) throw new Error("No profile");
+    const { data: tenantId, error: tenantError } = await context.supabase.rpc("current_tenant_id");
+    if (tenantError || !tenantId) throw new Error("No business profile found");
 
-    const { data: target } = await context.supabase
+    // Owners deliberately cannot read every profile column directly. Use the
+    // privileged client only after verifying the caller is an owner, then
+    // enforce the tenant boundary before performing any deletion.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: target, error: targetError } = await supabaseAdmin
       .from("profiles").select("tenant_id, full_name, email").eq("id", data.id).maybeSingle();
-    if (!target || target.tenant_id !== me.tenant_id) throw new Error("Employee not found in your business");
+    if (targetError) throw new Error(targetError.message);
+    if (!target || target.tenant_id !== tenantId) throw new Error("Employee not found in your business");
 
     const { data: targetIsOwner } = await context.supabase
       .from("user_roles").select("user_id").eq("user_id", data.id).eq("role", "owner").maybeSingle();
@@ -664,8 +668,6 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     if (history > 0 && !data.force) {
       throw new Error("HAS_HISTORY");
     }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     if (history > 0) {
       // Detach references that would otherwise block the delete.
