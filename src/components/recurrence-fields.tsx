@@ -155,7 +155,7 @@ export function RecurrenceFields({
 
           <p className="text-xs text-muted-foreground">
             Visits are created 6 months ahead and topped up automatically, so the schedule always stays filled.
-            {value.endMode === "after" && ` Series ends ${endDateFrom(startDate, value.endCount, value.endUnit)}.`}
+            {value.endMode === "after" && ` Series ends ${endDateFrom(effStart, value.endCount, value.endUnit)}.`}
           </p>
         </div>
       )}
