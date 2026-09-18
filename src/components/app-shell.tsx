@@ -166,7 +166,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {item.label}
+                  {t(item.label)}
                   {item.to === "/messages" && unreadCount > 0 && (
                     <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                       {unreadCount > 99 ? "99+" : unreadCount}
@@ -252,7 +252,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
       </div>
       <AiChat />
       </div>
-    </AppShellNestingContext.Provider>
+    </>
   );
 }
 
