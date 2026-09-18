@@ -699,6 +699,12 @@ export const deleteEmployee = createServerFn({ method: "POST" })
       supabaseAdmin.from("time_off_requests").update({ reviewed_by: null }).eq("reviewed_by", data.id),
     ]);
 
+    // Take them off the invite allowlist so the account can't be recreated.
+    const { data: gone } = await supabaseAdmin.from("profiles").select("email").eq("id", data.id).maybeSingle();
+    if (gone?.email) {
+      await supabaseAdmin.from("allowed_signins").delete().eq("email", String(gone.email).toLowerCase());
+    }
+
     await supabaseAdmin.from("employee_permissions").delete().eq("employee_id", data.id);
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.id);
     await supabaseAdmin.from("profiles").delete().eq("id", data.id);
