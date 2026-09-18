@@ -537,6 +537,20 @@ function SchedulePage() {
           onClose={() => setDialogSeed(null)}
         />
       )}
+      {copiedShift && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-brand text-white text-xs font-medium pl-3 pr-1.5 py-1.5 shadow-lg">
+          <ClipboardPaste className="size-3.5" />
+          <span className="max-w-48 truncate">“{copiedShift.label}” copied — tap Paste here on any day</span>
+          <button
+            type="button"
+            onClick={() => setCopiedShift(null)}
+            className="rounded-full p-1 hover:bg-white/20"
+            aria-label="Clear copied shift"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
     </>
   );
 }
