@@ -84,7 +84,7 @@ export const listTeamRoster = createServerFn({ method: "GET" })
         id: p.id,
         full_name: p.full_name,
         avatar_url: p.avatar_url,
-        email: p.email,
+        email: canSeeEmail ? p.email : null,
         phone: p.phone,
         role: roleMap.get(p.id) ?? "employee",
       }));
