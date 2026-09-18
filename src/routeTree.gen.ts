@@ -18,6 +18,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedClientChatRouteImport } from './routes/_authenticated/client-chat'
+import { Route as AuthenticatedClientDraftsRouteImport } from './routes/_authenticated/client-drafts'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
@@ -122,6 +123,12 @@ const AuthenticatedClientChatRoute = AuthenticatedClientChatRouteImport.update({
   path: '/client-chat',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientDraftsRoute =
+  AuthenticatedClientDraftsRouteImport.update({
+    id: '/client-drafts',
+    path: '/client-drafts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -462,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
+  '/client-drafts': typeof AuthenticatedClientDraftsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/inventory': typeof AuthenticatedInventoryRouteWithChildren
@@ -531,6 +539,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
+  '/client-drafts': typeof AuthenticatedClientDraftsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/inventory': typeof AuthenticatedInventoryRouteWithChildren
@@ -600,6 +609,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/client-chat': typeof AuthenticatedClientChatRoute
+  '/_authenticated/client-drafts': typeof AuthenticatedClientDraftsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRouteWithChildren
@@ -671,6 +681,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/client-chat'
+    | '/client-drafts'
     | '/dashboard'
     | '/employees'
     | '/inventory'
@@ -740,6 +751,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/calendar'
     | '/client-chat'
+    | '/client-drafts'
     | '/dashboard'
     | '/employees'
     | '/inventory'
@@ -808,6 +820,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/calendar'
     | '/_authenticated/client-chat'
+    | '/_authenticated/client-drafts'
     | '/_authenticated/dashboard'
     | '/_authenticated/employees'
     | '/_authenticated/inventory'
@@ -954,6 +967,13 @@ declare module '@tanstack/react-router' {
       path: '/client-chat'
       fullPath: '/client-chat'
       preLoaderRoute: typeof AuthenticatedClientChatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/client-drafts': {
+      id: '/_authenticated/client-drafts'
+      path: '/client-drafts'
+      fullPath: '/client-drafts'
+      preLoaderRoute: typeof AuthenticatedClientDraftsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -1478,6 +1498,7 @@ const AuthenticatedSuperAdminRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedClientChatRoute: typeof AuthenticatedClientChatRoute
+  AuthenticatedClientDraftsRoute: typeof AuthenticatedClientDraftsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRouteWithChildren
@@ -1509,6 +1530,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedClientChatRoute: AuthenticatedClientChatRoute,
+  AuthenticatedClientDraftsRoute: AuthenticatedClientDraftsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRouteWithChildren,
