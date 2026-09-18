@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+const STORAGE_KEY = "schedule-zoom";
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 1.6;
 
