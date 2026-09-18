@@ -232,7 +232,22 @@ function Employees() {
         action={<BrandButton onClick={() => setInviteOpen(true)}>Create employee access</BrandButton>}
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
-        <Section title="Cleaners" rows={employees} empty="No cleaners yet. Invite your first team member.">
+        {canManage && (
+          <div className="bg-white rounded-xl ring-1 ring-black/5 p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Team app link</div>
+              <div className="text-sm text-muted-foreground">
+                Your team signs in at <span className="font-medium text-foreground">{appUrl}/auth</span> with their work email
+                and the temporary password you set. Copy the link with step-by-step instructions to text or email them.
+              </div>
+            </div>
+            <Button variant="outline" onClick={() => copyInvite()} className="shrink-0">
+              <Copy className="size-3.5 mr-1.5" /> Copy link & instructions
+            </Button>
+          </div>
+        )}
+
+        <Section title="Team" rows={employees} empty="No team members yet. Invite your first team member.">
           {(e) => (
             <EmployeeRow
               e={e}
@@ -241,12 +256,32 @@ function Employees() {
               onSavePerms={(next) => savePerms(e.id, next)}
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
+              onCopyInvite={() => copyInvite(e)}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
               onDelete={() => removeEmployee(e)}
               onChangeRole={(r) => changeRole(e, r)}
             />
           )}
         </Section>
+
+        {archived.length > 0 && (
+          <Section title="Archived" rows={archived} empty="">
+            {(e) => (
+              <EmployeeRow
+                e={e}
+                isOwnerViewer={isOwner}
+                perms={permsMap.get(e.id) ?? null}
+                onSavePerms={(next) => savePerms(e.id, next)}
+                onEdit={() => openEdit(e)}
+                onImpersonate={() => impersonate(e)}
+                onCopyInvite={() => copyInvite(e)}
+                onDeactivate={() => reactivate(e)}
+                onDelete={() => removeEmployee(e)}
+                onChangeRole={(r) => changeRole(e, r)}
+              />
+            )}
+          </Section>
+        )}
 
         {owners.length > 0 && (
           <Section title="Owners" rows={owners} empty="">
@@ -258,6 +293,7 @@ function Employees() {
                 onSavePerms={() => {}}
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
+                onCopyInvite={() => copyInvite(e)}
                 onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
                 onChangeRole={(r) => changeRole(e, r)}
               />
@@ -265,6 +301,7 @@ function Employees() {
           </Section>
         )}
       </div>
+
 
       {/* Invite dialog */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
