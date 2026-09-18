@@ -37,6 +37,7 @@ const OWNER_NAV = [
   { to: "/settings/integrations", label: "Integrations", icon: Plug },
   { to: "/settings/ai", label: "AI Assistant", icon: Bot },
   { to: "/settings/billing", label: "Billing & plan", icon: CreditCard },
+  { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 
 // Employees intentionally do NOT see /messages (client SMS inbox) or
@@ -140,12 +141,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
     return OWNER_NAV as ReadonlyArray<{ to: string; label: string; icon: any }>;
   })();
 
-  if (alreadyInsideShell) {
-    return <>{children}</>;
-  }
-
   return (
-    <AppShellNestingContext.Provider value={true}>
+    <>
       <div className="min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand">
       <div className="flex min-h-screen">
         <aside className="hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
