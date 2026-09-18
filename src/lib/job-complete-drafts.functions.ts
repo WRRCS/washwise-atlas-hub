@@ -32,12 +32,11 @@ export const listJobCompleteDrafts = createServerFn({ method: "GET" })
     const clientIds = [...new Set(rows.map((r) => r.client_id))];
     const { data: clients } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, company_name")
+      .select("id, first_name, last_name")
       .in("id", clientIds);
     const names = new Map<string, string>();
     for (const c of clients ?? []) {
-      const n = (c as any).company_name || [(c as any).first_name, (c as any).last_name].filter(Boolean).join(" ");
-      names.set(c.id as string, n);
+      names.set(c.id as string, [(c as any).first_name, (c as any).last_name].filter(Boolean).join(" "));
     }
 
     const photoIds = [...new Set(rows.flatMap((r) => r.photo_ids ?? []))];
