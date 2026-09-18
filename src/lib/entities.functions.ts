@@ -694,7 +694,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     await supabaseAdmin.from("profiles").delete().eq("id", data.id);
     const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(data.id);
     if (authErr && !/not found/i.test(authErr.message)) throw new Error(authErr.message);
-    return { ok: true };
+    return { ok: true as const };
   });
 
 
