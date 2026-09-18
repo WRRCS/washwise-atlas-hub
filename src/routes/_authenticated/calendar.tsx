@@ -318,7 +318,7 @@ function SchedulePage() {
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{emp.full_name ?? emp.email}</p>
                       <p className="text-[9px] text-muted-foreground tabular-nums truncate">
-                        {totals.hours.toFixed(2)} hrs / ${totals.wages.toFixed(2)}
+                        {totals.hours.toFixed(2)} hrs{canSeeWages ? ` / $${totals.wages.toFixed(2)}` : ""}
                       </p>
                     </div>
                   </div>
