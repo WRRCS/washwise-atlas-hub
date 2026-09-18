@@ -566,7 +566,7 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
     setConflicts(null);
   };
 
-  const doSave = async (force = false) => {
+  const doSave = async (force = false, addAnother = false) => {
     if (!clientId || !serviceId) { toast.error("Client and service required"); return; }
     setSaving(true);
     try {
@@ -594,7 +594,19 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
       });
       toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      onClose();
+      if (addAnother) {
+        // Keep date + assigned team members; clear the rest for the next shift.
+        setConflicts(null);
+        setClientId("");
+        setServiceId("");
+        setNotes("");
+        setPriceCents(0);
+        setStartTime(endTime);
+        setEndTime(addMinutesToTime(endTime, 120));
+        setRecur(defaultRecurrence(dateStr));
+      } else {
+        onClose();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
     } finally {
