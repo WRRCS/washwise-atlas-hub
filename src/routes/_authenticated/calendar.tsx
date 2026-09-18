@@ -68,6 +68,8 @@ function SchedulePage() {
   const permsHeaderFn = useServerFn(myPermissions);
   const { data: headerPerms } = useQuery({ queryKey: ["my-permissions"], queryFn: () => permsHeaderFn() });
   const canManageSchedule = !!headerPerms?.isOwner;
+  // Pay/earnings totals are owner-only; teammates see hours only.
+  const canSeeWages = !!headerPerms?.isOwner;
 
   const colorMut = useMutation({
     mutationFn: (v: { clientId: string; color: string | null }) =>
