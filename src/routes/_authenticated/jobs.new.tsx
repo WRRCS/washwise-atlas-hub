@@ -76,8 +76,9 @@ function NewJob() {
     if (!clientId || !serviceId || !start) return;
     setSaving(true);
     try {
-      const startDate2 = new Date(start);
-      let endDate = new Date(`${startDate}T${endTime}`);
+      const effDate = effectiveStartDate(recur, startDate);
+      const startDate2 = new Date(`${effDate}T${start.slice(11, 16)}`);
+      let endDate = new Date(`${effDate}T${endTime}`);
       if (endDate.getTime() <= startDate2.getTime()) {
         endDate = new Date(endDate.getTime() + 86_400_000);
       }
