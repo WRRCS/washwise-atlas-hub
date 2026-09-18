@@ -697,13 +697,23 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           {conflicts && conflicts.length > 0 ? (
-            <Button onClick={() => doSave(true)} disabled={saving} className="bg-destructive text-destructive-foreground hover:opacity-90">
-              Save anyway
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => doSave(true, true)} disabled={saving}>
+                Save anyway & add another
+              </Button>
+              <Button onClick={() => doSave(true)} disabled={saving} className="bg-destructive text-destructive-foreground hover:opacity-90">
+                Save anyway
+              </Button>
+            </>
           ) : (
-            <Button onClick={() => doSave(false)} disabled={saving} className="bg-brand text-brand-foreground hover:opacity-90">
-              {saving ? "Saving…" : "Create job"}
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => doSave(false, true)} disabled={saving}>
+                {saving ? "Saving…" : "Save & add another"}
+              </Button>
+              <Button onClick={() => doSave(false)} disabled={saving} className="bg-brand text-brand-foreground hover:opacity-90">
+                {saving ? "Saving…" : "Create job"}
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
