@@ -1,0 +1,1 @@
+GRANT SELECT (language) ON public.profiles TO authenticated;
