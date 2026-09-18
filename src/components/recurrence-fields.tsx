@@ -93,6 +93,28 @@ export function RecurrenceFields({
           </div>
 
           <div className="space-y-1.5">
+            <Label>Day of week</Label>
+            <select
+              value={value.weekday === null ? "" : String(value.weekday)}
+              onChange={(e) => set({ weekday: e.target.value === "" ? null : Number(e.target.value) })}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Same as start date ({WEEKDAY_LABELS[weekdayOfDate(effStart)]})</option>
+              {WEEKDAY_LABELS.map((d, i) => (
+                <option key={d} value={i}>{d}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              {value.rule === "monthly"
+                ? `Repeats on day ${Number(effStart.slice(8, 10))} of each month.`
+                : value.rule === "monthly_dow"
+                  ? `Repeats the ${ORDINAL_LABELS[weekdayOrdinal(effStart)]} ${WEEKDAY_LABELS[weekdayOfDate(effStart)]} of each month.`
+                  : `First visit ${effStart}${effStart !== startDate ? " (moved to the chosen day)" : ""}.`}
+            </p>
+          </div>
+
+
+          <div className="space-y-1.5">
             <Label>Ends</Label>
             <select
               value={value.endMode}
