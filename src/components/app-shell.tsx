@@ -47,6 +47,7 @@ const EMPLOYEE_NAV = [
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/team", label: "Team", icon: Users2 },
   { to: "/time-off", label: "Time off & swaps", icon: CalendarClock },
+  { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 
 const SUPER_ADMIN_NAV_ITEM = { to: "/super-admin", label: "Platform console", icon: Shield } as const;
@@ -55,6 +56,19 @@ const AppShellNestingContext = createContext(false);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const alreadyInsideShell = useContext(AppShellNestingContext);
+  if (alreadyInsideShell) return <>{children}</>;
+  return (
+    <LanguageProvider>
+      <AppShellNestingContext.Provider value={true}>
+        <LanguageSetupDialog />
+        <AppShellInner>{children}</AppShellInner>
+      </AppShellNestingContext.Provider>
+    </LanguageProvider>
+  );
+}
+
+function AppShellInner({ children }: { children: ReactNode }) {
+  const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string; isSuperAdmin: boolean } | null>(null);
