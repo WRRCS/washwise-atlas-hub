@@ -33,6 +33,8 @@ type Employee = {
   last_sign_in_at: string | null;
 };
 
+const DEFAULT_TEMP_PASSWORD = "WRRCS2026!";
+
 function Employees() {
   const qc = useQueryClient();
   const listFn = useServerFn(listEmployees);
@@ -63,7 +65,7 @@ function Employees() {
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "", temporary_password: "" });
+  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
@@ -81,7 +83,8 @@ function Employees() {
       "",
       `1. Open ${appUrl}/auth on your phone or computer.`,
       e?.email ? `2. Sign in with your email: ${e.email}` : "2. Sign in with your work email.",
-      "3. Use the temporary password you were given, then tap \"Forgot password?\" to set your own.",
+      `3. Temporary password: ${DEFAULT_TEMP_PASSWORD}`,
+      "4. After signing in, tap \"Forgot password?\" to set your own password.",
       "",
       "Add the app to your home screen so it opens like a regular app:",
       "",
@@ -137,7 +140,7 @@ function Employees() {
       await inviteFn({ data: invite });
       toast.success("Employee app access created");
       setInviteOpen(false);
-      setInvite({ full_name: "", email: "", phone: "", temporary_password: "" });
+      setInvite({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to invite");
@@ -248,7 +251,7 @@ function Employees() {
               <div className="text-sm font-medium">Team app link</div>
               <div className="text-sm text-muted-foreground">
                 Your team signs in at <span className="font-medium text-foreground">{appUrl}/auth</span> with their work email
-                and the temporary password you set. The copied message also includes iPhone and Android instructions for adding the app to their home screen.
+                and the shared starter password <span className="font-medium text-foreground">{DEFAULT_TEMP_PASSWORD}</span>. The copied message includes that password plus iPhone and Android instructions for adding the app to their home screen.
               </div>
             </div>
             <Button variant="outline" onClick={() => copyInvite()} className="shrink-0">
@@ -337,13 +340,15 @@ function Employees() {
               <Label htmlFor="temporary-password">Temporary password</Label>
               <Input
                 id="temporary-password"
-                type="password"
+                type="text"
                 value={invite.temporary_password}
                 onChange={(e) => setInvite({ ...invite, temporary_password: e.target.value })}
                 minLength={8}
-                autoComplete="new-password"
+                autoComplete="off"
               />
-              <p className="mt-1 text-xs text-muted-foreground">At least 8 characters. The employee can change it with “Forgot password?” after signing in.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pre-filled with the standard starter password ({DEFAULT_TEMP_PASSWORD}) that's included in the copied invite. You can change it here for one person. Employees set their own with “Forgot password?” after signing in.
+              </p>
             </div>
           </div>
           <DialogFooter>
