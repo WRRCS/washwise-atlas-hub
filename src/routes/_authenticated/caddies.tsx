@@ -220,7 +220,7 @@ function ItemDialog({ item, employeeId, onClose, onSaved, save }: {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <BrandButton onClick={submit} disabled={busy}>Save</BrandButton>
+          <BrandButton onClick={() => { if (!busy) void submit(); }}>Save</BrandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -311,7 +311,7 @@ function TemplateDialog({ template, onClose, onChanged }: {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
-          <BrandButton onClick={add} disabled={busy}>Add</BrandButton>
+          <BrandButton onClick={() => { if (!busy) void add(); }}>Add</BrandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
