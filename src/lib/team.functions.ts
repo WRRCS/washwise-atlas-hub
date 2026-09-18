@@ -67,10 +67,13 @@ export const listTeamRoster = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     // staff_directory() applies the contact-info permission in the database.
-    const [profs, { data: roles }] = await Promise.all([
+    const [profs, { data: roles }, { data: isOwnerRaw }] = await Promise.all([
       staffDirectory(context.supabase),
       context.supabase.from("user_roles").select("user_id, role"),
+      context.supabase.rpc("is_owner"),
     ]);
+    // Teammate email addresses are owner-only, regardless of contact permission.
+    const canSeeEmail = !!isOwnerRaw;
 
     const roleMap = new Map<string, string>();
     (roles ?? []).forEach((r) => roleMap.set(r.user_id, r.role));
@@ -81,7 +84,7 @@ export const listTeamRoster = createServerFn({ method: "GET" })
         id: p.id,
         full_name: p.full_name,
         avatar_url: p.avatar_url,
-        email: p.email,
+        email: canSeeEmail ? p.email : null,
         phone: p.phone,
         role: roleMap.get(p.id) ?? "employee",
       }));
