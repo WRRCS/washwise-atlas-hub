@@ -338,13 +338,15 @@ function Employees() {
               <Label htmlFor="temporary-password">Temporary password</Label>
               <Input
                 id="temporary-password"
-                type="password"
+                type="text"
                 value={invite.temporary_password}
                 onChange={(e) => setInvite({ ...invite, temporary_password: e.target.value })}
                 minLength={8}
-                autoComplete="new-password"
+                autoComplete="off"
               />
-              <p className="mt-1 text-xs text-muted-foreground">At least 8 characters. The employee can change it with “Forgot password?” after signing in.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pre-filled with the standard starter password ({DEFAULT_TEMP_PASSWORD}) that's included in the copied invite. You can change it here for one person. Employees set their own with “Forgot password?” after signing in.
+              </p>
             </div>
           </div>
           <DialogFooter>
