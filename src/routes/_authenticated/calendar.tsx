@@ -359,6 +359,29 @@ function SchedulePage() {
                             const s = new Date(j.scheduled_start).getTime();
                             const e = new Date(j.scheduled_end).getTime();
                             const conflict = shifts.some((k: any) => k.id !== j.id && new Date(k.scheduled_start).getTime() < e && new Date(k.scheduled_end).getTime() > s);
+                            const cardBody = (
+                              <>
+                                <div className="flex items-center gap-1 font-semibold">
+                                  {conflict && <AlertTriangle className="size-3 shrink-0" />}
+                                  <span>{fmtTimeTZ(j.scheduled_start, tz)}-{fmtTimeTZ(j.scheduled_end, tz)}</span>
+                                </div>
+                                <p className="uppercase font-semibold truncate">{label}</p>
+                              </>
+                            );
+                            if (!canManageSchedule) {
+                              return (
+                                <Link
+                                  key={j.id}
+                                  to="/jobs/$jobId"
+                                  params={{ jobId: j.id }}
+                                  className={`w-full text-left block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
+                                  style={{ backgroundColor: c }}
+                                  title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
+                                >
+                                  {cardBody}
+                                </Link>
+                              );
+                            }
                             return (
                               <Popover key={j.id}>
                                 <PopoverTrigger asChild>
@@ -376,11 +399,7 @@ function SchedulePage() {
                                     style={{ backgroundColor: c }}
                                     title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
                                   >
-                                    <div className="flex items-center gap-1 font-semibold">
-                                      {conflict && <AlertTriangle className="size-3 shrink-0" />}
-                                      <span>{fmtTimeTZ(j.scheduled_start, tz)}-{fmtTimeTZ(j.scheduled_end, tz)}</span>
-                                    </div>
-                                    <p className="uppercase font-semibold truncate">{label}</p>
+                                    {cardBody}
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-3" align="start">
