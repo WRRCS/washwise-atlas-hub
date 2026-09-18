@@ -1238,6 +1238,7 @@ export type Database = {
           id: string
           job_id: string
           label: string
+          label_uk: string | null
           position: number
           tenant_id: string
         }
@@ -1248,6 +1249,7 @@ export type Database = {
           id?: string
           job_id: string
           label: string
+          label_uk?: string | null
           position: number
           tenant_id: string
         }
@@ -1258,6 +1260,7 @@ export type Database = {
           id?: string
           job_id?: string
           label?: string
+          label_uk?: string | null
           position?: number
           tenant_id?: string
         }
@@ -1790,6 +1793,7 @@ export type Database = {
           hourly_rate_cents: number
           id: string
           is_active: boolean
+          language: string | null
           phone: string | null
           tenant_id: string
           updated_at: string
@@ -1802,6 +1806,7 @@ export type Database = {
           hourly_rate_cents?: number
           id: string
           is_active?: boolean
+          language?: string | null
           phone?: string | null
           tenant_id: string
           updated_at?: string
@@ -1814,6 +1819,7 @@ export type Database = {
           hourly_rate_cents?: number
           id?: string
           is_active?: boolean
+          language?: string | null
           phone?: string | null
           tenant_id?: string
           updated_at?: string
@@ -2363,32 +2369,38 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          description_uk: string | null
           id: string
           reference_photo_path: string | null
           sop_id: string
           step_number: number
           tenant_id: string
           title: string
+          title_uk: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
+          description_uk?: string | null
           id?: string
           reference_photo_path?: string | null
           sop_id: string
           step_number: number
           tenant_id: string
           title: string
+          title_uk?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
+          description_uk?: string | null
           id?: string
           reference_photo_path?: string | null
           sop_id?: string
           step_number?: number
           tenant_id?: string
           title?: string
+          title_uk?: string | null
         }
         Relationships: [
           {
