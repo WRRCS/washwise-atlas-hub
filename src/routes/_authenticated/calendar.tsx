@@ -422,9 +422,19 @@ function SchedulePage() {
                                   </div>
                                   {canManageSchedule && (
                                     <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
-                                      <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                                        <Copy className="size-3" /> Drag this shift onto another team member to copy it.
-                                      </p>
+                                       <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                                         <Copy className="size-3" /> Drag this shift onto another team member to copy it.
+                                       </p>
+                                       <button
+                                         type="button"
+                                         onClick={() => {
+                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label });
+                                           toast.success("Shift copied — tap \"Paste here\" on any day/team member to place it.");
+                                         }}
+                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
+                                       >
+                                         <Copy className="size-3" /> Copy shift
+                                       </button>
                                       <button
                                         type="button"
                                         disabled={deleteMut.isPending}
@@ -441,9 +451,20 @@ function SchedulePage() {
                               </Popover>
                             );
                           })}
-                        {canManageSchedule && (
-                          <button
-                            onClick={() => setDialogSeed({ date: d, employeeId: emp.id })}
+                         {canManageSchedule && copiedShift && (
+                           <button
+                             type="button"
+                             onClick={() => pasteShift(emp.id, d)}
+                             disabled={dupMut.isPending}
+                             title={`Paste "${copiedShift.label}" here`}
+                             className="w-full rounded-md border border-dashed border-brand/60 text-brand text-[10px] font-medium py-1 inline-flex items-center justify-center gap-1 hover:bg-brand/10 transition disabled:opacity-50"
+                           >
+                             <ClipboardPaste className="size-3" /> Paste here
+                           </button>
+                         )}
+                         {canManageSchedule && (
+                           <button
+                             onClick={() => setDialogSeed({ date: d, employeeId: emp.id })}
                             title={`Add a shift for ${emp.full_name ?? "this team member"}`}
                             className={
                               shifts.length === 0 && unavs.length === 0
