@@ -141,6 +141,8 @@ type WizardStepDraft = {
   id: string;
   title: string;
   description: string;
+  title_uk: string;
+  description_uk: string;
   reference_photo_path: string | null;
   reference_photo_preview: string | null;
   uploading: boolean;
