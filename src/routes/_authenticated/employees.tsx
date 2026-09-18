@@ -251,7 +251,7 @@ function Employees() {
               <div className="text-sm font-medium">Team app link</div>
               <div className="text-sm text-muted-foreground">
                 Your team signs in at <span className="font-medium text-foreground">{appUrl}/auth</span> with their work email
-                and the temporary password you set. The copied message also includes iPhone and Android instructions for adding the app to their home screen.
+                and the shared starter password <span className="font-medium text-foreground">{DEFAULT_TEMP_PASSWORD}</span>. The copied message includes that password plus iPhone and Android instructions for adding the app to their home screen.
               </div>
             </div>
             <Button variant="outline" onClick={() => copyInvite()} className="shrink-0">
