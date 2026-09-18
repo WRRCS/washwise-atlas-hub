@@ -72,8 +72,9 @@ export const listTeamRoster = createServerFn({ method: "GET" })
       context.supabase.from("user_roles").select("user_id, role"),
       context.supabase.rpc("is_owner"),
     ]);
-    // Teammate email addresses are owner-only, regardless of contact permission.
-    const canSeeEmail = !!isOwnerRaw;
+    // Teammate email addresses are never exposed in the team roster.
+    void isOwnerRaw;
+    const canSeeEmail = false;
 
     const roleMap = new Map<string, string>();
     (roles ?? []).forEach((r) => roleMap.set(r.user_id, r.role));
