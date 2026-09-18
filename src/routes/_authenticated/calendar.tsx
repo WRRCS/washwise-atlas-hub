@@ -57,7 +57,7 @@ function SchedulePage() {
   const tz = useBusinessTz();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [view, setView] = useState<View>("grid");
-  const [dialogDate, setDialogDate] = useState<Date | null>(null);
+  const [dialogSeed, setDialogSeed] = useState<{ date: Date; employeeId?: string } | null>(null);
 
   const jobsFn = useServerFn(listJobs);
   const empFn = useServerFn(listEmployees);
@@ -253,7 +253,7 @@ function SchedulePage() {
                   <Send className="size-3.5 mr-1" />
                   {draftCount ? `Publish (${draftCount})` : "Published"}
                 </Button>
-                <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogDate(new Date())}>
+                <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogSeed({ date: new Date() })}>
                   <Plus className="size-4" /> New Job
                 </Button>
               </>
@@ -426,10 +426,15 @@ function SchedulePage() {
                               </Popover>
                             );
                           })}
-                        {canManageSchedule && shifts.length === 0 && unavs.length === 0 && (
+                        {canManageSchedule && (
                           <button
-                            onClick={() => setDialogDate(d)}
-                            className="w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
+                            onClick={() => setDialogSeed({ date: d, employeeId: emp.id })}
+                            title={`Add a shift for ${emp.full_name ?? "this team member"}`}
+                            className={
+                              shifts.length === 0 && unavs.length === 0
+                                ? "w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
+                                : "w-full rounded-md border border-dashed border-border/70 text-muted-foreground text-[10px] py-1 opacity-60 hover:opacity-100 hover:border-brand hover:text-brand transition"
+                            }
                           >
                             + Add shift
                           </button>
@@ -489,12 +494,18 @@ function SchedulePage() {
         </div>
       )}
 
-      {dialogDate && <NewJobDialog date={dialogDate} onClose={() => setDialogDate(null)} />}
+      {dialogSeed && (
+        <NewJobDialog
+          date={dialogSeed.date}
+          employeeId={dialogSeed.employeeId}
+          onClose={() => setDialogSeed(null)}
+        />
+      )}
     </>
   );
 }
 
-function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
+function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: string; onClose: () => void }) {
   const qc = useQueryClient();
   const tz = useBusinessTz();
   const clientsFn = useServerFn(listClients);
@@ -514,7 +525,7 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
 
   const [clientId, setClientId] = useState("");
   const [serviceId, setServiceId] = useState("");
-  const [assignees, setAssignees] = useState<string[]>([]);
+  const [assignees, setAssignees] = useState<string[]>(employeeId ? [employeeId] : []);
   const [startTime, setStartTime] = useState("09:00");
   const [dateStr, setDateStr] = useState(format(date, "yyyy-MM-dd"));
   const [endTime, setEndTime] = useState("11:00");
@@ -555,7 +566,7 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
     setConflicts(null);
   };
 
-  const doSave = async (force = false) => {
+  const doSave = async (force = false, addAnother = false) => {
     if (!clientId || !serviceId) { toast.error("Client and service required"); return; }
     setSaving(true);
     try {
@@ -583,7 +594,19 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
       });
       toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      onClose();
+      if (addAnother) {
+        // Keep date + assigned team members; clear the rest for the next shift.
+        setConflicts(null);
+        setClientId("");
+        setServiceId("");
+        setNotes("");
+        setPriceCents(0);
+        setStartTime(endTime);
+        setEndTime(addMinutesToTime(endTime, 120));
+        setRecur(defaultRecurrence(dateStr));
+      } else {
+        onClose();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -674,13 +697,23 @@ function NewJobDialog({ date, onClose }: { date: Date; onClose: () => void }) {
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           {conflicts && conflicts.length > 0 ? (
-            <Button onClick={() => doSave(true)} disabled={saving} className="bg-destructive text-destructive-foreground hover:opacity-90">
-              Save anyway
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => doSave(true, true)} disabled={saving}>
+                Save anyway & add another
+              </Button>
+              <Button onClick={() => doSave(true)} disabled={saving} className="bg-destructive text-destructive-foreground hover:opacity-90">
+                Save anyway
+              </Button>
+            </>
           ) : (
-            <Button onClick={() => doSave(false)} disabled={saving} className="bg-brand text-brand-foreground hover:opacity-90">
-              {saving ? "Saving…" : "Create job"}
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => doSave(false, true)} disabled={saving}>
+                {saving ? "Saving…" : "Save & add another"}
+              </Button>
+              <Button onClick={() => doSave(false)} disabled={saving} className="bg-brand text-brand-foreground hover:opacity-90">
+                {saving ? "Saving…" : "Create job"}
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
