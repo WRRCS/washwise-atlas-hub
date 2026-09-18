@@ -418,15 +418,17 @@ const EMPTY_PERMS = {
   can_view_wages: false,
 };
 
-function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onDeactivate, onDelete, onChangeRole }: {
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onDeactivate, onDelete, onChangeRole }: {
   e: Employee;
   isOwnerViewer: boolean;
   perms: PermsRow | null;
   onSavePerms: (next: typeof EMPTY_PERMS) => void;
   onEdit: () => void;
   onImpersonate: () => void;
+  onCopyInvite: () => void;
   onDeactivate: () => void;
   onDelete?: () => void;
+
   onChangeRole: (r: Role) => void;
 }) {
   const showAccess = isOwnerViewer && e.role !== "owner";
