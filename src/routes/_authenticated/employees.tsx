@@ -152,10 +152,10 @@ function Employees() {
   };
 
   const deactivate = async (e: Employee) => {
-    if (!confirm(`Deactivate ${e.full_name ?? e.email}? They'll keep their history but can't sign in.`)) return;
+    if (!confirm(`Archive ${e.full_name ?? e.email}? They keep all their history but can't sign in. You can restore them any time.`)) return;
     try {
       await updateFn({ data: { id: e.id, is_active: false } });
-      toast.success("Deactivated");
+      toast.success("Moved to Archived");
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -165,7 +165,7 @@ function Employees() {
   const reactivate = async (e: Employee) => {
     try {
       await updateFn({ data: { id: e.id, is_active: true } });
-      toast.success("Reactivated");
+      toast.success("Restored");
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -174,16 +174,34 @@ function Employees() {
 
   const removeEmployee = async (e: Employee) => {
     const who = e.full_name ?? e.email ?? "this person";
-    if (!confirm(`Permanently delete ${who}? This only works if they have no job or time history. This can't be undone.`)) return;
-    try {
-      await deleteFn({ data: { id: e.id } });
+    if (!confirm(`Permanently delete ${who}? Their login, contact details and access are removed for good. This can't be undone.`)) return;
+    const done = () => {
       toast.success("Employee deleted");
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["employee_permissions"] });
+    };
+    try {
+      await deleteFn({ data: { id: e.id } });
+      done();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete");
+      const msg = err instanceof Error ? err.message : "Failed to delete";
+      if (!msg.includes("HAS_HISTORY")) {
+        toast.error(msg);
+        return;
+      }
+      const ok = confirm(
+        `${who} has past jobs or timesheets. Deleting removes them completely — those past jobs and hours stay in your records but will no longer show a name. Archive instead if you want to keep the name on the history.\n\nDelete permanently?`,
+      );
+      if (!ok) return;
+      try {
+        await deleteFn({ data: { id: e.id, force: true } });
+        done();
+      } catch (err2) {
+        toast.error(err2 instanceof Error ? err2.message : "Failed to delete");
+      }
     }
   };
+
 
   const impersonate = async (e: Employee) => {
     if (!confirm(`Open ${e.full_name ?? e.email}'s session in a new tab? A one-time sign-in link will be generated.`)) return;
