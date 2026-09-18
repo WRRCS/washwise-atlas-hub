@@ -138,7 +138,7 @@ function Employees() {
       await inviteFn({ data: invite });
       toast.success("Employee app access created");
       setInviteOpen(false);
-      setInvite({ full_name: "", email: "", phone: "", temporary_password: "" });
+      setInvite({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to invite");
