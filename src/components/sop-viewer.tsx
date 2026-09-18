@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { getSopForServiceType, markSopReviewed, getLatestSopReview, type SopDetail } from "@/lib/sops.functions";
 import { format } from "date-fns";
+import { useT, usePick } from "@/lib/i18n";
 import { Check, Download, FileText, X, ImageIcon } from "lucide-react";
 
 /**
@@ -23,6 +24,8 @@ export function SopViewer({
   const fetchReview = useServerFn(getLatestSopReview);
   const markFn = useServerFn(markSopReviewed);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const t = useT();
+  const pick = usePick();
 
   const sopQ = useQuery({
     queryKey: ["sop-for-service", serviceTypeId],
@@ -42,18 +45,18 @@ export function SopViewer({
     if (!sop) return;
     try {
       await markFn({ data: { sop_id: sop.id, job_id: jobId ?? null } });
-      toast.success("SOP marked reviewed");
+      toast.success(t("SOP marked reviewed"));
       reviewQ.refetch();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
   };
 
-  if (!serviceTypeId) return <p className="text-sm text-muted-foreground">No service type on this job.</p>;
-  if (sopQ.isLoading) return <p className="text-sm text-muted-foreground">Loading SOP…</p>;
+  if (!serviceTypeId) return <p className="text-sm text-muted-foreground">{t("No service type on this job.")}</p>;
+  if (sopQ.isLoading) return <p className="text-sm text-muted-foreground">{t("Loading SOP…")}</p>;
   if (!sop) return (
     <p className="text-sm text-muted-foreground">
-      No SOP has been created for this service type yet.
+      {t("No SOP has been created for this service type yet.")}
     </p>
   );
 
@@ -72,7 +75,7 @@ export function SopViewer({
               onClick={onMarkReviewed}
               className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
             >
-              <Check className="size-4" /> Mark SOP reviewed
+              <Check className="size-4" /> {t("Mark SOP reviewed")}
             </button>
             {reviewedAt && (
               <p className="text-[11px] text-muted-foreground mt-1">
@@ -84,7 +87,7 @@ export function SopViewer({
       </div>
 
       {sop.steps.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No steps yet.</p>
+        <p className="text-sm text-muted-foreground">{t("No steps yet.")}</p>
       ) : (
         <ol className="space-y-4">
           {sop.steps.map((s) => (
@@ -94,8 +97,8 @@ export function SopViewer({
                   {s.step_number}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{s.title}</p>
-                  {s.description && <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{s.description}</p>}
+                  <p className="font-medium text-sm">{pick(s.title, s.title_uk)}</p>
+                  {pick(s.description, s.description_uk) && <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{pick(s.description, s.description_uk)}</p>}
                   {s.reference_photo_url && (
                     <button
                       type="button"
@@ -114,7 +117,7 @@ export function SopViewer({
 
       {sop.attachments.length > 0 && (
         <div>
-          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Attachments</h4>
+          <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">{t("Attachments")}</h4>
           <ul className="space-y-2">
             {sop.attachments.map((a) => {
               const isImage = /\.(png|jpe?g|webp|gif|heic)$/i.test(a.original_filename);
