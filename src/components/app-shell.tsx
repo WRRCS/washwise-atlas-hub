@@ -18,6 +18,7 @@ const OWNER_NAV = [
   { to: "/calendar", label: "Schedule", icon: Calendar },
   { to: "/messages", label: "Messages", icon: MessageSquare },
   { to: "/client-chat", label: "Client chat", icon: MessageSquare },
+  { to: "/client-drafts", label: "Message drafts", icon: FileText },
   { to: "/leads", label: "Leads", icon: Inbox },
   { to: "/clients", label: "Clients", icon: Users },
   { to: "/services", label: "Services", icon: Sparkles },
