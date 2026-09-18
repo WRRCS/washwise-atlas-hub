@@ -206,14 +206,14 @@ function UpNextHero({
             onClick={onOpenSop}
             className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-brand hover:underline"
           >
-            <BookOpen className="size-3.5" /> View SOP
+            <BookOpen className="size-3.5" /> {t("View SOP")}
           </button>
           {!isOpen && (
             <button
               onClick={onCompleteNow}
               className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
-              <Camera className="size-3" /> Complete with photos
+              <Camera className="size-3" /> {t("Complete with photos")}
             </button>
           )}
         </div>
@@ -235,12 +235,12 @@ function MyJobsPage() {
       </div>
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
         <div className="flex gap-1 mb-6 bg-clay-100 p-1 rounded-lg w-fit">
-          {(["today", "schedule", "timesheet"] as Tab[]).map((t) => (
+          {(["today", "schedule", "timesheet"] as Tab[]).map((tb) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tb}
+              onClick={() => setTab(tb)}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                tab === t ? "bg-clay-50 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                tab === tb ? "bg-clay-50 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tb === "today" ? t("Today & upcoming") : tb === "schedule" ? t("My schedule") : t("My timesheet")}
