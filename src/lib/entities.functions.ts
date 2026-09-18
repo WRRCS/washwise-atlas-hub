@@ -666,7 +666,8 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     ]);
     const history = (assigned.count ?? 0) + (crew.count ?? 0) + (times.count ?? 0);
     if (history > 0 && !data.force) {
-      throw new Error("HAS_HISTORY");
+      // Not an error: the UI asks for confirmation and retries with force.
+      return { ok: false as const, reason: "HAS_HISTORY" as const };
     }
 
     if (history > 0) {
