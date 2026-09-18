@@ -29,6 +29,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) return { error: error.message };
     if (!inv) return { error: "Invoice not found" };
+    if (inv.status === "draft") return { error: "This invoice is not available for payment." };
     const client = inv.client as { first_name: string | null; last_name: string | null; email: string | null } | null;
     return {
       id: inv.id,
@@ -77,6 +78,7 @@ export const createInvoiceCheckout = createServerFn({ method: "POST" })
       if (!inv) return { error: "Invoice not found" };
       if (inv.status === "paid") return { error: "This invoice is already paid" };
       if (inv.status === "cancelled" || inv.status === "void") return { error: "This invoice is no longer payable" };
+      if (inv.status === "draft") return { error: "This invoice is not available for payment." };
       const total = inv.total_cents ?? 0;
       if (total < 50) return { error: "Invoice amount is too small to process" };
 
