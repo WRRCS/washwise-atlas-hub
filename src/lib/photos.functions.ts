@@ -153,12 +153,12 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
     try {
       const { data: job } = await context.supabase
         .from("jobs")
-        .select("client_id, scheduled_date")
+        .select("client_id, scheduled_start")
         .eq("id", data.job_id)
         .maybeSingle();
       if (job?.client_id) {
-        const when = (job as any).scheduled_date
-          ? new Date(`${(job as any).scheduled_date}T12:00:00`).toLocaleDateString("en-US", {
+        const when = job.scheduled_start
+          ? new Date(job.scheduled_start).toLocaleDateString("en-US", {
               month: "long",
               day: "numeric",
             })
