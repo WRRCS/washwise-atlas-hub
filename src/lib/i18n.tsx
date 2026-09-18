@@ -108,6 +108,9 @@ const UK: Record<string, string> = {
   // Team
   "Your teammates": "Ваші колеги",
   "Team messages": "Повідомлення команди",
+  Roster: "Склад команди",
+  "Your teammates and internal chat": "Ваші колеги та внутрішній чат",
+  "Request days off or ask a teammate to cover a shift.": "Запросіть вихідні або попросіть колегу підмінити вас.",
   "Send message": "Надіслати повідомлення",
   Message: "Повідомлення",
 };
