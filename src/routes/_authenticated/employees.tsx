@@ -527,11 +527,14 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       <div className="text-sm text-muted-foreground">{e.phone ?? "—"}</div>
       <div>
         <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${e.is_active ? "bg-emerald-50 text-emerald-700" : "bg-clay-200 text-muted-foreground"}`}>
-          {e.is_active ? "Active" : "Inactive"}
+          {e.is_active ? "Active" : "Archived"}
         </span>
       </div>
       <div className="text-sm text-muted-foreground">{formatLast(e.last_sign_in_at)}</div>
       <div className="flex items-center gap-2 justify-end flex-wrap">
+        <Button size="sm" variant="ghost" onClick={onCopyInvite} title="Copy the app link and sign-in steps for this person">
+          <Copy className="size-3.5 mr-1.5" /> Invite
+        </Button>
         <Button size="sm" variant="ghost" onClick={onImpersonate} title="Open a sign-in link in a new tab">
           <LogIn className="size-3.5 mr-1.5" /> Impersonate
         </Button>
@@ -550,8 +553,8 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             <option value="owner">Owner</option>
           </select>
         )}
-        <Button size="sm" variant="outline" onClick={onDeactivate} className={e.is_active ? "text-destructive hover:text-destructive" : ""}>
-          {e.is_active ? "Deactivate" : "Reactivate"}
+        <Button size="sm" variant="outline" onClick={onDeactivate}>
+          {e.is_active ? (<><Archive className="size-3.5 mr-1.5" /> Archive</>) : (<><ArchiveRestore className="size-3.5 mr-1.5" /> Restore</>)}
         </Button>
         {isOwnerViewer && onDelete && (
           <Button
@@ -559,12 +562,13 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             variant="ghost"
             onClick={onDelete}
             className="text-destructive hover:text-destructive"
-            title="Permanently delete (only possible with no job or time history)"
+            title="Permanently delete this person"
           >
             <Trash2 className="size-3.5 mr-1.5" /> Delete
           </Button>
         )}
       </div>
+
     </div>
   );
 }
