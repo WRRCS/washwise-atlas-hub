@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Minus, Plus, Trash2, PackagePlus, Pencil } from "lucide-react";
 import {
-  getCaddyOverview, saveCaddyItem, setCaddyQty, deleteCaddyItem,
+  getCaddyOverview, saveCaddyItem, setCaddyLevel, deleteCaddyItem,
   stockCaddyFromTemplate, saveCaddyTemplateItem, deleteCaddyTemplateItem,
   type CaddyItem, type CaddyEmployee, type CaddyTemplateItem,
 } from "@/lib/caddy.functions";
@@ -39,11 +39,19 @@ export const Route = createFileRoute("/_authenticated/caddies")({
 
 const UNITS = ["each", "can", "bottle", "roll", "pack", "box"];
 
+const LEVELS = [
+  { pct: 100, label: "Full" },
+  { pct: 75, label: "3/4" },
+  { pct: 50, label: "Half" },
+  { pct: 25, label: "1/4" },
+  { pct: 0, label: "Out" },
+];
+
 function CaddiesPage() {
   const { data } = useSuspenseQuery(caddyQO);
   const router = useRouter();
   const saveItem = useServerFn(saveCaddyItem);
-  const setQty = useServerFn(setCaddyQty);
+  const setLevel = useServerFn(setCaddyLevel);
   const delItem = useServerFn(deleteCaddyItem);
   const stock = useServerFn(stockCaddyFromTemplate);
 
@@ -53,10 +61,9 @@ function CaddiesPage() {
 
   const refresh = () => router.invalidate();
 
-  const bump = async (item: CaddyItem, delta: number) => {
-    const next = Math.max(0, Number(item.qty) + delta);
+  const pickLevel = async (item: CaddyItem, pct: number) => {
     try {
-      await setQty({ data: { id: item.id, qty: next } });
+      await setLevel({ data: { id: item.id, level_pct: pct } });
       refresh();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
   };
