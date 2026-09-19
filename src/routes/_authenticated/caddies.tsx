@@ -89,7 +89,7 @@ function CaddiesPage() {
     <AppShell>
       <PageHeader
         title="Caddy supplies"
-        subtitle="What each cleaner carries in their caddy — change it any time"
+        subtitle="Tap how full each item is — Full, 3/4, Half, 1/4 or Out"
         action={data.isManager ? (
           <BrandButton onClick={() => setShowTemplate(true)}>
             <Pencil className="size-4 mr-1.5" />Standard caddy list
