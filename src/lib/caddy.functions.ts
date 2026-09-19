@@ -17,6 +17,8 @@ export type CaddyItem = {
   name: string;
   unit: string;
   qty: number;
+  /** How full the item is: 100 = full, 75, 50, 25, 0 = out */
+  level_pct: number;
   sort_order: number;
   notes: string | null;
 };
@@ -66,7 +68,7 @@ export const getCaddyOverview = createServerFn({ method: "GET" })
         .order("name"),
       context.supabase
         .from("employee_caddy_items")
-        .select("id,employee_id,template_item_id,name,unit,qty,sort_order,notes")
+        .select("id,employee_id,template_item_id,name,unit,qty,level_pct,sort_order,notes")
         .order("sort_order")
         .order("name"),
       context.supabase.rpc("staff_directory"),
@@ -89,6 +91,7 @@ export const getCaddyOverview = createServerFn({ method: "GET" })
         name: r.name,
         unit: r.unit,
         qty: Number(r.qty),
+        level_pct: r.level_pct == null ? 100 : Number(r.level_pct),
         sort_order: r.sort_order,
         notes: r.notes,
       };
@@ -119,6 +122,7 @@ const upsertSchema = z.object({
   name: z.string().trim().min(1).max(200),
   unit: z.string().trim().min(1).max(40).default("each"),
   qty: z.coerce.number().min(0).max(100000),
+  level_pct: z.coerce.number().int().min(0).max(100).optional(),
   notes: z.string().trim().max(1000).nullable().optional(),
 });
 
@@ -133,6 +137,7 @@ export const saveCaddyItem = createServerFn({ method: "POST" })
           name: data.name,
           unit: data.unit,
           qty: data.qty,
+          ...(data.level_pct === undefined ? {} : { level_pct: data.level_pct }),
           notes: data.notes ?? null,
         })
         .eq("id", data.id);
@@ -148,6 +153,7 @@ export const saveCaddyItem = createServerFn({ method: "POST" })
         name: data.name,
         unit: data.unit,
         qty: data.qty,
+        level_pct: data.level_pct ?? 100,
         notes: data.notes ?? null,
       })
       .select("id")
@@ -164,6 +170,19 @@ export const setCaddyQty = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase.from("employee_caddy_items") as any)
       .update({ qty: data.qty })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setCaddyLevel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), level_pct: z.coerce.number().int().min(0).max(100) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase.from("employee_caddy_items") as any)
+      .update({ level_pct: data.level_pct })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -206,6 +225,7 @@ export const stockCaddyFromTemplate = createServerFn({ method: "POST" })
         name: t.name,
         unit: t.unit,
         qty: Number(t.default_qty),
+        level_pct: 100,
         sort_order: t.sort_order,
       }));
     if (rows.length === 0) return { added: 0 };

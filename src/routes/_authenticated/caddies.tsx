@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Minus, Plus, Trash2, PackagePlus, Pencil } from "lucide-react";
 import {
-  getCaddyOverview, saveCaddyItem, setCaddyQty, deleteCaddyItem,
+  getCaddyOverview, saveCaddyItem, setCaddyLevel, deleteCaddyItem,
   stockCaddyFromTemplate, saveCaddyTemplateItem, deleteCaddyTemplateItem,
   type CaddyItem, type CaddyEmployee, type CaddyTemplateItem,
 } from "@/lib/caddy.functions";
@@ -39,11 +39,19 @@ export const Route = createFileRoute("/_authenticated/caddies")({
 
 const UNITS = ["each", "can", "bottle", "roll", "pack", "box"];
 
+const LEVELS = [
+  { pct: 100, label: "Full" },
+  { pct: 75, label: "3/4" },
+  { pct: 50, label: "Half" },
+  { pct: 25, label: "1/4" },
+  { pct: 0, label: "Out" },
+];
+
 function CaddiesPage() {
   const { data } = useSuspenseQuery(caddyQO);
   const router = useRouter();
   const saveItem = useServerFn(saveCaddyItem);
-  const setQty = useServerFn(setCaddyQty);
+  const setLevel = useServerFn(setCaddyLevel);
   const delItem = useServerFn(deleteCaddyItem);
   const stock = useServerFn(stockCaddyFromTemplate);
 
@@ -53,10 +61,9 @@ function CaddiesPage() {
 
   const refresh = () => router.invalidate();
 
-  const bump = async (item: CaddyItem, delta: number) => {
-    const next = Math.max(0, Number(item.qty) + delta);
+  const pickLevel = async (item: CaddyItem, pct: number) => {
     try {
-      await setQty({ data: { id: item.id, qty: next } });
+      await setLevel({ data: { id: item.id, level_pct: pct } });
       refresh();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
   };
@@ -82,7 +89,7 @@ function CaddiesPage() {
     <AppShell>
       <PageHeader
         title="Caddy supplies"
-        subtitle="What each cleaner carries in their caddy — change it any time"
+        subtitle="Tap how full each item is — Full, 3/4, Half, 1/4 or Out"
         action={data.isManager ? (
           <BrandButton onClick={() => setShowTemplate(true)}>
             <Pencil className="size-4 mr-1.5" />Standard caddy list
@@ -113,21 +120,36 @@ function CaddiesPage() {
             ) : (
               <ul className="divide-y divide-border/60">
                 {emp.items.map((it) => (
-                  <li key={it.id} className="px-4 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate">{it.name}</div>
+                  <li key={it.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
+                    <div className="flex-1 min-w-[10rem]">
+                      <div className="truncate">
+                        {it.name}
+                        {it.qty > 1 && <span className="text-muted-foreground text-sm"> ×{it.qty} {it.unit}</span>}
+                      </div>
                       {it.notes && <div className="text-xs text-muted-foreground truncate">{it.notes}</div>}
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" className="size-8" onClick={() => bump(it, -1)}>
-                        <Minus className="size-4" />
-                      </Button>
-                      <div className="w-20 text-center tabular-nums text-sm">
-                        {it.qty} <span className="text-muted-foreground">{it.unit}</span>
+                      <div className="flex rounded-lg ring-1 ring-black/10 overflow-hidden">
+                        {LEVELS.map((l) => {
+                          const active = it.level_pct === l.pct;
+                          return (
+                            <button
+                              key={l.pct}
+                              type="button"
+                              onClick={() => pickLevel(it, l.pct)}
+                              className={`px-2.5 h-8 text-xs font-medium border-r last:border-r-0 border-black/10 transition-colors ${
+                                active
+                                  ? l.pct === 0
+                                    ? "bg-red-600 text-white"
+                                    : "bg-brand text-brand-foreground"
+                                  : "bg-background hover:bg-muted"
+                              }`}
+                            >
+                              {l.label}
+                            </button>
+                          );
+                        })}
                       </div>
-                      <Button variant="outline" size="icon" className="size-8" onClick={() => bump(it, 1)}>
-                        <Plus className="size-4" />
-                      </Button>
                       <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditItem(it)}>
                         <Pencil className="size-4" />
                       </Button>
