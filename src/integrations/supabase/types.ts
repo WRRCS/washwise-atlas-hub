@@ -707,6 +707,7 @@ export type Database = {
           employee_id: string
           id: string
           inventory_item_id: string | null
+          level_pct: number
           name: string
           notes: string | null
           qty: number
@@ -721,6 +722,7 @@ export type Database = {
           employee_id: string
           id?: string
           inventory_item_id?: string | null
+          level_pct?: number
           name: string
           notes?: string | null
           qty?: number
@@ -735,6 +737,7 @@ export type Database = {
           employee_id?: string
           id?: string
           inventory_item_id?: string | null
+          level_pct?: number
           name?: string
           notes?: string | null
           qty?: number
