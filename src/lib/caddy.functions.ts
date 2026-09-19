@@ -17,6 +17,8 @@ export type CaddyItem = {
   name: string;
   unit: string;
   qty: number;
+  /** How full the item is: 100 = full, 75, 50, 25, 0 = out */
+  level_pct: number;
   sort_order: number;
   notes: string | null;
 };
