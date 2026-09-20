@@ -219,6 +219,9 @@ function JobDetail() {
               );
             })()}
           </div>
+          {perms?.isOwner && (
+            <ScheduleCard jobId={jobId} startISO={job.scheduled_start} endISO={job.scheduled_end} />
+          )}
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Assignment</h4>
             {job.assignees && job.assignees.length ? (
