@@ -15,6 +15,7 @@ export type BusinessProfile = {
   logo_url: string | null;
   primary_color: string | null;
   invoice_prefix: string | null;
+  invoice_series: string | null;
   invoice_footer: string | null;
   payment_terms_days: number | null;
   late_fee_percent: number | null;
