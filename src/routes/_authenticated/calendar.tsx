@@ -441,6 +441,15 @@ function SchedulePage() {
                                   </div>
                                   {canManageSchedule && (
                                     <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                                      <EditTimesInline
+                                        tz={tz}
+                                        startISO={j.scheduled_start}
+                                        endISO={j.scheduled_end}
+                                        saving={moveMut.isPending}
+                                        onSave={(startISO, endISO) =>
+                                          moveMut.mutate({ id: j.id, start: new Date(startISO), end: new Date(endISO) })
+                                        }
+                                      />
                                        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                                          <Copy className="size-3" /> Drag this shift onto another team member to copy it.
                                        </p>
@@ -458,11 +467,16 @@ function SchedulePage() {
                                         type="button"
                                         disabled={deleteMut.isPending}
                                         onClick={() => {
-                                          if (window.confirm("Delete this shift? This cannot be undone.")) deleteMut.mutate(j.id);
+                                          const many = (j.assignees?.length ?? 0) > 1;
+                                          const msg = many
+                                            ? `Remove ${emp.full_name ?? "this team member"} from this shift? Everyone else stays scheduled.`
+                                            : "Delete this shift? This cannot be undone.";
+                                          if (window.confirm(msg)) deleteMut.mutate({ id: j.id, employeeId: emp.id });
                                         }}
                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 text-destructive text-[11px] font-medium py-1.5 hover:bg-destructive/10 disabled:opacity-50"
                                       >
-                                        <Trash2 className="size-3" /> Delete shift
+                                        <Trash2 className="size-3" />
+                                        {(j.assignees?.length ?? 0) > 1 ? "Remove from this person" : "Delete shift"}
                                       </button>
                                     </div>
                                   )}
