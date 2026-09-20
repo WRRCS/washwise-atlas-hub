@@ -610,6 +610,7 @@ export type Database = {
           is_active: boolean
           is_airbnb_host: boolean
           last_name: string | null
+          payment_terms_days: number | null
           phone: string | null
           service_address: string | null
           tenant_id: string
@@ -626,6 +627,7 @@ export type Database = {
           is_active?: boolean
           is_airbnb_host?: boolean
           last_name?: string | null
+          payment_terms_days?: number | null
           phone?: string | null
           service_address?: string | null
           tenant_id: string
@@ -642,6 +644,7 @@ export type Database = {
           is_active?: boolean
           is_airbnb_host?: boolean
           last_name?: string | null
+          payment_terms_days?: number | null
           phone?: string | null
           service_address?: string | null
           tenant_id?: string
@@ -1167,6 +1170,7 @@ export type Database = {
           number: string
           paid_at: string | null
           pay_link: string | null
+          payment_terms_days: number | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents: number
@@ -1190,6 +1194,7 @@ export type Database = {
           number: string
           paid_at?: string | null
           pay_link?: string | null
+          payment_terms_days?: number | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents?: number
@@ -1213,6 +1218,7 @@ export type Database = {
           number?: string
           paid_at?: string | null
           pay_link?: string | null
+          payment_terms_days?: number | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents?: number
@@ -2870,6 +2876,7 @@ export type Database = {
           id: string
           invoice_footer: string | null
           invoice_prefix: string | null
+          invoice_series: string | null
           late_fee_percent: number | null
           legal_name: string | null
           locale: string
@@ -2901,6 +2908,7 @@ export type Database = {
           id?: string
           invoice_footer?: string | null
           invoice_prefix?: string | null
+          invoice_series?: string | null
           late_fee_percent?: number | null
           legal_name?: string | null
           locale?: string
@@ -2932,6 +2940,7 @@ export type Database = {
           id?: string
           invoice_footer?: string | null
           invoice_prefix?: string | null
+          invoice_series?: string | null
           late_fee_percent?: number | null
           legal_name?: string | null
           locale?: string
