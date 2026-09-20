@@ -37,7 +37,12 @@ export const Route = createFileRoute("/_authenticated")({
     }
 
     // Subscription gate — canonical from RPC (grace_days lives server-side)
-    const { data: gate } = await supabase.rpc("get_my_subscription_gate");
+    const { data: gate, error: gateError } = await supabase.rpc("get_my_subscription_gate");
+    if (gateError) {
+      // Never leave a billing problem invisible: log it loudly instead of
+      // silently treating the account as in good standing.
+      console.error("Subscription gate check failed", gateError);
+    }
     const status = (gate as any)?.subscription_status as string | undefined;
     const changedAtStr = (gate as any)?.subscription_status_changed_at as string | undefined;
     const graceDays = (gate as any)?.grace_days ?? 7;
