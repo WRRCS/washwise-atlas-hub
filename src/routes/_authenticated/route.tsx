@@ -66,9 +66,18 @@ function useSubscriptionStatus() {
   return useQuery({
     queryKey: ["subscription-status-banner"],
     queryFn: async () => {
-      const { data } = await supabase.rpc("get_my_subscription_gate");
+      // Signed-out/expired sessions hit the RPC as `anon`, which is denied by
+      // design — skip the call instead of logging a permission error.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) return null;
+      const { data, error } = await supabase.rpc("get_my_subscription_gate");
+      if (error) {
+        console.error("Subscription status check failed", error);
+        throw error;
+      }
       return data as { subscription_status?: string; subscription_status_changed_at?: string } | null;
     },
+    retry: false,
     staleTime: 60_000,
   });
 }
