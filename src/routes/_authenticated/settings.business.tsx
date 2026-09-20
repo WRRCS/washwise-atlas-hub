@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getBusinessProfile, updateBusinessProfile, type BusinessProfile } from "@/lib/business-profile.functions";
+import { PAYMENT_TERMS } from "@/lib/payment-terms";
 import { getTenantGpsSettings, updateTenantGpsSettings, purgeExpiredGps } from "@/lib/time.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/business")({
