@@ -119,10 +119,11 @@ function SchedulePage() {
 
   const deleteFn = useServerFn(deleteJob);
   const deleteMut = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: () => {
+    mutationFn: (v: { id: string; employeeId?: string }) =>
+      deleteFn({ data: { id: v.id, employee_id: v.employeeId } }),
+    onSuccess: (r: any) => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      toast.success("Shift deleted");
+      toast.success(r?.unassigned ? "Removed from this team member" : "Shift deleted");
     },
     onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
   });
