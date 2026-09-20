@@ -57,6 +57,7 @@ function BusinessSettingsPage() {
           logo_url: p.logo_url ?? null,
           primary_color: p.primary_color ?? null,
           invoice_prefix: p.invoice_prefix ?? null,
+          invoice_series: p.invoice_series ?? null,
           invoice_footer: p.invoice_footer ?? null,
           payment_terms_days: p.payment_terms_days ?? null,
           late_fee_percent: p.late_fee_percent ?? null,
@@ -163,12 +164,27 @@ function BusinessSettingsPage() {
             <Field label="Invoice number prefix">
               <Input placeholder="WRR" value={form.invoice_prefix ?? ""} onChange={(e) => patch({ invoice_prefix: e.target.value })} />
             </Field>
-            <Field label="Payment terms (days)">
+            <Field label="Invoice number year / series">
               <Input
-                type="number" min={0} max={365}
-                value={form.payment_terms_days ?? 14}
-                onChange={(e) => patch({ payment_terms_days: Number(e.target.value) || 0 })}
+                placeholder="2026"
+                value={form.invoice_series ?? ""}
+                onChange={(e) => patch({ invoice_series: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                New invoices are numbered {(form.invoice_prefix || "WRR")}-{(form.invoice_series || "2026")}-001. Change this each year to start a new series.
+              </p>
+            </Field>
+            <Field label="Default payment terms">
+              <select
+                value={String(form.payment_terms_days ?? 14)}
+                onChange={(e) => patch({ payment_terms_days: Number(e.target.value) })}
+                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-clay-50"
+              >
+                {PAYMENT_TERMS.map((t) => <option key={t.days} value={t.days}>{t.label}</option>)}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Used for new invoices unless a client has their own terms.
+              </p>
             </Field>
             <Field label="Late fee (%)">
               <Input
