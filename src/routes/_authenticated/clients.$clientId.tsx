@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { format } from "date-fns";
 import {
   getClient, updateClient, deleteClient, myCapabilities,
@@ -134,6 +135,7 @@ type ClientRecord = {
   email: string | null; phone: string | null;
   billing_address: string | null; service_address: string | null;
   is_active: boolean; created_at?: string;
+  payment_terms_days?: number | null;
   client_sop?: string | null;
   spec?: Spec;
   notes: Array<{ id: string; note: string; created_at: string; author: string | null; visibility?: string | null; property_id?: string | null; job_id?: string | null }>;
@@ -200,6 +202,7 @@ function OverviewTab({ client, clientId, isManagement, onSaved }: {
             <Info label="Email" value={client.email} />
             <Info label="Phone" value={client.phone} />
             <Info label="Billing address" value={client.billing_address} />
+            <Info label="Payment terms" value={client.payment_terms_days == null ? "Business default" : termsLabel(client.payment_terms_days)} />
             <Info label="Preferred contact" value={client.email ? "Email" : client.phone ? "Phone" : null} />
             <div className="md:col-span-2">
               <Info label="Internal SOP / access notes" value={client.client_sop ?? client.spec?.access_notes ?? null} />
@@ -275,6 +278,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
     billing_address: client.billing_address ?? "",
     service_address: client.service_address ?? "",
     is_active: client.is_active,
+    payment_terms_days: client.payment_terms_days == null ? "" : String(client.payment_terms_days),
     client_sop: client.client_sop ?? "",
   });
 
@@ -293,6 +297,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
           billing_address: form.billing_address.trim() || undefined,
           service_address: form.service_address.trim() || undefined,
           is_active: form.is_active,
+          payment_terms_days: form.payment_terms_days === "" ? null : Number(form.payment_terms_days),
           client_sop: form.client_sop.trim(),
         },
       });
@@ -315,6 +320,16 @@ function ProfileForm({ client, onSaved, onCancel }: {
       </div>
       <FieldRow label="Service address"><Textarea rows={2} value={form.service_address} onChange={(e) => setForm({ ...form, service_address: e.target.value })} /></FieldRow>
       <FieldRow label="Billing address"><Textarea rows={2} value={form.billing_address} onChange={(e) => setForm({ ...form, billing_address: e.target.value })} /></FieldRow>
+      <FieldRow label="Payment terms">
+        <select
+          value={form.payment_terms_days}
+          onChange={(e) => setForm({ ...form, payment_terms_days: e.target.value })}
+          className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-clay-50"
+        >
+          <option value="">Use business default</option>
+          {PAYMENT_TERMS.map((t) => <option key={t.days} value={String(t.days)}>{t.label}</option>)}
+        </select>
+      </FieldRow>
       <div>
         <FieldRow label="Client-specific SOP (staff-only, shown on job view)">
           <Textarea

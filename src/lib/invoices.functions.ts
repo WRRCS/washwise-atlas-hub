@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderEmailForClientContext } from "@/lib/templates.functions";
 import { clientContact } from "@/lib/privacy";
+import { dueDateFrom } from "@/lib/payment-terms";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
@@ -51,7 +52,7 @@ export const getInvoice = createServerFn({ method: "POST" })
     const [{ data: inv, error }, { data: items, error: ie }] = await Promise.all([
       context.supabase
         .from("invoices")
-        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, service_address)")
+        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, payment_terms_days, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, service_address)")
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
@@ -289,23 +290,24 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
     }
     const toBundle = jobs; // include all jobs in the month once drafts cleared
 
-    // Next invoice number: WRR-YYYY-###
-    const yr = new Date().getFullYear();
-    const prefix = `WRR-${yr}-`;
-    const { data: existingNums } = await context.supabase
-      .from("invoices")
-      .select("number")
-      .eq("tenant_id", prof.tenant_id)
-      .like("number", `${prefix}%`);
-    const max = (existingNums ?? []).reduce((m, r) => {
-      const n = parseInt((r.number ?? "").slice(prefix.length), 10);
-      return Number.isFinite(n) && n > m ? n : m;
-    }, 0);
-    const number = `${prefix}${String(max + 1).padStart(3, "0")}`;
+    // Next invoice number uses the tenant's configured prefix + year series.
+    const { data: number, error: ne } = await context.supabase
+      .rpc("next_invoice_number", { _tenant: prof.tenant_id as string });
+    if (ne || !number) throw new Error(ne?.message ?? "Could not generate invoice number");
+
+    // Payment terms: client's own terms, else the business default, else Net 14.
+    const [{ data: clientRow }, { data: tenantRow }] = await Promise.all([
+      context.supabase.from("clients").select("payment_terms_days").eq("id", data.client_id).maybeSingle(),
+      context.supabase.from("tenants").select("payment_terms_days").eq("id", prof.tenant_id).maybeSingle(),
+    ]);
+    const terms =
+      (clientRow as { payment_terms_days?: number | null } | null)?.payment_terms_days ??
+      (tenantRow as { payment_terms_days?: number | null } | null)?.payment_terms_days ??
+      14;
 
     const subtotal = toBundle.reduce((sum, j) => sum + (j.price_cents ?? 0), 0);
     const today = new Date().toISOString().slice(0, 10);
-    const due = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const due = dueDateFrom(today, terms);
 
     const { data: invoice, error: ie } = await context.supabase
       .from("invoices")
@@ -322,6 +324,7 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
         amount_cents: subtotal,
         issue_date: today,
         due_date: due,
+        payment_terms_days: terms,
         cleanings_count: toBundle.length,
         bundle_month: `${data.month}-01`,
       })
@@ -372,4 +375,32 @@ export const previewMonthlyBundle = createServerFn({ method: "POST" })
       .order("scheduled_start");
     if (error) throw new Error(error.message);
     return jobs ?? [];
+  });
+
+
+// ============= Payment terms on a single invoice =============
+
+/** Change the payment terms on a draft invoice; the due date is recalculated. */
+export const setInvoiceTerms = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), payment_terms_days: z.number().int().min(0).max(365) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: inv, error: ge } = await context.supabase
+      .from("invoices").select("id, status, issue_date").eq("id", data.id).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!inv) throw new Error("Invoice not found");
+    if (inv.status !== "draft") throw new Error("Payment terms can only be changed while the invoice is a draft.");
+
+    const issue = (inv.issue_date ?? new Date().toISOString()).slice(0, 10);
+    const { error } = await context.supabase
+      .from("invoices")
+      .update({
+        payment_terms_days: data.payment_terms_days,
+        due_date: dueDateFrom(issue, data.payment_terms_days),
+      } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

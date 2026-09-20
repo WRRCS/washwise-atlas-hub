@@ -32,6 +32,7 @@ const clientSchema = z.object({
   billing_address: z.string().trim().max(300).optional(),
   service_address: z.string().trim().max(300).optional(),
   is_active: z.boolean().optional(),
+  payment_terms_days: z.coerce.number().int().min(0).max(365).nullable().optional(),
   // property_specs (optional, filled on creation)
   square_footage: z.coerce.number().int().nonnegative().optional().nullable(),
   bedrooms: z.coerce.number().int().nonnegative().optional().nullable(),
@@ -68,7 +69,8 @@ export const createClient = createServerFn({ method: "POST" })
         billing_address: data.billing_address || null,
         service_address: data.service_address || null,
         is_active: data.is_active ?? true,
-      })
+        payment_terms_days: data.payment_terms_days ?? null,
+      } as never)
       .select("id").single();
     if (error) throw new Error(error.message);
 
@@ -125,6 +127,7 @@ export const updateClient = createServerFn({ method: "POST" })
       billing_address: z.string().trim().max(300).optional(),
       service_address: z.string().trim().max(300).optional(),
       is_active: z.boolean().optional(),
+      payment_terms_days: z.coerce.number().int().min(0).max(365).nullable().optional(),
       client_sop: z.string().trim().max(4000).optional(),
     }).parse(input),
   )
@@ -137,9 +140,10 @@ export const updateClient = createServerFn({ method: "POST" })
       billing_address: data.billing_address || null,
       service_address: data.service_address || null,
       is_active: data.is_active ?? true,
+      ...(data.payment_terms_days !== undefined ? { payment_terms_days: data.payment_terms_days } : {}),
       ...(data.client_sop !== undefined ? { client_sop: data.client_sop || null } : {}),
     };
-    const { error } = await context.supabase.from("clients").update(patch).eq("id", data.id);
+    const { error } = await context.supabase.from("clients").update(patch as never).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -190,7 +194,7 @@ export const getClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: client, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, service_address, is_active, created_at")
+      .select("id, first_name, last_name, service_address, is_active, created_at, payment_terms_days")
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!client) return null;
