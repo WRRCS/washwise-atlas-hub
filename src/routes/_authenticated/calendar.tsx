@@ -820,3 +820,73 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+/** Inline start/end time editor for a scheduled shift (business timezone). */
+function EditTimesInline({
+  tz,
+  startISO,
+  endISO,
+  saving,
+  onSave,
+}: {
+  tz: string;
+  startISO: string;
+  endISO: string;
+  saving: boolean;
+  onSave: (startISO: string, endISO: string) => void;
+}) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const s = hourMinuteTZ(startISO, tz);
+  const e = hourMinuteTZ(endISO, tz);
+  const [day, setDay] = useState(() => dayKeyTZ(startISO, tz));
+  const [start, setStart] = useState(`${pad(s.hour)}:${pad(s.minute)}`);
+  const [end, setEnd] = useState(`${pad(e.hour)}:${pad(e.minute)}`);
+
+  const submit = () => {
+    const startUTC = zonedToUTCISO(day, start, tz);
+    let endUTC = zonedToUTCISO(day, end, tz);
+    if (new Date(endUTC) <= new Date(startUTC)) {
+      // treat as overnight
+      const next = new Date(new Date(`${day}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+      endUTC = zonedToUTCISO(next, end, tz);
+    }
+    onSave(startUTC, endUTC);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-medium inline-flex items-center gap-1">
+        <Clock className="size-3" /> Edit times
+      </p>
+      <input
+        type="date"
+        value={day}
+        onChange={(ev) => setDay(ev.target.value)}
+        className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+      />
+      <div className="flex items-center gap-1.5">
+        <input
+          type="time"
+          value={start}
+          onChange={(ev) => setStart(ev.target.value)}
+          className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+        />
+        <span className="text-[11px] text-muted-foreground">to</span>
+        <input
+          type="time"
+          value={end}
+          onChange={(ev) => setEnd(ev.target.value)}
+          className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+        />
+      </div>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={submit}
+        className="w-full rounded-md bg-brand text-brand-foreground text-[11px] font-medium py-1.5 hover:opacity-90 disabled:opacity-50"
+      >
+        Save times
+      </button>
+    </div>
+  );
+}
