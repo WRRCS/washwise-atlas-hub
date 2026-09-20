@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
-  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge,
+  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge, setInvoiceTerms,
 } from "@/lib/invoices.functions";
+import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
 import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functions";
 import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2 } from "lucide-react";
@@ -47,6 +48,7 @@ function InvoiceDetailPage() {
   const paidFn = useServerFn(markInvoicePaid);
   const cancelFn = useServerFn(cancelInvoice);
   const toggleFn = useServerFn(setCardSurcharge);
+  const termsFn = useServerFn(setInvoiceTerms);
 
   const { data: inv, isLoading } = useQuery({
     queryKey: ["invoice", invoiceId],
@@ -91,6 +93,29 @@ function InvoiceDetailPage() {
             <p className="font-medium">{inv.issue_date ? format(new Date(inv.issue_date), "PP") : "—"}</p>
             <p className="text-xs text-muted-foreground uppercase tracking-wider mt-3">Due</p>
             <p className="font-medium">{inv.due_date ? format(new Date(inv.due_date), "PP") : "—"}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mt-3">Payment terms</p>
+            {canEdit ? (
+              <select
+                value={String(inv.payment_terms_days ?? 14)}
+                onChange={async (e) => {
+                  try {
+                    await termsFn({ data: { id: inv.id, payment_terms_days: Number(e.target.value) } });
+                    toast.success("Payment terms updated");
+                    refresh();
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Failed");
+                  }
+                }}
+                className="w-full border border-border rounded-lg px-3 py-1.5 text-sm bg-clay-50"
+              >
+                {PAYMENT_TERMS.map((t) => <option key={t.days} value={t.days}>{t.label}</option>)}
+                {inv.payment_terms_days != null && !PAYMENT_TERMS.some((t) => t.days === inv.payment_terms_days) && (
+                  <option value={inv.payment_terms_days}>{termsLabel(inv.payment_terms_days)}</option>
+                )}
+              </select>
+            ) : (
+              <p className="font-medium">{termsLabel(inv.payment_terms_days ?? null)}</p>
+            )}
           </div>
           <div className="space-y-1 md:text-right">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Status</p>
