@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { getJob, toggleSopItem, updateJobStatus } from "@/lib/jobs.functions";
+import { getJob, toggleSopItem, updateJobStatus, moveJob } from "@/lib/jobs.functions";
 import { listJobGps, clockIn } from "@/lib/time.functions";
 import { captureGps } from "@/lib/geolocation";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
@@ -14,6 +14,8 @@ import { SopViewer } from "@/components/sop-viewer";
 import { usePick } from "@/lib/i18n";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
+import { useBusinessTz } from "@/hooks/use-business-tz";
+import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { Check, MessageSquare, Navigation, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -219,6 +221,9 @@ function JobDetail() {
               );
             })()}
           </div>
+          {perms?.isOwner && (
+            <ScheduleCard jobId={jobId} startISO={job.scheduled_start} endISO={job.scheduled_end} />
+          )}
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Assignment</h4>
             {job.assignees && job.assignees.length ? (
@@ -456,4 +461,73 @@ function GpsTab({ jobId }: { jobId: string }) {
     );
   }
   return <JobGpsMap entries={withGps} />;
+}
+
+/** Owner/manager: change the scheduled start and end times of a job. */
+function ScheduleCard({ jobId, startISO, endISO }: { jobId: string; startISO: string; endISO: string }) {
+  const qc = useQueryClient();
+  const tz = useBusinessTz();
+  const move = useServerFn(moveJob);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const s = hourMinuteTZ(startISO, tz);
+  const e = hourMinuteTZ(endISO, tz);
+  const [day, setDay] = useState(() => dayKeyTZ(startISO, tz));
+  const [start, setStart] = useState(`${pad(s.hour)}:${pad(s.minute)}`);
+  const [end, setEnd] = useState(`${pad(e.hour)}:${pad(e.minute)}`);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const startUTC = zonedToUTCISO(day, start, tz);
+      let endUTC = zonedToUTCISO(day, end, tz);
+      if (new Date(endUTC) <= new Date(startUTC)) {
+        const next = new Date(new Date(`${day}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+        endUTC = zonedToUTCISO(next, end, tz);
+      }
+      await move({ data: { id: jobId, scheduled_start: startUTC, scheduled_end: endUTC } });
+      toast.success("Times updated");
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["my-jobs"] });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not update times");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
+      <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Schedule</h4>
+      <input
+        type="date"
+        value={day}
+        onChange={(ev) => setDay(ev.target.value)}
+        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+      />
+      <div className="flex items-center gap-2">
+        <input
+          type="time"
+          value={start}
+          onChange={(ev) => setStart(ev.target.value)}
+          className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+        />
+        <span className="text-xs text-muted-foreground">to</span>
+        <input
+          type="time"
+          value={end}
+          onChange={(ev) => setEnd(ev.target.value)}
+          className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+        />
+      </div>
+      <button
+        onClick={save}
+        disabled={saving}
+        className="w-full text-sm font-medium bg-brand text-brand-foreground rounded-lg py-2 hover:opacity-90 disabled:opacity-50"
+      >
+        {saving ? "Saving…" : "Save times"}
+      </button>
+    </div>
+  );
 }

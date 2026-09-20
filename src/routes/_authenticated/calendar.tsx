@@ -119,10 +119,11 @@ function SchedulePage() {
 
   const deleteFn = useServerFn(deleteJob);
   const deleteMut = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: () => {
+    mutationFn: (v: { id: string; employeeId?: string }) =>
+      deleteFn({ data: { id: v.id, employee_id: v.employeeId } }),
+    onSuccess: (r: any) => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      toast.success("Shift deleted");
+      toast.success(r?.unassigned ? "Removed from this team member" : "Shift deleted");
     },
     onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
   });
@@ -440,6 +441,15 @@ function SchedulePage() {
                                   </div>
                                   {canManageSchedule && (
                                     <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                                      <EditTimesInline
+                                        tz={tz}
+                                        startISO={j.scheduled_start}
+                                        endISO={j.scheduled_end}
+                                        saving={moveMut.isPending}
+                                        onSave={(startISO, endISO) =>
+                                          moveMut.mutate({ id: j.id, start: new Date(startISO), end: new Date(endISO) })
+                                        }
+                                      />
                                        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                                          <Copy className="size-3" /> Drag this shift onto another team member to copy it.
                                        </p>
@@ -457,11 +467,16 @@ function SchedulePage() {
                                         type="button"
                                         disabled={deleteMut.isPending}
                                         onClick={() => {
-                                          if (window.confirm("Delete this shift? This cannot be undone.")) deleteMut.mutate(j.id);
+                                          const many = (j.assignees?.length ?? 0) > 1;
+                                          const msg = many
+                                            ? `Remove ${emp.full_name ?? "this team member"} from this shift? Everyone else stays scheduled.`
+                                            : "Delete this shift? This cannot be undone.";
+                                          if (window.confirm(msg)) deleteMut.mutate({ id: j.id, employeeId: emp.id });
                                         }}
                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 text-destructive text-[11px] font-medium py-1.5 hover:bg-destructive/10 disabled:opacity-50"
                                       >
-                                        <Trash2 className="size-3" /> Delete shift
+                                        <Trash2 className="size-3" />
+                                        {(j.assignees?.length ?? 0) > 1 ? "Remove from this person" : "Delete shift"}
                                       </button>
                                     </div>
                                   )}
@@ -802,6 +817,76 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1.5">
       <Label>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+/** Inline start/end time editor for a scheduled shift (business timezone). */
+function EditTimesInline({
+  tz,
+  startISO,
+  endISO,
+  saving,
+  onSave,
+}: {
+  tz: string;
+  startISO: string;
+  endISO: string;
+  saving: boolean;
+  onSave: (startISO: string, endISO: string) => void;
+}) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const s = hourMinuteTZ(startISO, tz);
+  const e = hourMinuteTZ(endISO, tz);
+  const [day, setDay] = useState(() => dayKeyTZ(startISO, tz));
+  const [start, setStart] = useState(`${pad(s.hour)}:${pad(s.minute)}`);
+  const [end, setEnd] = useState(`${pad(e.hour)}:${pad(e.minute)}`);
+
+  const submit = () => {
+    const startUTC = zonedToUTCISO(day, start, tz);
+    let endUTC = zonedToUTCISO(day, end, tz);
+    if (new Date(endUTC) <= new Date(startUTC)) {
+      // treat as overnight
+      const next = new Date(new Date(`${day}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+      endUTC = zonedToUTCISO(next, end, tz);
+    }
+    onSave(startUTC, endUTC);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-medium inline-flex items-center gap-1">
+        <Clock className="size-3" /> Edit times
+      </p>
+      <input
+        type="date"
+        value={day}
+        onChange={(ev) => setDay(ev.target.value)}
+        className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+      />
+      <div className="flex items-center gap-1.5">
+        <input
+          type="time"
+          value={start}
+          onChange={(ev) => setStart(ev.target.value)}
+          className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+        />
+        <span className="text-[11px] text-muted-foreground">to</span>
+        <input
+          type="time"
+          value={end}
+          onChange={(ev) => setEnd(ev.target.value)}
+          className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+        />
+      </div>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={submit}
+        className="w-full rounded-md bg-brand text-brand-foreground text-[11px] font-medium py-1.5 hover:opacity-90 disabled:opacity-50"
+      >
+        Save times
+      </button>
     </div>
   );
 }
