@@ -335,16 +335,47 @@ export const extendRecurringNow = createServerFn({ method: "POST" })
     return await extendRecurringSeries(context.supabase, { tenantId: prof.tenant_id, maxGroups: 100 });
   });
 
-/** Owner/manager action: permanently remove a scheduled shift. */
+/**
+ * Owner/manager action: remove a scheduled shift.
+ * When employee_id is given and other people are still assigned to the same
+ * shift, only that person is taken off it — the shift stays for everyone else.
+ */
 export const deleteJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => input)
+  .inputValidator((input: { id: string; employee_id?: string }) => input)
   .handler(async ({ data, context }) => {
+    if (data.employee_id) {
+      const { data: links } = await context.supabase
+        .from("job_employees")
+        .select("employee_id")
+        .eq("job_id", data.id);
+      const others = (links ?? []).filter((l: any) => l.employee_id !== data.employee_id);
+      if (others.length) {
+        const { error: unErr } = await context.supabase
+          .from("job_employees")
+          .delete()
+          .eq("job_id", data.id)
+          .eq("employee_id", data.employee_id);
+        if (unErr) throw new Error(unErr.message);
+        const { data: job } = await context.supabase
+          .from("jobs")
+          .select("assigned_to")
+          .eq("id", data.id)
+          .maybeSingle();
+        if ((job as any)?.assigned_to === data.employee_id) {
+          await context.supabase
+            .from("jobs")
+            .update({ assigned_to: (others[0] as any).employee_id })
+            .eq("id", data.id);
+        }
+        return { ok: true, unassigned: true as const };
+      }
+    }
     await context.supabase.from("job_employees").delete().eq("job_id", data.id);
     await context.supabase.from("job_sop_items").delete().eq("job_id", data.id);
     const { error } = await context.supabase.from("jobs").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, unassigned: false as const };
   });
 
 /** Copy an existing shift onto another employee (optionally another day). */
