@@ -31,7 +31,7 @@ export const getBusinessProfile = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("tenants")
       .select(
-        "id,name,legal_name,slug,business_email,business_phone,address,website,timezone,logo_url,primary_color,invoice_prefix,invoice_footer,payment_terms_days,late_fee_percent,reminder_lead_hours",
+        "id,name,legal_name,slug,business_email,business_phone,address,website,timezone,logo_url,primary_color,invoice_prefix,invoice_series,invoice_footer,payment_terms_days,late_fee_percent,reminder_lead_hours",
       )
       .eq("id", profile.tenant_id)
       .maybeSingle();
@@ -50,6 +50,7 @@ const patchSchema = z.object({
   logo_url: z.string().trim().max(500).nullable().optional(),
   primary_color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   invoice_prefix: z.string().trim().max(20).nullable().optional(),
+  invoice_series: z.string().trim().max(20).nullable().optional(),
   invoice_footer: z.string().trim().max(1000).nullable().optional(),
   payment_terms_days: z.number().int().min(0).max(365).nullable().optional(),
   late_fee_percent: z.number().min(0).max(100).nullable().optional(),
@@ -74,7 +75,7 @@ export const updateBusinessProfile = createServerFn({ method: "POST" })
     const patch: BusinessProfilePatch = { ...data };
     const nullableStrings: (keyof BusinessProfilePatch)[] = [
       "website", "logo_url", "legal_name", "business_email", "business_phone",
-      "address", "invoice_prefix", "invoice_footer",
+      "address", "invoice_prefix", "invoice_series", "invoice_footer",
     ];
     for (const key of nullableStrings) {
       if (patch[key] === "") (patch as any)[key] = null;
