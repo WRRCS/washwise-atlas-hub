@@ -17,6 +17,7 @@ import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
   listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
 } from "@/lib/entities.functions";
+import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   component: Employees,
@@ -65,7 +66,8 @@ function Employees() {
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
+  const [addOpen, setAddOpen] = useState(false);
+  const [invite, setInvite] = useState<{ full_name: string; email: string; phone: string; temporary_password: string; profile_id?: string }>({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
@@ -242,8 +244,14 @@ function Employees() {
       <PageHeader
         title="Employees"
         subtitle="Cleaners on your team"
-        action={<BrandButton onClick={() => setInviteOpen(true)}>Create employee access</BrandButton>}
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setAddOpen(true)}>Add employee</Button>
+            <BrandButton onClick={() => { setInvite({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: undefined }); setInviteOpen(true); }}>Create employee access</BrandButton>
+          </div>
+        }
       />
+      <AddEmployeeDialog open={addOpen} onOpenChange={setAddOpen} />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
         {canManage && (
           <div className="bg-white rounded-xl ring-1 ring-black/5 p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
@@ -270,6 +278,10 @@ function Employees() {
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
               onCopyInvite={() => copyInvite(e)}
+              onGiveAccess={() => {
+                setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: e.id });
+                setInviteOpen(true);
+              }}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
               onDelete={() => removeEmployee(e)}
               onChangeRole={(r) => changeRole(e, r)}
@@ -433,7 +445,7 @@ const EMPTY_PERMS = {
   can_view_wages: false,
 };
 
-function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onDeactivate, onDelete, onChangeRole }: {
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
   e: Employee;
   isOwnerViewer: boolean;
   perms: PermsRow | null;
@@ -441,6 +453,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
   onEdit: () => void;
   onImpersonate: () => void;
   onCopyInvite: () => void;
+  onGiveAccess?: () => void;
   onDeactivate: () => void;
   onDelete?: () => void;
 
@@ -547,6 +560,11 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       </div>
       <div className="text-sm text-muted-foreground">{formatLast(e.last_sign_in_at)}</div>
       <div className="flex items-center gap-2 justify-end flex-wrap">
+        {onGiveAccess && !e.last_sign_in_at && e.role !== "owner" && (
+          <Button size="sm" variant="ghost" onClick={onGiveAccess} title="Create a sign-in for this person">
+            <ShieldCheck className="size-3.5 mr-1.5" /> App access
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={onCopyInvite} title="Copy the app link and sign-in steps for this person">
           <Copy className="size-3.5 mr-1.5" /> Invite
         </Button>

@@ -16,6 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Phone, Send, Users2, Megaphone } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { AddEmployeeDialog } from "@/components/add-employee-dialog";
+import { myCapabilities } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/team")({
   component: TeamPage,
@@ -26,9 +29,17 @@ export const Route = createFileRoute("/_authenticated/team")({
 
 function TeamPage() {
   const t = useT();
+  const capsFn = useServerFn(myCapabilities);
+  const { data: caps } = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
+  const [addOpen, setAddOpen] = useState(false);
   return (
     <AppShell>
-      <PageHeader title={t("Team")} subtitle={t("Your teammates and internal chat")} />
+      <PageHeader
+        title={t("Team")}
+        subtitle={t("Your teammates and internal chat")}
+        action={caps?.canManage ? <Button onClick={() => setAddOpen(true)}>Add employee</Button> : undefined}
+      />
+      <AddEmployeeDialog open={addOpen} onOpenChange={setAddOpen} />
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
         <Tabs defaultValue="roster">
           <TabsList>

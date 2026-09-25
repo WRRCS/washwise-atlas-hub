@@ -498,6 +498,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       full_name: z.string().trim().min(1).max(120),
       phone: z.string().trim().max(40).optional(),
       temporary_password: z.string().min(8).max(128),
+      profile_id: z.string().uuid().optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -550,12 +551,22 @@ export const inviteEmployee = createServerFn({ method: "POST" })
 
     let userId: string | undefined;
     let createdNewUser = false;
+    // If this person was already added without app access, reuse their
+    // record id so the login links to their existing shifts and history.
+    let existingProfileId: string | undefined;
+    if (data.profile_id) {
+      const { data: p } = await supabaseAdmin
+        .from("profiles").select("id, tenant_id").eq("id", data.profile_id).maybeSingle();
+      if (!p || p.tenant_id !== tenantId) throw new Error("Employee not found in your business");
+      existingProfileId = p.id;
+    }
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      ...(existingProfileId ? { id: existingProfileId } : {}),
       email: data.email,
       password: data.temporary_password,
       email_confirm: true,
       user_metadata: { full_name: data.full_name },
-    });
+    } as any);
     if (error) {
       const alreadyExists = /already been registered|already registered|email_exists/i.test(error.message);
       if (!alreadyExists) throw new Error(error.message);
@@ -616,6 +627,47 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     }
 
     return { ok: true };
+  });
+
+/**
+ * Add a team member without giving them app access yet. They can be put on
+ * the schedule right away; app access can be created later from Employees.
+ */
+export const addEmployee = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      full_name: z.string().trim().min(1).max(120),
+      email: z.string().trim().email().optional().or(z.literal("")),
+      phone: z.string().trim().max(40).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+    if (!allowed) throw new Error("You don't have permission to add employees");
+    const { data: me } = await context.supabase
+      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (!me?.tenant_id) throw new Error("Could not resolve your business");
+    const tenantId = me.tenant_id as string;
+    const email = data.email ? data.email.toLowerCase() : null;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (email) {
+      const { data: dupe } = await supabaseAdmin.from("profiles").select("id").eq("email", email).maybeSingle();
+      if (dupe) throw new Error("Someone with that email is already on the team");
+    }
+    const id = crypto.randomUUID();
+    const { error: pErr } = await supabaseAdmin.from("profiles").insert({
+      id, tenant_id: tenantId, full_name: data.full_name, email, phone: data.phone || null, is_active: true,
+    } as any);
+    if (pErr) throw new Error(pErr.message);
+    const { error: rErr } = await supabaseAdmin
+      .from("user_roles").insert({ user_id: id, tenant_id: tenantId, role: "employee" });
+    if (rErr) {
+      await supabaseAdmin.from("profiles").delete().eq("id", id);
+      throw new Error(rErr.message);
+    }
+    return { ok: true, id };
   });
 
 export const updateEmployee = createServerFn({ method: "POST" })
