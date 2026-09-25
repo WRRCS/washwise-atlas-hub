@@ -20,6 +20,7 @@ import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { ZoomPanSurface } from "@/components/zoom-pan-surface";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
+import { JobDetailView } from "./jobs.$jobId";
 
 
 
@@ -203,6 +204,7 @@ function SchedulePage() {
   const draftCount = jobs.filter((j: any) => !j.published_at).length;
 
   const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string } | null>(null);
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
 
   const pasteShift = (employeeId: string, day: Date) => {
     if (!copiedShift || !canManageSchedule) return;
@@ -592,6 +594,20 @@ function SchedulePage() {
           </button>
         </div>
       )}
+      <Dialog
+        open={!!openJobId}
+        onOpenChange={(o) => {
+          if (!o) {
+            setOpenJobId(null);
+            qc.invalidateQueries();
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="sr-only"><DialogTitle>Job details</DialogTitle></DialogHeader>
+          {openJobId && <JobDetailView jobId={openJobId} />}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
