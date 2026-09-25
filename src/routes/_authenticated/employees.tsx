@@ -17,6 +17,7 @@ import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
   listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
 } from "@/lib/entities.functions";
+import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   component: Employees,
@@ -65,7 +66,8 @@ function Employees() {
   );
 
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [invite, setInvite] = useState({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
+  const [addOpen, setAddOpen] = useState(false);
+  const [invite, setInvite] = useState<{ full_name: string; email: string; phone: string; temporary_password: string; profile_id?: string }>({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
@@ -250,8 +252,6 @@ function Employees() {
         }
       />
       <AddEmployeeDialog open={addOpen} onOpenChange={setAddOpen} />
-      <div className="hidden">
-      />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
         {canManage && (
           <div className="bg-white rounded-xl ring-1 ring-black/5 p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
