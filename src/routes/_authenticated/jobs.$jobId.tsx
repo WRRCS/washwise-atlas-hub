@@ -30,6 +30,11 @@ function fmtCents(c: number | null) { return c == null ? "—" : `$${(c / 100).t
 
 function JobDetail() {
   const { jobId } = useParams({ from: "/_authenticated/jobs/$jobId" });
+  return <JobDetailView jobId={jobId} />;
+}
+
+/** Job detail body — also shown in a pop-up on the schedule. */
+export function JobDetailView({ jobId }: { jobId: string }) {
   const qc = useQueryClient();
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);

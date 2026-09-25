@@ -435,9 +435,9 @@ function SchedulePage() {
                                     >
                                       Reset to default
                                     </button>
-                                    <Link to="/jobs/$jobId" params={{ jobId: j.id }} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
+                                    <button type="button" onClick={() => setOpenJobId(j.id)} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
                                       Open job <ExternalLink className="size-3" />
-                                    </Link>
+                                    </button>
                                   </div>
                                   {canManageSchedule && (
                                     <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
