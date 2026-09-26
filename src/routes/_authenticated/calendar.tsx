@@ -214,6 +214,9 @@ function SchedulePage() {
   }, [cleaners, jobsByEmpDay]);
 
   const draftCount = jobs.filter((j: any) => !j.published_at).length;
+  const pastOpenIds = jobs
+    .filter((j: any) => (j.status === "scheduled" || j.status === "in_progress") && new Date(j.scheduled_end).getTime() < Date.now())
+    .map((j: any) => j.id as string);
 
   const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string } | null>(null);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
