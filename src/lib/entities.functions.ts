@@ -33,6 +33,10 @@ const clientSchema = z.object({
   service_address: z.string().trim().max(300).optional(),
   is_active: z.boolean().optional(),
   payment_terms_days: z.coerce.number().int().min(0).max(365).nullable().optional(),
+  company_name: z.string().trim().max(120).optional(),
+  secondary_phone: z.string().trim().max(40).optional(),
+  lead_source: z.string().trim().max(120).optional(),
+  client_sop: z.string().trim().max(12000).optional(),
   // property_specs (optional, filled on creation)
   square_footage: z.coerce.number().int().nonnegative().optional().nullable(),
   bedrooms: z.coerce.number().int().nonnegative().optional().nullable(),
@@ -70,6 +74,10 @@ export const createClient = createServerFn({ method: "POST" })
         service_address: data.service_address || null,
         is_active: data.is_active ?? true,
         payment_terms_days: data.payment_terms_days ?? null,
+        company_name: data.company_name || null,
+        secondary_phone: data.secondary_phone || null,
+        lead_source: data.lead_source || null,
+        client_sop: data.client_sop || null,
       } as never)
       .select("id").single();
     if (error) throw new Error(error.message);
