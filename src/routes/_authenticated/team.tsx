@@ -13,12 +13,17 @@ import {
 } from "@/lib/team.functions";
 import { useT } from "@/lib/i18n";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Phone, Send, Users2, Megaphone } from "lucide-react";
+import { Mail, Phone, Send, Users2, Megaphone, Pencil, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
-import { myCapabilities } from "@/lib/entities.functions";
+import { myCapabilities, updateEmployee } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/team")({
   component: TeamPage,
@@ -47,7 +52,7 @@ function TeamPage() {
             <TabsTrigger value="messages">{t("Team messages")}</TabsTrigger>
           </TabsList>
           <TabsContent value="roster" className="mt-4">
-            <RosterView />
+            <RosterView canManage={!!caps?.canManage} />
           </TabsContent>
           <TabsContent value="messages" className="mt-4">
             <TeamMessagesView />
@@ -70,9 +75,48 @@ function initialsOf(name: string | null) {
   );
 }
 
-function RosterView() {
+function RosterView({ canManage }: { canManage: boolean }) {
+  const qc = useQueryClient();
   const rosterFn = useServerFn(listTeamRoster);
+  const updateFn = useServerFn(updateEmployee);
   const q = useQuery({ queryKey: ["team-roster"], queryFn: () => rosterFn() });
+  const [editing, setEditing] = useState<TeamMember | null>(null);
+  const [form, setForm] = useState({ full_name: "", address: "", phone: "", email: "" });
+  const [saving, setSaving] = useState(false);
+
+  const openEdit = (m: TeamMember) => {
+    setEditing(m);
+    setForm({
+      full_name: m.full_name ?? "",
+      address: m.address ?? "",
+      phone: m.phone ?? "",
+      email: m.email ?? "",
+    });
+  };
+
+  const save = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await updateFn({
+        data: {
+          id: editing.id,
+          full_name: form.full_name.trim() || undefined,
+          address: form.address.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+        },
+      });
+      toast.success("Team member updated");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["team-roster"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   const members = q.data ?? [];
   if (!members.length)
@@ -83,15 +127,48 @@ function RosterView() {
   const anyContact = members.some((m) => m.email || m.phone);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {members.map((m) => (
-        <RosterCard key={m.id} member={m} showContact={anyContact} />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {members.map((m) => (
+          <RosterCard key={m.id} member={m} showContact={anyContact} canManage={canManage} onEdit={() => openEdit(m)} />
+        ))}
+      </div>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit {editing?.full_name ?? "team member"}</DialogTitle>
+            <DialogDescription>Update their contact details.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="tm-name">Name</Label>
+              <Input id="tm-name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tm-address">Address</Label>
+              <Input id="tm-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, city, state, zip" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tm-phone">Phone number</Label>
+              <Input id="tm-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tm-email">Email</Label>
+              <Input id="tm-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
-function RosterCard({ member, showContact }: { member: TeamMember; showContact: boolean }) {
+function RosterCard({ member, showContact, canManage, onEdit }: { member: TeamMember; showContact: boolean; canManage: boolean; onEdit: () => void }) {
   return (
     <article className="bg-clay-50 border border-border/60 rounded-xl p-4 ring-1 ring-black/5 flex items-center gap-4">
       <div className="size-12 rounded-full bg-clay-200 overflow-hidden grid place-items-center text-sm font-medium shrink-0">
@@ -104,21 +181,22 @@ function RosterCard({ member, showContact }: { member: TeamMember; showContact: 
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate">{member.full_name ?? "—"}</p>
         <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
-        {showContact && (member.email || member.phone) && (
-          <div className="mt-1 space-y-0.5">
-            {member.email && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                <Mail className="size-3 shrink-0" /> {member.email}
-              </p>
-            )}
-            {member.phone && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Phone className="size-3 shrink-0" /> {member.phone}
-              </p>
-            )}
-          </div>
+        {showContact && member.phone && (
+          <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+            <Phone className="size-3 shrink-0" /> {member.phone}
+          </p>
+        )}
+        {canManage && member.address && (
+          <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1 truncate">
+            <MapPin className="size-3 shrink-0" /> {member.address}
+          </p>
         )}
       </div>
+      {canManage && (
+        <Button size="sm" variant="ghost" onClick={onEdit} title="Edit this person's info">
+          <Pencil className="size-3.5" />
+        </Button>
+      )}
     </article>
   );
 }
