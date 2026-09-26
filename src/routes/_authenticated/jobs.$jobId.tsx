@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { getJob, toggleSopItem, updateJobStatus, moveJob } from "@/lib/jobs.functions";
+import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
 import { listJobGps, clockIn } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { captureGps } from "@/lib/geolocation";
@@ -70,6 +70,7 @@ export function JobDetailView({ jobId }: { jobId: string }) {
   const qc = useQueryClient();
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
+  const confirmSop = useServerFn(confirmJobSop);
   const setStatus = useServerFn(updateJobStatus);
   const doClockIn = useServerFn(clockIn);
   const [starting, setStarting] = useState(false);
@@ -347,6 +348,33 @@ export function JobDetailView({ jobId }: { jobId: string }) {
               <h4 className="text-xs uppercase tracking-wider text-brand">Client-specific SOP</h4>
               <p className="text-[11px] text-muted-foreground">Applies to this client on top of the standard service SOP.</p>
               <p className="text-sm whitespace-pre-wrap">{job.client.client_sop}</p>
+              {(() => {
+                const confirmedAt = (job as { sop_confirmed_at?: string | null }).sop_confirmed_at;
+                return (
+                  <label className={`mt-3 flex items-start gap-3 rounded-lg p-3 ring-1 cursor-pointer ${confirmedAt ? "bg-brand/10 ring-brand/30" : "bg-clay-50 ring-border"}`}>
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-5 accent-[var(--color-brand)]"
+                      checked={!!confirmedAt}
+                      onChange={async (e) => {
+                        try {
+                          await confirmSop({ data: { job_id: job.id, confirmed: e.target.checked } });
+                          qc.invalidateQueries({ queryKey: ["job", jobId] });
+                          toast.success(e.target.checked ? "SOP confirmed" : "Confirmation removed");
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Could not save");
+                        }
+                      }}
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">I followed this SOP</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {confirmedAt ? `Confirmed ${format(new Date(confirmedAt), "PP p")}` : "Check this when every step is done."}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })()}
             </div>
           )}
 

@@ -137,6 +137,9 @@ type ClientRecord = {
   is_active: boolean; created_at?: string;
   payment_terms_days?: number | null;
   client_sop?: string | null;
+  company_name?: string | null;
+  secondary_phone?: string | null;
+  lead_source?: string | null;
   spec?: Spec;
   notes: Array<{ id: string; note: string; created_at: string; author: string | null; visibility?: string | null; property_id?: string | null; job_id?: string | null }>;
   photos: Array<{ id: string; storage_path: string; caption: string | null; uploaded_at: string; url: string | null }>;
@@ -183,8 +186,15 @@ function OverviewTab({ client, clientId, isManagement, onSaved }: {
           <h3 className="text-sm font-medium">Client information</h3>
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit client</Button>
         </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className={`text-[11px] px-2 py-0.5 rounded-full ${client.is_active ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground"}`}>● {client.is_active ? "Active" : "Previous"}</span>
+          </div>
+          <h2 className="text-2xl font-bold mt-2">{client.company_name || name}</h2>
+          {client.company_name && <p className="text-base text-muted-foreground font-medium">{name}</p>}
+        </div>
         <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-          <Info label="Client name" value={name} />
+          <Info label="Contact name" value={name} />
           <Info label="Status" value={client.is_active ? "Current" : "Previous client"} />
           <Info label="Service address" value={client.service_address} />
           <Info label="Client since" value={client.created_at ? format(new Date(client.created_at), "PP") : null} />
@@ -199,8 +209,10 @@ function OverviewTab({ client, clientId, isManagement, onSaved }: {
         </div>
         {isManagement ? (
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            <Info label="Email" value={client.email} />
-            <Info label="Phone" value={client.phone} />
+            <Info label="Main email" value={client.email} />
+            <Info label="Main phone" value={client.phone} />
+            <Info label="Second phone" value={client.secondary_phone ?? null} />
+            <Info label="Lead source" value={client.lead_source ?? null} />
             <Info label="Billing address" value={client.billing_address} />
             <Info label="Payment terms" value={client.payment_terms_days == null ? "Business default" : termsLabel(client.payment_terms_days)} />
             <Info label="Preferred contact" value={client.email ? "Email" : client.phone ? "Phone" : null} />
@@ -280,6 +292,9 @@ function ProfileForm({ client, onSaved, onCancel }: {
     is_active: client.is_active,
     payment_terms_days: client.payment_terms_days == null ? "" : String(client.payment_terms_days),
     client_sop: client.client_sop ?? "",
+    company_name: client.company_name ?? "",
+    secondary_phone: client.secondary_phone ?? "",
+    lead_source: client.lead_source ?? "",
   });
 
   const submit = async (e: React.FormEvent) => {
@@ -299,6 +314,9 @@ function ProfileForm({ client, onSaved, onCancel }: {
           is_active: form.is_active,
           payment_terms_days: form.payment_terms_days === "" ? null : Number(form.payment_terms_days),
           client_sop: form.client_sop.trim(),
+          company_name: form.company_name.trim(),
+          secondary_phone: form.secondary_phone.trim(),
+          lead_source: form.lead_source.trim(),
         },
       });
       toast.success("Saved");
@@ -313,10 +331,15 @@ function ProfileForm({ client, onSaved, onCancel }: {
   return (
     <form onSubmit={submit} className="bg-card p-6 rounded-xl ring-1 ring-black/5 space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <FieldRow label="First name *"><Input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required /></FieldRow>
-        <FieldRow label="Last name"><Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></FieldRow>
-        <FieldRow label="Email"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></FieldRow>
-        <FieldRow label="Phone"><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></FieldRow>
+        <div className="md:col-span-2">
+          <FieldRow label="Company name"><Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder="e.g. Ryan's Outdoor" /></FieldRow>
+        </div>
+        <FieldRow label="Contact first name(s) *"><Input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder="e.g. Sean & Staci" required /></FieldRow>
+        <FieldRow label="Contact last name"><Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></FieldRow>
+        <FieldRow label="Main phone"><Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></FieldRow>
+        <FieldRow label="Second phone"><Input type="tel" value={form.secondary_phone} onChange={(e) => setForm({ ...form, secondary_phone: e.target.value })} /></FieldRow>
+        <FieldRow label="Main email"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></FieldRow>
+        <FieldRow label="Lead source"><Input value={form.lead_source} onChange={(e) => setForm({ ...form, lead_source: e.target.value })} placeholder="e.g. Referral, Google, Airbnb" /></FieldRow>
       </div>
       <FieldRow label="Service address"><Textarea rows={2} value={form.service_address} onChange={(e) => setForm({ ...form, service_address: e.target.value })} /></FieldRow>
       <FieldRow label="Billing address"><Textarea rows={2} value={form.billing_address} onChange={(e) => setForm({ ...form, billing_address: e.target.value })} /></FieldRow>
@@ -333,7 +356,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
       <div>
         <FieldRow label="Client-specific SOP (staff-only, shown on job view)">
           <Textarea
-            rows={4}
+            rows={10}
             value={form.client_sop}
             onChange={(e) => setForm({ ...form, client_sop: e.target.value })}
             placeholder="e.g. Microfiber cloths only, no bleach products. Feed the cat before leaving."

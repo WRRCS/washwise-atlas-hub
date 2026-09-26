@@ -237,7 +237,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   const create = useServerFn(createClient);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    first_name: "", last_name: "", email: "", phone: "",
+    first_name: "", last_name: "", email: "", phone: "", company_name: "", secondary_phone: "", lead_source: "", client_sop: "",
     billing_address: "", service_address: "",
     property_label: "", property_type: "", service_frequency: "",
     square_footage: "", bedrooms: "", bathrooms: "",
@@ -245,7 +245,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   });
 
   const reset = () => setForm({
-    first_name: "", last_name: "", email: "", phone: "",
+    first_name: "", last_name: "", email: "", phone: "", company_name: "", secondary_phone: "", lead_source: "", client_sop: "",
     billing_address: "", service_address: "",
     property_label: "", property_type: "", service_frequency: "",
 
@@ -273,6 +273,10 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
           service_frequency: form.service_frequency.trim() || undefined,
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
+          company_name: form.company_name.trim() || undefined,
+          secondary_phone: form.secondary_phone.trim() || undefined,
+          lead_source: form.lead_source.trim() || undefined,
+          client_sop: form.client_sop.trim() || undefined,
           email: form.email.trim() || undefined,
           phone: form.phone.trim() || undefined,
           billing_address: form.billing_address.trim() || undefined,
@@ -312,11 +316,19 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
           <section className="space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Contact</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="First name *"><Input value={form.first_name} onChange={upd("first_name")} required /></Field>
-              <Field label="Last name"><Input value={form.last_name} onChange={upd("last_name")} /></Field>
-              <Field label="Email"><Input type="email" value={form.email} onChange={upd("email")} /></Field>
-              <Field label="Phone"><Input value={form.phone} onChange={upd("phone")} /></Field>
+              <div className="md:col-span-2"><Field label="Company name"><Input value={form.company_name} onChange={upd("company_name")} placeholder="e.g. Ryan's Outdoor" /></Field></div>
+              <Field label="Contact first name(s) *"><Input value={form.first_name} onChange={upd("first_name")} placeholder="e.g. Sean & Staci" required /></Field>
+              <Field label="Contact last name"><Input value={form.last_name} onChange={upd("last_name")} /></Field>
+              <Field label="Main phone"><Input type="tel" value={form.phone} onChange={upd("phone")} /></Field>
+              <Field label="Second phone"><Input type="tel" value={form.secondary_phone} onChange={upd("secondary_phone")} /></Field>
+              <Field label="Main email"><Input type="email" value={form.email} onChange={upd("email")} /></Field>
+              <Field label="Lead source"><Input value={form.lead_source} onChange={upd("lead_source")} placeholder="Referral, Google, Airbnb…" /></Field>
             </div>
+          </section>
+
+          <section className="space-y-3">
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Client SOP (staff see this on every job)</h4>
+            <Textarea rows={6} value={form.client_sop} onChange={upd("client_sop")} placeholder="Paste the client's SOP — gate codes, room-by-room steps, special rules." />
           </section>
 
           <section className="space-y-3">

@@ -33,6 +33,10 @@ const clientSchema = z.object({
   service_address: z.string().trim().max(300).optional(),
   is_active: z.boolean().optional(),
   payment_terms_days: z.coerce.number().int().min(0).max(365).nullable().optional(),
+  company_name: z.string().trim().max(120).optional(),
+  secondary_phone: z.string().trim().max(40).optional(),
+  lead_source: z.string().trim().max(120).optional(),
+  client_sop: z.string().trim().max(12000).optional(),
   // property_specs (optional, filled on creation)
   square_footage: z.coerce.number().int().nonnegative().optional().nullable(),
   bedrooms: z.coerce.number().int().nonnegative().optional().nullable(),
@@ -70,6 +74,10 @@ export const createClient = createServerFn({ method: "POST" })
         service_address: data.service_address || null,
         is_active: data.is_active ?? true,
         payment_terms_days: data.payment_terms_days ?? null,
+        company_name: data.company_name || null,
+        secondary_phone: data.secondary_phone || null,
+        lead_source: data.lead_source || null,
+        client_sop: data.client_sop || null,
       } as never)
       .select("id").single();
     if (error) throw new Error(error.message);
@@ -128,7 +136,10 @@ export const updateClient = createServerFn({ method: "POST" })
       service_address: z.string().trim().max(300).optional(),
       is_active: z.boolean().optional(),
       payment_terms_days: z.coerce.number().int().min(0).max(365).nullable().optional(),
-      client_sop: z.string().trim().max(4000).optional(),
+      client_sop: z.string().trim().max(12000).optional(),
+      company_name: z.string().trim().max(120).optional(),
+      secondary_phone: z.string().trim().max(40).optional(),
+      lead_source: z.string().trim().max(120).optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -142,6 +153,9 @@ export const updateClient = createServerFn({ method: "POST" })
       is_active: data.is_active ?? true,
       ...(data.payment_terms_days !== undefined ? { payment_terms_days: data.payment_terms_days } : {}),
       ...(data.client_sop !== undefined ? { client_sop: data.client_sop || null } : {}),
+      ...(data.company_name !== undefined ? { company_name: data.company_name || null } : {}),
+      ...(data.secondary_phone !== undefined ? { secondary_phone: data.secondary_phone || null } : {}),
+      ...(data.lead_source !== undefined ? { lead_source: data.lead_source || null } : {}),
     };
     const { error } = await context.supabase.from("clients").update(patch as never).eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -194,11 +208,13 @@ export const getClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: client, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, service_address, is_active, created_at, payment_terms_days")
+      .select("id, first_name, last_name, service_address, is_active, created_at, payment_terms_days, company_name")
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!client) return null;
     const contact = await clientContact(context.supabase, data.id);
+    const { data: extrasRows } = await context.supabase.rpc("client_private_extras" as never, { _client: data.id } as never);
+    const extras = ((extrasRows as unknown as Array<{ secondary_phone: string | null; lead_source: string | null }>) ?? [])[0] ?? null;
     const [{ data: spec }, { data: notes }, { data: photos }] = await Promise.all([
       context.supabase.from("property_specs").select("*").eq("client_id", data.id).maybeSingle(),
       context.supabase.from("client_notes").select("id, note, created_at, created_by, visibility, property_id, job_id").eq("client_id", data.id).order("created_at", { ascending: false }),
@@ -223,6 +239,8 @@ export const getClient = createServerFn({ method: "POST" })
       phone: contact.phone,
       billing_address: contact.billing_address,
       client_sop: contact.client_sop,
+      secondary_phone: extras?.secondary_phone ?? null,
+      lead_source: extras?.lead_source ?? null,
       spec: spec ?? null,
       notes: (notes ?? []).map((n) => ({ ...n, author: authorsMap.get(n.created_by ?? "") ?? null })),
       photos: signed,
