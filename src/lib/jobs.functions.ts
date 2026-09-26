@@ -426,3 +426,30 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
     }
     return { id: job.id };
   });
+
+/**
+ * Owner/manager action: close jobs that weren't marked complete in the field.
+ * Marking a job completed creates its draft invoice automatically (DB trigger).
+ */
+export const closeJobs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ ids: z.array(z.string().uuid()).min(1).max(200) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as any);
+    if (!isMgr) throw new Error("Only owners and managers can close jobs");
+    const { data: open } = await context.supabase
+      .from("jobs")
+      .select("id, scheduled_end")
+      .in("id", data.ids)
+      .in("status", ["scheduled", "in_progress"]);
+    let closed = 0;
+    for (const j of open ?? []) {
+      const { error } = await context.supabase
+        .from("jobs")
+        .update({ status: "completed", actual_end: (j as any).scheduled_end })
+        .eq("id", (j as any).id);
+      if (error) throw new Error(error.message);
+      closed++;
+    }
+    return { closed };
+  });
