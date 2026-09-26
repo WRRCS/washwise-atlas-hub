@@ -603,6 +603,7 @@ export type Database = {
           billing_address: string | null
           client_sop: string | null
           color: string | null
+          company_name: string | null
           created_at: string
           email: string | null
           first_name: string | null
@@ -610,8 +611,10 @@ export type Database = {
           is_active: boolean
           is_airbnb_host: boolean
           last_name: string | null
+          lead_source: string | null
           payment_terms_days: number | null
           phone: string | null
+          secondary_phone: string | null
           service_address: string | null
           tenant_id: string
           updated_at: string
@@ -620,6 +623,7 @@ export type Database = {
           billing_address?: string | null
           client_sop?: string | null
           color?: string | null
+          company_name?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -627,8 +631,10 @@ export type Database = {
           is_active?: boolean
           is_airbnb_host?: boolean
           last_name?: string | null
+          lead_source?: string | null
           payment_terms_days?: number | null
           phone?: string | null
+          secondary_phone?: string | null
           service_address?: string | null
           tenant_id: string
           updated_at?: string
@@ -637,6 +643,7 @@ export type Database = {
           billing_address?: string | null
           client_sop?: string | null
           color?: string | null
+          company_name?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -644,8 +651,10 @@ export type Database = {
           is_active?: boolean
           is_airbnb_host?: boolean
           last_name?: string | null
+          lead_source?: string | null
           payment_terms_days?: number | null
           phone?: string | null
+          secondary_phone?: string | null
           service_address?: string | null
           tenant_id?: string
           updated_at?: string
@@ -1509,6 +1518,8 @@ export type Database = {
           scheduled_end: string
           scheduled_start: string
           service_type_id: string
+          sop_confirmed_at: string | null
+          sop_confirmed_by: string | null
           status: Database["public"]["Enums"]["job_status"]
           tenant_id: string
           updated_at: string
@@ -1534,6 +1545,8 @@ export type Database = {
           scheduled_end: string
           scheduled_start: string
           service_type_id: string
+          sop_confirmed_at?: string | null
+          sop_confirmed_by?: string | null
           status?: Database["public"]["Enums"]["job_status"]
           tenant_id: string
           updated_at?: string
@@ -1559,6 +1572,8 @@ export type Database = {
           scheduled_end?: string
           scheduled_start?: string
           service_type_id?: string
+          sop_confirmed_at?: string | null
+          sop_confirmed_by?: string | null
           status?: Database["public"]["Enums"]["job_status"]
           tenant_id?: string
           updated_at?: string
@@ -3408,6 +3423,17 @@ export type Database = {
           id: string
           phone: string
         }[]
+      }
+      client_private_extras: {
+        Args: { _client: string }
+        Returns: {
+          lead_source: string
+          secondary_phone: string
+        }[]
+      }
+      confirm_job_sop: {
+        Args: { _confirmed: boolean; _job: string }
+        Returns: undefined
       }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_onboarding_completed: { Args: never; Returns: boolean }
