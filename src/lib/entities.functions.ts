@@ -764,6 +764,57 @@ export const updateEmployee = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Owner-only: private job details (start date, role, pay rate, address). */
+export const getEmployeeJobDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) throw new Error("Only owners can view job details");
+    const { data: tenantId } = await context.supabase.rpc("current_tenant_id");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: prof } = await supabaseAdmin
+      .from("profiles").select("*").eq("id", data.id).maybeSingle();
+    if (!prof || (prof as any).tenant_id !== tenantId) throw new Error("Employee not found in your business");
+    const { data: det } = await (context.supabase as any)
+      .from("employee_job_details").select("start_date, job_title").eq("profile_id", data.id).maybeSingle();
+    return {
+      start_date: (det?.start_date as string | null) ?? null,
+      job_title: (det?.job_title as string | null) ?? null,
+      hourly_rate_cents: ((prof as any).hourly_rate_cents as number | null) ?? null,
+      address: ((prof as any).address as string | null) ?? null,
+    };
+  });
+
+export const updateEmployeeJobDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+      job_title: z.string().trim().max(120).nullable(),
+      hourly_rate_cents: z.number().int().min(0).max(100000000).nullable(),
+      address: z.string().trim().max(300).nullable(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isOwner } = await context.supabase.rpc("is_owner");
+    if (!isOwner) throw new Error("Only owners can edit job details");
+    const { data: tenantId } = await context.supabase.rpc("current_tenant_id");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: prof } = await supabaseAdmin.from("profiles").select("tenant_id").eq("id", data.id).maybeSingle();
+    if (!prof || prof.tenant_id !== tenantId) throw new Error("Employee not found in your business");
+    const { error: pErr } = await supabaseAdmin.from("profiles")
+      .update({ hourly_rate_cents: data.hourly_rate_cents, address: data.address || null } as any)
+      .eq("id", data.id);
+    if (pErr) throw new Error(pErr.message);
+    const { error } = await (context.supabase as any).from("employee_job_details").upsert({
+      profile_id: data.id, tenant_id: tenantId, start_date: data.start_date, job_title: data.job_title || null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /**
  * Permanently delete an employee. Owners only.
  * By default we refuse when the person has job/time history; pass force to
