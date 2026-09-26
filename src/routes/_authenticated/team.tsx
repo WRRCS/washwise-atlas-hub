@@ -113,7 +113,7 @@ function RosterView({ canManage }: { canManage: boolean }) {
           full_name: form.full_name.trim() || undefined,
           address: isOwner ? form.address.trim() : undefined,
           phone: form.phone.trim(),
-          email: form.email.trim(),
+          email: form.email.trim() || undefined,
         },
       });
       toast.success("Team member updated");
