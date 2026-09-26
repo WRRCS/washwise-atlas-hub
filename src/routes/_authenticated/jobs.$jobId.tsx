@@ -54,10 +54,11 @@ export function JobDetailView({ jobId }: { jobId: string }) {
     queryFn: () => fetchJob({ data: { id: jobId } }),
   });
 
+  const pick = usePick();
+
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   if (!job) return <div className="p-8">Not found.</div>;
 
-  const pick = usePick();
   const sop = (job.sop ?? []).slice().sort((a, b) => a.position - b.position);
   const done = sop.filter((s) => s.completed).length;
 
