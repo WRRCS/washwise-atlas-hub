@@ -55,6 +55,7 @@ export type TeamMember = {
   avatar_url: string | null;
   email: string | null;
   phone: string | null;
+  address: string | null;
   role: string;
 };
 
@@ -62,22 +63,32 @@ export type TeamMember = {
  * Team roster within the caller's tenant. Contact info (email/phone) is
  * only returned when the caller is an owner or has can_view_employee_contacts.
  * Enforced server-side so the client cannot bypass by inspecting rows.
+ * Email + address are additionally included for callers with
+ * can_manage_clients_employees so they can edit team info.
  */
 export const listTeamRoster = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     // staff_directory() applies the contact-info permission in the database.
-    const [profs, { data: roles }, { data: isOwnerRaw }] = await Promise.all([
+    const [profs, { data: roles }, { data: canManage }] = await Promise.all([
       staffDirectory(context.supabase),
       context.supabase.from("user_roles").select("user_id, role"),
-      context.supabase.rpc("is_owner"),
+      context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" }),
     ]);
-    // Teammate email addresses are never exposed in the team roster.
-    void isOwnerRaw;
-    const canSeeEmail = false;
 
     const roleMap = new Map<string, string>();
     (roles ?? []).forEach((r) => roleMap.set(r.user_id, r.role));
+
+    // Managers get email + address for editing; everyone else gets neither.
+    let contactMap = new Map<string, { email: string | null; address: string | null }>();
+    if (canManage) {
+      const { data: rows } = await context.supabase
+        .from("profiles")
+        .select("id, email, address");
+      contactMap = new Map(
+        (rows ?? []).map((r) => [r.id, { email: r.email, address: (r as any).address ?? null }]),
+      );
+    }
 
     return profs
       .filter((p) => p.is_active !== false)
@@ -85,8 +96,9 @@ export const listTeamRoster = createServerFn({ method: "GET" })
         id: p.id,
         full_name: p.full_name,
         avatar_url: p.avatar_url,
-        email: canSeeEmail ? p.email : null,
+        email: contactMap.get(p.id)?.email ?? null,
         phone: p.phone,
+        address: contactMap.get(p.id)?.address ?? null,
         role: roleMap.get(p.id) ?? "employee",
       }));
   });

@@ -743,6 +743,8 @@ export const updateEmployee = createServerFn({ method: "POST" })
     z.object({
       id: z.string().uuid(),
       phone: z.string().trim().max(40).optional(),
+      email: z.string().trim().email().max(200).optional(),
+      address: z.string().trim().max(300).optional(),
       is_active: z.boolean().optional(),
       full_name: z.string().trim().max(120).optional(),
     }).parse(input),
@@ -750,8 +752,10 @@ export const updateEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
     if (!allowed) throw new Error("You don't have permission to edit employees");
-    const patch: { phone?: string | null; is_active?: boolean; full_name?: string | null } = {};
+    const patch: { phone?: string | null; email?: string | null; address?: string | null; is_active?: boolean; full_name?: string | null } = {};
     if (data.phone !== undefined) patch.phone = data.phone || null;
+    if (data.email !== undefined) patch.email = data.email || null;
+    if (data.address !== undefined) patch.address = data.address || null;
     if (data.is_active !== undefined) patch.is_active = data.is_active;
     if (data.full_name !== undefined) patch.full_name = data.full_name;
     const { error } = await context.supabase.from("profiles").update(patch).eq("id", data.id);
