@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import wrrcLogo from "@/assets/wrrcs-logo.png.asset.json";
 
 
@@ -24,6 +25,7 @@ function AuthPage() {
   const { redirect } = useSearch({ from: "/auth" });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -91,7 +93,17 @@ function AuthPage() {
                   Forgot password?
                 </a>
               </div>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+              <div className="relative">
+                <Input id="password" type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="pr-10" />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute inset-y-0 right-0 px-3 text-muted-foreground hover:text-foreground"
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                >
+                  {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-brand text-brand-foreground hover:opacity-90">
               {loading ? "…" : "Sign in"}
