@@ -67,6 +67,7 @@ function SchedulePage() {
   const moveFn = useServerFn(moveJob);
   const publishFn = useServerFn(publishSchedule);
   const setColorFn = useServerFn(setClientColor);
+  const [colorEditId, setColorEditId] = useState<string | null>(null);
   const permsHeaderFn = useServerFn(myPermissions);
   const { data: headerPerms } = useQuery({ queryKey: ["my-permissions"], queryFn: () => permsHeaderFn() });
   const canManageSchedule = !!headerPerms?.isOwner;
