@@ -3431,6 +3431,7 @@ export type Database = {
         Args: { _client: string }
         Returns: {
           lead_source: string
+          secondary_email: string
           secondary_phone: string
         }[]
       }
