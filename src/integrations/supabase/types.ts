@@ -614,6 +614,7 @@ export type Database = {
           lead_source: string | null
           payment_terms_days: number | null
           phone: string | null
+          secondary_email: string | null
           secondary_phone: string | null
           service_address: string | null
           tenant_id: string
@@ -634,6 +635,7 @@ export type Database = {
           lead_source?: string | null
           payment_terms_days?: number | null
           phone?: string | null
+          secondary_email?: string | null
           secondary_phone?: string | null
           service_address?: string | null
           tenant_id: string
@@ -654,6 +656,7 @@ export type Database = {
           lead_source?: string | null
           payment_terms_days?: number | null
           phone?: string | null
+          secondary_email?: string | null
           secondary_phone?: string | null
           service_address?: string | null
           tenant_id?: string
@@ -3428,6 +3431,7 @@ export type Database = {
         Args: { _client: string }
         Returns: {
           lead_source: string
+          secondary_email: string
           secondary_phone: string
         }[]
       }

@@ -139,6 +139,7 @@ type ClientRecord = {
   client_sop?: string | null;
   company_name?: string | null;
   secondary_phone?: string | null;
+  secondary_email?: string | null;
   lead_source?: string | null;
   spec?: Spec;
   notes: Array<{ id: string; note: string; created_at: string; author: string | null; visibility?: string | null; property_id?: string | null; job_id?: string | null }>;
@@ -210,6 +211,7 @@ function OverviewTab({ client, clientId, isManagement, onSaved }: {
         {isManagement ? (
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Info label="Main email" value={client.email} />
+            <Info label="Second email" value={client.secondary_email ?? null} />
             <Info label="Main phone" value={client.phone} />
             <Info label="Second phone" value={client.secondary_phone ?? null} />
             <Info label="Lead source" value={client.lead_source ?? null} />
@@ -286,6 +288,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
     first_name: client.first_name ?? "",
     last_name: client.last_name ?? "",
     email: client.email ?? "",
+    secondary_email: client.secondary_email ?? "",
     phone: client.phone ?? "",
     billing_address: client.billing_address ?? "",
     service_address: client.service_address ?? "",
@@ -308,6 +311,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
           email: form.email.trim() || undefined,
+          secondary_email: form.secondary_email.trim() || undefined,
           phone: form.phone.trim() || undefined,
           billing_address: form.billing_address.trim() || undefined,
           service_address: form.service_address.trim() || undefined,
@@ -339,6 +343,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
         <FieldRow label="Main phone"><Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></FieldRow>
         <FieldRow label="Second phone"><Input type="tel" value={form.secondary_phone} onChange={(e) => setForm({ ...form, secondary_phone: e.target.value })} /></FieldRow>
         <FieldRow label="Main email"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></FieldRow>
+        <FieldRow label="Second email"><Input type="email" value={form.secondary_email} onChange={(e) => setForm({ ...form, secondary_email: e.target.value })} /></FieldRow>
         <FieldRow label="Lead source"><Input value={form.lead_source} onChange={(e) => setForm({ ...form, lead_source: e.target.value })} placeholder="e.g. Referral, Google, Airbnb" /></FieldRow>
       </div>
       <FieldRow label="Service address"><Textarea rows={2} value={form.service_address} onChange={(e) => setForm({ ...form, service_address: e.target.value })} /></FieldRow>
