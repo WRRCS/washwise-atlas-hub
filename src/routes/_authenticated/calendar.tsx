@@ -67,6 +67,7 @@ function SchedulePage() {
   const moveFn = useServerFn(moveJob);
   const publishFn = useServerFn(publishSchedule);
   const setColorFn = useServerFn(setClientColor);
+  const [colorEditId, setColorEditId] = useState<string | null>(null);
   const permsHeaderFn = useServerFn(myPermissions);
   const { data: headerPerms } = useQuery({ queryKey: ["my-permissions"], queryFn: () => permsHeaderFn() });
   const canManageSchedule = !!headerPerms?.isOwner;
@@ -434,7 +435,9 @@ function SchedulePage() {
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-3" align="start">
-                                  <p className="text-xs font-semibold mb-1 truncate">{label}</p>
+                                  <p className="text-xs font-semibold mb-2 truncate">{label}</p>
+                                  {canManageSchedule && colorEditId === j.id && (
+                                    <>
                                   <p className="text-[11px] text-muted-foreground mb-2">
                                     {clientId ? "Pick a color for this client — it applies to every appointment." : "Assign a client to save a persistent color."}
                                   </p>
@@ -456,15 +459,26 @@ function SchedulePage() {
                                       );
                                     })}
                                   </div>
+                                  <button
+                                    type="button"
+                                    disabled={!clientId || !customColor || colorMut.isPending}
+                                    onClick={() => clientId && colorMut.mutate({ clientId, color: null })}
+                                    className="mb-2 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                                  >
+                                    Reset to default
+                                  </button>
+                                    </>
+                                  )}
                                   <div className="flex items-center justify-between gap-2">
-                                    <button
-                                      type="button"
-                                      disabled={!clientId || !customColor || colorMut.isPending}
-                                      onClick={() => clientId && colorMut.mutate({ clientId, color: null })}
-                                      className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40"
-                                    >
-                                      Reset to default
-                                    </button>
+                                    {canManageSchedule ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setColorEditId(colorEditId === j.id ? null : j.id)}
+                                        className="text-[11px] text-muted-foreground hover:text-foreground"
+                                      >
+                                        {colorEditId === j.id ? "Hide colors" : "Change color"}
+                                      </button>
+                                    ) : <span />}
                                     <button type="button" onClick={() => setOpenJobId(j.id)} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
                                       Open job <ExternalLink className="size-3" />
                                     </button>
