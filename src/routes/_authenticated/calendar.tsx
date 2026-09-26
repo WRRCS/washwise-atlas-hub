@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee } from "@/lib/jobs.functions";
+import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs } from "@/lib/jobs.functions";
+import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
@@ -127,6 +128,17 @@ function SchedulePage() {
       toast.success(r?.unassigned ? "Removed from this team member" : "Shift deleted");
     },
     onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
+  });
+
+  const closeFn = useServerFn(closeJobs);
+  const closeMut = useMutation({
+    mutationFn: (ids: string[]) => closeFn({ data: { ids } }),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success(r.closed ? `Closed ${r.closed} job${r.closed === 1 ? "" : "s"} — draft invoice${r.closed === 1 ? "" : "s"} created` : "Nothing to close");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not close job"),
   });
 
   const publishMut = useMutation({
