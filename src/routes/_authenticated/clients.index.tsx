@@ -237,7 +237,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   const create = useServerFn(createClient);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    first_name: "", last_name: "", email: "", phone: "", company_name: "", secondary_phone: "", lead_source: "", client_sop: "",
+    first_name: "", last_name: "", email: "", secondary_email: "", phone: "", company_name: "", secondary_phone: "", lead_source: "", client_sop: "",
     billing_address: "", service_address: "",
     property_label: "", property_type: "", service_frequency: "",
     square_footage: "", bedrooms: "", bathrooms: "",
@@ -245,7 +245,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   });
 
   const reset = () => setForm({
-    first_name: "", last_name: "", email: "", phone: "", company_name: "", secondary_phone: "", lead_source: "", client_sop: "",
+    first_name: "", last_name: "", email: "", secondary_email: "", phone: "", company_name: "", secondary_phone: "", lead_source: "", client_sop: "",
     billing_address: "", service_address: "",
     property_label: "", property_type: "", service_frequency: "",
 
@@ -278,6 +278,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
           lead_source: form.lead_source.trim() || undefined,
           client_sop: form.client_sop.trim() || undefined,
           email: form.email.trim() || undefined,
+          secondary_email: form.secondary_email.trim() || undefined,
           phone: form.phone.trim() || undefined,
           billing_address: form.billing_address.trim() || undefined,
           service_address: form.service_address.trim() || undefined,
@@ -322,6 +323,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
               <Field label="Main phone"><Input type="tel" value={form.phone} onChange={upd("phone")} /></Field>
               <Field label="Second phone"><Input type="tel" value={form.secondary_phone} onChange={upd("secondary_phone")} /></Field>
               <Field label="Main email"><Input type="email" value={form.email} onChange={upd("email")} /></Field>
+              <Field label="Second email"><Input type="email" value={form.secondary_email} onChange={upd("secondary_email")} /></Field>
               <Field label="Lead source"><Input value={form.lead_source} onChange={upd("lead_source")} placeholder="Referral, Google, Airbnb…" /></Field>
             </div>
           </section>
