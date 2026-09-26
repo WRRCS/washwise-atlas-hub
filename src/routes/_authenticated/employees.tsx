@@ -10,12 +10,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
   listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
+  sendMagicLinkInvite,
 } from "@/lib/entities.functions";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 
@@ -113,6 +114,20 @@ function Employees() {
       toast.success("Invite link & instructions copied");
     } catch {
       toast.error("Couldn't copy — you can select the text manually");
+    }
+  };
+
+  const magicLinkFn = useServerFn(sendMagicLinkInvite);
+  const emailSignInLink = async (e: Employee) => {
+    if (!e.email) {
+      toast.error("This employee has no email address — add one first");
+      return;
+    }
+    try {
+      await magicLinkFn({ data: { employee_id: e.id, redirect_to: `${appUrl}/` } });
+      toast.success(`Sign-in link emailed to ${e.email}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send the sign-in link");
     }
   };
 
