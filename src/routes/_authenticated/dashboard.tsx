@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell, PageHeader } from "@/components/app-shell";
@@ -105,7 +106,11 @@ function DashboardPage() {
   const fetchNewLeads = useServerFn(countNewLeads);
 
   const { data: stats } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => fetchStats() });
-  const { data: today = [] } = useQuery({ queryKey: ["dashboard-today"], queryFn: () => fetchToday() });
+  const { data: today = [] } = useQuery({ queryKey: ["dashboard-today"], queryFn: () => fetchToday(), refetchInterval: 5 * 60_000 });
+  const [todayTab, setTodayTab] = useState<"ongoing" | "completed">("ongoing");
+  const ongoing = today.filter((j) => j.status === "scheduled" || j.status === "in_progress");
+  const completed = today.filter((j) => j.status === "completed");
+  const shownToday = todayTab === "ongoing" ? ongoing : completed;
   const { data: activity = [] } = useQuery({
     queryKey: ["dashboard-activity"],
     queryFn: () => fetchActivity(),
@@ -220,14 +225,27 @@ function DashboardPage() {
                 View schedule →
               </Link>
             </div>
-            {today.length === 0 ? (
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 mb-3">
+              {(["ongoing", "completed"] as const).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setTodayTab(k)}
+                  className={`rounded-md py-1.5 text-sm font-medium transition-colors ${todayTab === k ? "bg-card shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {k === "ongoing" ? `Ongoing (${ongoing.length})` : `Completed (${completed.length})`}
+                </button>
+              ))}
+            </div>
+            {shownToday.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border py-10 text-center">
                 <Briefcase className="size-5 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No jobs scheduled today.</p>
+                <p className="text-sm text-muted-foreground">
+                  {todayTab === "ongoing" ? "No ongoing jobs today." : "No jobs completed yet today."}
+                </p>
               </div>
             ) : (
               <ul className="divide-y divide-border/60">
-                {today.map((j) => (
+                {shownToday.map((j) => (
                   <li key={j.id}>
                     <Link
                       to="/jobs/$jobId"

@@ -1439,6 +1439,54 @@ export type Database = {
           },
         ]
       }
+      job_visits: {
+        Row: {
+          arrived_at: string
+          created_at: string
+          employee_id: string
+          id: string
+          job_id: string
+          left_at: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          arrived_at?: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          job_id: string
+          left_at?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          arrived_at?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          job_id?: string
+          left_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_visits_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_visits_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           actual_end: string | null

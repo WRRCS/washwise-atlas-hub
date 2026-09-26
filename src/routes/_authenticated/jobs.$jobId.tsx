@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob } from "@/lib/jobs.functions";
 import { listJobGps, clockIn } from "@/lib/time.functions";
+import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { captureGps } from "@/lib/geolocation";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { myPermissions } from "@/lib/team.functions";
@@ -31,6 +32,37 @@ function fmtCents(c: number | null) { return c == null ? "—" : `$${(c / 100).t
 function JobDetail() {
   const { jobId } = useParams({ from: "/_authenticated/jobs/$jobId" });
   return <JobDetailView jobId={jobId} />;
+}
+
+/** Arrived / Leaving taps — records time on site at this appointment (not clock in/out). */
+function VisitButtons({ jobId }: { jobId: string }) {
+  const qc = useQueryClient();
+  const getFn = useServerFn(getMyJobVisit);
+  const arriveFn = useServerFn(arriveAtJob);
+  const leaveFn = useServerFn(leaveJob);
+  const [busy, setBusy] = useState(false);
+  const { data: visit } = useQuery({ queryKey: ["job-visit", jobId], queryFn: () => getFn({ data: { job_id: jobId } }) });
+  const run = async (f: () => Promise<unknown>, msg: string) => {
+    setBusy(true);
+    try { await f(); toast.success(msg); qc.invalidateQueries({ queryKey: ["job-visit", jobId] }); qc.invalidateQueries({ queryKey: ["timesheet"] }); qc.invalidateQueries({ queryKey: ["job", jobId] }); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Something went wrong"); }
+    finally { setBusy(false); }
+  };
+  const t = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (visit && !visit.left_at) {
+    return (
+      <button disabled={busy} onClick={() => run(() => leaveFn({ data: { visit_id: visit.id } }), "Leaving time saved")}
+        className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
+        Leaving (here since {t(visit.arrived_at)})
+      </button>
+    );
+  }
+  return (
+    <button disabled={busy} onClick={() => run(() => arriveFn({ data: { job_id: jobId } }), "Arrival time saved")}
+      className="text-sm font-medium border border-brand text-brand rounded-lg px-3 py-2 hover:bg-brand/5 disabled:opacity-50">
+      {visit?.left_at ? `Arrived again (left ${t(visit.left_at)})` : "Arrived"}
+    </button>
+  );
 }
 
 /** Job detail body — also shown in a pop-up on the schedule. */
@@ -116,6 +148,7 @@ export function JobDetailView({ jobId }: { jobId: string }) {
                 <MessageSquare className="size-4" /> Message client
               </Link>
             )}
+            {job.status !== "canceled" && <VisitButtons jobId={jobId} />}
             {job.status === "scheduled" && (
               <button onClick={onStart} disabled={starting} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">{starting ? "Starting…" : "Start job"}</button>
             )}

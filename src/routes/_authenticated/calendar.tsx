@@ -7,6 +7,7 @@ import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnav
 import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
+import { claimOpenShift } from "@/lib/visits.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,6 +120,27 @@ function SchedulePage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Copy failed"),
   });
+
+  const claimFn = useServerFn(claimOpenShift);
+  const claimMut = useMutation({
+    mutationFn: (v: { job_id: string; employee_id?: string }) => claimFn({ data: v }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Shift assigned");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not assign shift"),
+  });
+
+  const openByDay = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const j of jobs as any[]) {
+      if ((j.assignees?.length ?? 0) > 0 || j.status === "canceled" || j.status === "completed") continue;
+      const k = dayKeyTZ(j.scheduled_start, tz);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(j);
+    }
+    return m;
+  }, [jobs, tz]);
 
   const deleteFn = useServerFn(deleteJob);
   const deleteMut = useMutation({
@@ -239,8 +261,21 @@ function SchedulePage() {
     e.preventDefault();
     const data = e.dataTransfer.getData("application/x-atlas-shift");
     if (!data) return;
-    const { id, srcDayKey, srcEmpId, startISO, endISO } = JSON.parse(data);
+    const { id, srcDayKey, srcEmpId, startISO, endISO, open } = JSON.parse(data);
     const dayKey = format(day, "yyyy-MM-dd");
+    if (open) {
+      if (!canManageSchedule) return;
+      claimMut.mutate({ job_id: id, employee_id: employeeId }, {
+        onSuccess: () => {
+          if (dayKey === srcDayKey) return;
+          const s = new Date(startISO), en = new Date(endISO);
+          const { hour, minute } = hourMinuteTZ(s, tz);
+          const ns = new Date(zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz));
+          moveMut.mutate({ id, start: ns, end: new Date(ns.getTime() + (en.getTime() - s.getTime())) });
+        },
+      });
+      return;
+    }
     const sameEmp = !srcEmpId || srcEmpId === employeeId;
     if (dayKey === srcDayKey && sameEmp) return; // no-op
     // preserve time-of-day; only date changes
@@ -332,6 +367,45 @@ function SchedulePage() {
                   <div key={d.toISOString()} className={`min-w-0 px-1 py-2 text-center border-b border-l border-border/60 ${today ? "bg-brand/5" : "bg-clay-50"}`}>
                     <p className={`text-[9px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE")}</p>
                     <p className={`text-base font-semibold ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Open shifts row — jobs nobody is assigned to yet */}
+            <div className="grid w-full border-t border-border/60 bg-accent/10" style={{ gridTemplateColumns: `minmax(112px, 1.15fr) repeat(7, minmax(0, 1fr))` }}>
+              <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
+                <div className="size-7 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium truncate">Open shifts</p>
+                  <p className="text-[9px] text-muted-foreground truncate">{canManageSchedule ? "Drag onto a person" : "Tap to pick up"}</p>
+                </div>
+              </div>
+              {days.map((d) => {
+                const dayKey = format(d, "yyyy-MM-dd");
+                const open = openByDay.get(dayKey) ?? [];
+                return (
+                  <div key={dayKey} className="min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[44px]">
+                    {open.map((j: any) => (
+                      <div
+                        key={j.id}
+                        draggable={canManageSchedule}
+                        onDragStart={(e) => e.dataTransfer.setData("application/x-atlas-shift", JSON.stringify({ id: j.id, srcDayKey: dayKey, open: true, startISO: j.scheduled_start, endISO: j.scheduled_end }))}
+                        className="rounded-md border border-dashed border-border bg-card px-1.5 py-1 text-[10px] leading-tight"
+                      >
+                        <p className="font-medium truncate">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Job"}</p>
+                        <p className="text-muted-foreground tabular-nums">{fmtTimeTZ(j.scheduled_start, tz)}–{fmtTimeTZ(j.scheduled_end, tz)}</p>
+                        {!canManageSchedule ? (
+                          <button
+                            className="mt-1 w-full rounded bg-brand text-brand-foreground py-0.5 font-medium disabled:opacity-50"
+                            disabled={claimMut.isPending}
+                            onClick={() => { if (confirm("Pick up this shift?")) claimMut.mutate({ job_id: j.id }); }}
+                          >Pick up</button>
+                        ) : (
+                          <button className="mt-1 text-brand underline" onClick={() => setOpenJobId(j.id)}>Open</button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 );
               })}
