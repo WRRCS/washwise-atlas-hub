@@ -80,6 +80,15 @@ function RosterView({ canManage }: { canManage: boolean }) {
   const rosterFn = useServerFn(listTeamRoster);
   const updateFn = useServerFn(updateEmployee);
   const q = useQuery({ queryKey: ["team-roster"], queryFn: () => rosterFn() });
+  const ownerQ = useQuery({
+    queryKey: ["viewer-is-owner"],
+    queryFn: async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase.rpc("is_owner");
+      return !!data;
+    },
+  });
+  const isOwner = !!ownerQ.data;
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [form, setForm] = useState({ full_name: "", address: "", phone: "", email: "" });
   const [saving, setSaving] = useState(false);
@@ -102,7 +111,7 @@ function RosterView({ canManage }: { canManage: boolean }) {
         data: {
           id: editing.id,
           full_name: form.full_name.trim() || undefined,
-          address: form.address.trim(),
+          address: isOwner ? form.address.trim() : undefined,
           phone: form.phone.trim(),
           email: form.email.trim(),
         },
@@ -145,10 +154,12 @@ function RosterView({ canManage }: { canManage: boolean }) {
               <Label htmlFor="tm-name">Name</Label>
               <Input id="tm-name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tm-address">Address</Label>
-              <Input id="tm-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, city, state, zip" />
-            </div>
+            {isOwner && (
+              <div className="space-y-1.5">
+                <Label htmlFor="tm-address">Address (private — owners only)</Label>
+                <Input id="tm-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, city, state, zip" />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="tm-phone">Phone number</Label>
               <Input id="tm-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />

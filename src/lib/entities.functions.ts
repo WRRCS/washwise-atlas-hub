@@ -755,7 +755,11 @@ export const updateEmployee = createServerFn({ method: "POST" })
     const patch: { phone?: string | null; email?: string | null; address?: string | null; is_active?: boolean; full_name?: string | null } = {};
     if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.email !== undefined) patch.email = data.email || null;
-    if (data.address !== undefined) patch.address = data.address || null;
+    if (data.address !== undefined) {
+      const { data: isOwner } = await context.supabase.rpc("is_owner");
+      if (!isOwner) throw new Error("Only owners can change home addresses");
+      patch.address = data.address || null;
+    }
     if (data.is_active !== undefined) patch.is_active = data.is_active;
     if (data.full_name !== undefined) patch.full_name = data.full_name;
     const { error } = await context.supabase.from("profiles").update(patch).eq("id", data.id);
