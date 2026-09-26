@@ -35,6 +35,7 @@ const clientSchema = z.object({
   payment_terms_days: z.coerce.number().int().min(0).max(365).nullable().optional(),
   company_name: z.string().trim().max(120).optional(),
   secondary_phone: z.string().trim().max(40).optional(),
+  secondary_email: z.union([z.string().trim().email(), z.literal("")]).optional(),
   lead_source: z.string().trim().max(120).optional(),
   client_sop: z.string().trim().max(12000).optional(),
   // property_specs (optional, filled on creation)
@@ -76,6 +77,7 @@ export const createClient = createServerFn({ method: "POST" })
         payment_terms_days: data.payment_terms_days ?? null,
         company_name: data.company_name || null,
         secondary_phone: data.secondary_phone || null,
+        secondary_email: data.secondary_email || null,
         lead_source: data.lead_source || null,
         client_sop: data.client_sop || null,
       } as never)
@@ -139,6 +141,7 @@ export const updateClient = createServerFn({ method: "POST" })
       client_sop: z.string().trim().max(12000).optional(),
       company_name: z.string().trim().max(120).optional(),
       secondary_phone: z.string().trim().max(40).optional(),
+      secondary_email: z.union([z.string().trim().email(), z.literal("")]).optional(),
       lead_source: z.string().trim().max(120).optional(),
     }).parse(input),
   )
@@ -155,6 +158,7 @@ export const updateClient = createServerFn({ method: "POST" })
       ...(data.client_sop !== undefined ? { client_sop: data.client_sop || null } : {}),
       ...(data.company_name !== undefined ? { company_name: data.company_name || null } : {}),
       ...(data.secondary_phone !== undefined ? { secondary_phone: data.secondary_phone || null } : {}),
+      ...(data.secondary_email !== undefined ? { secondary_email: data.secondary_email || null } : {}),
       ...(data.lead_source !== undefined ? { lead_source: data.lead_source || null } : {}),
     };
     const { error } = await context.supabase.from("clients").update(patch as never).eq("id", data.id);
@@ -214,7 +218,7 @@ export const getClient = createServerFn({ method: "POST" })
     if (!client) return null;
     const contact = await clientContact(context.supabase, data.id);
     const { data: extrasRows } = await context.supabase.rpc("client_private_extras" as never, { _client: data.id } as never);
-    const extras = ((extrasRows as unknown as Array<{ secondary_phone: string | null; lead_source: string | null }>) ?? [])[0] ?? null;
+    const extras = ((extrasRows as unknown as Array<{ secondary_phone: string | null; lead_source: string | null; secondary_email: string | null }>) ?? [])[0] ?? null;
     const [{ data: spec }, { data: notes }, { data: photos }] = await Promise.all([
       context.supabase.from("property_specs").select("*").eq("client_id", data.id).maybeSingle(),
       context.supabase.from("client_notes").select("id, note, created_at, created_by, visibility, property_id, job_id").eq("client_id", data.id).order("created_at", { ascending: false }),
@@ -240,6 +244,7 @@ export const getClient = createServerFn({ method: "POST" })
       billing_address: contact.billing_address,
       client_sop: contact.client_sop,
       secondary_phone: extras?.secondary_phone ?? null,
+      secondary_email: extras?.secondary_email ?? null,
       lead_source: extras?.lead_source ?? null,
       spec: spec ?? null,
       notes: (notes ?? []).map((n) => ({ ...n, author: authorsMap.get(n.created_by ?? "") ?? null })),
