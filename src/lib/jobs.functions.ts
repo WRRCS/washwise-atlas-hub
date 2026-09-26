@@ -453,3 +453,16 @@ export const closeJobs = createServerFn({ method: "POST" })
     }
     return { closed };
   });
+
+export const confirmJobSop = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ job_id: z.string().uuid(), confirmed: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("confirm_job_sop" as never, {
+      _job: data.job_id, _confirmed: data.confirmed,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
