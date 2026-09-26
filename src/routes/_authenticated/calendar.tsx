@@ -476,16 +476,16 @@ function SchedulePage() {
                             );
                             if (!canManageSchedule) {
                               return (
-                                <Link
+                                <button
                                   key={j.id}
-                                  to="/jobs/$jobId"
-                                  params={{ jobId: j.id }}
+                                  type="button"
+                                  onClick={() => setOpenJobId(j.id)}
                                   className={`w-full text-left block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
                                   style={{ backgroundColor: c }}
                                   title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
                                 >
                                   {cardBody}
-                                </Link>
+                                </button>
                               );
                             }
                             return (
