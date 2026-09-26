@@ -30,16 +30,16 @@ async function buildContext(supabase: any, tenantId: string): Promise<string> {
     supabase.from("invoices").select("number, status, total_cents, issue_date, due_date, paid_at, clients(first_name,last_name)").eq("tenant_id", tenantId).order("issue_date", { ascending: false }).limit(20),
     // No client CPNI (email/phone) is sent to the model.
     supabase.from("clients").select("id, first_name, last_name, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(50),
-    supabase.from("client_notes").select("content, created_at, client_id, clients(first_name,last_name)").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(20),
-    supabase.from("sops").select("id, title, description").eq("tenant_id", tenantId).limit(20),
-    supabase.from("inventory_items").select("name, quantity_on_hand, low_stock_threshold, unit").eq("tenant_id", tenantId),
+    supabase.from("client_notes").select("note, created_at, client_id, clients(first_name,last_name)").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(20),
+    supabase.from("sops").select("id, name, description").eq("tenant_id", tenantId).limit(20),
+    supabase.from("inventory_items").select("name, quantity_on_hand, reorder_threshold, unit").eq("tenant_id", tenantId),
     supabase.from("activity_log").select("action_type, description, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(15),
   ]);
 
   const fmtClient = (c: any) => c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Unknown" : "Unknown";
   const money = (c: number) => `$${((c ?? 0) / 100).toFixed(2)}`;
 
-  const lowInv = (inventory ?? []).filter((i: any) => i.low_stock_threshold != null && Number(i.quantity_on_hand) <= Number(i.low_stock_threshold));
+  const lowInv = (inventory ?? []).filter((i: any) => i.reorder_threshold != null && Number(i.quantity_on_hand) <= Number(i.reorder_threshold));
 
   const lines: string[] = [];
   lines.push(`## Business: ${tenant?.name ?? "Unknown"}`);
@@ -63,18 +63,18 @@ async function buildContext(supabase: any, tenantId: string): Promise<string> {
   if (notes && notes.length) {
     lines.push(`\n## Recent Client Notes`);
     notes.forEach((n: any) => {
-      lines.push(`- ${fmtClient(n.clients)}: ${String(n.content).slice(0, 160)}`);
+      lines.push(`- ${fmtClient(n.clients)}: ${String(n.note).slice(0, 160)}`);
     });
   }
 
   if (sops && sops.length) {
     lines.push(`\n## Active SOPs`);
-    sops.forEach((s: any) => lines.push(`- ${s.title}${s.description ? ` — ${String(s.description).slice(0,80)}` : ""}`));
+    sops.forEach((s: any) => lines.push(`- ${s.name}${s.description ? ` — ${String(s.description).slice(0,80)}` : ""}`));
   }
 
   if (lowInv.length) {
     lines.push(`\n## Low Inventory`);
-    lowInv.forEach((i: any) => lines.push(`- ${i.name}: ${i.quantity_on_hand} ${i.unit ?? ""} (threshold ${i.low_stock_threshold})`));
+    lowInv.forEach((i: any) => lines.push(`- ${i.name}: ${i.quantity_on_hand} ${i.unit ?? ""} (threshold ${i.reorder_threshold})`));
   }
 
   if (activity && activity.length) {

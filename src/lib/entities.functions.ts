@@ -809,7 +809,7 @@ export const updateEmployeeJobDetails = createServerFn({ method: "POST" })
     const { data: prof } = await supabaseAdmin.from("profiles").select("tenant_id").eq("id", data.id).maybeSingle();
     if (!prof || prof.tenant_id !== tenantId) throw new Error("Employee not found in your business");
     const { error: pErr } = await supabaseAdmin.from("profiles")
-      .update({ hourly_rate_cents: data.hourly_rate_cents, address: data.address || null } as any)
+      .update({ hourly_rate_cents: data.hourly_rate_cents ?? 0, address: data.address || null } as any)
       .eq("id", data.id);
     if (pErr) throw new Error(pErr.message);
     const { error } = await (context.supabase as any).from("employee_job_details").upsert({
