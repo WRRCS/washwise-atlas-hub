@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
   listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
-  sendMagicLinkInvite,
+  sendMagicLinkInvite, getEmployeeJobDetails, updateEmployeeJobDetails,
 } from "@/lib/entities.functions";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 
@@ -48,6 +48,8 @@ function Employees() {
   const permsFn = useServerFn(listEmployeePermissions);
   const savePermsFn = useServerFn(setEmployeePermissions);
   const deleteFn = useServerFn(deleteEmployee);
+  const getJobFn = useServerFn(getEmployeeJobDetails);
+  const saveJobFn = useServerFn(updateEmployeeJobDetails);
 
   const { data = [] } = useQuery({ queryKey: ["employees"], queryFn: () => listFn() });
   const { data: permsData = [] } = useQuery({ queryKey: ["employee_permissions"], queryFn: () => permsFn() });
@@ -72,6 +74,7 @@ function Employees() {
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
+  const [job, setJob] = useState({ start_date: "", job_title: "", rate: "", address: "" });
   const [saving, setSaving] = useState(false);
 
   const staff = (data as Employee[]).filter((e) => e.role !== "owner");
@@ -169,6 +172,15 @@ function Employees() {
   const openEdit = (e: Employee) => {
     setEditing(e);
     setEditForm({ phone: e.phone ?? "", is_active: e.is_active, full_name: e.full_name ?? "" });
+    setJob({ start_date: "", job_title: "", rate: "", address: "" });
+    if (isOwner) {
+      getJobFn({ data: { id: e.id } }).then((d) => setJob({
+        start_date: d.start_date ?? "",
+        job_title: d.job_title ?? "",
+        rate: d.hourly_rate_cents != null ? (d.hourly_rate_cents / 100).toFixed(2) : "",
+        address: d.address ?? "",
+      })).catch(() => {});
+    }
   };
 
   const saveEdit = async () => {
@@ -176,6 +188,16 @@ function Employees() {
     setSaving(true);
     try {
       await updateFn({ data: { id: editing.id, ...editForm } });
+      if (isOwner) {
+        const rate = job.rate.trim() === "" ? null : Math.round(parseFloat(job.rate) * 100);
+        await saveJobFn({ data: {
+          id: editing.id,
+          start_date: job.start_date || null,
+          job_title: job.job_title.trim() || null,
+          hourly_rate_cents: rate != null && !isNaN(rate) ? rate : null,
+          address: job.address.trim() || null,
+        } });
+      }
       toast.success("Updated");
       setEditing(null);
       qc.invalidateQueries({ queryKey: ["employees"] });
@@ -410,6 +432,31 @@ function Employees() {
               <input type="checkbox" checked={editForm.is_active} onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })} />
               Active
             </label>
+            {isOwner && (
+              <div className="space-y-3 rounded-md border border-border bg-muted/40 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Job details — private, owners only
+                </div>
+                <div>
+                  <Label htmlFor="ejt">Role / position</Label>
+                  <Input id="ejt" placeholder="e.g. Lead cleaner" value={job.job_title} onChange={(e) => setJob({ ...job, job_title: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="esd">Start date</Label>
+                    <Input id="esd" type="date" value={job.start_date} onChange={(e) => setJob({ ...job, start_date: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="erate">Pay rate ($/hour)</Label>
+                    <Input id="erate" type="number" min="0" step="0.01" value={job.rate} onChange={(e) => setJob({ ...job, rate: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="eaddr">Home address</Label>
+                  <Input id="eaddr" value={job.address} onChange={(e) => setJob({ ...job, address: e.target.value })} />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>

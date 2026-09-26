@@ -774,6 +774,41 @@ export type Database = {
           },
         ]
       }
+      employee_job_details: {
+        Row: {
+          created_at: string
+          job_title: string | null
+          profile_id: string
+          start_date: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          job_title?: string | null
+          profile_id: string
+          start_date?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          job_title?: string | null
+          profile_id?: string
+          start_date?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_job_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_permissions: {
         Row: {
           can_manage_clients_employees: boolean

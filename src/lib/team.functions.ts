@@ -70,23 +70,24 @@ export const listTeamRoster = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     // staff_directory() applies the contact-info permission in the database.
-    const [profs, { data: roles }, { data: canManage }] = await Promise.all([
+    const [profs, { data: roles }, { data: canManage }, { data: isOwner }] = await Promise.all([
       staffDirectory(context.supabase),
       context.supabase.from("user_roles").select("user_id, role"),
       context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" }),
+      context.supabase.rpc("is_owner"),
     ]);
 
     const roleMap = new Map<string, string>();
     (roles ?? []).forEach((r) => roleMap.set(r.user_id, r.role));
 
-    // Managers get email + address for editing; everyone else gets neither.
+    // Managers get email for editing; home addresses are private to owners only.
     let contactMap = new Map<string, { email: string | null; address: string | null }>();
-    if (canManage) {
+    if (canManage || isOwner) {
       const { data: rows } = await context.supabase
         .from("profiles")
         .select("id, email, address");
       contactMap = new Map(
-        (rows ?? []).map((r) => [r.id, { email: r.email, address: (r as any).address ?? null }]),
+        (rows ?? []).map((r) => [r.id, { email: r.email, address: isOwner ? ((r as any).address ?? null) : null }]),
       );
     }
 
