@@ -263,6 +263,19 @@ function SchedulePage() {
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
             {canManageSchedule ? (
               <>
+                {pastOpenIds.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={closeMut.isPending}
+                    onClick={() => {
+                      if (window.confirm(`Close ${pastOpenIds.length} past job${pastOpenIds.length === 1 ? "" : "s"} this week that were never marked complete, and create their invoices?`))
+                        closeMut.mutate(pastOpenIds);
+                    }}
+                  >
+                    <CheckCircle2 className="size-3.5 mr-1" /> Close past jobs ({pastOpenIds.length})
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant={draftCount ? "default" : "outline"}
@@ -465,6 +478,18 @@ function SchedulePage() {
                                        >
                                          <Copy className="size-3" /> Copy shift
                                        </button>
+                                      {(j.status === "scheduled" || j.status === "in_progress") && (
+                                        <button
+                                          type="button"
+                                          disabled={closeMut.isPending}
+                                          onClick={() => {
+                                            if (window.confirm("Close this job and create its invoice?")) closeMut.mutate([j.id]);
+                                          }}
+                                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-foreground text-background text-[11px] font-medium py-1.5 hover:opacity-90 disabled:opacity-50"
+                                        >
+                                          <CheckCircle2 className="size-3" /> Close &amp; invoice
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
                                         disabled={deleteMut.isPending}
