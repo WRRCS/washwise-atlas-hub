@@ -36,6 +36,7 @@ import { Route as AuthenticatedSopsRouteImport } from './routes/_authenticated/s
 import { Route as AuthenticatedSuperAdminRouteImport } from './routes/_authenticated/super-admin'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedTimeOffRouteImport } from './routes/_authenticated/time-off'
+import { Route as AuthenticatedTimesheetRouteImport } from './routes/_authenticated/timesheet'
 import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
@@ -214,6 +215,11 @@ const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
 const AuthenticatedTimeOffRoute = AuthenticatedTimeOffRouteImport.update({
   id: '/time-off',
   path: '/time-off',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTimesheetRoute = AuthenticatedTimesheetRouteImport.update({
+  id: '/timesheet',
+  path: '/timesheet',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedVoiceRoute = AuthenticatedVoiceRouteImport.update({
@@ -500,6 +506,7 @@ export interface FileRoutesByFullPath {
   '/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
   '/team': typeof AuthenticatedTeamRoute
   '/time-off': typeof AuthenticatedTimeOffRoute
+  '/timesheet': typeof AuthenticatedTimesheetRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
@@ -570,6 +577,7 @@ export interface FileRoutesByTo {
   '/sops': typeof AuthenticatedSopsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/time-off': typeof AuthenticatedTimeOffRoute
+  '/timesheet': typeof AuthenticatedTimesheetRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
@@ -644,6 +652,7 @@ export interface FileRoutesById {
   '/_authenticated/super-admin': typeof AuthenticatedSuperAdminRouteWithChildren
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/time-off': typeof AuthenticatedTimeOffRoute
+  '/_authenticated/timesheet': typeof AuthenticatedTimesheetRoute
   '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
@@ -718,6 +727,7 @@ export interface FileRouteTypes {
     | '/super-admin'
     | '/team'
     | '/time-off'
+    | '/timesheet'
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
@@ -788,6 +798,7 @@ export interface FileRouteTypes {
     | '/sops'
     | '/team'
     | '/time-off'
+    | '/timesheet'
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
@@ -861,6 +872,7 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin'
     | '/_authenticated/team'
     | '/_authenticated/time-off'
+    | '/_authenticated/timesheet'
     | '/_authenticated/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
@@ -1118,6 +1130,13 @@ declare module '@tanstack/react-router' {
       path: '/time-off'
       fullPath: '/time-off'
       preLoaderRoute: typeof AuthenticatedTimeOffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/timesheet': {
+      id: '/_authenticated/timesheet'
+      path: '/timesheet'
+      fullPath: '/timesheet'
+      preLoaderRoute: typeof AuthenticatedTimesheetRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/voice': {
@@ -1555,6 +1574,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSuperAdminRoute: typeof AuthenticatedSuperAdminRouteWithChildren
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedTimeOffRoute: typeof AuthenticatedTimeOffRoute
+  AuthenticatedTimesheetRoute: typeof AuthenticatedTimesheetRoute
   AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
   AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
   AuthenticatedSettingsAiRoute: typeof AuthenticatedSettingsAiRoute
@@ -1589,6 +1609,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSuperAdminRoute: AuthenticatedSuperAdminRouteWithChildren,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedTimeOffRoute: AuthenticatedTimeOffRoute,
+  AuthenticatedTimesheetRoute: AuthenticatedTimesheetRoute,
   AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
   AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
   AuthenticatedSettingsAiRoute: AuthenticatedSettingsAiRoute,
