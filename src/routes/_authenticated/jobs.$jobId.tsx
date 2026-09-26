@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob } from "@/lib/jobs.functions";
 import { listJobGps, clockIn } from "@/lib/time.functions";
+import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { captureGps } from "@/lib/geolocation";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { myPermissions } from "@/lib/team.functions";
