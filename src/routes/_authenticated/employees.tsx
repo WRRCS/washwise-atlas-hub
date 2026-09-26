@@ -293,6 +293,7 @@ function Employees() {
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
               onCopyInvite={() => copyInvite(e)}
+              onEmailLink={() => emailSignInLink(e)}
               onGiveAccess={() => {
                 setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: e.id });
                 setInviteOpen(true);
@@ -315,6 +316,7 @@ function Employees() {
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
                 onCopyInvite={() => copyInvite(e)}
+                onEmailLink={() => emailSignInLink(e)}
                 onDeactivate={() => reactivate(e)}
                 onDelete={() => removeEmployee(e)}
                 onChangeRole={(r) => changeRole(e, r)}
@@ -334,6 +336,7 @@ function Employees() {
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
                 onCopyInvite={() => copyInvite(e)}
+                onEmailLink={() => emailSignInLink(e)}
                 onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
                 onChangeRole={(r) => changeRole(e, r)}
               />
@@ -460,7 +463,7 @@ const EMPTY_PERMS = {
   can_view_wages: false,
 };
 
-function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onEmailLink, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
   e: Employee;
   isOwnerViewer: boolean;
   perms: PermsRow | null;
