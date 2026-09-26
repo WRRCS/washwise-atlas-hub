@@ -10,12 +10,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
   listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
+  sendMagicLinkInvite,
 } from "@/lib/entities.functions";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 
@@ -113,6 +114,20 @@ function Employees() {
       toast.success("Invite link & instructions copied");
     } catch {
       toast.error("Couldn't copy — you can select the text manually");
+    }
+  };
+
+  const magicLinkFn = useServerFn(sendMagicLinkInvite);
+  const emailSignInLink = async (e: Employee) => {
+    if (!e.email) {
+      toast.error("This employee has no email address — add one first");
+      return;
+    }
+    try {
+      await magicLinkFn({ data: { employee_id: e.id, redirect_to: `${appUrl}/` } });
+      toast.success(`Sign-in link emailed to ${e.email}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send the sign-in link");
     }
   };
 
@@ -278,6 +293,7 @@ function Employees() {
               onEdit={() => openEdit(e)}
               onImpersonate={() => impersonate(e)}
               onCopyInvite={() => copyInvite(e)}
+              onEmailLink={() => emailSignInLink(e)}
               onGiveAccess={() => {
                 setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: e.id });
                 setInviteOpen(true);
@@ -300,6 +316,7 @@ function Employees() {
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
                 onCopyInvite={() => copyInvite(e)}
+                onEmailLink={() => emailSignInLink(e)}
                 onDeactivate={() => reactivate(e)}
                 onDelete={() => removeEmployee(e)}
                 onChangeRole={(r) => changeRole(e, r)}
@@ -319,6 +336,7 @@ function Employees() {
                 onEdit={() => openEdit(e)}
                 onImpersonate={() => impersonate(e)}
                 onCopyInvite={() => copyInvite(e)}
+                onEmailLink={() => emailSignInLink(e)}
                 onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
                 onChangeRole={(r) => changeRole(e, r)}
               />
@@ -445,7 +463,7 @@ const EMPTY_PERMS = {
   can_view_wages: false,
 };
 
-function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
+function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onEmailLink, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
   e: Employee;
   isOwnerViewer: boolean;
   perms: PermsRow | null;
@@ -453,6 +471,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
   onEdit: () => void;
   onImpersonate: () => void;
   onCopyInvite: () => void;
+  onEmailLink: () => void;
   onGiveAccess?: () => void;
   onDeactivate: () => void;
   onDelete?: () => void;
@@ -568,6 +587,11 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
         <Button size="sm" variant="ghost" onClick={onCopyInvite} title="Copy the app link and sign-in steps for this person">
           <Copy className="size-3.5 mr-1.5" /> Invite
         </Button>
+        {e.email && (
+          <Button size="sm" variant="ghost" onClick={onEmailLink} title="Email this person a one-tap sign-in link (no password needed)">
+            <Mail className="size-3.5 mr-1.5" /> Email link
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={onImpersonate} title="Open a sign-in link in a new tab">
           <LogIn className="size-3.5 mr-1.5" /> Impersonate
         </Button>

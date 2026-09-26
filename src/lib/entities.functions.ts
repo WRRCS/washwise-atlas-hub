@@ -630,6 +630,73 @@ export const inviteEmployee = createServerFn({ method: "POST" })
   });
 
 /**
+ * Email an employee a one-tap magic sign-in link. Owners/managers with
+ * can_manage_clients_employees only. The employee must already have app
+ * access (an auth account); the email is allowlisted so sign-in is permitted.
+ */
+export const sendMagicLinkInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ employee_id: z.string().uuid(), redirect_to: z.string().url().optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+    if (!allowed) throw new Error("You don't have permission to invite employees");
+
+    const { data: me } = await context.supabase
+      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (!me?.tenant_id) throw new Error("Could not resolve your business");
+    const tenantId = me.tenant_id as string;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: emp } = await supabaseAdmin
+      .from("profiles").select("id, email, full_name, tenant_id").eq("id", data.employee_id).maybeSingle();
+    if (!emp || emp.tenant_id !== tenantId) throw new Error("Employee not found in your business");
+    if (!emp.email) throw new Error("This employee has no email address — add one first");
+
+    const email = emp.email.toLowerCase();
+    await supabaseAdmin
+      .from("allowed_signins")
+      .upsert({ email, tenant_id: tenantId, invited_by: context.userId }, { onConflict: "email" });
+
+    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo: data.redirect_to },
+    });
+    if (error) throw new Error(error.message);
+    const url = link.properties?.action_link;
+    if (!url) throw new Error("Could not create the sign-in link");
+
+    const firstName = (emp.full_name ?? "").split(" ")[0] || "there";
+    const bodyHtml = `
+      <p>Hi ${firstName},</p>
+      <p>You've been added to our team app. Tap the button below on your phone to sign in — no password needed.</p>
+      <p style="margin:24px 0"><a href="${url}" style="background:#0f172a;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Sign in to the team app</a></p>
+      <p>To keep the app on your phone like a regular app:</p>
+      <ul>
+        <li><b>iPhone/iPad:</b> open the link in Safari, tap Share, then "Add to Home Screen".</li>
+        <li><b>Android:</b> open the link in Chrome, tap the three-dot menu, then "Add to Home screen" or "Install app".</li>
+      </ul>
+      <p>Once installed, open it from the icon — you'll stay signed in and can see your schedule, clock in/out, and job notes.</p>
+      <p style="color:#64748b;font-size:12px">This sign-in link expires soon and can only be used once. If it stops working, ask your manager to send a new one.</p>
+    `;
+
+    const { error: nErr } = await supabaseAdmin.from("notifications").insert({
+      tenant_id: tenantId,
+      recipient_type: "employee",
+      recipient_id: emp.id,
+      channel: "email",
+      template_name: "employee_magic_link_invite",
+      payload: { subject: "Your team app sign-in link", body_html: bodyHtml, to: email },
+      scheduled_for: new Date().toISOString(),
+    } as any);
+    if (nErr) throw new Error(nErr.message);
+
+    return { ok: true };
+  });
+
+/**
  * Add a team member without giving them app access yet. They can be put on
  * the schedule right away; app access can be created later from Employees.
  */
