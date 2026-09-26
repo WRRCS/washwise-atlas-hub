@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee } from "@/lib/jobs.functions";
+import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs } from "@/lib/jobs.functions";
+import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
@@ -129,6 +130,17 @@ function SchedulePage() {
     onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
   });
 
+  const closeFn = useServerFn(closeJobs);
+  const closeMut = useMutation({
+    mutationFn: (ids: string[]) => closeFn({ data: { ids } }),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success(r.closed ? `Closed ${r.closed} job${r.closed === 1 ? "" : "s"} — draft invoice${r.closed === 1 ? "" : "s"} created` : "Nothing to close");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not close job"),
+  });
+
   const publishMut = useMutation({
     mutationFn: () => publishFn({ data: { from, to } }),
     onSuccess: (r) => {
@@ -202,6 +214,9 @@ function SchedulePage() {
   }, [cleaners, jobsByEmpDay]);
 
   const draftCount = jobs.filter((j: any) => !j.published_at).length;
+  const pastOpenIds = jobs
+    .filter((j: any) => (j.status === "scheduled" || j.status === "in_progress") && new Date(j.scheduled_end).getTime() < Date.now())
+    .map((j: any) => j.id as string);
 
   const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string } | null>(null);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
@@ -263,6 +278,19 @@ function SchedulePage() {
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
             {canManageSchedule ? (
               <>
+                {pastOpenIds.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={closeMut.isPending}
+                    onClick={() => {
+                      if (window.confirm(`Close ${pastOpenIds.length} past job${pastOpenIds.length === 1 ? "" : "s"} this week that were never marked complete, and create their invoices?`))
+                        closeMut.mutate(pastOpenIds);
+                    }}
+                  >
+                    <CheckCircle2 className="size-3.5 mr-1" /> Close past jobs ({pastOpenIds.length})
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant={draftCount ? "default" : "outline"}
@@ -465,6 +493,18 @@ function SchedulePage() {
                                        >
                                          <Copy className="size-3" /> Copy shift
                                        </button>
+                                      {(j.status === "scheduled" || j.status === "in_progress") && (
+                                        <button
+                                          type="button"
+                                          disabled={closeMut.isPending}
+                                          onClick={() => {
+                                            if (window.confirm("Close this job and create its invoice?")) closeMut.mutate([j.id]);
+                                          }}
+                                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-foreground text-background text-[11px] font-medium py-1.5 hover:opacity-90 disabled:opacity-50"
+                                        >
+                                          <CheckCircle2 className="size-3" /> Close &amp; invoice
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
                                         disabled={deleteMut.isPending}
