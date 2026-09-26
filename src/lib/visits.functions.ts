@@ -34,7 +34,7 @@ export const claimOpenShift = createServerFn({ method: "POST" })
       .from("profiles").select("tenant_id").eq("id", employeeId).maybeSingle();
     if (!emp || emp.tenant_id !== tenantId) throw new Error("Employee not found");
 
-    const { error: je } = await supabaseAdmin.from("job_employees").insert({ job_id: data.job_id, employee_id: employeeId } as any);
+    const { error: je } = await supabaseAdmin.from("job_employees").insert({ job_id: data.job_id, employee_id: employeeId, tenant_id: tenantId });
     if (je) throw new Error(je.message);
     const { error } = await supabaseAdmin.from("jobs").update({ assigned_to: employeeId }).eq("id", data.job_id);
     if (error) throw new Error(error.message);
