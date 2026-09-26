@@ -5,32 +5,33 @@
 export type PushPayload = { title: string; body: string; url?: string; tag?: string };
 export type PushTarget = { endpoint: string; p256dh: string; auth: string };
 
+type Bytes = Uint8Array<ArrayBuffer>;
 const enc = new TextEncoder();
 
-function b64uDecode(s: string): Uint8Array {
+function b64uDecode(s: string): Bytes {
   const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4);
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
-function b64uEncode(buf: ArrayBuffer | Uint8Array): string {
+function b64uEncode(buf: ArrayBuffer | Bytes): string {
   const u = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
   let s = "";
   for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]);
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-function concat(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Bytes[]): Bytes {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let o = 0;
   for (const p of parts) { out.set(p, o); o += p.length; }
   return out;
 }
-async function hmac(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+async function hmac(key: Bytes, data: Bytes): Promise<Bytes> {
   const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return new Uint8Array(await crypto.subtle.sign("HMAC", k, data));
 }
-async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, len: number) {
+async function hkdf(salt: Bytes, ikm: Bytes, info: Bytes, len: number) {
   const prk = await hmac(salt, ikm);
   const okm = await hmac(prk, concat(info, new Uint8Array([1])));
   return okm.slice(0, len);
@@ -60,7 +61,7 @@ async function vapidAuthHeader(endpoint: string): Promise<string> {
   return `vapid t=${unsigned}.${b64uEncode(sig)}, k=${pub.replace(/=+$/, "")}`;
 }
 
-async function encrypt(target: PushTarget, plaintext: Uint8Array): Promise<Uint8Array> {
+async function encrypt(target: PushTarget, plaintext: Bytes): Promise<Bytes> {
   const uaPub = b64uDecode(target.p256dh);
   const authSecret = b64uDecode(target.auth);
   const local = (await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"])) as CryptoKeyPair;
