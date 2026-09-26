@@ -373,7 +373,7 @@ function SchedulePage() {
             </div>
 
             {/* Open shifts row — jobs nobody is assigned to yet */}
-            <div className="grid w-full border-t border-border/60 bg-amber-500/5" style={{ gridTemplateColumns: `minmax(112px, 1.15fr) repeat(7, minmax(0, 1fr))` }}>
+            <div className="grid w-full border-t border-border/60 bg-accent/10" style={{ gridTemplateColumns: `minmax(112px, 1.15fr) repeat(7, minmax(0, 1fr))` }}>
               <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                 <div className="size-7 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>
                 <div className="min-w-0">
