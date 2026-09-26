@@ -13,7 +13,7 @@ import {
 } from "@/lib/team.functions";
 import { useT } from "@/lib/i18n";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Phone, Send, Users2, Megaphone, Pencil, MapPin } from "lucide-react";
+import { Phone, Send, Users2, Megaphone, Pencil, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
