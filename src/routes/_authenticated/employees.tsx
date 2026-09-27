@@ -154,12 +154,22 @@ function Employees() {
 
   const submitInvite = async () => {
     setInviting(true);
+    const email = invite.email;
     try {
-      await inviteFn({ data: invite });
-      toast.success("Employee app access created");
+      const res = await inviteFn({ data: invite });
       setInviteOpen(false);
-      setInvite({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
+      setInvite({ full_name: "", email: "", phone: "" });
       qc.invalidateQueries({ queryKey: ["employees"] });
+      if (res?.id) {
+        try {
+          await magicLinkFn({ data: { employee_id: res.id, redirect_to: `${appUrl}/` } });
+          toast.success(`Access created — sign-in link emailed to ${email}`);
+        } catch {
+          toast.warning("Access created, but the sign-in link couldn't be sent — press Invite on their row to try again");
+        }
+      } else {
+        toast.success("Employee app access created");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to invite");
     } finally {
@@ -282,7 +292,7 @@ function Employees() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setAddOpen(true)}>Add employee</Button>
-            <BrandButton onClick={() => { setInvite({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: undefined }); setInviteOpen(true); }}>Create employee access</BrandButton>
+            <BrandButton onClick={() => { setInvite({ full_name: "", email: "", phone: "", profile_id: undefined }); setInviteOpen(true); }}>Create employee access</BrandButton>
           </div>
         }
       />
@@ -291,14 +301,14 @@ function Employees() {
         {canManage && (
           <div className="bg-white rounded-xl ring-1 ring-black/5 p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
             <div className="space-y-1">
-              <div className="text-sm font-medium">Team app link</div>
+              <div className="text-sm font-medium">Team app invites</div>
               <div className="text-sm text-muted-foreground">
-                Your team signs in at <span className="font-medium text-foreground">{appUrl}/auth</span> with their work email
-                and the shared starter password <span className="font-medium text-foreground">{DEFAULT_TEMP_PASSWORD}</span>. The copied message includes that password plus iPhone and Android instructions for adding the app to their home screen.
+                Press <span className="font-medium text-foreground">Invite</span> on anyone's row and they get a one-tap sign-in link by email — no passwords to share or reset.
+                The email also shows them how to add the app to their phone's home screen.
               </div>
             </div>
             <Button variant="outline" onClick={() => copyInvite()} className="shrink-0">
-              <Copy className="size-3.5 mr-1.5" /> Copy link & instructions
+              <Copy className="size-3.5 mr-1.5" /> Copy app link & steps
             </Button>
           </div>
         )}
@@ -315,7 +325,7 @@ function Employees() {
               onCopyInvite={() => copyInvite(e)}
               onEmailLink={() => emailSignInLink(e)}
               onGiveAccess={() => {
-                setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: e.id });
+                setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", profile_id: e.id });
                 setInviteOpen(true);
               }}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}

@@ -619,7 +619,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       }
 
       const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: data.temporary_password,
+        password: temporaryPassword,
         email_confirm: true,
       });
       if (passwordError) throw new Error(passwordError.message);
