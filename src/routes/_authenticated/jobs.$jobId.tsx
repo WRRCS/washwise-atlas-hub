@@ -501,17 +501,105 @@ function PhotosTab({ jobId }: { jobId: string }) {
     }
   };
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (!photos.length) return <p className="text-sm text-muted-foreground">No photos yet.</p>;
-
   const typeBadge: Record<string, string> = {
     before: "bg-blue-100 text-blue-800",
     after: "bg-green-100 text-green-800",
     other: "bg-clay-200 text-muted-foreground",
   };
 
+  const uploader = (
+    <div className="mb-4 rounded-lg border border-border/60 bg-clay-100/50 p-3">
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        hidden
+        onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90"
+        >
+          <Camera className="size-4" /> Take photo
+        </button>
+        <button
+          type="button"
+          onClick={() => galleryRef.current?.click()}
+          className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2.5 hover:bg-clay-100"
+        >
+          <ImagePlus className="size-4" /> From gallery
+        </button>
+      </div>
+      {pending.length > 0 && (
+        <div className="mt-3 space-y-3">
+          {pending.map((it) => (
+            <div key={it.id} className="flex gap-3 bg-clay-50 rounded-lg p-2 ring-1 ring-border/50">
+              <img src={it.previewUrl} alt="" className="size-20 rounded object-cover shrink-0" />
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex gap-1">
+                  {(["before", "after", "other"] as PhotoType[]).map((pt) => (
+                    <button
+                      key={pt}
+                      type="button"
+                      onClick={() => updatePending(it.id, { photo_type: pt })}
+                      className={`text-[11px] uppercase tracking-wider px-2 py-1 rounded font-medium ${
+                        it.photo_type === pt
+                          ? "bg-brand text-brand-foreground"
+                          : "bg-clay-100 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {pt}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  value={it.caption}
+                  onChange={(e) => updatePending(it.id, { caption: e.target.value })}
+                  placeholder="Caption (optional)"
+                  className="w-full text-sm border border-border rounded px-2 py-1 bg-clay-50"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removePending(it.id)}
+                className="shrink-0 self-start p-1 text-muted-foreground hover:text-destructive"
+                aria-label="Remove"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={onSavePhotos}
+            disabled={saving}
+            className="w-full inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? "Saving…" : `Save ${pending.length} photo${pending.length === 1 ? "" : "s"}`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
   return (
     <>
+      {uploader}
+      {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {photos.map((p) => (
           <div key={p.id} className="group relative rounded-lg overflow-hidden ring-1 ring-black/5 bg-clay-100">
