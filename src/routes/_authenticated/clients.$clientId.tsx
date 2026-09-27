@@ -76,7 +76,7 @@ function ClientDetail() {
             <Link to="/clients" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground px-3 py-2">
               <ArrowLeft className="size-4" /> Back
             </Link>
-            {client.phone && (
+            {isManagement && client.phone && (
               <Link
                 to="/messages"
                 search={{ clientId: client.id, phone: client.phone, name }}
