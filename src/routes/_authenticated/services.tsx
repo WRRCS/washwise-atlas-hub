@@ -86,7 +86,7 @@ function ServicesPage() {
 
   const save = async () => {
     const duration = Number(form.hours) * 60 + Number(form.minutes);
-    if (!Number.isInteger(duration) || duration < 1 || duration > 1440) {
+    if (form.minutes.trim() === "" || !Number.isInteger(Number(form.minutes)) || Number(form.minutes) < 0 || Number(form.minutes) > 59 || !Number.isInteger(duration) || duration < 1 || duration > 1440) {
       toast.error("Choose a duration between 1 minute and 24 hours");
       return;
     }
