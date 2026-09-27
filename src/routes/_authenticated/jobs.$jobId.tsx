@@ -6,7 +6,7 @@ import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "
 import { listJobGps, clockIn } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { captureGps } from "@/lib/geolocation";
-import { listJobPhotos, logPhotoShare, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
+import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { myPermissions } from "@/lib/team.functions";
 import { myCapabilities } from "@/lib/entities.functions";
@@ -410,68 +410,42 @@ export function JobDetailView({ jobId }: { jobId: string }) {
   );
 }
 
-type PendingPhoto = { id: string; file: File; previewUrl: string; caption: string; photo_type: PhotoType };
-
 function PhotosTab({ jobId }: { jobId: string }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listJobPhotos);
-  const shareFn = useServerFn(logPhotoShare);
   const delFn = useServerFn(deleteJobPhoto);
   const uploadUrlFn = useServerFn(createJobPhotoUploadUrl);
   const registerFn = useServerFn(registerJobPhoto);
   const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
-  const [pending, setPending] = useState<PendingPhoto[]>([]);
+  const [photoType, setPhotoType] = useState<PhotoType>("other");
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
-  const addFiles = (files: FileList | null) => {
+  // Photos save immediately on capture — no per-photo approval step.
+  const addFiles = async (files: FileList | null) => {
     if (!files?.length) return;
-    setPending((prev) => [
-      ...prev,
-      ...Array.from(files).map((file) => ({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        file,
-        previewUrl: URL.createObjectURL(file),
-        caption: "",
-        photo_type: "other" as PhotoType,
-      })),
-    ]);
-  };
-  const updatePending = (id: string, patch: Partial<PendingPhoto>) =>
-    setPending((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-  const removePending = (id: string) =>
-    setPending((prev) => {
-      const item = prev.find((x) => x.id === id);
-      if (item) URL.revokeObjectURL(item.previewUrl);
-      return prev.filter((x) => x.id !== id);
-    });
-
-  const onSavePhotos = async () => {
     setSaving(true);
     try {
-      for (const it of pending) {
-        const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: it.file.name } });
-        const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, it.file, {
-          contentType: it.file.type,
+      for (const file of Array.from(files)) {
+        const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: file.name } });
+        const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, {
+          contentType: file.type,
         });
         if (error) throw new Error(error.message);
         await registerFn({
           data: {
             job_id: jobId,
             storage_path: path,
-            caption: it.caption || undefined,
-            photo_type: it.photo_type,
+            photo_type: photoType,
             taken_at: new Date().toISOString(),
           },
         });
       }
-      pending.forEach((i) => URL.revokeObjectURL(i.previewUrl));
-      setPending([]);
       qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
-      toast.success("Photos saved");
+      toast.success("Photo saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save photos");
+      toast.error(e instanceof Error ? e.message : "Failed to save photo");
     } finally {
       setSaving(false);
     }
@@ -482,14 +456,6 @@ function PhotosTab({ jobId }: { jobId: string }) {
     queryFn: () => listFn({ data: { job_id: jobId } }),
   });
 
-  const onShare = async (p: JobPhotoRow) => {
-    try {
-      await shareFn({ data: { photo_id: p.id } });
-      toast.success("Share logged — email will send once wired up");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    }
-  };
   const onDelete = async (p: JobPhotoRow) => {
     if (!confirm("Delete this photo?")) return;
     try {
@@ -526,71 +492,40 @@ function PhotosTab({ jobId }: { jobId: string }) {
         hidden
         onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
       />
+      <div className="flex gap-1 mb-2">
+        {(["before", "after", "other"] as PhotoType[]).map((pt) => (
+          <button
+            key={pt}
+            type="button"
+            onClick={() => setPhotoType(pt)}
+            className={`text-[11px] uppercase tracking-wider px-2.5 py-1 rounded font-medium ${
+              photoType === pt
+                ? "bg-brand text-brand-foreground"
+                : "bg-clay-100 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {pt}
+          </button>
+        ))}
+      </div>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={() => cameraRef.current?.click()}
-          className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90"
+          disabled={saving}
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90 disabled:opacity-50"
         >
-          <Camera className="size-4" /> Take photo
+          <Camera className="size-4" /> {saving ? "Saving…" : "Take photo"}
         </button>
         <button
           type="button"
           onClick={() => galleryRef.current?.click()}
-          className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2.5 hover:bg-clay-100"
+          disabled={saving}
+          className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2.5 hover:bg-clay-100 disabled:opacity-50"
         >
           <ImagePlus className="size-4" /> From gallery
         </button>
       </div>
-      {pending.length > 0 && (
-        <div className="mt-3 space-y-3">
-          {pending.map((it) => (
-            <div key={it.id} className="flex gap-3 bg-clay-50 rounded-lg p-2 ring-1 ring-border/50">
-              <img src={it.previewUrl} alt="" className="size-20 rounded object-cover shrink-0" />
-              <div className="flex-1 min-w-0 space-y-2">
-                <div className="flex gap-1">
-                  {(["before", "after", "other"] as PhotoType[]).map((pt) => (
-                    <button
-                      key={pt}
-                      type="button"
-                      onClick={() => updatePending(it.id, { photo_type: pt })}
-                      className={`text-[11px] uppercase tracking-wider px-2 py-1 rounded font-medium ${
-                        it.photo_type === pt
-                          ? "bg-brand text-brand-foreground"
-                          : "bg-clay-100 text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {pt}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  value={it.caption}
-                  onChange={(e) => updatePending(it.id, { caption: e.target.value })}
-                  placeholder="Caption (optional)"
-                  className="w-full text-sm border border-border rounded px-2 py-1 bg-clay-50"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removePending(it.id)}
-                className="shrink-0 self-start p-1 text-muted-foreground hover:text-destructive"
-                aria-label="Remove"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={onSavePhotos}
-            disabled={saving}
-            className="w-full inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? "Saving…" : `Save ${pending.length} photo${pending.length === 1 ? "" : "s"}`}
-          </button>
-        </div>
-      )}
     </div>
   );
 
@@ -620,12 +555,6 @@ function PhotosTab({ jobId }: { jobId: string }) {
                   {p.photo_type}
                 </span>
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => onShare(p)}
-                    className="text-[11px] inline-flex items-center gap-1 px-2 py-1 rounded bg-brand text-brand-foreground hover:opacity-90"
-                  >
-                    <Send className="size-3" /> Send to client
-                  </button>
                   <button
                     onClick={() => onDelete(p)}
                     className="p-1 text-muted-foreground hover:text-destructive"
