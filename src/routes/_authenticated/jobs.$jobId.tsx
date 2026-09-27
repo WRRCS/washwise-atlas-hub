@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
 import { listJobGps, clockIn } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { captureGps } from "@/lib/geolocation";
-import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
+import { listJobPhotos, logPhotoShare, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { myPermissions } from "@/lib/team.functions";
 import { myCapabilities } from "@/lib/entities.functions";
 import { directionsUrl } from "@/lib/maps";
@@ -18,7 +19,7 @@ import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
-import { Check, MessageSquare, Navigation, Send, Trash2, X } from "lucide-react";
+import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 
