@@ -35,7 +35,6 @@ type Employee = {
   last_sign_in_at: string | null;
 };
 
-const DEFAULT_TEMP_PASSWORD = "WRRCS2026!";
 
 function Employees() {
   const qc = useQueryClient();
@@ -70,7 +69,7 @@ function Employees() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [invite, setInvite] = useState<{ full_name: string; email: string; phone: string; temporary_password: string; profile_id?: string }>({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
+  const [invite, setInvite] = useState<{ full_name: string; email: string; phone: string; profile_id?: string }>({ full_name: "", email: "", phone: "" });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
@@ -88,9 +87,8 @@ function Employees() {
       "You've been added to our team app.",
       "",
       `1. Open ${appUrl}/auth on your phone or computer.`,
-      e?.email ? `2. Sign in with your email: ${e.email}` : "2. Sign in with your work email.",
-      `3. Temporary password: ${DEFAULT_TEMP_PASSWORD}`,
-      "4. After signing in, tap \"Forgot password?\" to set your own password.",
+      e?.email ? `2. I'll email a one-tap sign-in link to ${e.email} — tap it to get in.` : "2. Send me your work email and I'll email you a one-tap sign-in link.",
+      "3. No password needed.",
       "",
       "Add the app to your home screen so it opens like a regular app:",
       "",
