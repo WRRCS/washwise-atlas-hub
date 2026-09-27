@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Clock, DollarSign } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pencil, Trash2, Clock } from "lucide-react";
 import {
   listServiceTypes, createServiceType, updateServiceType, deleteServiceType,
 } from "@/lib/entities.functions";
@@ -22,6 +23,14 @@ const servicesQO = queryOptions({
 });
 
 export const Route = createFileRoute("/_authenticated/services")({
+  head: () => ({ meta: [
+    { title: "Service Types | WRRCS.com" },
+    { name: "description", content: "Manage cleaning service types and their scheduled durations." },
+    { property: "og:title", content: "Service Types | WRRCS.com" },
+    { property: "og:description", content: "Manage cleaning service types and their scheduled durations." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(servicesQO),
   component: ServicesPage,
 });
@@ -30,7 +39,6 @@ type ServiceType = {
   id: string;
   name: string;
   default_duration_minutes: number;
-  default_price_cents: number;
   description: string | null;
   color: string;
   active: boolean;
@@ -39,16 +47,16 @@ type ServiceType = {
 type FormState = {
   id?: string;
   name: string;
-  default_duration_minutes: string;
-  price_dollars: string;
+  hours: string;
+  minutes: string;
   description: string;
   color: string;
 };
 
 const EMPTY: FormState = {
   name: "",
-  default_duration_minutes: "120",
-  price_dollars: "150",
+  hours: "2",
+  minutes: "0",
   description: "",
   color: "#6366f1",
 };
@@ -68,8 +76,8 @@ function ServicesPage() {
     setForm({
       id: s.id,
       name: s.name,
-      default_duration_minutes: String(s.default_duration_minutes),
-      price_dollars: (s.default_price_cents / 100).toFixed(2),
+      hours: String(Math.floor(s.default_duration_minutes / 60)),
+      minutes: String(s.default_duration_minutes % 60),
       description: s.description ?? "",
       color: s.color,
     });
@@ -77,12 +85,16 @@ function ServicesPage() {
   };
 
   const save = async () => {
+    const duration = Number(form.hours) * 60 + Number(form.minutes);
+    if (form.minutes.trim() === "" || !Number.isInteger(Number(form.minutes)) || Number(form.minutes) < 0 || Number(form.minutes) > 59 || !Number.isInteger(duration) || duration < 1 || duration > 1440) {
+      toast.error("Choose a duration between 1 minute and 24 hours");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         name: form.name,
-        default_duration_minutes: Number(form.default_duration_minutes),
-        default_price_cents: Math.round(Number(form.price_dollars) * 100),
+        default_duration_minutes: duration,
         description: form.description,
         color: form.color,
       };
@@ -128,7 +140,7 @@ function ServicesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {services.map((s) => (
-              <div key={s.id} className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <div key={s.id} className="bg-card rounded-xl ring-1 ring-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="h-2" style={{ backgroundColor: s.color }} />
                 <div className="p-5">
                   <div className="flex items-center gap-2.5 mb-3">
@@ -142,10 +154,6 @@ function ServicesPage() {
                     <span className="inline-flex items-center gap-1.5">
                       <Clock className="size-3.5" />
                       {formatDuration(s.default_duration_minutes)}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <DollarSign className="size-3.5" />
-                      {(s.default_price_cents / 100).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -167,7 +175,7 @@ function ServicesPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit service" : "New service"}</DialogTitle>
-            <DialogDescription>Set the default duration and price for this service.</DialogDescription>
+            <DialogDescription>Set the default duration for this service.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -176,14 +184,18 @@ function ServicesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="dur">Duration (minutes)</Label>
-                <Input id="dur" type="number" min={15} step={15} value={form.default_duration_minutes}
-                  onChange={(e) => setForm({ ...form, default_duration_minutes: e.target.value })} />
+                <Label htmlFor="service-hours">Hours</Label>
+                <Select value={form.hours} onValueChange={(hours) => setForm({ ...form, hours, minutes: hours === "24" ? "0" : form.minutes })}>
+                  <SelectTrigger id="service-hours"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 25 }, (_, n) => <SelectItem key={n} value={String(n)}>{n} {n === 1 ? "hour" : "hours"}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label htmlFor="price">Price (USD)</Label>
-                <Input id="price" type="number" min={0} step="0.01" value={form.price_dollars}
-                  onChange={(e) => setForm({ ...form, price_dollars: e.target.value })} />
+                <Label htmlFor="service-minutes">Minutes</Label>
+                <Input id="service-minutes" type="number" min={0} max={form.hours === "24" ? 0 : 59} step={1} value={form.minutes}
+                  onChange={(e) => setForm({ ...form, minutes: e.target.value })} />
               </div>
             </div>
             <div>
