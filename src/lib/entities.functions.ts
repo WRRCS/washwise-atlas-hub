@@ -518,7 +518,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       email: z.string().trim().email(),
       full_name: z.string().trim().min(1).max(120),
       phone: z.string().trim().max(40).optional(),
-      temporary_password: z.string().min(8).max(128),
+      temporary_password: z.string().min(8).max(128).optional(),
       profile_id: z.string().uuid().optional(),
     }).parse(input),
   )
@@ -581,10 +581,14 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       if (!p || p.tenant_id !== tenantId) throw new Error("Employee not found in your business");
       existingProfileId = p.id;
     }
+    // Staff sign in with an emailed one-tap link, so no starter password is
+    // shared in the app: the account just gets an unusable random secret.
+    const temporaryPassword =
+      data.temporary_password ?? `wrr-${crypto.randomUUID()}${crypto.randomUUID()}`;
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       ...(existingProfileId ? { id: existingProfileId } : {}),
       email: data.email,
-      password: data.temporary_password,
+      password: temporaryPassword,
       email_confirm: true,
       user_metadata: { full_name: data.full_name },
     } as any);
@@ -615,7 +619,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       }
 
       const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: data.temporary_password,
+        password: temporaryPassword,
         email_confirm: true,
       });
       if (passwordError) throw new Error(passwordError.message);
@@ -623,7 +627,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       userId = created.user?.id;
       createdNewUser = true;
     }
-    if (!userId) return { ok: true };
+    if (!userId) return { ok: true, id: undefined };
 
 
     // The auth trigger placed the new user in the default tenant via the
@@ -647,7 +651,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       throw new Error(roleErr.message);
     }
 
-    return { ok: true };
+    return { ok: true, id: userId };
   });
 
 /**

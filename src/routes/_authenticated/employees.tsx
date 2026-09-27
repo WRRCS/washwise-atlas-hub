@@ -35,7 +35,6 @@ type Employee = {
   last_sign_in_at: string | null;
 };
 
-const DEFAULT_TEMP_PASSWORD = "WRRCS2026!";
 
 function Employees() {
   const qc = useQueryClient();
@@ -70,7 +69,7 @@ function Employees() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [invite, setInvite] = useState<{ full_name: string; email: string; phone: string; temporary_password: string; profile_id?: string }>({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
+  const [invite, setInvite] = useState<{ full_name: string; email: string; phone: string; profile_id?: string }>({ full_name: "", email: "", phone: "" });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
@@ -88,9 +87,8 @@ function Employees() {
       "You've been added to our team app.",
       "",
       `1. Open ${appUrl}/auth on your phone or computer.`,
-      e?.email ? `2. Sign in with your email: ${e.email}` : "2. Sign in with your work email.",
-      `3. Temporary password: ${DEFAULT_TEMP_PASSWORD}`,
-      "4. After signing in, tap \"Forgot password?\" to set your own password.",
+      e?.email ? `2. I'll email a one-tap sign-in link to ${e.email} — tap it to get in.` : "2. Send me your work email and I'll email you a one-tap sign-in link.",
+      "3. No password needed.",
       "",
       "Add the app to your home screen so it opens like a regular app:",
       "",
@@ -156,12 +154,22 @@ function Employees() {
 
   const submitInvite = async () => {
     setInviting(true);
+    const email = invite.email;
     try {
-      await inviteFn({ data: invite });
-      toast.success("Employee app access created");
+      const res = await inviteFn({ data: invite });
       setInviteOpen(false);
-      setInvite({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD });
+      setInvite({ full_name: "", email: "", phone: "" });
       qc.invalidateQueries({ queryKey: ["employees"] });
+      if (res?.id) {
+        try {
+          await magicLinkFn({ data: { employee_id: res.id, redirect_to: `${appUrl}/` } });
+          toast.success(`Access created — sign-in link emailed to ${email}`);
+        } catch {
+          toast.warning("Access created, but the sign-in link couldn't be sent — press Invite on their row to try again");
+        }
+      } else {
+        toast.success("Employee app access created");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to invite");
     } finally {
@@ -284,7 +292,7 @@ function Employees() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setAddOpen(true)}>Add employee</Button>
-            <BrandButton onClick={() => { setInvite({ full_name: "", email: "", phone: "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: undefined }); setInviteOpen(true); }}>Create employee access</BrandButton>
+            <BrandButton onClick={() => { setInvite({ full_name: "", email: "", phone: "", profile_id: undefined }); setInviteOpen(true); }}>Create employee access</BrandButton>
           </div>
         }
       />
@@ -293,14 +301,14 @@ function Employees() {
         {canManage && (
           <div className="bg-white rounded-xl ring-1 ring-black/5 p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
             <div className="space-y-1">
-              <div className="text-sm font-medium">Team app link</div>
+              <div className="text-sm font-medium">Team app invites</div>
               <div className="text-sm text-muted-foreground">
-                Your team signs in at <span className="font-medium text-foreground">{appUrl}/auth</span> with their work email
-                and the shared starter password <span className="font-medium text-foreground">{DEFAULT_TEMP_PASSWORD}</span>. The copied message includes that password plus iPhone and Android instructions for adding the app to their home screen.
+                Press <span className="font-medium text-foreground">Invite</span> on anyone's row and they get a one-tap sign-in link by email — no passwords to share or reset.
+                The email also shows them how to add the app to their phone's home screen.
               </div>
             </div>
             <Button variant="outline" onClick={() => copyInvite()} className="shrink-0">
-              <Copy className="size-3.5 mr-1.5" /> Copy link & instructions
+              <Copy className="size-3.5 mr-1.5" /> Copy app link & steps
             </Button>
           </div>
         )}
@@ -317,7 +325,7 @@ function Employees() {
               onCopyInvite={() => copyInvite(e)}
               onEmailLink={() => emailSignInLink(e)}
               onGiveAccess={() => {
-                setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", temporary_password: DEFAULT_TEMP_PASSWORD, profile_id: e.id });
+                setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", profile_id: e.id });
                 setInviteOpen(true);
               }}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
@@ -373,7 +381,7 @@ function Employees() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create employee app access</DialogTitle>
-            <DialogDescription>Create a temporary password, then share the email, password, and app link with the employee. No Lovable account is required.</DialogDescription>
+            <DialogDescription>We'll create their sign-in and email them a one-tap link right away — no password needed and no Lovable account required.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -388,25 +396,14 @@ function Employees() {
               <Label htmlFor="ph">Phone</Label>
               <Input id="ph" value={invite.phone} onChange={(e) => setInvite({ ...invite, phone: e.target.value })} />
             </div>
-            <div>
-              <Label htmlFor="temporary-password">Temporary password</Label>
-              <Input
-                id="temporary-password"
-                type="text"
-                value={invite.temporary_password}
-                onChange={(e) => setInvite({ ...invite, temporary_password: e.target.value })}
-                minLength={8}
-                autoComplete="off"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Pre-filled with the standard starter password ({DEFAULT_TEMP_PASSWORD}) that's included in the copied invite. You can change it here for one person. Employees set their own with “Forgot password?” after signing in.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Pressing “Create access” emails them a one-tap sign-in link straight away — nothing for you to copy and nothing for them to remember.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={submitInvite} disabled={inviting || !invite.email || !invite.full_name || invite.temporary_password.length < 8}>
-              {inviting ? "Creating..." : "Create access"}
+            <Button onClick={submitInvite} disabled={inviting || !invite.email || !invite.full_name}>
+              {inviting ? "Sending invite..." : "Send invite"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -627,7 +624,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       <div className="text-sm text-muted-foreground">{formatLast(e.last_sign_in_at)}</div>
       <div className="flex items-center gap-2 justify-end flex-wrap">
         {onGiveAccess && !e.last_sign_in_at && e.role !== "owner" && (
-          <Button size="sm" variant="ghost" onClick={onGiveAccess} title="Create a sign-in for this person">
+          <Button size="sm" variant="ghost" onClick={onGiveAccess} title="Create their sign-in and email them a one-tap link">
             <ShieldCheck className="size-3.5 mr-1.5" /> App access
           </Button>
         )}
