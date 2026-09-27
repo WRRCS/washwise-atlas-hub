@@ -135,7 +135,7 @@ export function JobDetailView({ jobId }: { jobId: string }) {
         title={job.service?.name ?? "Job"}
         subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 [&>*]:flex-1 [&>*]:justify-center sm:[&>*]:flex-none">
             {canSeePricing && job.client?.phone && (
               <Link
                 to="/messages"

@@ -261,8 +261,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
     <header className="bg-clay-50 border-b border-border/60 sticky top-0 z-10 backdrop-blur">
-      <div className="max-w-6xl mx-auto px-6 md:px-8 py-6 flex items-center justify-between gap-4">
-        <div>
+      <div className="max-w-6xl mx-auto px-6 md:px-8 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight text-balance">{title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
         </div>
