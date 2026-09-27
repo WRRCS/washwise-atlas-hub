@@ -8,6 +8,7 @@ import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { captureGps } from "@/lib/geolocation";
 import { listJobPhotos, logPhotoShare, deleteJobPhoto, type JobPhotoRow } from "@/lib/photos.functions";
 import { myPermissions } from "@/lib/team.functions";
+import { myCapabilities } from "@/lib/entities.functions";
 import { directionsUrl } from "@/lib/maps";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -75,11 +76,18 @@ export function JobDetailView({ jobId }: { jobId: string }) {
   const doClockIn = useServerFn(clockIn);
   const [starting, setStarting] = useState(false);
   const permsFn = useServerFn(myPermissions);
+  const capsFn = useServerFn(myCapabilities);
 
   const { data: perms } = useQuery({
     queryKey: ["my-permissions"],
     queryFn: () => permsFn(),
   });
+  // Only owners/managers may message clients — employees never see the option.
+  const { data: caps } = useQuery({
+    queryKey: ["my-capabilities"],
+    queryFn: () => capsFn(),
+  });
+  const canMessageClient = !!(caps?.isOwner || caps?.isStaff);
   const canSeePricing = !!(perms?.isOwner || perms?.canViewPricing);
 
   const { data: job, isLoading } = useQuery({
@@ -136,7 +144,7 @@ export function JobDetailView({ jobId }: { jobId: string }) {
         subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={
           <div className="flex flex-wrap gap-2 [&>*]:flex-1 [&>*]:justify-center sm:[&>*]:flex-none">
-            {canSeePricing && job.client?.phone && (
+            {canMessageClient && canSeePricing && job.client?.phone && (
               <Link
                 to="/messages"
                 search={{
