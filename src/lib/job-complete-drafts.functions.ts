@@ -96,11 +96,16 @@ export const sendJobCompleteDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: draft, error } = await context.supabase
       .from("client_message_drafts")
-      .select("id, tenant_id, client_id, subject, body, status")
+      .select("id, tenant_id, client_id, subject, body, status, channel")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!draft || (draft as any).status !== "draft") throw new Error("That message has already been handled.");
+
+    if ((draft as any).channel === "sms") {
+      const { sendClientSms } = await import("@/lib/sms.server");
+      await sendClientSms(context, (draft as any).client_id, (draft as any).body);
+    }
 
     const { error: me } = await context.supabase.from("client_messages").insert({
       tenant_id: (draft as any).tenant_id,

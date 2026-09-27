@@ -34,3 +34,23 @@ export async function sendViaTwilio(opts: {
   }
   return json.sid as string;
 }
+
+/** Text a client from the business number and log it. Caller must already be authorized. */
+export async function sendClientSms(context: any, clientId: string, body: string): Promise<void> {
+  const { normalizePhoneE164 } = await import("@/lib/phone");
+  const { data: profile } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+  if (!profile?.tenant_id) throw new Error("No tenant");
+  const tenantId = profile.tenant_id as string;
+  const { data: cfg } = await context.supabase.from("voice_agent_config").select("twilio_phone_number").eq("tenant_id", tenantId).maybeSingle();
+  const from = normalizePhoneE164(cfg?.twilio_phone_number ?? null);
+  if (!from) throw new Error("No business text number set up yet (Settings → Voice AI).");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: client } = await supabaseAdmin.from("clients").select("phone").eq("id", clientId).eq("tenant_id", tenantId).maybeSingle();
+  const to = normalizePhoneE164((client as any)?.phone ?? null);
+  if (!to) throw new Error("This client has no phone number on file.");
+  const sid = await sendViaTwilio({ to, from, body });
+  await context.supabase.from("sms_messages").insert({
+    tenant_id: tenantId, client_id: clientId, direction: "outbound", from_number: from, to_number: to,
+    body, status: "sent", twilio_sid: sid, sent_by: context.userId,
+  } as never);
+}

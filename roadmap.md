@@ -6,3 +6,5 @@
 - [x] Timesheet tab: clock in/out + each appointment's arrive/leave, decimal time toggle
 - [x] Service Types: remove pricing from the page and choose duration in hours and minutes
 - [x] Team tab: screenshot-inspired searchable roster with permitted contact/pay and status
+- [x] Tip tracker: overpayment above invoice total split evenly; employees see own tips
+- [x] Publish schedule options: notify everyone / affected / no one; client email or text drafts
