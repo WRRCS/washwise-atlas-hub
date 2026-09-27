@@ -627,7 +627,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       userId = created.user?.id;
       createdNewUser = true;
     }
-    if (!userId) return { ok: true };
+    if (!userId) return { ok: true, id: undefined };
 
 
     // The auth trigger placed the new user in the default tenant via the
@@ -651,7 +651,7 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       throw new Error(roleErr.message);
     }
 
-    return { ok: true };
+    return { ok: true, id: userId };
   });
 
 /**

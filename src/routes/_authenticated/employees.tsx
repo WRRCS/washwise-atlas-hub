@@ -381,7 +381,7 @@ function Employees() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create employee app access</DialogTitle>
-            <DialogDescription>Create a temporary password, then share the email, password, and app link with the employee. No Lovable account is required.</DialogDescription>
+            <DialogDescription>We'll create their sign-in and email them a one-tap link right away — no password needed and no Lovable account required.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -396,25 +396,14 @@ function Employees() {
               <Label htmlFor="ph">Phone</Label>
               <Input id="ph" value={invite.phone} onChange={(e) => setInvite({ ...invite, phone: e.target.value })} />
             </div>
-            <div>
-              <Label htmlFor="temporary-password">Temporary password</Label>
-              <Input
-                id="temporary-password"
-                type="text"
-                value={invite.temporary_password}
-                onChange={(e) => setInvite({ ...invite, temporary_password: e.target.value })}
-                minLength={8}
-                autoComplete="off"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Pre-filled with the standard starter password ({DEFAULT_TEMP_PASSWORD}) that's included in the copied invite. You can change it here for one person. Employees set their own with “Forgot password?” after signing in.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Pressing “Create access” emails them a one-tap sign-in link straight away — nothing for you to copy and nothing for them to remember.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={submitInvite} disabled={inviting || !invite.email || !invite.full_name || invite.temporary_password.length < 8}>
-              {inviting ? "Creating..." : "Create access"}
+            <Button onClick={submitInvite} disabled={inviting || !invite.email || !invite.full_name}>
+              {inviting ? "Sending invite..." : "Send invite"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -635,7 +624,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       <div className="text-sm text-muted-foreground">{formatLast(e.last_sign_in_at)}</div>
       <div className="flex items-center gap-2 justify-end flex-wrap">
         {onGiveAccess && !e.last_sign_in_at && e.role !== "owner" && (
-          <Button size="sm" variant="ghost" onClick={onGiveAccess} title="Create a sign-in for this person">
+          <Button size="sm" variant="ghost" onClick={onGiveAccess} title="Create their sign-in and email them a one-tap link">
             <ShieldCheck className="size-3.5 mr-1.5" /> App access
           </Button>
         )}

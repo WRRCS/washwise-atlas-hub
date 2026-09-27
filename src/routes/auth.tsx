@@ -122,7 +122,7 @@ function AuthPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Employees: use the invite link your manager emailed you to set a password, then sign in here.
+          Employees: tap the sign-in link your manager emailed you — no password needed.
         </p>
 
       </div>
