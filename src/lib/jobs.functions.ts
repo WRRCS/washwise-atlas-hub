@@ -298,17 +298,21 @@ export const moveJob = createServerFn({ method: "POST" })
 
 export const publishSchedule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { from: string; to: string }) => input)
+  .inputValidator((input: unknown) =>
+    z.object({
+      from: z.string(),
+      to: z.string(),
+      notify: z.enum(["everyone", "impacted", "none"]).default("impacted"),
+      client_channel: z.enum(["none", "email", "sms"]).default("none"),
+    }).parse(input),
+  )
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
-      .from("jobs")
-      .update({ published_at: new Date().toISOString() })
-      .is("published_at", null)
-      .gte("scheduled_start", data.from)
-      .lt("scheduled_start", data.to)
-      .select("id");
+    const { data: res, error } = await context.supabase.rpc("publish_schedule" as never, {
+      _from: data.from, _to: data.to, _notify: data.notify, _client_channel: data.client_channel,
+    } as never);
     if (error) throw new Error(error.message);
-    return { count: rows?.length ?? 0 };
+    const r = (res ?? {}) as { count?: number; drafts?: number };
+    return { count: r.count ?? 0, drafts: r.drafts ?? 0 };
   });
 
 export const listUnavailability = createServerFn({ method: "POST" })
