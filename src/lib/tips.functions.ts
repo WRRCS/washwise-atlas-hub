@@ -81,3 +81,10 @@ export const addManualTip = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const canManageTips = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase.rpc("is_owner_or_manager" as any);
+    return { isManager: !!data };
+  });

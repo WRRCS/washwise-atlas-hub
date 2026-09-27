@@ -11,9 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { listTips, assignTip, addManualTip } from "@/lib/tips.functions";
+import { listTips, assignTip, addManualTip, canManageTips } from "@/lib/tips.functions";
 import { listEmployees } from "@/lib/entities.functions";
-import { myPermissions } from "@/lib/team.functions";
 
 export const Route = createFileRoute("/_authenticated/tips")({
   head: () => ({
@@ -37,13 +36,13 @@ function TipsPage() {
   const from = month.toISOString();
   const to = addMonths(month, 1).toISOString();
   const tipsFn = useServerFn(listTips);
-  const permsFn = useServerFn(myPermissions);
+  const permsFn = useServerFn(canManageTips);
   const empFn = useServerFn(listEmployees);
   const assignFn = useServerFn(assignTip);
   const addFn = useServerFn(addManualTip);
 
-  const { data: perms } = useQuery({ queryKey: ["my-perms"], queryFn: () => permsFn() });
-  const isMgr = !!((perms as any)?.isOwner || (perms as any)?.canManage);
+  const { data: perms } = useQuery({ queryKey: ["can-manage-tips"], queryFn: () => permsFn() });
+  const isMgr = !!perms?.isManager;
   const { data: tips = [], isLoading, error } = useQuery({
     queryKey: ["tips", from],
     queryFn: () => tipsFn({ data: { from, to } }),
