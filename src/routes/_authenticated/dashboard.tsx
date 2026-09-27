@@ -1,11 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import {
   getDashboardStats,
-  getTodayJobs,
   getRecentActivity,
   type ActivityRow,
 } from "@/lib/dashboard.functions";
@@ -28,8 +26,19 @@ import {
   Inbox,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { listJobs } from "@/lib/jobs.functions";
+import { useBusinessTz } from "@/hooks/use-business-tz";
+import { dayKeyTZ, fmtTimeTZ, zonedToUTCISO } from "@/lib/tz";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  head: () => ({ meta: [
+    { title: "Dashboard | WRRCS.com" },
+    { name: "description", content: "Today's cleaning schedule, job activity, and business overview." },
+    { property: "og:title", content: "Dashboard | WRRCS.com" },
+    { property: "og:description", content: "Today's cleaning schedule, job activity, and business overview." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: DashboardPage,
   errorComponent: ({ error }) => (
     <AppShell>
@@ -100,17 +109,22 @@ function ActivityItem({ row }: { row: ActivityRow }) {
 }
 
 function DashboardPage() {
+  const tz = useBusinessTz();
+  const todayKey = dayKeyTZ(new Date(), tz);
+  const tomorrowKey = format(new Date(`${todayKey}T12:00:00Z`).getTime() + 24 * 60 * 60 * 1000, "yyyy-MM-dd");
+  const from = zonedToUTCISO(todayKey, "00:00", tz);
+  const to = zonedToUTCISO(tomorrowKey, "00:00", tz);
   const fetchStats = useServerFn(getDashboardStats);
-  const fetchToday = useServerFn(getTodayJobs);
+  const fetchJobs = useServerFn(listJobs);
   const fetchActivity = useServerFn(getRecentActivity);
   const fetchNewLeads = useServerFn(countNewLeads);
 
   const { data: stats } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => fetchStats() });
-  const { data: today = [] } = useQuery({ queryKey: ["dashboard-today"], queryFn: () => fetchToday(), refetchInterval: 5 * 60_000 });
-  const [todayTab, setTodayTab] = useState<"ongoing" | "completed">("ongoing");
-  const ongoing = today.filter((j) => j.status === "scheduled" || j.status === "in_progress");
-  const completed = today.filter((j) => j.status === "completed");
-  const shownToday = todayTab === "ongoing" ? ongoing : completed;
+  const { data: today = [], isPending: todayPending, isError: todayError } = useQuery({
+    queryKey: ["jobs", "dashboard-day", from, to],
+    queryFn: () => fetchJobs({ data: { from, to } }),
+    refetchInterval: 5 * 60_000,
+  });
   const { data: activity = [] } = useQuery({
     queryKey: ["dashboard-activity"],
     queryFn: () => fetchActivity(),
@@ -124,7 +138,7 @@ function DashboardPage() {
     <>
       <PageHeader
         title="Dashboard"
-        subtitle={format(new Date(), "EEEE, MMMM d, yyyy")}
+        subtitle={new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(new Date())}
       />
       <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 md:px-8 py-6 space-y-6">
         {/* Stat row */}
@@ -225,27 +239,18 @@ function DashboardPage() {
                 View schedule →
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 mb-3">
-              {(["ongoing", "completed"] as const).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setTodayTab(k)}
-                  className={`rounded-md py-1.5 text-sm font-medium transition-colors ${todayTab === k ? "bg-card shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  {k === "ongoing" ? `Ongoing (${ongoing.length})` : `Completed (${completed.length})`}
-                </button>
-              ))}
-            </div>
-            {shownToday.length === 0 ? (
+            {todayError ? (
+              <p className="text-sm text-destructive py-6 text-center">Could not load today's schedule.</p>
+            ) : todayPending ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Loading today's schedule…</p>
+            ) : today.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border py-10 text-center">
                 <Briefcase className="size-5 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {todayTab === "ongoing" ? "No ongoing jobs today." : "No jobs completed yet today."}
-                </p>
+                <p className="text-sm text-muted-foreground">No jobs scheduled today.</p>
               </div>
             ) : (
               <ul className="divide-y divide-border/60">
-                {shownToday.map((j) => (
+                {today.map((j) => (
                   <li key={j.id}>
                     <Link
                       to="/jobs/$jobId"
@@ -253,18 +258,18 @@ function DashboardPage() {
                       className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 hover:bg-clay-100/60 -mx-2 px-2 rounded-lg transition-colors"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{j.client_name}</p>
+                          <p className="text-sm font-medium truncate">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Client"}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {j.service_name ?? "Service"} ·{" "}
-                          {j.assignees.length ? j.assignees.join(", ") : "Unassigned"}
+                            {j.service?.name ?? "Service"} ·{" "}
+                            {j.assignees.length ? j.assignees.map((a) => a.full_name ?? "Team member").join(", ") : "Open shift"}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm tabular-nums">
-                          {format(new Date(j.scheduled_start), "h:mm a")}
+                          {fmtTimeTZ(j.scheduled_start, tz)}–{fmtTimeTZ(j.scheduled_end, tz)}
                         </p>
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {j.status.replace("_", " ")}
+                          {j.status.replace("_", " ")}{!j.published_at ? " · draft" : ""}
                         </p>
                       </div>
                     </Link>
