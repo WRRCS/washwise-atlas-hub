@@ -4,3 +4,4 @@
 - [x] Dashboard: today's jobs from the actual schedule (replaces Ongoing / Completed screenshot tabs)
 - [x] Arrived / Leaving buttons on each job (per-appointment visit times)
 - [x] Timesheet tab: clock in/out + each appointment's arrive/leave, decimal time toggle
+- [x] Service Types: remove pricing from the page and choose duration in hours and minutes

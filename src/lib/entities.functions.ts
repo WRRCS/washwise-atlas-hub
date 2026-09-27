@@ -423,7 +423,6 @@ export const listServiceTypes = createServerFn({ method: "GET" })
 const serviceTypeSchema = z.object({
   name: z.string().trim().min(1).max(80),
   default_duration_minutes: z.coerce.number().int().positive().max(24 * 60),
-  default_price_cents: z.coerce.number().int().nonnegative(),
   description: z.string().trim().max(500).optional(),
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).default("#6366f1"),
 });
@@ -441,7 +440,7 @@ export const createServiceType = createServerFn({ method: "POST" })
         kind: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40) as never,
         name: data.name,
         default_duration_minutes: data.default_duration_minutes,
-        default_price_cents: data.default_price_cents,
+        default_price_cents: 0,
         description: data.description || null,
         color: data.color,
         active: true,
@@ -460,7 +459,6 @@ export const updateServiceType = createServerFn({ method: "POST" })
       .update({
         name: data.name,
         default_duration_minutes: data.default_duration_minutes,
-        default_price_cents: data.default_price_cents,
         description: data.description || null,
         color: data.color,
       })
