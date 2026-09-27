@@ -218,6 +218,7 @@ export type Database = {
       client_message_drafts: {
         Row: {
           body: string
+          channel: string
           client_id: string
           created_at: string
           created_by: string | null
@@ -233,6 +234,7 @@ export type Database = {
         }
         Insert: {
           body?: string
+          channel?: string
           client_id: string
           created_at?: string
           created_by?: string | null
@@ -248,6 +250,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          channel?: string
           client_id?: string
           created_at?: string
           created_by?: string | null
@@ -3180,6 +3183,84 @@ export type Database = {
           },
         ]
       }
+      tips: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          employee_id: string | null
+          id: string
+          invoice_id: string | null
+          job_id: string | null
+          note: string | null
+          payment_id: string | null
+          source: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          note?: string | null
+          payment_id?: string | null
+          source?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          note?: string | null
+          payment_id?: string | null
+          source?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tips_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tips_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tips_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tips_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tips_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -3577,6 +3658,15 @@ export type Database = {
         Returns: Json
       }
       preview_plan_change: { Args: { _target_tier: string }; Returns: Json }
+      publish_schedule: {
+        Args: {
+          _client_channel: string
+          _from: string
+          _notify: string
+          _to: string
+        }
+        Returns: Json
+      }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
       report_client_account: { Args: { _client_id: string }; Returns: Json }
       report_client_balances: {
