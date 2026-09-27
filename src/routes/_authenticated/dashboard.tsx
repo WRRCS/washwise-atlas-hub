@@ -111,7 +111,7 @@ function ActivityItem({ row }: { row: ActivityRow }) {
 function DashboardPage() {
   const tz = useBusinessTz();
   const todayKey = dayKeyTZ(new Date(), tz);
-  const tomorrowKey = format(new Date(`${todayKey}T12:00:00Z`).getTime() + 24 * 60 * 60 * 1000, "yyyy-MM-dd");
+  const tomorrowKey = new Date(Date.parse(`${todayKey}T00:00:00Z`) + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const from = zonedToUTCISO(todayKey, "00:00", tz);
   const to = zonedToUTCISO(tomorrowKey, "00:00", tz);
   const fetchStats = useServerFn(getDashboardStats);
