@@ -410,12 +410,72 @@ export function JobDetailView({ jobId }: { jobId: string }) {
   );
 }
 
+type PendingPhoto = { id: string; file: File; previewUrl: string; caption: string; photo_type: PhotoType };
+
 function PhotosTab({ jobId }: { jobId: string }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listJobPhotos);
   const shareFn = useServerFn(logPhotoShare);
   const delFn = useServerFn(deleteJobPhoto);
+  const uploadUrlFn = useServerFn(createJobPhotoUploadUrl);
+  const registerFn = useServerFn(registerJobPhoto);
   const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
+  const [pending, setPending] = useState<PendingPhoto[]>([]);
+  const [saving, setSaving] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = (files: FileList | null) => {
+    if (!files?.length) return;
+    setPending((prev) => [
+      ...prev,
+      ...Array.from(files).map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        caption: "",
+        photo_type: "other" as PhotoType,
+      })),
+    ]);
+  };
+  const updatePending = (id: string, patch: Partial<PendingPhoto>) =>
+    setPending((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  const removePending = (id: string) =>
+    setPending((prev) => {
+      const item = prev.find((x) => x.id === id);
+      if (item) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((x) => x.id !== id);
+    });
+
+  const onSavePhotos = async () => {
+    setSaving(true);
+    try {
+      for (const it of pending) {
+        const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: it.file.name } });
+        const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, it.file, {
+          contentType: it.file.type,
+        });
+        if (error) throw new Error(error.message);
+        await registerFn({
+          data: {
+            job_id: jobId,
+            storage_path: path,
+            caption: it.caption || undefined,
+            photo_type: it.photo_type,
+            taken_at: new Date().toISOString(),
+          },
+        });
+      }
+      pending.forEach((i) => URL.revokeObjectURL(i.previewUrl));
+      setPending([]);
+      qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
+      toast.success("Photos saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save photos");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const { data: photos = [], isLoading } = useQuery({
     queryKey: ["job-photos", jobId],
