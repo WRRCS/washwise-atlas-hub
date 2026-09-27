@@ -67,7 +67,7 @@ function VisitButtons({ jobId }: { jobId: string }) {
 }
 
 /** Job detail body — also shown in a pop-up on the schedule. */
-export function JobDetailView({ jobId }: { jobId: string }) {
+export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () => void }) {
   const qc = useQueryClient();
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
@@ -140,6 +140,7 @@ export function JobDetailView({ jobId }: { jobId: string }) {
   return (
     <>
       <PageHeader
+        back={onBack}
         title={job.service?.name ?? "Job"}
         subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={

@@ -733,7 +733,15 @@ function SchedulePage() {
       >
         <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">
           <DialogHeader className="sr-only"><DialogTitle>Job details</DialogTitle></DialogHeader>
-          {openJobId && <JobDetailView jobId={openJobId} />}
+          {openJobId && (
+            <JobDetailView
+              jobId={openJobId}
+              onBack={() => {
+                setOpenJobId(null);
+                qc.invalidateQueries();
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>
