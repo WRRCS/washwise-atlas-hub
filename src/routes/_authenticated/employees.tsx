@@ -631,12 +631,13 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             <ShieldCheck className="size-3.5 mr-1.5" /> App access
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={onCopyInvite} title="Copy the app link and sign-in steps for this person">
-          <Copy className="size-3.5 mr-1.5" /> Invite
-        </Button>
-        {e.email && (
+        {e.email ? (
           <Button size="sm" variant="ghost" onClick={onEmailLink} title="Email this person a one-tap sign-in link (no password needed)">
-            <Mail className="size-3.5 mr-1.5" /> Email link
+            <Mail className="size-3.5 mr-1.5" /> Invite
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={onCopyInvite} title="No email on file — copy the app link and sign-in steps instead">
+            <Copy className="size-3.5 mr-1.5" /> Invite
           </Button>
         )}
         <Button size="sm" variant="ghost" onClick={onImpersonate} title="Open a sign-in link in a new tab">
