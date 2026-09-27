@@ -6,7 +6,7 @@ import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "
 import { listJobGps, clockIn } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { captureGps } from "@/lib/geolocation";
-import { listJobPhotos, logPhotoShare, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
+import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { myPermissions } from "@/lib/team.functions";
 import { myCapabilities } from "@/lib/entities.functions";
@@ -456,14 +456,6 @@ function PhotosTab({ jobId }: { jobId: string }) {
     queryFn: () => listFn({ data: { job_id: jobId } }),
   });
 
-  const onShare = async (p: JobPhotoRow) => {
-    try {
-      await shareFn({ data: { photo_id: p.id } });
-      toast.success("Share logged — email will send once wired up");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    }
-  };
   const onDelete = async (p: JobPhotoRow) => {
     if (!confirm("Delete this photo?")) return;
     try {
@@ -563,12 +555,6 @@ function PhotosTab({ jobId }: { jobId: string }) {
                   {p.photo_type}
                 </span>
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => onShare(p)}
-                    className="text-[11px] inline-flex items-center gap-1 px-2 py-1 rounded bg-brand text-brand-foreground hover:opacity-90"
-                  >
-                    <Send className="size-3" /> Send to client
-                  </button>
                   <button
                     onClick={() => onDelete(p)}
                     className="p-1 text-muted-foreground hover:text-destructive"
