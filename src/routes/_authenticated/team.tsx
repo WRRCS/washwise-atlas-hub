@@ -13,7 +13,7 @@ import {
 } from "@/lib/team.functions";
 import { useT } from "@/lib/i18n";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Send, Users2, Megaphone, Pencil, MapPin } from "lucide-react";
+import { Send, Users2, Megaphone, Pencil, Search, Download, Printer, MoreVertical, Filter, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,19 @@ import {
 } from "@/components/ui/dialog";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 import { myCapabilities, updateEmployee } from "@/lib/entities.functions";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/team")({
+  head: () => ({ meta: [
+    { title: "Team Roster | WRRCS.com" },
+    { name: "description", content: "View your team roster and internal conversations." },
+    { property: "og:title", content: "Team Roster | WRRCS.com" },
+    { property: "og:description", content: "View your team roster and internal conversations." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: TeamPage,
   errorComponent: ({ error }) => (
     <div className="p-8 text-sm text-destructive">{error.message}</div>
@@ -40,19 +51,18 @@ function TeamPage() {
   return (
     <AppShell>
       <PageHeader
-        title={t("Team")}
-        subtitle={t("Your teammates and internal chat")}
-        action={caps?.canManage ? <Button onClick={() => setAddOpen(true)}>Add employee</Button> : undefined}
+        title="Team roster"
+        action={caps?.canManage ? <Button onClick={() => setAddOpen(true)}><Plus className="size-4" /> Add team member</Button> : undefined}
       />
       <AddEmployeeDialog open={addOpen} onOpenChange={setAddOpen} />
-      <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
+      <div className="w-full px-4 md:px-8 py-6">
         <Tabs defaultValue="roster">
           <TabsList>
             <TabsTrigger value="roster">{t("Roster")}</TabsTrigger>
             <TabsTrigger value="messages">{t("Team messages")}</TabsTrigger>
           </TabsList>
           <TabsContent value="roster" className="mt-4">
-            <RosterView canManage={!!caps?.canManage} />
+            <RosterView canManage={!!caps?.canManage} showWages={!!(caps?.isOwner || caps?.canViewWages)} />
           </TabsContent>
           <TabsContent value="messages" className="mt-4">
             <TeamMessagesView />
@@ -75,7 +85,7 @@ function initialsOf(name: string | null) {
   );
 }
 
-function RosterView({ canManage }: { canManage: boolean }) {
+function RosterView({ canManage, showWages }: { canManage: boolean; showWages: boolean }) {
   const qc = useQueryClient();
   const rosterFn = useServerFn(listTeamRoster);
   const updateFn = useServerFn(updateEmployee);
@@ -92,6 +102,9 @@ function RosterView({ canManage }: { canManage: boolean }) {
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [form, setForm] = useState({ full_name: "", address: "", phone: "", email: "" });
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showTerminated, setShowTerminated] = useState(false);
+  const [roleFilter, setRoleFilter] = useState("all");
 
   const openEdit = (m: TeamMember) => {
     setEditing(m);
@@ -126,21 +139,97 @@ function RosterView({ canManage }: { canManage: boolean }) {
     }
   };
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (q.isLoading) return <p className="text-sm text-muted-foreground py-8">Loading roster…</p>;
+  if (q.isError) return <p className="text-sm text-destructive py-8">Could not load the roster. Please try again.</p>;
   const members = q.data ?? [];
-  if (!members.length)
-    return <p className="text-sm text-muted-foreground">No teammates yet.</p>;
+  const canShowContact = canManage || !!members.some((m) => m.email || m.phone);
+  const roles = [...new Set(members.map((m) => m.role))].sort();
+  const filtered = members
+    .filter((m) => (showTerminated || m.is_active) && (roleFilter === "all" || m.role === roleFilter))
+    .filter((m) => [m.full_name, m.email, m.phone].some((value) => value?.toLowerCase().includes(search.trim().toLowerCase())))
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 
-  // Contact visibility is enforced server-side — email/phone are null when
-  // the viewer isn't allowed to see them.
-  const anyContact = members.some((m) => m.email || m.phone);
+  const exportRoster = () => {
+    const columns = ["Team member", ...(canShowContact ? ["Email", "Phone"] : []), "Access level", ...(showWages ? ["Wage"] : []), "Status"];
+    const rows = filtered.map((m) => [m.full_name ?? "", ...(canShowContact ? [m.email ?? "", m.phone ?? ""] : []), m.role, ...(showWages ? [m.hourly_rate_cents == null ? "" : (m.hourly_rate_cents / 100).toFixed(2)] : []), m.is_active ? "Active" : "Terminated"]);
+    const csv = [columns, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "team-roster.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {members.map((m) => (
-          <RosterCard key={m.id} member={m} showContact={anyContact} canManage={canManage} onEdit={() => openEdit(m)} />
-        ))}
+      <div className="border border-border bg-card rounded-md overflow-hidden print:border-0">
+        <div className="flex flex-wrap items-center gap-3 p-3 md:p-4 border-b border-border print:hidden">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Input aria-label="Search team members" placeholder="Search team members…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <span className="text-sm text-muted-foreground tabular-nums">{filtered.length} team member{filtered.length === 1 ? "" : "s"}</span>
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <Switch id="show-terminated" checked={showTerminated} onCheckedChange={setShowTerminated} />
+            <Label htmlFor="show-terminated" className="text-sm whitespace-nowrap">Show terminated</Label>
+          </div>
+          <div className="w-36">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger aria-label="Filter by access level"><Filter className="size-4 shrink-0 mr-1" /><SelectValue placeholder="Filter" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                {roles.map((role) => <SelectItem key={role} value={role} className="capitalize">{role.replaceAll("_", " ")}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="icon" variant="ghost" aria-label="Download roster" title="Download roster" onClick={exportRoster}><Download className="size-4" /></Button>
+          <Button size="icon" variant="ghost" aria-label="Print roster" title="Print roster" onClick={() => window.print()}><Printer className="size-4" /></Button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[660px] text-left text-sm">
+            <thead className="border-b border-border text-xs font-medium text-muted-foreground">
+              <tr>
+                <th scope="col" className="px-4 py-3 font-medium">Team member</th>
+                {canShowContact && <th scope="col" className="px-4 py-3 font-medium">Contact information</th>}
+                <th scope="col" className="px-4 py-3 font-medium">Access level</th>
+                {showWages && <th scope="col" className="px-4 py-3 font-medium">Wage</th>}
+                <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                {canManage && <th scope="col" className="w-12 px-3 py-3 font-medium print:hidden"><span className="sr-only">Actions</span></th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((member) => (
+                <tr key={member.id} className="hover:bg-muted/40 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-36">
+                      <div className="size-8 shrink-0 rounded-full bg-secondary grid place-items-center overflow-hidden text-xs font-semibold text-secondary-foreground">
+                        {member.avatar_url ? <img src={member.avatar_url} alt="" className="size-full object-cover" /> : initialsOf(member.full_name)}
+                      </div>
+                      {canManage ? <Button variant="link" className="h-auto p-0 text-left font-medium" onClick={() => openEdit(member)}>{member.full_name ?? "—"}</Button> : <span className="font-medium">{member.full_name ?? "—"}</span>}
+                    </div>
+                  </td>
+                  {canShowContact && <td className="px-4 py-3 text-foreground">
+                    <div className="space-y-0.5 break-all">
+                      <div>{member.email ?? "—"}</div>
+                      {member.phone && <div className="text-muted-foreground">{member.phone}</div>}
+                    </div>
+                  </td>}
+                  <td className="px-4 py-3 capitalize">{member.role.replaceAll("_", " ")}</td>
+                  {showWages && <td className="px-4 py-3 tabular-nums whitespace-nowrap">{member.hourly_rate_cents == null ? "—" : `$${(member.hourly_rate_cents / 100).toFixed(2)}/hr`}</td>}
+                  <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${member.is_active ? "bg-success/15 text-foreground" : "bg-muted text-muted-foreground"}`}>{member.is_active ? "Active" : "Terminated"}</span></td>
+                  {canManage && <td className="px-3 py-3 print:hidden">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label={`Actions for ${member.full_name ?? "team member"}`}><MoreVertical className="size-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => openEdit(member)}><Pencil className="size-4" /> Edit details</DropdownMenuItem></DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>}
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={3 + Number(canShowContact) + Number(showWages) + Number(canManage)} className="px-4 py-12 text-center text-muted-foreground">{members.length ? "No team members match your search." : "No team members yet."}</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
@@ -176,39 +265,6 @@ function RosterView({ canManage }: { canManage: boolean }) {
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function RosterCard({ member, showContact, canManage, onEdit }: { member: TeamMember; showContact: boolean; canManage: boolean; onEdit: () => void }) {
-  return (
-    <article className="bg-clay-50 border border-border/60 rounded-xl p-4 ring-1 ring-black/5 flex items-center gap-4">
-      <div className="size-12 rounded-full bg-clay-200 overflow-hidden grid place-items-center text-sm font-medium shrink-0">
-        {member.avatar_url ? (
-          <img src={member.avatar_url} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <span>{initialsOf(member.full_name)}</span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="font-medium truncate">{member.full_name ?? "—"}</p>
-        <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
-        {showContact && member.phone && (
-          <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-            <Phone className="size-3 shrink-0" /> {member.phone}
-          </p>
-        )}
-        {canManage && member.address && (
-          <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1 truncate">
-            <MapPin className="size-3 shrink-0" /> {member.address}
-          </p>
-        )}
-      </div>
-      {canManage && (
-        <Button size="sm" variant="ghost" onClick={onEdit} title="Edit this person's info">
-          <Pencil className="size-3.5" />
-        </Button>
-      )}
-    </article>
   );
 }
 
