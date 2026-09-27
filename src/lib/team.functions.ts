@@ -57,6 +57,8 @@ export type TeamMember = {
   phone: string | null;
   address: string | null;
   role: string;
+  is_active: boolean;
+  hourly_rate_cents: number | null;
 };
 
 /**
@@ -92,7 +94,6 @@ export const listTeamRoster = createServerFn({ method: "GET" })
     }
 
     return profs
-      .filter((p) => p.is_active !== false)
       .map<TeamMember>((p) => ({
         id: p.id,
         full_name: p.full_name,
@@ -101,6 +102,8 @@ export const listTeamRoster = createServerFn({ method: "GET" })
         phone: p.phone,
         address: contactMap.get(p.id)?.address ?? null,
         role: roleMap.get(p.id) ?? "employee",
+        is_active: p.is_active !== false,
+        hourly_rate_cents: p.hourly_rate_cents,
       }));
   });
 
