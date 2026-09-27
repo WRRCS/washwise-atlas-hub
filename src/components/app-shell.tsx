@@ -258,10 +258,22 @@ function AppShellInner({ children }: { children: ReactNode }) {
   );
 }
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+export function PageHeader({ title, subtitle, action, back }: { title: string; subtitle?: string; action?: ReactNode; back?: () => void }) {
   return (
     <header className="bg-clay-50 border-b border-border/60 sticky top-0 z-10 backdrop-blur">
-      <div className="max-w-6xl mx-auto px-6 md:px-8 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      {back && (
+        <div className="max-w-6xl mx-auto px-4 md:px-6 pt-3">
+          <button
+            type="button"
+            onClick={back}
+            aria-label="Back"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-background/70 px-2.5 py-1.5 text-sm font-medium hover:bg-clay-100"
+          >
+            <ArrowLeft className="size-4" /> Back
+          </button>
+        </div>
+      )}
+      <div className={`max-w-6xl mx-auto px-6 md:px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${back ? "pt-1 pb-6" : "py-6"}`}>
         <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight text-balance">{title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
