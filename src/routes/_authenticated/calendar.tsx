@@ -164,11 +164,18 @@ function SchedulePage() {
     onError: (e: any) => toast.error(e?.message ?? "Could not close job"),
   });
 
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [pubNotify, setPubNotify] = useState<"everyone" | "impacted" | "none">("impacted");
+  const [pubClient, setPubClient] = useState<"none" | "email" | "sms">("none");
   const publishMut = useMutation({
-    mutationFn: () => publishFn({ data: { from, to } }),
+    mutationFn: (o: { notify: "everyone" | "impacted" | "none"; client_channel: "none" | "email" | "sms" }) =>
+      publishFn({ data: { from, to, ...o } }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      toast.success(r.count ? `Published ${r.count} shift${r.count === 1 ? "" : "s"}` : "Nothing new to publish");
+      setPublishOpen(false);
+      toast.success(r.count
+        ? `Published ${r.count} shift${r.count === 1 ? "" : "s"}${r.drafts ? ` · ${r.drafts} client message draft${r.drafts === 1 ? "" : "s"} ready to review` : ""}`
+        : "Nothing new to publish");
     },
   });
 
@@ -330,13 +337,46 @@ function SchedulePage() {
                 <Button
                   size="sm"
                   variant={draftCount ? "default" : "outline"}
-                  onClick={() => publishMut.mutate()}
-                  disabled={publishMut.isPending}
+                  onClick={() => setPublishOpen(true)}
+                  disabled={publishMut.isPending || !draftCount}
                   className={draftCount ? "bg-brand text-brand-foreground hover:opacity-90" : ""}
                 >
                   <Send className="size-3.5 mr-1" />
                   {draftCount ? `Publish (${draftCount})` : "Published"}
                 </Button>
+                <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Publish {draftCount} shift{draftCount === 1 ? "" : "s"}</DialogTitle></DialogHeader>
+                    <div className="space-y-4 text-sm">
+                      <div className="space-y-2">
+                        <Label>Notify employees</Label>
+                        {([["impacted","Only people on these shifts"],["everyone","Everyone on the team"],["none","No one"]] as const).map(([v,l]) => (
+                          <label key={v} className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="pubNotify" checked={pubNotify === v} onChange={() => setPubNotify(v)} /> {l}
+                          </label>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Clients</Label>
+                        {([["none","Don't message clients"],["email","Email draft for each client"],["sms","Text draft for each client"]] as const).map(([v,l]) => (
+                          <label key={v} className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="pubClient" checked={pubClient === v} onChange={() => setPubClient(v)} /> {l}
+                          </label>
+                        ))}
+                        {pubClient !== "none" && (
+                          <p className="text-xs text-muted-foreground">Drafts go to Message drafts — nothing is sent until you review and send them.</p>
+                        )}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setPublishOpen(false)}>Cancel</Button>
+                      <Button className="bg-brand text-brand-foreground hover:opacity-90" disabled={publishMut.isPending}
+                        onClick={() => publishMut.mutate({ notify: pubNotify, client_channel: pubClient })}>
+                        Publish
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
                 <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogSeed({ date: new Date() })}>
                   <Plus className="size-4" /> New Job
                 </Button>

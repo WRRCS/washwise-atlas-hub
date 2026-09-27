@@ -103,8 +103,8 @@ export const sendJobCompleteDraft = createServerFn({ method: "POST" })
     if (!draft || (draft as any).status !== "draft") throw new Error("That message has already been handled.");
 
     if ((draft as any).channel === "sms") {
-      const { sendSms } = await import("@/lib/sms.functions");
-      await (sendSms as any)({ data: { client_id: (draft as any).client_id, body: (draft as any).body } });
+      const { sendClientSms } = await import("@/lib/sms.server");
+      await sendClientSms(context, (draft as any).client_id, (draft as any).body);
     }
 
     const { error: me } = await context.supabase.from("client_messages").insert({
