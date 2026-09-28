@@ -477,7 +477,7 @@ function Section({ title, rows, empty, children }: { title: string; rows: Employ
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div className="hidden md:grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_auto] gap-x-5 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+          <div className="hidden md:grid grid-cols-[minmax(0,1.3fr)_minmax(0,2.05fr)_minmax(0,0.9fr)_minmax(0,0.55fr)_minmax(0,0.65fr)_auto] gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
             <div>Name</div><div>Email</div><div>Phone</div><div>Status</div><div>Last login</div><div className="text-right">Actions</div>
           </div>
           <div className="divide-y divide-border/60">
@@ -543,7 +543,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
     "bg-clay-100 text-muted-foreground";
   const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_auto] gap-x-5 gap-y-3 items-center px-5 py-4">
+    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_minmax(0,2.05fr)_minmax(0,0.9fr)_minmax(0,0.55fr)_minmax(0,0.65fr)_auto] gap-x-4 gap-y-3 items-center px-5 py-4">
       {/* Name, role and access */}
       <div className="min-w-0">
         <div className="font-medium truncate" title={e.full_name ?? undefined}>{e.full_name ?? "—"}</div>
@@ -626,7 +626,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       {/* Email */}
       <div className="min-w-0">
         <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Email</div>
-        <div className="text-sm text-foreground/80 break-words">{e.email ?? "—"}</div>
+        <div className="text-[13px] text-foreground/80 break-words leading-snug">{e.email ?? "—"}</div>
       </div>
 
       {/* Phone */}
@@ -651,11 +651,6 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
 
       {/* Actions */}
       <div className="flex items-center gap-1.5 justify-end">
-        {onGiveAccess && !e.last_sign_in_at && e.role !== "owner" && (
-          <Button size="sm" variant="outline" onClick={onGiveAccess} title="Create their sign-in and email them a one-tap link">
-            <ShieldCheck className="size-3.5 mr-1.5" /> App access
-          </Button>
-        )}
         {e.email ? (
           <Button size="sm" onClick={onEmailLink} title="Email this person a one-tap sign-in link (no password needed)">
             <Mail className="size-3.5 mr-1.5" /> Invite
@@ -671,7 +666,12 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="end" className="w-56">
+            {onGiveAccess && !e.last_sign_in_at && e.role !== "owner" && (
+              <DropdownMenuItem onClick={onGiveAccess}>
+                <ShieldCheck className="size-4 mr-2" /> Create app access
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={onEdit}>
               <Pencil className="size-4 mr-2" /> Edit details
             </DropdownMenuItem>
