@@ -853,6 +853,14 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
     }
   };
 
+  // Pre-fill the price from the property's set price when one is selected.
+  useEffect(() => {
+    if (selectedProperty?.price_cents != null) {
+      setPriceStr(String(selectedProperty.price_cents / 100));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId]);
+
   const toggleAssignee = (id: string) => {
     setAssignees((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     setConflicts(null);
