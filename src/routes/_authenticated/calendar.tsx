@@ -7,6 +7,7 @@ import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnav
 import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
+import { listClientProperties } from "@/lib/client-properties.functions";
 import { claimOpenShift } from "@/lib/visits.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -820,6 +821,12 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
   const [saving, setSaving] = useState(false);
   const [conflicts, setConflicts] = useState<{ employee_id: string }[] | null>(null);
 
+  const [propertyId, setPropertyId] = useState("");
+  const propsFn = useServerFn(listClientProperties);
+  const { data: properties = [] } = useQuery({ queryKey: ["client-properties", clientId], queryFn: () => propsFn({ data: { client_id: clientId } }), enabled: !!clientId });
+  const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
+  if (clientId && properties.length && !selectedProperty) setPropertyId((properties.find((p) => p.is_primary) ?? properties[0]).id);
+  if (!clientId && propertyId) setPropertyId("");
   const selectedClient = clients.find((c: any) => c.id === clientId);
   const effDate = effectiveStartDate(recur, dateStr);
   const startISO = zonedToUTCISO(effDate, startTime, tz);
@@ -865,6 +872,7 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
       await create({
         data: {
           client_id: clientId,
+          property_id: selectedProperty?.id ?? null,
           service_type_id: serviceId,
           scheduled_start: startISO,
           scheduled_end: endISO,
@@ -924,8 +932,14 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
               {services.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
-          <Field label="Service address">
-            <Input value={selectedClient?.service_address ?? ""} disabled placeholder="From client record" />
+          <Field label={properties.length > 1 ? "Property" : "Service address"}>
+            {properties.length > 1 ? (
+              <select value={propertyId} onChange={(e) => setPropertyId(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                {properties.map((p) => <option key={p.id} value={p.id}>{p.label} — {p.address}</option>)}
+              </select>
+            ) : (
+              <Input value={selectedProperty?.address ?? selectedClient?.service_address ?? ""} disabled placeholder="From client record" />
+            )}
           </Field>
           <Field label="Date">
             <Input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
