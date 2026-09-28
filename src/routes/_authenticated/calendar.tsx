@@ -433,7 +433,7 @@ function SchedulePage() {
                         onDragStart={(e) => e.dataTransfer.setData("application/x-atlas-shift", JSON.stringify({ id: j.id, srcDayKey: dayKey, open: true, startISO: j.scheduled_start, endISO: j.scheduled_end }))}
                         className="rounded-md border border-dashed border-border bg-card px-1.5 py-1 text-[10px] leading-tight"
                       >
-                        <p className="font-medium truncate">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Job"}</p>
+                        <p className="font-medium truncate">{j.property?.label || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Job"}</p>
                         <p className="text-muted-foreground tabular-nums">{fmtTimeTZ(j.scheduled_start, tz)}–{fmtTimeTZ(j.scheduled_end, tz)}</p>
                         {!canManageSchedule ? (
                           <button
@@ -494,6 +494,7 @@ function SchedulePage() {
                           .sort((a: any, b: any) => a.scheduled_start.localeCompare(b.scheduled_start))
                           .map((j: any) => {
                             const label =
+                              j.property?.label ||
                               j.notes ||
                               [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") ||
                               j.service?.name ||
@@ -726,8 +727,8 @@ function SchedulePage() {
                   {j.service?.name}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{j.notes || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{j.client?.service_address ?? "—"}</p>
+                  <p className="text-sm font-medium truncate">{j.property?.label || j.notes || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{j.property?.address ?? j.client?.service_address ?? "—"}</p>
                 </div>
                 <div className="flex -space-x-1">
                   {j.assignees.slice(0, 3).map((a: any) => (
