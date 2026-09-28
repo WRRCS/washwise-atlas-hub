@@ -258,7 +258,7 @@ function DashboardPage() {
                       className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 hover:bg-clay-100/60 -mx-2 px-2 rounded-lg transition-colors"
                     >
                       <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Client"}</p>
+                          <p className="text-sm font-medium truncate">{j.property?.label || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Client"}</p>
                         <p className="text-xs text-muted-foreground truncate">
                             {j.service?.name ?? "Service"} ·{" "}
                             {j.assignees.length ? j.assignees.map((a) => a.full_name ?? "Team member").join(", ") : "Open shift"}
