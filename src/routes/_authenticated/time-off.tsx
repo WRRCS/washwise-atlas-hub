@@ -181,7 +181,7 @@ function TimeOffPage() {
                   <SelectTrigger><SelectValue placeholder="Anyone" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Anyone</SelectItem>
-                    {(rosterQ.data ?? []).map((m) => (
+                    {(rosterQ.data ?? []).filter((m) => m.is_active !== false).map((m) => (
                       <SelectItem key={m.id} value={m.id}>{m.full_name ?? "Teammate"}</SelectItem>
                     ))}
                   </SelectContent>
