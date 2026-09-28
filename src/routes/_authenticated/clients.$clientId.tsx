@@ -1049,6 +1049,9 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
             <FieldRow label="Service frequency">
               <Input value={form.service_frequency} onChange={(e) => setForm({ ...form, service_frequency: e.target.value })} placeholder="Weekly, bi-weekly, monthly…" />
             </FieldRow>
+            <FieldRow label="Price ($)">
+              <Input type="number" min={0} step="0.01" placeholder="Set price for this property" value={form.priceStr} onChange={(e) => setForm({ ...form, priceStr: e.target.value })} />
+            </FieldRow>
             <div className="flex items-end">
               <label className="inline-flex items-center gap-2 text-sm pb-2">
                 <input type="checkbox" checked={form.is_primary} onChange={(e) => setForm({ ...form, is_primary: e.target.checked })} />
@@ -1101,6 +1104,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
                       </div>
                       <div className="text-sm text-muted-foreground truncate">{p.address}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
+                        {p.price_cents != null && <span className="text-foreground font-medium">${(p.price_cents / 100).toFixed(2)} · </span>}
                         {p.service_frequency ? `${p.service_frequency} · ` : ""}
                         {next ? `Next service ${format(new Date(next.scheduled_start), "PP p")}` : "No upcoming service"}
                       </div>
