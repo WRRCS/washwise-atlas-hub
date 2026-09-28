@@ -12,6 +12,7 @@ export type ClientProperty = {
   is_active: boolean;
   property_type: string | null;
   service_frequency: string | null;
+  price_cents: number | null;
 };
 
 export const listClientProperties = createServerFn({ method: "POST" })
