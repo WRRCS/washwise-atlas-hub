@@ -814,7 +814,8 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
   const [startTime, setStartTime] = useState("09:00");
   const [dateStr, setDateStr] = useState(format(date, "yyyy-MM-dd"));
   const [endTime, setEndTime] = useState("11:00");
-  const [priceCents, setPriceCents] = useState(0);
+  const [priceStr, setPriceStr] = useState("");
+  const priceCents = Math.round((parseFloat(priceStr) || 0) * 100);
   const [notes, setNotes] = useState("");
   const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(format(date, "yyyy-MM-dd")));
 
