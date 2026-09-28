@@ -294,7 +294,8 @@ function TeamMessagesView() {
   // Merge existing threads with roster so every teammate is reachable even
   // if there's no prior message history.
   const threads: TeamThread[] = threadsQ.data ?? [];
-  const roster: TeamMember[] = rosterQ.data ?? [];
+  // Archived/terminated staff stay out of conversations and the composer.
+  const roster: TeamMember[] = (rosterQ.data ?? []).filter((m) => m.is_active);
   const seen = new Set(threads.map((t) => t.peer_id));
   const combined: TeamThread[] = [
     threads.find((t) => t.peer_id === null) ?? {
