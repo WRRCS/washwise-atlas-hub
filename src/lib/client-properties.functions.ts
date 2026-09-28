@@ -40,6 +40,7 @@ const upsertSchema = z.object({
   is_active: z.boolean().optional(),
   property_type: z.string().trim().max(60).optional(),
   service_frequency: z.string().trim().max(60).optional(),
+  price_cents: z.number().int().nonnegative().nullable().optional(),
 });
 
 export const upsertClientProperty = createServerFn({ method: "POST" })
@@ -68,6 +69,7 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
           is_active: data.is_active ?? true,
           property_type: data.property_type ?? null,
           service_frequency: data.service_frequency ?? null,
+          price_cents: data.price_cents ?? null,
         })
         .eq("id", data.id);
       if (error) throw new Error(error.message);
@@ -85,6 +87,7 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
         is_active: data.is_active ?? true,
         property_type: data.property_type ?? null,
         service_frequency: data.service_frequency ?? null,
+        price_cents: data.price_cents ?? null,
       })
       .select("id").single();
     if (error) throw new Error(error.message);
