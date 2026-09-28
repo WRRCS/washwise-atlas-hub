@@ -10,8 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail, MoreHorizontal, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
@@ -473,8 +477,8 @@ function Section({ title, rows, empty, children }: { title: string; rows: Employ
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div className="hidden md:grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_auto] gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-            <div>Name</div><div>Email</div><div>Phone</div><div>Access</div><div>Status</div><div>Last login</div><div className="text-right">Actions</div>
+          <div className="hidden md:grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_auto] gap-x-5 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+            <div>Name</div><div>Email</div><div>Phone</div><div>Status</div><div>Last login</div><div className="text-right">Actions</div>
           </div>
           <div className="divide-y divide-border/60">
             {rows.map((e) => (
@@ -539,13 +543,84 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
     "bg-clay-100 text-muted-foreground";
   const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_auto] gap-x-4 gap-y-3 items-center px-5 py-4">
-      {/* Name */}
+    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_auto] gap-x-5 gap-y-3 items-center px-5 py-4">
+      {/* Name, role and access */}
       <div className="min-w-0">
         <div className="font-medium truncate" title={e.full_name ?? undefined}>{e.full_name ?? "—"}</div>
-        <span className={`mt-1 inline-flex items-center text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full ${roleColor}`}>
-          {e.role}
-        </span>
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+          <span className={`inline-flex items-center text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-full ${roleColor}`}>
+            {e.role}
+          </span>
+          {showAccess ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ring-black/10 hover:bg-clay-100 transition"
+                  title={`Contacts ${current.can_view_employee_contacts ? "on" : "off"} · Pricing ${current.can_view_pricing ? "on" : "off"} · Tap to manage access`}
+                >
+                  <ShieldCheck className="size-3 text-muted-foreground" />
+                  <span>{summary}</span>
+                  {activeCount > 0 && <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="start">
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-sm font-medium">Access for {e.full_name ?? "this employee"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {e.role === "manager"
+                        ? "Managers can be granted extra access as they grow into the role."
+                        : "Extra permissions beyond the employee default."}
+                    </div>
+                  </div>
+                  <PermToggle
+                    label="View team contact info"
+                    hint="See phone & email of other employees."
+                    checked={current.can_view_employee_contacts}
+                    onChange={(v) => toggle("can_view_employee_contacts", v)}
+                  />
+                  <PermToggle
+                    label="View pricing & invoices"
+                    hint="See job prices and invoice amounts."
+                    checked={current.can_view_pricing}
+                    onChange={(v) => toggle("can_view_pricing", v)}
+                  />
+                  <div className="border-t border-border/60 pt-3 space-y-4">
+                    <PermToggle
+                      label="Schedule & assignments"
+                      hint="Create/edit jobs, assign employees, approve time off."
+                      checked={current.can_schedule}
+                      onChange={(v) => toggle("can_schedule", v)}
+                    />
+                    <PermToggle
+                      label="Manage clients & employees"
+                      hint="Add/edit clients and employees. Includes client-to-manager chat."
+                      checked={current.can_manage_clients_employees}
+                      onChange={(v) => toggle("can_manage_clients_employees", v)}
+                    />
+                    <PermToggle
+                      label="View client contact info (CPNI)"
+                      hint="See client phone, email, and billing info."
+                      checked={current.can_view_client_cpni}
+                      onChange={(v) => toggle("can_view_client_cpni", v)}
+                    />
+                    <PermToggle
+                      label="View wages & hourly rates"
+                      hint="See team hourly pay and labor costs. Owner-only by default."
+                      checked={current.can_view_wages}
+                      onChange={(v) => toggle("can_view_wages", v)}
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">
+              {e.role === "owner" ? "Full access" : "Standard access"}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Email */}
@@ -558,78 +633,6 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       <div className="min-w-0">
         <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Phone</div>
         <div className="text-sm text-foreground/80 whitespace-nowrap">{fmtPhone(e.phone)}</div>
-      </div>
-
-      {/* Access */}
-      <div className="min-w-0">
-        <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Access</div>
-        {showAccess ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-black/10 hover:bg-clay-100 transition"
-                title={`Contacts ${current.can_view_employee_contacts ? "on" : "off"} · Pricing ${current.can_view_pricing ? "on" : "off"} · Tap to manage access`}
-              >
-                <ShieldCheck className="size-3.5 text-muted-foreground" />
-                <span>{summary}</span>
-                {activeCount > 0 && <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm font-medium">Access for {e.full_name ?? "this employee"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {e.role === "manager"
-                      ? "Managers can be granted extra access as they grow into the role."
-                      : "Extra permissions beyond the employee default."}
-                  </div>
-                </div>
-                <PermToggle
-                  label="View team contact info"
-                  hint="See phone & email of other employees."
-                  checked={current.can_view_employee_contacts}
-                  onChange={(v) => toggle("can_view_employee_contacts", v)}
-                />
-                <PermToggle
-                  label="View pricing & invoices"
-                  hint="See job prices and invoice amounts."
-                  checked={current.can_view_pricing}
-                  onChange={(v) => toggle("can_view_pricing", v)}
-                />
-                <div className="border-t border-border/60 pt-3 space-y-4">
-                  <PermToggle
-                    label="Schedule & assignments"
-                    hint="Create/edit jobs, assign employees, approve time off."
-                    checked={current.can_schedule}
-                    onChange={(v) => toggle("can_schedule", v)}
-                  />
-                  <PermToggle
-                    label="Manage clients & employees"
-                    hint="Add/edit clients and employees. Includes client-to-manager chat."
-                    checked={current.can_manage_clients_employees}
-                    onChange={(v) => toggle("can_manage_clients_employees", v)}
-                  />
-                  <PermToggle
-                    label="View client contact info (CPNI)"
-                    hint="See client phone, email, and billing info."
-                    checked={current.can_view_client_cpni}
-                    onChange={(v) => toggle("can_view_client_cpni", v)}
-                  />
-                  <PermToggle
-                    label="View wages & hourly rates"
-                    hint="See team hourly pay and labor costs. Owner-only by default."
-                    checked={current.can_view_wages}
-                    onChange={(v) => toggle("can_view_wages", v)}
-                  />
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        ) : (
-          <div className="text-sm text-muted-foreground">{e.role === "owner" ? "Everything" : "Default"}</div>
-        )}
       </div>
 
       {/* Status */}
@@ -647,7 +650,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 justify-end flex-wrap">
+      <div className="flex items-center gap-1.5 justify-end">
         {onGiveAccess && !e.last_sign_in_at && e.role !== "owner" && (
           <Button size="sm" variant="outline" onClick={onGiveAccess} title="Create their sign-in and email them a one-tap link">
             <ShieldCheck className="size-3.5 mr-1.5" /> App access
@@ -662,33 +665,44 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             <Copy className="size-3.5 mr-1.5" /> Invite
           </Button>
         )}
-        <span className="hidden md:block mx-1 h-5 w-px bg-border/70" aria-hidden />
-        <Button size="icon" variant="ghost" className="size-8" onClick={onEdit} title="Edit name, phone and status">
-          <Pencil className="size-4" />
-        </Button>
-        <Button size="icon" variant="ghost" className="size-8" onClick={onImpersonate} title="Open a sign-in link in a new tab">
-          <LogIn className="size-4" />
-        </Button>
-        {isOwnerViewer && (
-          <select
-            value={e.role}
-            onChange={(ev) => onChangeRole(ev.target.value as Role)}
-            className="text-xs h-8 rounded-md border border-input bg-background px-2"
-            title="Change role"
-          >
-            <option value="employee">Employee</option>
-            <option value="manager">Manager</option>
-            <option value="owner">Owner</option>
-          </select>
-        )}
-        <Button size="icon" variant="ghost" className="size-8" onClick={onDeactivate} title={e.is_active ? "Archive this person" : "Restore this person"}>
-          {e.is_active ? <Archive className="size-4" /> : <ArchiveRestore className="size-4" />}
-        </Button>
-        {isOwnerViewer && onDelete && (
-          <Button size="icon" variant="ghost" className="size-8 text-destructive hover:text-destructive" onClick={onDelete} title="Permanently delete this person">
-            <Trash2 className="size-4" />
-          </Button>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="size-8" title="More actions">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="size-4 mr-2" /> Edit details
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onImpersonate}>
+              <LogIn className="size-4 mr-2" /> Open as this person
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDeactivate}>
+              {e.is_active ? (<><Archive className="size-4 mr-2" /> Archive</>) : (<><ArchiveRestore className="size-4 mr-2" /> Restore</>)}
+            </DropdownMenuItem>
+            {isOwnerViewer && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Change role</DropdownMenuLabel>
+                {(["employee", "manager", "owner"] as Role[]).map((r) => (
+                  <DropdownMenuItem key={r} onClick={() => onChangeRole(r)}>
+                    {e.role === r ? <Check className="size-3.5 mr-2" /> : <span className="size-3.5 mr-2" aria-hidden />}
+                    <span className="capitalize">{r}</span>
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+            {isOwnerViewer && onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                  <Trash2 className="size-4 mr-2" /> Delete permanently
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
