@@ -441,6 +441,7 @@ export type Database = {
           is_primary: boolean
           label: string
           notes: string | null
+          price_cents: number | null
           property_type: string | null
           service_frequency: string | null
           tenant_id: string
@@ -455,6 +456,7 @@ export type Database = {
           is_primary?: boolean
           label: string
           notes?: string | null
+          price_cents?: number | null
           property_type?: string | null
           service_frequency?: string | null
           tenant_id: string
@@ -469,6 +471,7 @@ export type Database = {
           is_primary?: boolean
           label?: string
           notes?: string | null
+          price_cents?: number | null
           property_type?: string | null
           service_frequency?: string | null
           tenant_id?: string

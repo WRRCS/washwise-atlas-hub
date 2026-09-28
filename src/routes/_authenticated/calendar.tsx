@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs } from "@/lib/jobs.functions";
 import { CheckCircle2 } from "lucide-react";
@@ -852,6 +852,14 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
       setPriceStr(s.default_price_cents ? (s.default_price_cents / 100).toFixed(2) : "");
     }
   };
+
+  // Pre-fill the price from the property's set price when one is selected.
+  useEffect(() => {
+    if (selectedProperty?.price_cents != null) {
+      setPriceStr(String(selectedProperty.price_cents / 100));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId]);
 
   const toggleAssignee = (id: string) => {
     setAssignees((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
