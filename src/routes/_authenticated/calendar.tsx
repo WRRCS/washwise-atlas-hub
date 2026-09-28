@@ -814,7 +814,8 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
   const [startTime, setStartTime] = useState("09:00");
   const [dateStr, setDateStr] = useState(format(date, "yyyy-MM-dd"));
   const [endTime, setEndTime] = useState("11:00");
-  const [priceCents, setPriceCents] = useState(0);
+  const [priceStr, setPriceStr] = useState("");
+  const priceCents = Math.round((parseFloat(priceStr) || 0) * 100);
   const [notes, setNotes] = useState("");
   const [recur, setRecur] = useState<RecurrenceValue>(() => defaultRecurrence(format(date, "yyyy-MM-dd")));
 
@@ -848,7 +849,7 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
     const s = services.find((x: any) => x.id === id);
     if (s) {
       setEndTime(addMinutesToTime(startTime, s.default_duration_minutes));
-      setPriceCents(s.default_price_cents);
+      setPriceStr(s.default_price_cents ? (s.default_price_cents / 100).toFixed(2) : "");
     }
   };
 
@@ -892,7 +893,7 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
         setClientId("");
         setServiceId("");
         setNotes("");
-        setPriceCents(0);
+        setPriceStr("");
         setStartTime(endTime);
         setEndTime(addMinutesToTime(endTime, 120));
         setRecur(defaultRecurrence(dateStr));
@@ -955,7 +956,7 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
           </Field>
           {canSeePricing && (
             <Field label="Price ($)">
-              <Input type="number" min={0} step="0.01" value={(priceCents / 100).toFixed(2)} onChange={(e) => setPriceCents(Math.round(Number(e.target.value) * 100))} />
+              <Input type="number" min={0} step="0.01" placeholder="0.00" value={priceStr} onChange={(e) => setPriceStr(e.target.value)} />
             </Field>
           )}
         </div>
