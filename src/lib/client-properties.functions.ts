@@ -21,7 +21,7 @@ export const listClientProperties = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ClientProperty[]> => {
     const { data: rows, error } = await context.supabase
       .from("client_properties")
-      .select("id, client_id, label, address, notes, is_primary, is_active, property_type, service_frequency")
+      .select("id, client_id, label, address, notes, is_primary, is_active, property_type, service_frequency, price_cents")
       .eq("client_id", data.client_id)
       .eq("is_active", true)
       .order("is_primary", { ascending: false })

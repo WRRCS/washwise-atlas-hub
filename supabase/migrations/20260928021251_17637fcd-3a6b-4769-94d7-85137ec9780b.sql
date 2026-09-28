@@ -1,0 +1,1 @@
+ALTER TABLE public.client_properties ADD COLUMN IF NOT EXISTS price_cents integer;
