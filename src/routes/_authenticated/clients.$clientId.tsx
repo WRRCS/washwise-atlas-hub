@@ -959,7 +959,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
   const [editing, setEditing] = useState<ClientProperty | null>(null);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "" };
+  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "" };
   const [form, setForm] = useState(empty);
 
   const startAdd = () => { setForm(empty); setEditing(null); setAdding(true); };
@@ -968,6 +968,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
     setForm({
       label: p.label, address: p.address, notes: p.notes ?? "", is_primary: p.is_primary,
       property_type: p.property_type ?? "", service_frequency: p.service_frequency ?? "",
+      priceStr: p.price_cents != null ? String(p.price_cents / 100) : "",
     });
     setAdding(true);
   };
@@ -991,6 +992,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
           is_primary: form.is_primary,
           property_type: form.property_type.trim() || undefined,
           service_frequency: form.service_frequency.trim() || undefined,
+          price_cents: form.priceStr.trim() !== "" ? Math.round((parseFloat(form.priceStr) || 0) * 100) : null,
         },
       });
       toast.success(editing ? "Property updated" : "Property added");
