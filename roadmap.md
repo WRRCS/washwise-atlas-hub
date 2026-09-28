@@ -8,3 +8,4 @@
 - [x] Team tab: screenshot-inspired searchable roster with permitted contact/pay and status
 - [x] Tip tracker: overpayment above invoice total split evenly; employees see own tips
 - [x] Publish schedule options: notify everyone / affected / no one; client email or text drafts
+- [x] Employees page: tidy rows — email and phone in their own columns, phone formatted, actions in a three-dot menu
