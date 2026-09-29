@@ -684,13 +684,25 @@ export const sendMagicLinkInvite = createServerFn({ method: "POST" })
       .from("allowed_signins")
       .upsert({ email, tenant_id: tenantId, invited_by: context.userId }, { onConflict: "email" });
 
-    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+    // Employees who have never had app access have no auth account yet;
+    // "magiclink" only works for existing users, so fall back to "signup"
+    // which creates the account and returns a one-tap confirm link.
+    let { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email,
       options: { redirectTo: data.redirect_to },
     });
+    if (error) {
+      const retry = await supabaseAdmin.auth.admin.generateLink({
+        type: "signup",
+        email,
+        options: { redirectTo: data.redirect_to },
+      });
+      link = retry.data;
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
-    const url = link.properties?.action_link;
+    const url = link?.properties?.action_link;
     if (!url) throw new Error("Could not create the sign-in link");
 
     const firstName = (emp.full_name ?? "").split(" ")[0] || "there";
