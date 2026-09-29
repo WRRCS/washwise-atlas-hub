@@ -795,7 +795,7 @@ function SchedulePage() {
   );
 }
 
-function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: string; onClose: () => void }) {
+function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; employeeId?: string; onClose: () => void; onSaved?: (savedDate: string) => void }) {
   const qc = useQueryClient();
   const tz = useBusinessTz();
   const clientsFn = useServerFn(listClients);
