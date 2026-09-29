@@ -707,18 +707,34 @@ export const sendMagicLinkInvite = createServerFn({ method: "POST" })
       <p style="color:#64748b;font-size:12px">This sign-in link expires soon and can only be used once. If it stops working, ask your manager to send a new one.</p>
     `;
 
-    const { error: nErr } = await supabaseAdmin.from("notifications").insert({
-      tenant_id: tenantId,
-      recipient_type: "employee",
-      recipient_id: emp.id,
-      channel: "email",
-      template_name: "employee_magic_link_invite",
-      payload: { subject: "Your team app sign-in link", body_html: bodyHtml, to: email },
-      scheduled_for: new Date().toISOString(),
-    } as any);
-    if (nErr) throw new Error(nErr.message);
+    const { sendLovableEmail } = await import("@lovable.dev/email-js");
+    const emailResult = await sendLovableEmail(
+      {
+        to: email,
+        from: "Wash Rinse Repeat Cleaning <info@washrinserepeatcleaning.com>",
+        sender_domain: "notify.washrinserepeatcleaning.com",
+        subject: "Your team app sign-in link",
+        html: bodyHtml,
+        text: [
+          `Hi ${firstName},`,
+          "",
+          "You've been added to our team app. Open this one-time sign-in link:",
+          url,
+          "",
+          "The link expires soon and can only be used once.",
+        ].join("\n"),
+        purpose: "transactional",
+        idempotency_key: `employee-invite-${tenantId}-${emp.id}-${crypto.randomUUID()}`,
+        label: "employee_magic_link_invite",
+      },
+      {
+        apiKey: process.env['LOVABLE_API_KEY']!,
+        sendUrl: process.env['LOVABLE_SEND_URL'],
+      },
+    );
+    if (!emailResult.success) throw new Error("The sign-in email could not be sent. Please try again.");
 
-    return { ok: true };
+    return { ok: true, message_id: emailResult.message_id };
   });
 
 /**
