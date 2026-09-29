@@ -45,7 +45,7 @@ export const registerJobPhoto = createServerFn({ method: "POST" })
       job_id: z.string().uuid(),
       storage_path: z.string().min(1),
       caption: z.string().trim().max(300).optional(),
-      photo_type: z.enum(["before", "after", "other"]).default("other"),
+      photo_type: z.enum(["before", "after", "other", "damage"]).default("other"),
       taken_at: z.string().optional(),
     }).parse(input),
   )
@@ -77,7 +77,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       photos: z.array(z.object({
         storage_path: z.string().min(1),
         caption: z.string().trim().max(300).optional(),
-        photo_type: z.enum(["before", "after", "other"]).default("other"),
+        photo_type: z.enum(["before", "after", "other", "damage"]).default("other"),
       })).default([]),
       entry_id: z.string().uuid().optional(),
       notes: z.string().trim().max(2000).optional(),
