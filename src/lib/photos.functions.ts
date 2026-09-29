@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type PhotoType = "before" | "after" | "other";
+export type PhotoType = "before" | "after" | "other" | "damage";
 
 export type JobPhotoRow = {
   id: string;
