@@ -748,6 +748,11 @@ function SchedulePage() {
           date={dialogSeed.date}
           employeeId={dialogSeed.employeeId}
           onClose={() => setDialogSeed(null)}
+          onSaved={(savedDate) => {
+            // Jump the schedule to the week containing the date that was saved,
+            // so the new shift is visible even if it was entered for another week.
+            setAnchor(startOfWeek(new Date(`${savedDate}T12:00:00`), { weekStartsOn: 1 }));
+          }}
         />
       )}
       {copiedShift && (
