@@ -911,6 +911,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
         setEndTime(addMinutesToTime(endTime, 120));
         setRecur(defaultRecurrence(dateStr));
       } else {
+        onSaved?.(effDate);
         onClose();
       }
     } catch (err) {
