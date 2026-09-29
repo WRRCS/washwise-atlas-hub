@@ -105,6 +105,32 @@ export const sendJobCompleteDraft = createServerFn({ method: "POST" })
     if ((draft as any).channel === "sms") {
       const { sendClientSms } = await import("@/lib/sms.server");
       await sendClientSms(context, (draft as any).client_id, (draft as any).body);
+    } else if ((draft as any).channel === "email") {
+      const { data: client } = await context.supabase
+        .from("clients")
+        .select("email")
+        .eq("id", (draft as any).client_id)
+        .maybeSingle();
+      const to = (client as any)?.email as string | null;
+      if (!to) throw new Error("This client has no email address on file.");
+      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const subject = (draft as any).subject || "A message from Wash Rinse Repeat Cleaning";
+      const body = String((draft as any).body ?? "");
+      const { sendLovableEmail } = await import("@lovable.dev/email-js");
+      await sendLovableEmail(
+        {
+          to,
+          from: "Wash Rinse Repeat Cleaning <info@washrinserepeatcleaning.com>",
+          sender_domain: "notify.washrinserepeatcleaning.com",
+          subject,
+          html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222">${esc(body).replace(/\n/g, "<br>")}</div>`,
+          text: body,
+          purpose: "transactional",
+          idempotency_key: `client-draft-${data.id}`,
+          label: "client_message_draft",
+        },
+        { apiKey: process.env["LOVABLE_API_KEY"]!, sendUrl: process.env["LOVABLE_SEND_URL"] },
+      );
     }
 
     const { error: me } = await context.supabase.from("client_messages").insert({
