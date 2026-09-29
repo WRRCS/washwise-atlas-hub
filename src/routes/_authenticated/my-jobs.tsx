@@ -582,6 +582,9 @@ function CompleteJobDialog({
           console.warn("[clock-out] GPS unavailable:", res.status);
         }
       }
+      if (items.some((it) => it.photo_type === "damage" && !it.caption.trim())) {
+        throw new Error("Please describe the damage on each damage photo.");
+      }
       const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
       for (const it of items) {
         const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });

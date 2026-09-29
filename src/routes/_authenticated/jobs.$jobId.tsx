@@ -472,6 +472,7 @@ function PhotosTab({ jobId }: { jobId: string }) {
     before: "bg-blue-100 text-blue-800",
     after: "bg-green-100 text-green-800",
     other: "bg-clay-200 text-muted-foreground",
+    damage: "bg-destructive/15 text-destructive",
   };
 
   const uploader = (
