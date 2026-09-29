@@ -90,27 +90,8 @@ function Employees() {
     [
       "You've been added to our team app.",
       "",
-      `1. Open ${appUrl}/auth on your phone or computer.`,
-      e?.email ? `2. I'll email a one-tap sign-in link to ${e.email} — tap it to get in.` : "2. Send me your work email and I'll email you a one-tap sign-in link.",
-      "3. No password needed.",
-      "",
-      "Add the app to your home screen so it opens like a regular app:",
-      "",
-      "iPhone / iPad (Safari):",
-      "  a. Open the app link in Safari and sign in.",
-      "  b. Tap the Share button at the bottom (square with an arrow).",
-      "  c. Scroll down and tap \"Add to Home Screen\".",
-      "  d. Tap \"Add\". The app icon will appear on your home screen.",
-      "",
-      "Android (Chrome):",
-      "  a. Open the app link in Chrome and sign in.",
-      "  b. Tap the three-dot menu in the top right.",
-      "  c. Tap \"Add to Home screen\" or \"Install app\".",
-      "  d. Tap \"Add\" or \"Install\". The app icon will appear on your home screen.",
-      "",
-      "Once installed, open it from the icon. You'll stay signed in and can receive work notifications.",
-      "",
-      "You'll see your schedule, clock in/out, job notes and photos there.",
+      `Open ${appUrl}/auth on your phone or computer.`,
+      e?.email ? `I'll email a one-tap sign-in link to ${e.email} — tap it to get in. No password needed.` : "Send me your work email and I'll email you a one-tap sign-in link. No password needed.",
     ].join("\n");
 
   const copyInvite = async (e?: Employee) => {
@@ -302,20 +283,6 @@ function Employees() {
       />
       <AddEmployeeDialog open={addOpen} onOpenChange={setAddOpen} />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
-        {canManage && (
-          <div className="bg-white rounded-xl ring-1 ring-black/5 p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
-            <div className="space-y-1">
-              <div className="text-sm font-medium">Team app invites</div>
-              <div className="text-sm text-muted-foreground">
-                Press <span className="font-medium text-foreground">Invite</span> on anyone's row and they get a one-tap sign-in link by email — no passwords to share or reset.
-                The email also shows them how to add the app to their phone's home screen.
-              </div>
-            </div>
-            <Button variant="outline" onClick={() => copyInvite()} className="shrink-0">
-              <Copy className="size-3.5 mr-1.5" /> Copy app link & steps
-            </Button>
-          </div>
-        )}
 
         <Section title="Team" rows={employees} empty="No team members yet. Invite your first team member.">
           {(e) => (
