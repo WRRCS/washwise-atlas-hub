@@ -748,6 +748,11 @@ function SchedulePage() {
           date={dialogSeed.date}
           employeeId={dialogSeed.employeeId}
           onClose={() => setDialogSeed(null)}
+          onSaved={(savedDate) => {
+            // Jump the schedule to the week containing the date that was saved,
+            // so the new shift is visible even if it was entered for another week.
+            setAnchor(startOfWeek(new Date(`${savedDate}T12:00:00`), { weekStartsOn: 1 }));
+          }}
         />
       )}
       {copiedShift && (
@@ -790,7 +795,7 @@ function SchedulePage() {
   );
 }
 
-function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: string; onClose: () => void }) {
+function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; employeeId?: string; onClose: () => void; onSaved?: (savedDate: string) => void }) {
   const qc = useQueryClient();
   const tz = useBusinessTz();
   const clientsFn = useServerFn(listClients);
@@ -906,6 +911,7 @@ function NewJobDialog({ date, employeeId, onClose }: { date: Date; employeeId?: 
         setEndTime(addMinutesToTime(endTime, 120));
         setRecur(defaultRecurrence(dateStr));
       } else {
+        onSaved?.(effDate);
         onClose();
       }
     } catch (err) {
