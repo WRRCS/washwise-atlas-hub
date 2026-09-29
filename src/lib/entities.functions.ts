@@ -696,6 +696,8 @@ export const sendMagicLinkInvite = createServerFn({ method: "POST" })
       const retry = await supabaseAdmin.auth.admin.generateLink({
         type: "signup",
         email,
+        // Random throwaway password — never shown or used; sign-in is the one-tap link.
+        password: crypto.randomUUID() + crypto.randomUUID(),
         options: { redirectTo: data.redirect_to },
       });
       link = retry.data;
