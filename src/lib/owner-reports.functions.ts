@@ -245,3 +245,65 @@ export const reportClientAccount = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return row as ClientAccount;
   });
+
+export type PayrollRow = {
+  employee_id: string;
+  full_name: string;
+  hours: number;
+  hourly_rate_cents: number | null;
+  gross_cents: number;
+  tips_cents: number;
+};
+
+/** Owner/manager-only pay-period summary: hours × rate plus tips per person. */
+export const reportPayroll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => rangeSchema.parse(input))
+  .handler(async ({ data, context }): Promise<PayrollRow[]> => {
+    const sb = context.supabase as any;
+    const [{ data: isOwner }, { data: isMgr }] = await Promise.all([
+      sb.rpc("has_role", { _user_id: context.userId, _role: "owner" }),
+      sb.rpc("has_role", { _user_id: context.userId, _role: "manager" }),
+    ]);
+    if (!isOwner && !isMgr) throw new Error("Only owners and managers can view payroll.");
+
+    const { data: rows, error } = await sb.rpc("report_timesheets", { _from: data.from, _to: data.to });
+    if (error) throw new Error(error.message);
+    const hours = new Map<string, number>();
+    for (const r of rows ?? []) {
+      if (!r.user_id) continue;
+      hours.set(r.user_id, (hours.get(r.user_id) ?? 0) + Number(r.hours || 0));
+    }
+
+    const toEnd = new Date(new Date(data.to + "T00:00:00Z").getTime() + 86400000).toISOString();
+    const { data: tips } = await sb
+      .from("tips")
+      .select("employee_id, amount_cents")
+      .gte("created_at", data.from + "T00:00:00Z")
+      .lt("created_at", toEnd);
+    const tipMap = new Map<string, number>();
+    for (const t of tips ?? []) {
+      if (!t.employee_id) continue;
+      tipMap.set(t.employee_id, (tipMap.get(t.employee_id) ?? 0) + (t.amount_cents ?? 0));
+    }
+
+    const ids = [...new Set([...hours.keys(), ...tipMap.keys()])];
+    if (!ids.length) return [];
+    const { data: profs } = await sb.from("profiles").select("id, full_name, hourly_rate_cents").in("id", ids);
+    const pm = new Map<string, any>((profs ?? []).map((p: any) => [p.id, p]));
+    return ids
+      .map((id) => {
+        const p = pm.get(id);
+        const h = Math.round((hours.get(id) ?? 0) * 100) / 100;
+        const rate = p?.hourly_rate_cents ?? null;
+        return {
+          employee_id: id,
+          full_name: p?.full_name ?? "Unknown",
+          hours: h,
+          hourly_rate_cents: rate,
+          gross_cents: rate ? Math.round(h * rate) : 0,
+          tips_cents: tipMap.get(id) ?? 0,
+        };
+      })
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+  });
