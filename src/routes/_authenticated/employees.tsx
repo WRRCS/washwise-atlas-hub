@@ -36,6 +36,7 @@ type Employee = {
   phone: string | null;
   is_active: boolean;
   role: string;
+  has_app_access: boolean;
   last_sign_in_at: string | null;
 };
 
