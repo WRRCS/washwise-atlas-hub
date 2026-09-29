@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail, MoreHorizontal, Check } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail, MoreHorizontal, Check, Smartphone } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -606,9 +606,18 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
       {/* Status */}
       <div>
         <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Status</div>
-        <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${e.is_active ? "bg-emerald-50 text-emerald-700" : "bg-clay-200 text-muted-foreground"}`}>
-          {e.is_active ? "Active" : "Archived"}
-        </span>
+        <div className="flex flex-col items-start gap-1.5">
+          <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${e.is_active ? "bg-emerald-50 text-emerald-700" : "bg-clay-200 text-muted-foreground"}`}>
+            {e.is_active ? "Active" : "Archived"}
+          </span>
+          <span
+            className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ${e.has_app_access ? "bg-brand-cyan/10 text-brand-cyan ring-brand-cyan/30" : "bg-clay-100 text-muted-foreground ring-black/10"}`}
+            title={e.has_app_access ? "This person has a sign-in account for the app" : "No app access yet — press Invite to email them a one-tap link"}
+          >
+            <Smartphone className="size-3" />
+            {e.has_app_access ? "Has app" : "No app yet"}
+          </span>
+        </div>
       </div>
 
       {/* Last login */}
@@ -635,7 +644,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            {onGiveAccess && !e.last_sign_in_at && e.role !== "owner" && (
+            {onGiveAccess && !e.has_app_access && e.role !== "owner" && (
               <DropdownMenuItem onClick={onGiveAccess}>
                 <ShieldCheck className="size-4 mr-2" /> Create app access
               </DropdownMenuItem>
