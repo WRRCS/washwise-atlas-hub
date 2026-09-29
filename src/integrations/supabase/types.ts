@@ -3816,7 +3816,7 @@ export type Database = {
       notification_status: "pending" | "sent" | "failed"
       payment_provider: "venmo" | "card" | "ach" | "manual"
       payment_status: "pending" | "succeeded" | "failed" | "refunded"
-      photo_type: "before" | "after" | "other"
+      photo_type: "before" | "after" | "other" | "damage"
       service_kind:
         | "airbnb_turnover"
         | "move_in"
@@ -3982,7 +3982,7 @@ export const Constants = {
       notification_status: ["pending", "sent", "failed"],
       payment_provider: ["venmo", "card", "ach", "manual"],
       payment_status: ["pending", "succeeded", "failed", "refunded"],
-      photo_type: ["before", "after", "other"],
+      photo_type: ["before", "after", "other", "damage"],
       service_kind: [
         "airbnb_turnover",
         "move_in",

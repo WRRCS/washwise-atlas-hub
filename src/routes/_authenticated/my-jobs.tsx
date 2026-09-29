@@ -582,6 +582,9 @@ function CompleteJobDialog({
           console.warn("[clock-out] GPS unavailable:", res.status);
         }
       }
+      if (items.some((it) => it.photo_type === "damage" && !it.caption.trim())) {
+        throw new Error("Please describe the damage on each damage photo.");
+      }
       const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
       for (const it of items) {
         const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });
@@ -670,7 +673,7 @@ function CompleteJobDialog({
                   <img src={it.previewUrl} alt="" className="size-20 rounded object-cover shrink-0" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex gap-1">
-                      {(["before", "after", "other"] as PhotoType[]).map((t) => (
+                      {(["before", "after", "damage", "other"] as PhotoType[]).map((t) => (
                         <button
                           key={t}
                           type="button"
@@ -688,7 +691,7 @@ function CompleteJobDialog({
                     <input
                       value={it.caption}
                       onChange={(e) => update(it.id, { caption: e.target.value })}
-                      placeholder="Caption (optional)"
+                      placeholder={it.photo_type === "damage" ? "Describe the damage (required)" : "Caption (optional)"}
                       className="w-full text-sm border border-border rounded px-2 py-1 bg-clay-50"
                     />
                   </div>

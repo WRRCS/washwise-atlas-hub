@@ -472,6 +472,7 @@ function PhotosTab({ jobId }: { jobId: string }) {
     before: "bg-blue-100 text-blue-800",
     after: "bg-green-100 text-green-800",
     other: "bg-clay-200 text-muted-foreground",
+    damage: "bg-destructive/15 text-destructive",
   };
 
   const uploader = (
@@ -494,7 +495,7 @@ function PhotosTab({ jobId }: { jobId: string }) {
         onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
       />
       <div className="flex gap-1 mb-2">
-        {(["before", "after", "other"] as PhotoType[]).map((pt) => (
+        {(["before", "after", "damage", "other"] as PhotoType[]).map((pt) => (
           <button
             key={pt}
             type="button"

@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { reportTimesheets, type TimesheetRow } from "@/lib/owner-reports.functions";
+import { reportTimesheets, reportPayroll, type TimesheetRow, type PayrollRow } from "@/lib/owner-reports.functions";
+import { downloadCsv } from "@/lib/csv";
+import { Button } from "@/components/ui/button";
 import { ArchiveButton, ArchiveNotice, Column, Kpi, RangeBar, ReportTable, fmtDate, useArchiveGate, useDateRange } from "@/components/report-ui";
 
 export const Route = createFileRoute("/_authenticated/reports/timesheets")({
@@ -25,6 +27,30 @@ function TimesheetsReport() {
     queryFn: () => fetchRows({ data: { from, to } }),
     enabled: gate.allowed,
   });
+
+  const fetchPayroll = useServerFn(reportPayroll);
+  const payroll = useQuery<PayrollRow[]>({
+    queryKey: ["report-payroll", from, to],
+    queryFn: () => fetchPayroll({ data: { from, to } }),
+    enabled: gate.allowed,
+    retry: false,
+  });
+  const money = (c: number) => (c / 100).toFixed(2);
+  const exportQuickBooks = () => {
+    downloadCsv(
+      `payroll-quickbooks-${from}-to-${to}.csv`,
+      (payroll.data ?? []).map((p) => ({
+        "Employee": p.full_name,
+        "Pay Period Start": from,
+        "Pay Period End": to,
+        "Regular Hours": p.hours.toFixed(2),
+        "Hourly Rate": p.hourly_rate_cents != null ? money(p.hourly_rate_cents) : "",
+        "Gross Pay": money(p.gross_cents),
+        "Tips": money(p.tips_cents),
+        "Total": money(p.gross_cents + p.tips_cents),
+      })),
+    );
+  };
 
   const all = query.data ?? [];
   const rows = useMemo(() => {
@@ -81,6 +107,41 @@ function TimesheetsReport() {
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {payroll.data && payroll.data.length ? (
+        <section className="rounded-xl border border-border/60 bg-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold">Payroll summary</h2>
+            <Button size="sm" variant="outline" onClick={exportQuickBooks}>Export for QuickBooks</Button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-muted-foreground text-xs">
+                <tr className="text-left">
+                  <th className="py-1.5">Employee</th>
+                  <th className="text-right">Hours</th>
+                  <th className="text-right">Rate</th>
+                  <th className="text-right">Gross pay</th>
+                  <th className="text-right">Tips</th>
+                  <th className="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {payroll.data.map((p) => (
+                  <tr key={p.employee_id} className="tabular-nums">
+                    <td className="py-1.5">{p.full_name}</td>
+                    <td className="text-right">{p.hours.toFixed(2)}</td>
+                    <td className="text-right">{p.hourly_rate_cents != null ? `$${money(p.hourly_rate_cents)}` : <span className="text-muted-foreground">No rate set</span>}</td>
+                    <td className="text-right">${money(p.gross_cents)}</td>
+                    <td className="text-right">${money(p.tips_cents)}</td>
+                    <td className="text-right font-medium">${money(p.gross_cents + p.tips_cents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
 
