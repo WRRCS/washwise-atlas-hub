@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/leads")({
     ],
   }),
   component: LeadsPage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 const STATUS_META: Record<LeadStatus, { label: string; className: string }> = {

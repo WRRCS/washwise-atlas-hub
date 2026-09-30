@@ -26,7 +26,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, FileText, Lock, Mail, MapPin, Mes
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
   component: ClientDetail,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 function money(cents: number | null | undefined) {

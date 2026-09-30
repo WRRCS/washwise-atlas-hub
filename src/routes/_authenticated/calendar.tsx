@@ -29,7 +29,7 @@ import { JobDetailView } from "./jobs.$jobId";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
   component: SchedulePage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 type View = "grid" | "list";

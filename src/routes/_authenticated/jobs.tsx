@@ -11,7 +11,7 @@ import { useState } from "react";
 export const Route = createFileRoute("/_authenticated/jobs")({
   component: JobsPage,
   errorComponent: ({ error }) => (
-    <AppShell><div className="p-8 text-sm text-destructive">Failed to load jobs: {error.message}</div></AppShell>
+    <AppShell><div className="p-8 text-sm text-destructive">Failed to load jobs: {(error as Error).message}</div></AppShell>
   ),
 });
 

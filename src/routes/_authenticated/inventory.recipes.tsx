@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/inventory/recipes")({
   },
   component: RecipesPage,
   errorComponent: ({ error }) => (
-    <AppShell><div className="p-8 text-red-600">Error: {error.message}</div></AppShell>
+    <AppShell><div className="p-8 text-red-600">Error: {(error as Error).message}</div></AppShell>
   ),
   notFoundComponent: () => <AppShell><div className="p-8">Not found</div></AppShell>,
 });

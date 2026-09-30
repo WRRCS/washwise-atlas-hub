@@ -8,7 +8,7 @@ import { Shield } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/super-admin")({
   component: SuperAdminLayout,
   errorComponent: ({ error }) => (
-    <AppShell><div className="p-8 text-destructive">{error.message}</div></AppShell>
+    <AppShell><div className="p-8 text-destructive">{(error as Error).message}</div></AppShell>
   ),
   notFoundComponent: () => <AppShell><div className="p-8">Not found</div></AppShell>,
 });

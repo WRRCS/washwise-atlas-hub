@@ -28,7 +28,7 @@ import { Copy, Check, Link2, Building2, CreditCard, Wallet, Globe, Home, Refresh
 
 export const Route = createFileRoute("/_authenticated/settings/integrations")({
   component: IntegrationsPage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 const META: Record<IntegrationProvider, { name: string; icon: typeof Building2; description: string; phase: string }> = {

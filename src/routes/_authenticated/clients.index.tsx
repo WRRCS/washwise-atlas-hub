@@ -22,7 +22,7 @@ import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw, 
 
 export const Route = createFileRoute("/_authenticated/clients/")({
   component: ClientsPage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 function fullName(c: { first_name: string | null; last_name: string | null }) {

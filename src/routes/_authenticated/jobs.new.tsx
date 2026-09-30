@@ -15,7 +15,7 @@ import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndV
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
   component: NewJob,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
   notFoundComponent: () => <div className="p-8">Not found.</div>,
 });
 

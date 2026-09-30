@@ -23,7 +23,7 @@ import { listServiceTypes } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/templates")({
   component: TemplatesPage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 const SAMPLE_VARS: Record<string, string> = {
