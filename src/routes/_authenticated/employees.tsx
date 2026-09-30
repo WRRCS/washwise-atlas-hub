@@ -26,7 +26,7 @@ import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   component: Employees,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 type Employee = {

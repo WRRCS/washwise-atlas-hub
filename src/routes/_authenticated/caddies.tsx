@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/caddies")({
     ],
   }),
   errorComponent: ({ error }) => (
-    <AppShell><div className="p-8 text-red-600">Error: {error.message}</div></AppShell>
+    <AppShell><div className="p-8 text-red-600">Error: {(error as Error).message}</div></AppShell>
   ),
 });
 

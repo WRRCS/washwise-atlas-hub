@@ -11,7 +11,7 @@ import { ArrowLeft, Check, UserCheck, Phone, Mail, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/leads/$leadId")({
   component: LeadDetailPage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 const STATUS_META: Record<LeadStatus, { label: string; className: string }> = {

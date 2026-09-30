@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
   }),
   component: MessagesPage,
   errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-destructive">{error.message}</div>
+    <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>
   ),
 });
 

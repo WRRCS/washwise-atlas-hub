@@ -17,7 +17,7 @@ import {
 export const Route = createFileRoute("/_authenticated/settings/billing")({
   component: BillingPage,
   errorComponent: ({ error }) => (
-    <AppShell><div className="p-8 text-destructive">{error.message}</div></AppShell>
+    <AppShell><div className="p-8 text-destructive">{(error as Error).message}</div></AppShell>
   ),
 });
 

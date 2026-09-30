@@ -19,7 +19,7 @@ import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Co
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   component: InvoiceDetailPage,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
 
 const STATUS_STYLE: Record<string, string> = {

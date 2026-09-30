@@ -17,7 +17,7 @@ export const Route = createFileRoute("/pay/$invoiceId")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-red-700">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-red-700">{(error as Error).message}</div>,
   notFoundComponent: () => <div className="p-8 text-sm text-muted-foreground">Invoice not found.</div>,
 });
 

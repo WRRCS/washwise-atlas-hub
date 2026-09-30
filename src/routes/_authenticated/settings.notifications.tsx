@@ -22,7 +22,7 @@ import { BulkReminderPrefsEditor } from "@/components/bulk-reminder-prefs-editor
 
 export const Route = createFileRoute("/_authenticated/settings/notifications")({
   component: NotificationsSettings,
-  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
   notFoundComponent: () => <div className="p-8">Not found.</div>,
 });
 
