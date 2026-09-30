@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail, MoreHorizontal, Check, Smartphone } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail, MoreHorizontal, Check, Smartphone, Bell, BellOff } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -37,6 +37,7 @@ type Employee = {
   is_active: boolean;
   role: string;
   has_app_access: boolean;
+  has_push: boolean;
   last_sign_in_at: string | null;
 };
 
