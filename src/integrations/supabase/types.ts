@@ -1630,10 +1630,13 @@ export type Database = {
           assigned_to: string | null
           client_id: string | null
           created_at: string
+          email: string | null
           id: string
           last_contacted_at: string | null
+          name: string | null
           notes: string | null
           payload: Json
+          phone: string | null
           service_interest: string | null
           source: string
           status: Database["public"]["Enums"]["lead_status"]
@@ -1644,10 +1647,13 @@ export type Database = {
           assigned_to?: string | null
           client_id?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           last_contacted_at?: string | null
+          name?: string | null
           notes?: string | null
           payload?: Json
+          phone?: string | null
           service_interest?: string | null
           source?: string
           status?: Database["public"]["Enums"]["lead_status"]
@@ -1658,10 +1664,13 @@ export type Database = {
           assigned_to?: string | null
           client_id?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           last_contacted_at?: string | null
+          name?: string | null
           notes?: string | null
           payload?: Json
+          phone?: string | null
           service_interest?: string | null
           source?: string
           status?: Database["public"]["Enums"]["lead_status"]

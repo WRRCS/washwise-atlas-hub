@@ -80,7 +80,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       supabase
         .from("invoices")
         .select("total_cents")
-        .in("status", ["draft", "sent", "overdue"]),
+        .in("status", ["sent", "overdue"]),
     ]);
 
     const sum = (rows: any[] | null) =>
@@ -144,4 +144,125 @@ export const getRecentActivity = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(10);
     return (data ?? []) as ActivityRow[];
+  });
+
+export type Debtor = {
+  client_id: string | null;
+  client_name: string;
+  total_cents: number;
+  overdue_cents: number;
+  invoices: number;
+  oldest_due: string | null;
+};
+
+export type MoneyOwed = {
+  total_cents: number;
+  overdue_cents: number;
+  overdue_count: number;
+  invoice_count: number;
+  debtors: Debtor[];
+};
+
+/** Everything already invoiced but not yet paid — real money owed, not drafts. */
+export const getMoneyOwed = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MoneyOwed> => {
+    const { data: rows, error } = await context.supabase
+      .from("invoices")
+      .select("id, client_id, total_cents, status, due_date, client:clients(first_name, last_name)")
+      .in("status", ["sent", "overdue"])
+      .limit(1000);
+    if (error) throw new Error(error.message);
+
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const byClient = new Map<string, Debtor>();
+    let totalCents = 0;
+    let overdueCents = 0;
+    let overdueCount = 0;
+
+    for (const r of (rows ?? []) as any[]) {
+      const cents = r.total_cents ?? 0;
+      const isOverdue =
+        r.status === "overdue" || (!!r.due_date && String(r.due_date) < todayISO);
+      totalCents += cents;
+      if (isOverdue) {
+        overdueCents += cents;
+        overdueCount += 1;
+      }
+      const key = r.client_id ?? "__none__";
+      const entry = byClient.get(key) ?? {
+        client_id: r.client_id ?? null,
+        client_name:
+          [r.client?.first_name, r.client?.last_name].filter(Boolean).join(" ") || "Unassigned client",
+        total_cents: 0,
+        overdue_cents: 0,
+        invoices: 0,
+        oldest_due: null as string | null,
+      };
+      entry.total_cents += cents;
+      if (isOverdue) entry.overdue_cents += cents;
+      entry.invoices += 1;
+      if (r.due_date) {
+        const due = String(r.due_date);
+        if (!entry.oldest_due || due < entry.oldest_due) entry.oldest_due = due;
+      }
+      byClient.set(key, entry);
+    }
+
+    const debtors = Array.from(byClient.values()).sort((a, b) => b.total_cents - a.total_cents);
+    return {
+      total_cents: totalCents,
+      overdue_cents: overdueCents,
+      overdue_count: overdueCount,
+      invoice_count: (rows ?? []).length,
+      debtors,
+    };
+  });
+
+export type OpenShift = {
+  id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  client_name: string;
+  property_label: string | null;
+  service_name: string | null;
+};
+
+/** Published or upcoming jobs in the next 7 days that nobody is assigned to. */
+export const getOpenShifts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<OpenShift[]> => {
+    const from = new Date();
+    const to = new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const { data: jobs, error } = await context.supabase
+      .from("jobs")
+      .select("id, scheduled_start, scheduled_end, client:clients(first_name, last_name), property:client_properties!jobs_property_id_fkey(label), service:service_types(name)")
+      .gte("scheduled_start", from.toISOString())
+      .lt("scheduled_start", to.toISOString())
+      .in("status", ["scheduled", "in_progress"])
+      .order("scheduled_start", { ascending: true })
+      .limit(300);
+    if (error) throw new Error(error.message);
+
+    const ids = (jobs ?? []).map((j: any) => j.id);
+    if (!ids.length) return [];
+    const { data: links } = await context.supabase
+      .from("job_employees")
+      .select("job_id")
+      .in("job_id", ids);
+    const assigned = new Set((links ?? []).map((l: any) => l.job_id));
+
+    return (jobs ?? [])
+      .filter((j: any) => !assigned.has(j.id))
+      .map((j: any) => ({
+        id: j.id,
+        scheduled_start: j.scheduled_start,
+        scheduled_end: j.scheduled_end,
+        client_name:
+          j.property?.label ||
+          [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") ||
+          "Client",
+        property_label: j.property?.label ?? null,
+        service_name: j.service?.name ?? null,
+      }));
   });
