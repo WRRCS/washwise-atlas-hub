@@ -21,7 +21,6 @@ import {
   Plus,
   UserPlus,
   Receipt,
-  CalendarDays,
   Package,
   Activity as ActivityIcon,
   Briefcase,
