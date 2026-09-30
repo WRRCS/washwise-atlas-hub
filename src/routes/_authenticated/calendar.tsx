@@ -7,7 +7,7 @@ import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnav
 import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
-import { listClientProperties } from "@/lib/client-properties.functions";
+import { listClientProperties, upsertClientProperty } from "@/lib/client-properties.functions";
 import { claimOpenShift } from "@/lib/visits.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -831,9 +831,30 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
   const propsFn = useServerFn(listClientProperties);
   const { data: properties = [] } = useQuery({ queryKey: ["client-properties", clientId], queryFn: () => propsFn({ data: { client_id: clientId } }), enabled: !!clientId });
   const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
-  if (clientId && properties.length && !selectedProperty) setPropertyId((properties.find((p) => p.is_primary) ?? properties[0]).id);
-  if (!clientId && propertyId) setPropertyId("");
   const selectedClient = clients.find((c: any) => c.id === clientId);
+  const mainAddress: string = (selectedClient?.service_address ?? "").trim();
+  const norm = (a: string) => a.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const showMainOption = !!mainAddress && !properties.some((p) => norm(p.address).startsWith(norm(mainAddress).slice(0, 12)));
+  if (clientId && properties.length && !propertyId && !showMainOption) setPropertyId((properties.find((p) => p.is_primary) ?? properties[0]).id);
+  if (!clientId && propertyId) setPropertyId("");
+  const [addingProp, setAddingProp] = useState(false);
+  const [newPropLabel, setNewPropLabel] = useState("");
+  const [newPropAddress, setNewPropAddress] = useState("");
+  const [savingProp, setSavingProp] = useState(false);
+  const upsertPropFn = useServerFn(upsertClientProperty);
+  const saveNewProperty = async () => {
+    if (!newPropLabel.trim() || !newPropAddress.trim()) { toast.error("Name and address required"); return; }
+    setSavingProp(true);
+    try {
+      const { id } = await upsertPropFn({ data: { client_id: clientId, label: newPropLabel.trim(), address: newPropAddress.trim() } });
+      await qc.invalidateQueries({ queryKey: ["client-properties", clientId] });
+      setPropertyId(id);
+      setAddingProp(false); setNewPropLabel(""); setNewPropAddress("");
+      toast.success("Property added");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally { setSavingProp(false); }
+  };
   const effDate = effectiveStartDate(recur, dateStr);
   const startISO = zonedToUTCISO(effDate, startTime, tz);
   const endBase = zonedToUTCISO(effDate, endTime, tz);
@@ -947,13 +968,29 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
               {services.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
-          <Field label={properties.length > 1 ? "Property" : "Service address"}>
-            {properties.length > 1 ? (
-              <select value={propertyId} onChange={(e) => setPropertyId(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
-                {properties.map((p) => <option key={p.id} value={p.id}>{p.label} — {p.address}</option>)}
-              </select>
+          <Field label="Property">
+            {!clientId ? (
+              <Input value="" disabled placeholder="Pick a client first" />
+            ) : addingProp ? (
+              <div className="space-y-2">
+                <Input value={newPropLabel} onChange={(e) => setNewPropLabel(e.target.value)} placeholder="Property name (e.g. Beach house)" />
+                <Input value={newPropAddress} onChange={(e) => setNewPropAddress(e.target.value)} placeholder="Address" />
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" onClick={saveNewProperty} disabled={savingProp}>{savingProp ? "Saving…" : "Save property"}</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setAddingProp(false)}>Cancel</Button>
+                </div>
+              </div>
             ) : (
-              <Input value={selectedProperty?.address ?? selectedClient?.service_address ?? ""} disabled placeholder="From client record" />
+              <select
+                value={propertyId}
+                onChange={(e) => { if (e.target.value === "__new") setAddingProp(true); else setPropertyId(e.target.value); }}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {showMainOption && <option value="">Main address — {mainAddress}</option>}
+                {!showMainOption && !properties.length && <option value="">No address on file</option>}
+                {properties.map((p) => <option key={p.id} value={p.id}>{p.label} — {p.address.replace(/\n/g, ", ")}</option>)}
+                <option value="__new">+ Add another property…</option>
+              </select>
             )}
           </Field>
           <Field label="Date">
