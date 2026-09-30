@@ -499,19 +499,24 @@ export const listEmployees = createServerFn({ method: "GET" })
     }));
 
     const { data: isStaff } = await context.supabase.rpc("is_owner_or_manager");
-    if (!isStaff) return list.map((p) => ({ ...p, has_app_access: false, last_sign_in_at: null as string | null }));
+    if (!isStaff) return list.map((p) => ({ ...p, has_app_access: false, has_push: false, last_sign_in_at: null as string | null }));
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const [{ data: users }, { data: pushRows }] = await Promise.all([
+        supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 }),
+        supabaseAdmin.from("push_subscriptions" as any).select("user_id"),
+      ]);
       const signMap = new Map<string, string | null>();
       (users?.users ?? []).forEach((u) => signMap.set(u.id, u.last_sign_in_at ?? null));
+      const pushSet = new Set<string>((pushRows ?? []).map((r: any) => r.user_id).filter(Boolean));
       return list.map((p) => ({
         ...p,
         has_app_access: signMap.has(p.id),
+        has_push: pushSet.has(p.id),
         last_sign_in_at: signMap.get(p.id) ?? null,
       }));
     } catch {
-      return list.map((p) => ({ ...p, has_app_access: false, last_sign_in_at: null as string | null }));
+      return list.map((p) => ({ ...p, has_app_access: false, has_push: false, last_sign_in_at: null as string | null }));
     }
   });
 
