@@ -446,8 +446,8 @@ function Section({ title, rows, empty, children }: { title: string; rows: Employ
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div className="hidden md:grid grid-cols-[minmax(0,1.3fr)_minmax(0,2.05fr)_minmax(0,0.9fr)_minmax(0,0.55fr)_minmax(0,0.65fr)_auto] gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-            <div>Name</div><div>Email</div><div>Phone</div><div>Status</div><div>Last login</div><div className="text-right">Actions</div>
+          <div className="hidden md:grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto] gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+            <div>Name</div><div>Email</div><div>Phone</div><div>Status</div><div>Alerts</div><div>Last login</div><div className="text-right">Actions</div>
           </div>
           <div className="divide-y divide-border/60">
             {rows.map((e) => (
@@ -512,7 +512,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
     "bg-clay-100 text-muted-foreground";
   const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_minmax(0,2.05fr)_minmax(0,0.9fr)_minmax(0,0.55fr)_minmax(0,0.65fr)_auto] gap-x-4 gap-y-3 items-center px-5 py-4">
+    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto] gap-x-4 gap-y-3 items-center px-5 py-4">
       {/* Name, role and access */}
       <div className="min-w-0">
         <div className="font-medium truncate" title={e.full_name ?? undefined}>{e.full_name ?? "—"}</div>
@@ -619,6 +619,18 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
             {e.has_app_access ? "Has app" : "No app yet"}
           </span>
         </div>
+      </div>
+
+      {/* Push alerts */}
+      <div>
+        <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Alerts</div>
+        <span
+          className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ${e.has_push ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-clay-100 text-muted-foreground ring-black/10"}`}
+          title={e.has_push ? "Phone notifications are on — they get publish alerts" : e.has_app_access ? "Has the app but hasn't turned on notifications yet" : "No app access yet — invite them first"}
+        >
+          {e.has_push ? <Bell className="size-3" /> : <BellOff className="size-3" />}
+          {e.has_push ? "Alerts on" : "Alerts off"}
+        </span>
       </div>
 
       {/* Last login */}
