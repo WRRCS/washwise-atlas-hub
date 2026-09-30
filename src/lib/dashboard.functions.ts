@@ -80,7 +80,7 @@ export const getDashboardStats = createServerFn({ method: "GET" })
       supabase
         .from("invoices")
         .select("total_cents")
-        .in("status", ["draft", "sent", "overdue"]),
+        .in("status", ["sent", "overdue"]),
     ]);
 
     const sum = (rows: any[] | null) =>
