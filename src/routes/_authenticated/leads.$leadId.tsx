@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { getLead, updateLeadStatus, convertLeadToClient, type LeadStatus } from "@/lib/leads.functions";
+import { getLead, updateLeadStatus, convertLeadToClient, leadSourceLabel, type LeadStatus } from "@/lib/leads.functions";
 import { ArrowLeft, Check, UserCheck, Phone, Mail, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/leads/$leadId")({
@@ -78,6 +78,13 @@ function LeadDetailPage() {
   const client = lead.client as any;
   const status = lead.status as LeadStatus;
   const payload = (lead.payload as Record<string, unknown> | null) ?? {};
+  // Hand-logged leads (call, text, Airbnb message, referral) have no client record yet.
+  const displayName = client ? fullName(client) : (lead.name ?? "Unknown");
+  const email = client?.email ?? lead.email ?? null;
+  const phone = client?.phone ?? lead.phone ?? null;
+  const address =
+    client?.service_address ??
+    (typeof payload.address === "string" ? payload.address : null);
   const timeline: { label: string; content: string }[] = [];
   if (lead.notes) {
     for (const entry of String(lead.notes).split(/\n\n+/)) {
@@ -88,8 +95,8 @@ function LeadDetailPage() {
   return (
     <>
       <PageHeader
-        title={fullName(client)}
-        subtitle={`Lead from ${lead.source} · ${STATUS_META[status].label}`}
+        title={displayName}
+        subtitle={`Lead from ${leadSourceLabel(lead.source)} · ${STATUS_META[status].label}`}
         action={
           <Link to="/leads" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
             <ArrowLeft className="size-4" /> Back
@@ -100,10 +107,13 @@ function LeadDetailPage() {
         <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Contact</p>
-            <p className="font-medium">{fullName(client)}</p>
-            {client?.email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="size-3.5" />{client.email}</p>}
-            {client?.phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="size-3.5" />{client.phone}</p>}
-            {client?.service_address && <p className="text-sm text-muted-foreground flex items-start gap-2"><MapPin className="size-3.5 mt-0.5" />{client.service_address}</p>}
+            <p className="font-medium">{displayName}</p>
+            {email && <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="size-3.5" />{email}</p>}
+            {phone && <p className="text-sm text-muted-foreground flex items-center gap-2"><Phone className="size-3.5" />{phone}</p>}
+            {address && <p className="text-sm text-muted-foreground flex items-start gap-2"><MapPin className="size-3.5 mt-0.5" />{address}</p>}
+            {!email && !phone && (
+              <p className="text-sm text-muted-foreground">No contact details were saved with this lead.</p>
+            )}
           </div>
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Received</p>
@@ -159,7 +169,7 @@ function LeadDetailPage() {
           <ol className="space-y-2 text-sm">
             <li className="flex gap-3">
               <span className="text-xs text-muted-foreground w-24 shrink-0">{format(new Date(lead.created_at), "MMM d, p")}</span>
-              <span>Lead received from {lead.source}</span>
+              <span>Lead received from {leadSourceLabel(lead.source)}</span>
             </li>
             {timeline.map((t, i) => (
               <li key={i} className="flex gap-3">
