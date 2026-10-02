@@ -453,7 +453,7 @@ function Section({ title, rows, empty, showWages, children }: { title: string; r
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div className={`hidden md:grid gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground ${showWages ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto]" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto]"}`}>
+          <div className={`hidden md:grid gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground ${showWages ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]"}`}>
             <div>Name</div><div>Email</div><div>Phone</div>{showWages && <div>Pay rate</div>}<div>Status</div><div>Alerts</div><div>Last login</div><div className="text-right">Actions</div>
           </div>
           <div className="divide-y divide-border/60">
@@ -520,7 +520,7 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
     "bg-clay-100 text-muted-foreground";
   const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
-    <div className={`grid grid-cols-1 gap-x-4 gap-y-3 items-center px-5 py-4 ${showWages ? "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto]"}`}>
+    <div className={`grid grid-cols-1 gap-x-4 gap-y-3 items-center px-5 py-4 ${showWages ? "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]"}`}>
       {/* Name, role and access */}
       <div className="min-w-0">
         <div className="font-medium truncate" title={e.full_name ?? undefined}>{e.full_name ?? "—"}</div>
