@@ -199,7 +199,7 @@ function UpNextHero({
               onClick={onClockIn}
               className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
             >
-              <Play className="size-5" /> {t("Clock in")}
+              <Play className="size-5" /> {t("Arrived")}
             </button>
           )}
           <button
@@ -208,14 +208,6 @@ function UpNextHero({
           >
             <BookOpen className="size-3.5" /> {t("View SOP")}
           </button>
-          {!isOpen && (
-            <button
-              onClick={onCompleteNow}
-              className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <Camera className="size-3" /> {t("Complete with photos")}
-            </button>
-          )}
         </div>
       </div>
     </section>
@@ -434,13 +426,7 @@ function TodayView() {
                             onClick={() => handleClockIn(j.id)}
                             className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
                           >
-                            <Play className="size-4" /> {t("Clock in")}
-                          </button>
-                          <button
-                            onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null, serviceTypeId: j.service?.id ?? null })}
-                            className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            <Camera className="size-3" /> {t("Complete with photos")}
+                            <Play className="size-4" /> {t("Arrived")}
                           </button>
                         </>
                       ) : (
@@ -606,7 +592,7 @@ function CompleteJobDialog({
             .map(([item_id, quantity]) => ({ item_id, quantity })),
         },
       });
-      toast.success(clockOutGps ? `${t("Job completed")} · 📍 ${t("Location captured")}` : t("Job completed"));
+      toast.success(clockOutGps ? `${t("Clocked out")} · 📍 ${t("Location captured")}` : t("Clocked out"));
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       onDone();
     } catch (e: any) {
@@ -622,13 +608,13 @@ function CompleteJobDialog({
         className="bg-clay-50 rounded-xl border border-border/60 w-full max-w-xl p-6 my-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-medium mb-1">{t("Complete job")}</h3>
+        <h3 className="text-lg font-medium mb-1">{t("Clock out")}</h3>
         {hours !== null ? (
           <p className="text-sm text-muted-foreground mb-4">
             You worked <strong className="text-foreground">{hours.toFixed(2)} hours</strong> (since {fmtTime(startedAt!)}).
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground mb-4">{t("Attach any before/after photos before marking complete.")}</p>
+          <p className="text-sm text-muted-foreground mb-4">{t("Add any before, after or damage photos, then clock out.")}</p>
         )}
 
         <div className="mb-4">
@@ -731,7 +717,7 @@ function CompleteJobDialog({
             onClick={onSubmit}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand text-brand-foreground disabled:opacity-50"
           >
-            {saving ? "Uploading…" : "Mark complete"}
+            {saving ? "Uploading…" : t("Clock out")}
           </button>
         </div>
       </div>

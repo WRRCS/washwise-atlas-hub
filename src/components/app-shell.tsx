@@ -232,12 +232,12 @@ function AppShellInner({ children }: { children: ReactNode }) {
           <button onClick={signOut} className="text-xs text-muted-foreground"><LogOut className="size-4" /></button>
         </div>
         {/* mobile bottom nav */}
-        <div className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-clay-100 border-t border-border/60 flex">
-          {primaryNav.slice(0, 5).map((item) => {
+        <div className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-clay-100 border-t border-border/60 flex overflow-x-auto pb-[env(safe-area-inset-bottom)]">
+          {primaryNav.map((item) => {
             const active = pathname.startsWith(item.to);
             const Icon = item.icon;
             return (
-              <Link key={item.to} to={item.to} className={`relative flex-1 flex flex-col items-center py-2 text-[10px] ${active ? "text-brand" : "text-muted-foreground"}`}>
+              <Link key={item.to} to={item.to} className={`relative flex-1 min-w-[68px] shrink-0 flex flex-col items-center py-2 px-1 text-[10px] whitespace-nowrap ${active ? "text-brand" : "text-muted-foreground"}`}>
                 <Icon className="size-4 mb-0.5" />
                 {t(item.label)}
                 {item.to === "/messages" && unreadCount > 0 && (

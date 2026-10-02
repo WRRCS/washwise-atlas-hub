@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { myCapabilities } from "@/lib/entities.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Pencil, Trash2, LogOut } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { listTimesheet, type TimesheetDay } from "@/lib/visits.functions";
+import { listTimesheet, updateTimeEntry, deleteTimeEntry, type TimesheetDay } from "@/lib/visits.functions";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 
 export const Route = createFileRoute("/_authenticated/timesheet")({
@@ -35,6 +37,9 @@ function TimesheetPage() {
   const to = addDays(anchor, 7).toISOString();
   const fn = useServerFn(listTimesheet);
   const q = useQuery({ queryKey: ["timesheet", from, to, tz], queryFn: () => fn({ data: { from, to, tz } }) });
+  const capsFn = useServerFn(myCapabilities);
+  const { data: caps } = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
+  const isMgr = !!caps?.isStaff;
 
   const time = (iso: string | null) =>
     iso ? new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: tz }) : "—";
@@ -109,6 +114,11 @@ function TimesheetPage() {
                       {d.clock_in && <> · <span className="text-foreground font-medium">{dur(mins(d.clock_in, d.clock_out))}</span></>}
                     </span>
                   </div>
+                  {isMgr && d.entries.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {d.entries.map((en) => <EntryEditor key={en.id} entry={en} time={time} />)}
+                    </div>
+                  )}
                   {d.visits.length > 0 && (
                     <ul className="mt-2 space-y-1 pl-3 border-l-2 border-brand/30">
                       {d.visits.map((v) => (
@@ -129,5 +139,55 @@ function TimesheetPage() {
         ))}
       </div>
     </>
+  );
+}
+
+const toLocalInput = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+function EntryEditor({ entry, time }: { entry: { id: string; started_at: string; ended_at: string | null }; time: (iso: string | null) => string }) {
+  const qc = useQueryClient();
+  const updFn = useServerFn(updateTimeEntry);
+  const delFn = useServerFn(deleteTimeEntry);
+  const [editing, setEditing] = useState(false);
+  const [start, setStart] = useState(toLocalInput(entry.started_at));
+  const [end, setEnd] = useState(toLocalInput(entry.ended_at));
+  const [busy, setBusy] = useState(false);
+  const run = async (f: () => Promise<unknown>, msg: string) => {
+    setBusy(true);
+    try { await f(); toast.success(msg); setEditing(false); qc.invalidateQueries({ queryKey: ["timesheet"] }); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Something went wrong"); }
+    finally { setBusy(false); }
+  };
+  if (editing) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 p-2">
+        <label className="text-xs text-muted-foreground">In <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="ml-1 rounded border border-input bg-background px-2 py-1 text-sm" /></label>
+        <label className="text-xs text-muted-foreground">Out <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="ml-1 rounded border border-input bg-background px-2 py-1 text-sm" /></label>
+        <Button size="sm" disabled={busy || !start} onClick={() => run(() => updFn({ data: { id: entry.id, started_at: new Date(start).toISOString(), ended_at: end ? new Date(end).toISOString() : null } }), "Times updated")}>Save</Button>
+        <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span className="tabular-nums">{time(entry.started_at)} – {entry.ended_at ? time(entry.ended_at) : "still clocked in"}</span>
+      <span className="flex gap-1">
+        {!entry.ended_at && (
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => updFn({ data: { id: entry.id, clock_out_now: true } }), "Clocked out")}>
+            <LogOut className="size-3.5 mr-1" />Clock out now
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={() => setEditing(true)} aria-label="Edit times"><Pencil className="size-3.5" /></Button>
+        <Button size="sm" variant="ghost" disabled={busy} aria-label="Delete entry"
+          onClick={() => { if (confirm("Delete this clock in/out entry?")) run(() => delFn({ data: { id: entry.id } }), "Entry deleted"); }}>
+          <Trash2 className="size-3.5" />
+        </Button>
+      </span>
+    </div>
   );
 }

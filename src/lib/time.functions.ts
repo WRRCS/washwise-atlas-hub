@@ -294,6 +294,10 @@ export const clockIn = createServerFn({ method: "POST" })
       .eq("id", data.job_id)
       .in("status", ["scheduled", "in_progress"]);
     if (ue) throw new Error(ue.message);
+    // "Arrived" and clock-in are one action: also record the visit at this appointment.
+    const sb = context.supabase as any;
+    await sb.from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
+    await sb.from("job_visits").insert({ tenant_id: (prof as any).tenant_id, job_id: data.job_id, employee_id: context.userId, arrived_at: now });
     return entry;
   });
 

@@ -142,6 +142,11 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       if (se) throw new Error(se.message);
     }
 
+    await (context.supabase as any).from("job_visits").update({ left_at: endedAt })
+      .eq("employee_id", context.userId).eq("job_id", data.job_id).is("left_at", null);
+    await context.supabase.from("time_entries").update({ ended_at: endedAt })
+      .eq("user_id", context.userId).eq("job_id", data.job_id).is("ended_at", null);
+
     const { error: je } = await context.supabase
       .from("jobs")
       .update({ status: "completed", actual_end: endedAt })

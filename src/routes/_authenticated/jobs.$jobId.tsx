@@ -3,9 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
-import { listJobGps, clockIn } from "@/lib/time.functions";
+import { listJobGps } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
-import { captureGps } from "@/lib/geolocation";
 import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { myPermissions } from "@/lib/team.functions";
@@ -35,8 +34,9 @@ function JobDetail() {
   return <JobDetailView jobId={jobId} />;
 }
 
-/** Arrived / Leaving taps — records time on site at this appointment (not clock in/out). */
+/** Arrived / Clock out — tracks time at this cleaning. Clock out also finishes the job. */
 function VisitButtons({ jobId }: { jobId: string }) {
+  const setStatus = useServerFn(updateJobStatus);
   const qc = useQueryClient();
   const getFn = useServerFn(getMyJobVisit);
   const arriveFn = useServerFn(arriveAtJob);
@@ -52,9 +52,9 @@ function VisitButtons({ jobId }: { jobId: string }) {
   const t = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   if (visit && !visit.left_at) {
     return (
-      <button disabled={busy} onClick={() => run(() => leaveFn({ data: { visit_id: visit.id } }), "Leaving time saved")}
+      <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); qc.invalidateQueries({ queryKey: ["jobs"] }); qc.invalidateQueries({ queryKey: ["my-jobs"] }); }, "Clocked out")}
         className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
-        Leaving (here since {t(visit.arrived_at)})
+        Clock out (here since {t(visit.arrived_at)})
       </button>
     );
   }
@@ -73,8 +73,6 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   const toggle = useServerFn(toggleSopItem);
   const confirmSop = useServerFn(confirmJobSop);
   const setStatus = useServerFn(updateJobStatus);
-  const doClockIn = useServerFn(clockIn);
-  const [starting, setStarting] = useState(false);
   const permsFn = useServerFn(myPermissions);
   const capsFn = useServerFn(myCapabilities);
 
@@ -116,24 +114,6 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
 
-  // Start job = GPS-verified clock in (same path as /my-jobs), not just a status flip.
-  const onStart = async () => {
-    setStarting(true);
-    try {
-      const res = await captureGps();
-      const gps = res.status === "ok" ? res.gps : null;
-      await doClockIn({ data: { job_id: jobId, gps } });
-      if (!gps) toast.warning("Clocked in without location");
-      else toast.success("Clocked in — job started");
-      qc.invalidateQueries({ queryKey: ["job", jobId] });
-      qc.invalidateQueries({ queryKey: ["jobs"] });
-      qc.invalidateQueries({ queryKey: ["my-jobs"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not start job");
-    } finally {
-      setStarting(false);
-    }
-  };
 
 
 
@@ -158,14 +138,11 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                 <MessageSquare className="size-4" /> Message client
               </Link>
             )}
-            {job.status !== "canceled" && <VisitButtons jobId={jobId} />}
-            {job.status === "scheduled" && (
-              <button onClick={onStart} disabled={starting} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">{starting ? "Starting…" : "Start job"}</button>
-            )}
-            {job.status !== "completed" && job.status !== "canceled" && (
+            {job.status !== "canceled" && job.status !== "completed" && <VisitButtons jobId={jobId} />}
+            {canMessageClient && job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={() => onStatus("completed")} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90">Complete</button>
             )}
-            {job.status !== "canceled" && job.status !== "completed" && (
+            {canMessageClient && job.status !== "canceled" && job.status !== "completed" && (
               <button onClick={() => onStatus("canceled")} className="text-sm font-medium border border-destructive/40 text-destructive rounded-lg px-3 py-2 hover:bg-destructive/5">Cancel job</button>
             )}
           </div>
@@ -537,8 +514,16 @@ function PhotosTab({ jobId }: { jobId: string }) {
     <>
       {uploader}
       {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
+      {(["before", "after", "damage", "other"] as PhotoType[]).map((group) => {
+        const groupPhotos = photos.filter((p) => p.photo_type === group);
+        if (!groupPhotos.length) return null;
+        return (
+      <section key={group} className="mb-6">
+      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+        {group === "before" ? "Before" : group === "after" ? "After" : group === "damage" ? "Damage" : "Other"} · {groupPhotos.length}
+      </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {photos.map((p) => (
+        {groupPhotos.map((p) => (
           <div key={p.id} className="group relative rounded-lg overflow-hidden ring-1 ring-black/5 bg-clay-100">
             <button
               type="button"
@@ -574,6 +559,9 @@ function PhotosTab({ jobId }: { jobId: string }) {
           </div>
         ))}
       </div>
+      </section>
+        );
+      })}
       {lightbox && (
         <div className="fixed inset-0 z-50 bg-black/80 grid place-items-center p-4" onClick={() => setLightbox(null)}>
           <button

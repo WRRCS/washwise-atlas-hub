@@ -67,6 +67,12 @@ export const arriveAtJob = createServerFn({ method: "POST" })
       .insert({ tenant_id: tenantId, job_id: data.job_id, employee_id: context.userId })
       .select("id, arrived_at, left_at").single();
     if (error) throw new Error(error.message);
+    // Arrived also clocks in (time entry) unless already clocked in for this job.
+    const { count } = await context.supabase.from("time_entries").select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId).eq("job_id", data.job_id).is("ended_at", null);
+    if (!count) {
+      await context.supabase.from("time_entries").insert({ tenant_id: tenantId, job_id: data.job_id, user_id: context.userId, started_at: row.arrived_at });
+    }
     await context.supabase.from("jobs").update({ status: "in_progress", actual_start: row.arrived_at })
       .eq("id", data.job_id).eq("status", "scheduled");
     return row as JobVisit;
@@ -76,12 +82,16 @@ export const leaveJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ visit_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    const now = new Date().toISOString();
     const { data: row, error } = await (context.supabase as any).from("job_visits")
-      .update({ left_at: new Date().toISOString() })
+      .update({ left_at: now })
       .eq("id", data.visit_id).eq("employee_id", context.userId)
-      .select("id, arrived_at, left_at").single();
+      .select("id, job_id, arrived_at, left_at").single();
     if (error) throw new Error(error.message);
-    return row as JobVisit;
+    // Clocking out also closes any open clock-in for this appointment.
+    await context.supabase.from("time_entries").update({ ended_at: now })
+      .eq("user_id", context.userId).eq("job_id", row.job_id).is("ended_at", null);
+    return { id: row.id, arrived_at: row.arrived_at, left_at: row.left_at } as JobVisit;
   });
 
 export type TimesheetDay = {
@@ -90,6 +100,7 @@ export type TimesheetDay = {
   day: string; // yyyy-mm-dd (UTC date of clock-in / first event)
   clock_in: string | null;
   clock_out: string | null;
+  entries: { id: string; started_at: string; ended_at: string | null }[];
   visits: { id: string; client: string; arrived_at: string; left_at: string | null }[];
 };
 
@@ -102,7 +113,7 @@ export const listTimesheet = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<TimesheetDay[]> => {
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
     const sb = context.supabase as any;
-    let te = sb.from("time_entries").select("user_id, started_at, ended_at")
+    let te = sb.from("time_entries").select("id, user_id, started_at, ended_at")
       .gte("started_at", data.from).lt("started_at", data.to);
     let jv = sb.from("job_visits").select("id, employee_id, arrived_at, left_at, job:jobs(client:clients(first_name,last_name))")
       .gte("arrived_at", data.from).lt("arrived_at", data.to);
@@ -116,11 +127,12 @@ export const listTimesheet = createServerFn({ method: "POST" })
     const get = (emp: string, iso: string) => {
       const day = fmt.format(new Date(iso));
       const k = `${emp}|${day}`;
-      if (!map.has(k)) map.set(k, { employee_id: emp, employee_name: names.get(emp) ?? "Unknown", day, clock_in: null, clock_out: null, visits: [] });
+      if (!map.has(k)) map.set(k, { employee_id: emp, employee_name: names.get(emp) ?? "Unknown", day, clock_in: null, clock_out: null, entries: [], visits: [] });
       return map.get(k)!;
     };
     for (const e of entries ?? []) {
       const d = get(e.user_id, e.started_at);
+      d.entries.push({ id: e.id, started_at: e.started_at, ended_at: e.ended_at });
       if (!d.clock_in || e.started_at < d.clock_in) d.clock_in = e.started_at;
       if (e.ended_at && (!d.clock_out || e.ended_at > d.clock_out)) d.clock_out = e.ended_at;
     }
@@ -130,6 +142,50 @@ export const listTimesheet = createServerFn({ method: "POST" })
       d.visits.push({ id: v.id, client: [c?.first_name, c?.last_name].filter(Boolean).join(" ") || "Appointment", arrived_at: v.arrived_at, left_at: v.left_at });
     }
     const out = [...map.values()];
+    out.forEach((d) => d.entries.sort((a, b) => a.started_at.localeCompare(b.started_at)));
     out.forEach((d) => d.visits.sort((a, b) => a.arrived_at.localeCompare(b.arrived_at)));
     return out.sort((a, b) => b.day.localeCompare(a.day) || a.employee_name.localeCompare(b.employee_name));
+  });
+
+async function assertManagerEntry(context: { supabase: any; userId: string }, entryId: string) {
+  const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+  if (!isMgr) throw new Error("Only owners and managers can change time entries");
+  const tenantId = await tenantOf(context);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: entry } = await supabaseAdmin.from("time_entries").select("id, tenant_id").eq("id", entryId).maybeSingle();
+  if (!entry || entry.tenant_id !== tenantId) throw new Error("Time entry not found");
+  return supabaseAdmin;
+}
+
+/** Owners/managers: fix clock in/out times, or clock someone out who forgot (ended_at = now). */
+export const updateTimeEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      started_at: z.string().datetime({ offset: true }).optional(),
+      ended_at: z.string().datetime({ offset: true }).nullable().optional(),
+      clock_out_now: z.boolean().optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await assertManagerEntry(context, data.id);
+    const patch: { started_at?: string; ended_at?: string | null } = {};
+    if (data.started_at) patch.started_at = data.started_at;
+    if (data.clock_out_now) patch.ended_at = new Date().toISOString();
+    else if (data.ended_at !== undefined) patch.ended_at = data.ended_at;
+    if (patch.started_at && patch.ended_at && patch.ended_at < patch.started_at) throw new Error("Clock out must be after clock in");
+    const { error } = await admin.from("time_entries").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteTimeEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await assertManagerEntry(context, data.id);
+    const { error } = await admin.from("time_entries").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

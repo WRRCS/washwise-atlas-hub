@@ -153,6 +153,7 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
 function pickUrl(n: NotificationRow): string {
   const jobId = (n.payload as any)?.job_id;
   if (n.recipient_type === "employee" || n.recipient_type === "owner") {
+    if (n.template_name === "push_team_message") return "/team";
     if (jobId) return `/jobs/${jobId}`;
     if (n.template_name.startsWith("push_job")) return "/my-jobs";
     return "/dashboard";
