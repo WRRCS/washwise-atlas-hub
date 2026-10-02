@@ -18,7 +18,8 @@ import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
-import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X } from "lucide-react";
+import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X, Link2 } from "lucide-react";
+import { createPhotoLink } from "@/lib/invoice-photos.functions";
 import { toast } from "sonner";
 
 
@@ -328,8 +329,8 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
 
           {job.client?.client_sop && job.client.client_sop.trim() && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2 border-l-4 border-brand">
-              <h4 className="text-xs uppercase tracking-wider text-brand">Client-specific SOP</h4>
-              <p className="text-[11px] text-muted-foreground">Applies to this client on top of the standard service SOP.</p>
+              <h4 className="text-xs uppercase tracking-wider text-brand">Property SOP</h4>
+              <p className="text-[11px] text-muted-foreground">Applies to this property on top of the standard service SOP.</p>
               <p className="text-sm whitespace-pre-wrap">{job.client.client_sop}</p>
               {(() => {
                 const confirmedAt = (job as { sop_confirmed_at?: string | null }).sop_confirmed_at;
@@ -542,6 +543,19 @@ function PhotosTab({ jobId }: { jobId: string }) {
                   {p.photo_type}
                 </span>
                 <div className="flex gap-1">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { url } = await createPhotoLink({ data: { photo_id: p.id } });
+                        await navigator.clipboard.writeText(url);
+                        toast.success("Photo link copied (works for 30 days)");
+                      } catch (e) { toast.error((e as Error).message); }
+                    }}
+                    className="p-1 text-muted-foreground hover:text-foreground"
+                    aria-label="Copy photo link"
+                  >
+                    <Link2 className="size-3.5" />
+                  </button>
                   <button
                     onClick={() => onDelete(p)}
                     className="p-1 text-muted-foreground hover:text-destructive"

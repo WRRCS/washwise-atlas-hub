@@ -444,6 +444,7 @@ export type Database = {
           price_cents: number | null
           property_type: string | null
           service_frequency: string | null
+          sop: string | null
           tenant_id: string
           updated_at: string
         }
@@ -459,6 +460,7 @@ export type Database = {
           price_cents?: number | null
           property_type?: string | null
           service_frequency?: string | null
+          sop?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -474,6 +476,7 @@ export type Database = {
           price_cents?: number | null
           property_type?: string | null
           service_frequency?: string | null
+          sop?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -1224,6 +1227,7 @@ export type Database = {
           paid_at: string | null
           pay_link: string | null
           payment_terms_days: number | null
+          photo_ids: string[]
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents: number
@@ -1248,6 +1252,7 @@ export type Database = {
           paid_at?: string | null
           pay_link?: string | null
           payment_terms_days?: number | null
+          photo_ids?: string[]
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents?: number
@@ -1272,6 +1277,7 @@ export type Database = {
           paid_at?: string | null
           pay_link?: string | null
           payment_terms_days?: number | null
+          photo_ids?: string[]
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal_cents?: number

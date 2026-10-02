@@ -227,13 +227,19 @@ export const getJob = createServerFn({ method: "POST" })
       phone: string | null;
       billing_address: string | null;
     };
+    let propertySop: string | null = null;
+    if ((job as { property_id?: string | null }).property_id) {
+      const { data: prop } = await (context.supabase as any)
+        .from("client_properties").select("sop").eq("id", (job as any).property_id).maybeSingle();
+      propertySop = prop?.sop?.trim() ? prop.sop : null;
+    }
     const jobClient: JobClient | null = job.client
       ? {
           ...(job.client as Omit<JobClient, "email" | "phone" | "billing_address" | "client_sop">),
           email: contact?.email ?? null,
           phone: contact?.phone ?? null,
           billing_address: contact?.billing_address ?? null,
-          client_sop: contact?.client_sop ?? null,
+          client_sop: propertySop ?? contact?.client_sop ?? null,
         }
       : null;
     const [{ data: links }, { data: specs }, { data: clientNotes }] = await Promise.all([

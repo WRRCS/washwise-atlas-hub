@@ -218,9 +218,6 @@ function OverviewTab({ client, clientId, isManagement, onSaved }: {
             <Info label="Billing address" value={client.billing_address} />
             <Info label="Payment terms" value={client.payment_terms_days == null ? "Business default" : termsLabel(client.payment_terms_days)} />
             <Info label="Preferred contact" value={client.email ? "Email" : client.phone ? "Phone" : null} />
-            <div className="md:col-span-2">
-              <Info label="Internal SOP / access notes" value={client.client_sop ?? client.spec?.access_notes ?? null} />
-            </div>
           </dl>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -358,19 +355,6 @@ function ProfileForm({ client, onSaved, onCancel }: {
           {PAYMENT_TERMS.map((t) => <option key={t.days} value={String(t.days)}>{t.label}</option>)}
         </select>
       </FieldRow>
-      <div>
-        <FieldRow label="Client-specific SOP (staff-only, shown on job view)">
-          <Textarea
-            rows={10}
-            value={form.client_sop}
-            onChange={(e) => setForm({ ...form, client_sop: e.target.value })}
-            placeholder="e.g. Microfiber cloths only, no bleach products. Feed the cat before leaving."
-          />
-        </FieldRow>
-        <p className="text-[11px] text-muted-foreground mt-1">
-          Never shown to the client in the portal. Displayed to assigned staff on the job detail view.
-        </p>
-      </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
         Current client
@@ -959,7 +943,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
   const [editing, setEditing] = useState<ClientProperty | null>(null);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "" };
+  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "" };
   const [form, setForm] = useState(empty);
 
   const startAdd = () => { setForm(empty); setEditing(null); setAdding(true); };
@@ -969,6 +953,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
       label: p.label, address: p.address, notes: p.notes ?? "", is_primary: p.is_primary,
       property_type: p.property_type ?? "", service_frequency: p.service_frequency ?? "",
       priceStr: p.price_cents != null ? String(p.price_cents / 100) : "",
+      sop: p.sop ?? "",
     });
     setAdding(true);
   };
@@ -993,6 +978,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
           property_type: form.property_type.trim() || undefined,
           service_frequency: form.service_frequency.trim() || undefined,
           price_cents: form.priceStr.trim() !== "" ? Math.round((parseFloat(form.priceStr) || 0) * 100) : null,
+          sop: form.sop.trim(),
         },
       });
       toast.success(editing ? "Property updated" : "Property added");
@@ -1052,6 +1038,11 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
             <FieldRow label="Price ($)">
               <Input type="number" min={0} step="0.01" placeholder="Set price for this property" value={form.priceStr} onChange={(e) => setForm({ ...form, priceStr: e.target.value })} />
             </FieldRow>
+            <div className="md:col-span-2">
+              <FieldRow label="Property SOP (staff-only, shown on the job)">
+                <Textarea rows={8} value={form.sop} onChange={(e) => setForm({ ...form, sop: e.target.value })} placeholder="e.g. Microfiber only, no bleach. Feed the cat before leaving." />
+              </FieldRow>
+            </div>
             <div className="flex items-end">
               <label className="inline-flex items-center gap-2 text-sm pb-2">
                 <input type="checkbox" checked={form.is_primary} onChange={(e) => setForm({ ...form, is_primary: e.target.checked })} />
