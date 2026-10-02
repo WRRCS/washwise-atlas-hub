@@ -170,7 +170,7 @@ export const updateTimeEntry = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const admin = await assertManagerEntry(context, data.id);
-    const patch: Record<string, string | null> = {};
+    const patch: { started_at?: string; ended_at?: string | null } = {};
     if (data.started_at) patch.started_at = data.started_at;
     if (data.clock_out_now) patch.ended_at = new Date().toISOString();
     else if (data.ended_at !== undefined) patch.ended_at = data.ended_at;
