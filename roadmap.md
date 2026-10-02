@@ -9,3 +9,8 @@
 - [x] Tip tracker: overpayment above invoice total split evenly; employees see own tips
 - [x] Publish schedule options: notify everyone / affected / no one; client email or text drafts
 - [x] Employees page: tidy rows — email and phone in their own columns, phone formatted, actions in a three-dot menu
+- [x] Alerts to owners/managers for team messages and job photos (grouped per job)
+- [x] Job photos shown in Before / After / Damage / Other sections; no photo count limit
+- [x] Arrived = clock in; Clock out replaces Complete/Start job for cleaners; cancel job owner/manager only
+- [x] Phone bottom menu shows every option (scrolls)
+- [x] Timesheet: owners/managers edit, delete, or clock out time entries
