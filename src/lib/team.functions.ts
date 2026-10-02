@@ -58,7 +58,6 @@ export type TeamMember = {
   address: string | null;
   role: string;
   is_active: boolean;
-  hourly_rate_cents: number | null;
 };
 
 /**
@@ -103,7 +102,6 @@ export const listTeamRoster = createServerFn({ method: "GET" })
         address: contactMap.get(p.id)?.address ?? null,
         role: roleMap.get(p.id) ?? "employee",
         is_active: p.is_active !== false,
-        hourly_rate_cents: p.hourly_rate_cents,
       }));
   });
 
