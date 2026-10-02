@@ -18,7 +18,7 @@ import { listInvoices, createMonthlyBundle, previewMonthlyBundle } from "@/lib/i
 import { listClients } from "@/lib/entities.functions";
 import { Layers, Filter } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/invoices")({
+export const Route = createFileRoute("/_authenticated/invoices/")({
   component: InvoicesPage,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
