@@ -62,7 +62,7 @@ function TeamPage() {
             <TabsTrigger value="messages">{t("Team messages")}</TabsTrigger>
           </TabsList>
           <TabsContent value="roster" className="mt-4">
-            <RosterView canManage={!!caps?.canManage} showWages={!!(caps?.isOwner || caps?.canViewWages)} />
+            <RosterView canManage={!!caps?.canManage} />
           </TabsContent>
           <TabsContent value="messages" className="mt-4">
             <TeamMessagesView />
@@ -85,7 +85,7 @@ function initialsOf(name: string | null) {
   );
 }
 
-function RosterView({ canManage, showWages }: { canManage: boolean; showWages: boolean }) {
+function RosterView({ canManage }: { canManage: boolean }) {
   const qc = useQueryClient();
   const rosterFn = useServerFn(listTeamRoster);
   const updateFn = useServerFn(updateEmployee);
@@ -150,8 +150,8 @@ function RosterView({ canManage, showWages }: { canManage: boolean; showWages: b
     .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 
   const exportRoster = () => {
-    const columns = ["Team member", ...(canShowContact ? ["Email", "Phone"] : []), "Access level", ...(showWages ? ["Wage"] : []), "Status"];
-    const rows = filtered.map((m) => [m.full_name ?? "", ...(canShowContact ? [m.email ?? "", m.phone ?? ""] : []), m.role, ...(showWages ? [m.hourly_rate_cents == null ? "" : (m.hourly_rate_cents / 100).toFixed(2)] : []), m.is_active ? "Active" : "Terminated"]);
+    const columns = ["Team member", ...(canShowContact ? ["Email", "Phone"] : []), "Access level", "Status"];
+    const rows = filtered.map((m) => [m.full_name ?? "", ...(canShowContact ? [m.email ?? "", m.phone ?? ""] : []), m.role, m.is_active ? "Active" : "Terminated"]);
     const csv = [columns, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
@@ -193,7 +193,6 @@ function RosterView({ canManage, showWages }: { canManage: boolean; showWages: b
                 <th scope="col" className="px-4 py-3 font-medium">Team member</th>
                 {canShowContact && <th scope="col" className="px-4 py-3 font-medium">Contact information</th>}
                 <th scope="col" className="px-4 py-3 font-medium">Access level</th>
-                {showWages && <th scope="col" className="px-4 py-3 font-medium">Wage</th>}
                 <th scope="col" className="px-4 py-3 font-medium">Status</th>
                 {canManage && <th scope="col" className="w-12 px-3 py-3 font-medium print:hidden"><span className="sr-only">Actions</span></th>}
               </tr>
@@ -216,7 +215,6 @@ function RosterView({ canManage, showWages }: { canManage: boolean; showWages: b
                     </div>
                   </td>}
                   <td className="px-4 py-3 capitalize">{member.role.replaceAll("_", " ")}</td>
-                  {showWages && <td className="px-4 py-3 tabular-nums whitespace-nowrap">{member.hourly_rate_cents == null ? "—" : `$${(member.hourly_rate_cents / 100).toFixed(2)}/hr`}</td>}
                   <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${member.is_active ? "bg-success/15 text-foreground" : "bg-muted text-muted-foreground"}`}>{member.is_active ? "Active" : "Terminated"}</span></td>
                   {canManage && <td className="px-3 py-3 print:hidden">
                     <DropdownMenu>
@@ -226,7 +224,7 @@ function RosterView({ canManage, showWages }: { canManage: boolean; showWages: b
                   </td>}
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={3 + Number(canShowContact) + Number(showWages) + Number(canManage)} className="px-4 py-12 text-center text-muted-foreground">{members.length ? "No team members match your search." : "No team members yet."}</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={3 + Number(canShowContact) + Number(canManage)} className="px-4 py-12 text-center text-muted-foreground">{members.length ? "No team members match your search." : "No team members yet."}</td></tr>}
             </tbody>
           </table>
         </div>

@@ -14,3 +14,4 @@
 - [x] Arrived = clock in; Clock out replaces Complete/Start job for cleaners; cancel job owner/manager only
 - [x] Phone bottom menu shows every option (scrolls)
 - [x] Timesheet: owners/managers edit, delete, or clock out time entries
+- [x] Team tab shows no wages for anyone (roster column, export and messages view)
