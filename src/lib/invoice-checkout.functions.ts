@@ -15,6 +15,7 @@ type InvoiceSummary = {
   due_date: string | null;
   client_name: string;
   client_email: string | null;
+  photos: { url: string; caption: string | null; photo_type: string }[];
 } | { error: string };
 
 // Public: fetch minimal invoice info by id for the pay page
