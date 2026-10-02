@@ -67,6 +67,12 @@ export const arriveAtJob = createServerFn({ method: "POST" })
       .insert({ tenant_id: tenantId, job_id: data.job_id, employee_id: context.userId })
       .select("id, arrived_at, left_at").single();
     if (error) throw new Error(error.message);
+    // Arrived also clocks in (time entry) unless already clocked in for this job.
+    const { count } = await context.supabase.from("time_entries").select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId).eq("job_id", data.job_id).is("ended_at", null);
+    if (!count) {
+      await context.supabase.from("time_entries").insert({ tenant_id: tenantId, job_id: data.job_id, user_id: context.userId, started_at: row.arrived_at });
+    }
     await context.supabase.from("jobs").update({ status: "in_progress", actual_start: row.arrived_at })
       .eq("id", data.job_id).eq("status", "scheduled");
     return row as JobVisit;
