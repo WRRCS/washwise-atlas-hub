@@ -35,8 +35,9 @@ function JobDetail() {
   return <JobDetailView jobId={jobId} />;
 }
 
-/** Arrived / Leaving taps — records time on site at this appointment (not clock in/out). */
+/** Arrived / Clock out — tracks time at this cleaning. Clock out also finishes the job. */
 function VisitButtons({ jobId }: { jobId: string }) {
+  const setStatus = useServerFn(updateJobStatus);
   const qc = useQueryClient();
   const getFn = useServerFn(getMyJobVisit);
   const arriveFn = useServerFn(arriveAtJob);
@@ -52,9 +53,9 @@ function VisitButtons({ jobId }: { jobId: string }) {
   const t = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   if (visit && !visit.left_at) {
     return (
-      <button disabled={busy} onClick={() => run(() => leaveFn({ data: { visit_id: visit.id } }), "Leaving time saved")}
+      <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); qc.invalidateQueries({ queryKey: ["jobs"] }); qc.invalidateQueries({ queryKey: ["my-jobs"] }); }, "Clocked out")}
         className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
-        Leaving (here since {t(visit.arrived_at)})
+        Clock out (here since {t(visit.arrived_at)})
       </button>
     );
   }
@@ -158,14 +159,11 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                 <MessageSquare className="size-4" /> Message client
               </Link>
             )}
-            {job.status !== "canceled" && <VisitButtons jobId={jobId} />}
-            {job.status === "scheduled" && (
-              <button onClick={onStart} disabled={starting} className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">{starting ? "Starting…" : "Start job"}</button>
-            )}
-            {job.status !== "completed" && job.status !== "canceled" && (
+            {job.status !== "canceled" && job.status !== "completed" && <VisitButtons jobId={jobId} />}
+            {canMessageClient && job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={() => onStatus("completed")} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90">Complete</button>
             )}
-            {job.status !== "canceled" && job.status !== "completed" && (
+            {canMessageClient && job.status !== "canceled" && job.status !== "completed" && (
               <button onClick={() => onStatus("canceled")} className="text-sm font-medium border border-destructive/40 text-destructive rounded-lg px-3 py-2 hover:bg-destructive/5">Cancel job</button>
             )}
           </div>
