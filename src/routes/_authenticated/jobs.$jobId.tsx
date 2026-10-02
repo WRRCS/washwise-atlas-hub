@@ -3,9 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
-import { listJobGps, clockIn } from "@/lib/time.functions";
+import { listJobGps } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
-import { captureGps } from "@/lib/geolocation";
 import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { myPermissions } from "@/lib/team.functions";
@@ -74,8 +73,6 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   const toggle = useServerFn(toggleSopItem);
   const confirmSop = useServerFn(confirmJobSop);
   const setStatus = useServerFn(updateJobStatus);
-  const doClockIn = useServerFn(clockIn);
-  const [starting, setStarting] = useState(false);
   const permsFn = useServerFn(myPermissions);
   const capsFn = useServerFn(myCapabilities);
 
@@ -117,24 +114,6 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
 
-  // Start job = GPS-verified clock in (same path as /my-jobs), not just a status flip.
-  const onStart = async () => {
-    setStarting(true);
-    try {
-      const res = await captureGps();
-      const gps = res.status === "ok" ? res.gps : null;
-      await doClockIn({ data: { job_id: jobId, gps } });
-      if (!gps) toast.warning("Clocked in without location");
-      else toast.success("Clocked in — job started");
-      qc.invalidateQueries({ queryKey: ["job", jobId] });
-      qc.invalidateQueries({ queryKey: ["jobs"] });
-      qc.invalidateQueries({ queryKey: ["my-jobs"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not start job");
-    } finally {
-      setStarting(false);
-    }
-  };
 
 
 
