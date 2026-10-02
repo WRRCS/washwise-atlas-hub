@@ -39,6 +39,7 @@ type Employee = {
   has_app_access: boolean;
   has_push: boolean;
   last_sign_in_at: string | null;
+  hourly_rate_cents: number | null;
 };
 
 
@@ -61,6 +62,9 @@ function Employees() {
   const { data: caps } = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
   const isOwner = !!caps?.isOwner;
   const canManage = !!(caps?.isOwner || caps?.canManage);
+  // Wages are admin-side only: owners always, plus anyone granted the
+  // "View wages & hourly rates" access. Employees never see this column.
+  const showWages = isOwner || !!caps?.canViewWages;
   const permsMap = new Map(
     (permsData as Array<{
       employee_id: string;
@@ -286,10 +290,11 @@ function Employees() {
       <AddEmployeeDialog open={addOpen} onOpenChange={setAddOpen} />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
 
-        <Section title="Team" rows={employees} empty="No team members yet. Invite your first team member.">
+        <Section title="Team" rows={employees} empty="No team members yet. Invite your first team member." showWages={showWages}>
           {(e) => (
             <EmployeeRow
               e={e}
+              showWages={showWages}
               isOwnerViewer={isOwner}
               perms={permsMap.get(e.id) ?? null}
               onSavePerms={(next) => savePerms(e.id, next)}
@@ -309,10 +314,11 @@ function Employees() {
         </Section>
 
         {archived.length > 0 && (
-          <Section title="Archived" rows={archived} empty="">
+          <Section title="Archived" rows={archived} empty="" showWages={showWages}>
             {(e) => (
               <EmployeeRow
                 e={e}
+                showWages={showWages}
                 isOwnerViewer={isOwner}
                 perms={permsMap.get(e.id) ?? null}
                 onSavePerms={(next) => savePerms(e.id, next)}
@@ -329,10 +335,11 @@ function Employees() {
         )}
 
         {owners.length > 0 && (
-          <Section title="Owners" rows={owners} empty="">
+          <Section title="Owners" rows={owners} empty="" showWages={showWages}>
             {(e) => (
               <EmployeeRow
                 e={e}
+                showWages={showWages}
                 isOwnerViewer={isOwner}
                 perms={null}
                 onSavePerms={() => {}}
@@ -438,7 +445,7 @@ function Employees() {
   );
 }
 
-function Section({ title, rows, empty, children }: { title: string; rows: Employee[]; empty: string; children: (e: Employee) => React.ReactNode }) {
+function Section({ title, rows, empty, showWages, children }: { title: string; rows: Employee[]; empty: string; showWages: boolean; children: (e: Employee) => React.ReactNode }) {
   return (
     <section>
       <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">{title}</h2>
@@ -446,8 +453,8 @@ function Section({ title, rows, empty, children }: { title: string; rows: Employ
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div className="hidden md:grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto] gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-            <div>Name</div><div>Email</div><div>Phone</div><div>Status</div><div>Alerts</div><div>Last login</div><div className="text-right">Actions</div>
+          <div className={`hidden md:grid gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground ${showWages ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]"}`}>
+            <div>Name</div><div>Email</div><div>Phone</div>{showWages && <div>Pay rate</div>}<div>Status</div><div>Alerts</div><div>Last login</div><div className="text-right">Actions</div>
           </div>
           <div className="divide-y divide-border/60">
             {rows.map((e) => (
@@ -480,8 +487,9 @@ const EMPTY_PERMS = {
   can_view_wages: false,
 };
 
-function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onEmailLink, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
+function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onEmailLink, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
   e: Employee;
+  showWages: boolean;
   isOwnerViewer: boolean;
   perms: PermsRow | null;
   onSavePerms: (next: typeof EMPTY_PERMS) => void;
@@ -512,7 +520,7 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
     "bg-clay-100 text-muted-foreground";
   const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_auto] gap-x-4 gap-y-3 items-center px-5 py-4">
+    <div className={`grid grid-cols-1 gap-x-4 gap-y-3 items-center px-5 py-4 ${showWages ? "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]"}`}>
       {/* Name, role and access */}
       <div className="min-w-0">
         <div className="font-medium truncate" title={e.full_name ?? undefined}>{e.full_name ?? "—"}</div>
@@ -603,6 +611,16 @@ function EmployeeRow({ e, isOwnerViewer, perms, onSavePerms, onEdit, onImpersona
         <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Phone</div>
         <div className="text-sm text-foreground/80 whitespace-nowrap">{fmtPhone(e.phone)}</div>
       </div>
+
+      {/* Pay rate — admin-side only, never shown to employees */}
+      {showWages && (
+        <div>
+          <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Pay rate</div>
+          <div className="text-sm tabular-nums text-foreground/80 whitespace-nowrap">
+            {e.hourly_rate_cents == null ? "—" : `$${(e.hourly_rate_cents / 100).toFixed(2)}/hr`}
+          </div>
+        </div>
+      )}
 
       {/* Status */}
       <div>

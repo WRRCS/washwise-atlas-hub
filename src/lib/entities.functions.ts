@@ -494,7 +494,7 @@ export const listEmployees = createServerFn({ method: "GET" })
       email: p.email,
       phone: p.phone,
       is_active: p.is_active,
-      hourly_rate_cents: p.hourly_rate_cents ?? 0,
+      hourly_rate_cents: p.hourly_rate_cents,
       role: rolesMap.get(p.id) ?? "employee",
     }));
 
