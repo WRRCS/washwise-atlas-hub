@@ -208,14 +208,6 @@ function UpNextHero({
           >
             <BookOpen className="size-3.5" /> {t("View SOP")}
           </button>
-          {!isOpen && (
-            <button
-              onClick={onCompleteNow}
-              className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <Camera className="size-3" /> {t("Complete with photos")}
-            </button>
-          )}
         </div>
       </div>
     </section>
@@ -435,12 +427,6 @@ function TodayView() {
                             className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
                           >
                             <Play className="size-4" /> {t("Arrived")}
-                          </button>
-                          <button
-                            onClick={() => setCompleteFor({ jobId: j.id, entryId: null, startedAt: null, serviceTypeId: j.service?.id ?? null })}
-                            className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            <Camera className="size-3" /> {t("Complete with photos")}
                           </button>
                         </>
                       ) : (
