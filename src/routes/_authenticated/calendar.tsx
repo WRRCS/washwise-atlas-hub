@@ -829,7 +829,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   const [propertyId, setPropertyId] = useState("");
   const propsFn = useServerFn(listClientProperties);
-  const { data: properties = [] } = useQuery({ queryKey: ["client-properties", clientId], queryFn: () => propsFn({ data: { client_id: clientId } }), enabled: !!clientId });
+  const { data: properties = [], isSuccess: propsLoaded } = useQuery({ queryKey: ["client-properties", clientId], queryFn: () => propsFn({ data: { client_id: clientId } }), enabled: !!clientId });
   const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
   const selectedClient = clients.find((c: any) => c.id === clientId);
   const mainAddress: string = (selectedClient?.service_address ?? "").trim();
@@ -837,6 +837,8 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
   const showMainOption = !!mainAddress && !properties.some((p) => norm(p.address).startsWith(norm(mainAddress).slice(0, 12)));
   if (clientId && properties.length && !propertyId && !showMainOption) setPropertyId((properties.find((p) => p.is_primary) ?? properties[0]).id);
   if (!clientId && propertyId) setPropertyId("");
+  // Drop a property that belongs to a previously selected client so the list is never blank.
+  if (clientId && propertyId && propsLoaded && !properties.some((p) => p.id === propertyId)) setPropertyId("");
   const [addingProp, setAddingProp] = useState(false);
   const [newPropLabel, setNewPropLabel] = useState("");
   const [newPropAddress, setNewPropAddress] = useState("");
@@ -957,7 +959,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Client">
-            <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <select value={clientId} onChange={(e) => { setClientId(e.target.value); setPropertyId(""); setAddingProp(false); }} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
               <option value="">Select…</option>
               {clients.map((c: any) => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}
             </select>
