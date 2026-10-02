@@ -328,8 +328,8 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
 
           {job.client?.client_sop && job.client.client_sop.trim() && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2 border-l-4 border-brand">
-              <h4 className="text-xs uppercase tracking-wider text-brand">Client-specific SOP</h4>
-              <p className="text-[11px] text-muted-foreground">Applies to this client on top of the standard service SOP.</p>
+              <h4 className="text-xs uppercase tracking-wider text-brand">Property SOP</h4>
+              <p className="text-[11px] text-muted-foreground">Applies to this property on top of the standard service SOP.</p>
               <p className="text-sm whitespace-pre-wrap">{job.client.client_sop}</p>
               {(() => {
                 const confirmedAt = (job as { sop_confirmed_at?: string | null }).sop_confirmed_at;
