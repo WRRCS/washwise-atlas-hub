@@ -16,3 +16,6 @@
 - [x] Timesheet: owners/managers edit, delete, or clock out time entries
 - [x] Team tab shows no wages for anyone (roster column, export and messages view)
 - [x] Admin app: Pay rate column on the Employees roster (owners + wage permission only)
+- SOP on properties, not client overview
+- Fix invoices not opening
+- Photo share links attachable to invoices
