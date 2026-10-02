@@ -24,14 +24,26 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invoices")
-      .select("id, number, status, total_cents, subtotal_cents, surcharge_cents, card_surcharge, currency, due_date, client:clients(first_name, last_name, email)")
+      .select("id, number, status, total_cents, subtotal_cents, surcharge_cents, card_surcharge, currency, due_date, photo_ids, client:clients(first_name, last_name, email)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) return { error: error.message };
     if (!inv) return { error: "Invoice not found" };
     if (inv.status === "draft") return { error: "This invoice is not available for payment." };
     const client = inv.client as { first_name: string | null; last_name: string | null; email: string | null } | null;
+    const ids: string[] = ((inv as any).photo_ids ?? []) as string[];
+    let photos: { url: string; caption: string | null; photo_type: string }[] = [];
+    if (ids.length) {
+      const { data: rows } = await supabaseAdmin
+        .from("job_photos").select("id, storage_path, caption, photo_type").in("id", ids);
+      const signed = await Promise.all((rows ?? []).map(async (r) => {
+        const { data: s } = await supabaseAdmin.storage.from("job-photos").createSignedUrl(r.storage_path, 3600);
+        return s?.signedUrl ? { url: s.signedUrl, caption: r.caption, photo_type: r.photo_type as string } : null;
+      }));
+      photos = signed.filter((x): x is NonNullable<typeof x> => !!x);
+    }
     return {
+      photos,
       id: inv.id,
       number: inv.number,
       status: inv.status,

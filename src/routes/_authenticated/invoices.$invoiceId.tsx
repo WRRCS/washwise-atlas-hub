@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { InvoicePhotosCard } from "@/components/invoice-photos-card";
 import { format } from "date-fns";
 import {
   getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge, setInvoiceTerms,
@@ -242,6 +243,7 @@ function InvoiceDetailPage() {
 
 
 
+        <InvoicePhotosCard invoiceId={inv.id} />
         <PaymentLinksCard invoiceId={inv.id} status={inv.status} totalCents={inv.total_cents} onPaid={refresh} />
 
         {inv.job_id && (
