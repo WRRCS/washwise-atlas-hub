@@ -514,8 +514,16 @@ function PhotosTab({ jobId }: { jobId: string }) {
     <>
       {uploader}
       {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
+      {(["before", "after", "damage", "other"] as PhotoType[]).map((group) => {
+        const groupPhotos = photos.filter((p) => p.photo_type === group);
+        if (!groupPhotos.length) return null;
+        return (
+      <section key={group} className="mb-6">
+      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+        {group === "before" ? "Before" : group === "after" ? "After" : group === "damage" ? "Damage" : "Other"} · {groupPhotos.length}
+      </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {photos.map((p) => (
+        {groupPhotos.map((p) => (
           <div key={p.id} className="group relative rounded-lg overflow-hidden ring-1 ring-black/5 bg-clay-100">
             <button
               type="button"
@@ -551,6 +559,9 @@ function PhotosTab({ jobId }: { jobId: string }) {
           </div>
         ))}
       </div>
+      </section>
+        );
+      })}
       {lightbox && (
         <div className="fixed inset-0 z-50 bg-black/80 grid place-items-center p-4" onClick={() => setLightbox(null)}>
           <button
