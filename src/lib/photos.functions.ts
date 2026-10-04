@@ -29,9 +29,19 @@ export const createJobPhotoUploadUrl = createServerFn({ method: "POST" })
     const { data: prof } = await context.supabase
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
+    // Verify the caller may add photos to this job (assigned, or owner/manager).
+    const [{ data: job }, { data: assigned }, { data: isMgr }] = await Promise.all([
+      context.supabase.from("jobs").select("id, tenant_id").eq("id", data.job_id).maybeSingle(),
+      context.supabase.from("job_employees").select("job_id")
+        .eq("job_id", data.job_id).eq("employee_id", context.userId).maybeSingle(),
+      context.supabase.rpc("is_owner_or_manager"),
+    ]);
+    if (!job || job.tenant_id !== prof.tenant_id) throw new Error("Job not found");
+    if (!assigned && !isMgr) throw new Error("You're not assigned to this job");
     const safe = data.file_name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `${prof.tenant_id}/${data.job_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
-    const { data: signed, error } = await context.supabase.storage
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: signed, error } = await supabaseAdmin.storage
       .from("job-photos")
       .createSignedUploadUrl(path);
     if (error) throw new Error(error.message);
