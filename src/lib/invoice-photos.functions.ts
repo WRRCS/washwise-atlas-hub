@@ -60,7 +60,7 @@ export const listInvoicePhotoChoices = createServerFn({ method: "POST" })
       }
     }
     return Promise.all(
-      (photos ?? []).map(async (p: any) => {
+      rows.map(async (p: any) => {
         const { data: s } = await sb.storage.from("job-photos").createSignedUrl(p.storage_path, 3600);
         const j = jobMap.get(p.job_id);
         return {
