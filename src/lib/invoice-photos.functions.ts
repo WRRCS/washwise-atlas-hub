@@ -40,8 +40,27 @@ export const listInvoicePhotoChoices = createServerFn({ method: "POST" })
       .in("job_id", Array.from(jobMap.keys()))
       .order("uploaded_at", { ascending: false })
       .limit(300);
+    const rows: any[] = [...(photos ?? [])];
+    // Always include already-attached photos, even if they fall outside the
+    // recent-jobs / photo caps above — otherwise Save would silently drop them.
+    const missing = Array.from(attached).filter((id) => !rows.some((r) => r.id === id));
+    if (missing.length) {
+      const { data: extra } = await sb
+        .from("job_photos")
+        .select("id, job_id, photo_type, caption, storage_path, uploaded_at")
+        .in("id", missing);
+      rows.push(...(extra ?? []));
+      const extraJobIds = Array.from(new Set((extra ?? []).map((p: any) => p.job_id).filter((id: string) => !jobMap.has(id))));
+      if (extraJobIds.length) {
+        const { data: extraJobs } = await sb
+          .from("jobs")
+          .select("id, scheduled_start, property:client_properties!jobs_property_id_fkey(label)")
+          .in("id", extraJobIds);
+        for (const j of extraJobs ?? []) jobMap.set(j.id, j);
+      }
+    }
     return Promise.all(
-      (photos ?? []).map(async (p: any) => {
+      rows.map(async (p: any) => {
         const { data: s } = await sb.storage.from("job-photos").createSignedUrl(p.storage_path, 3600);
         const j = jobMap.get(p.job_id);
         return {
