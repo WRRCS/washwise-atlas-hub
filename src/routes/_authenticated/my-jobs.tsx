@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { listMyJobs, clockIn, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
+import { listMyJobs, clockIn, getMyShift, endMyShift, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
 import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,7 +138,7 @@ function UpNextHero({
   const address = job.client?.service_address ?? null;
   const notes = collectStaffNotes(job);
   const isToday = new Date(job.scheduled_start).toDateString() === new Date().toDateString();
-  const isOpen = !!job.open_entry;
+  const isOpen = !!job.on_site;
   return (
     <section className="mb-6 rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/10 via-clay-50 to-clay-50 p-5 md:p-6 ring-1 ring-brand/10 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
@@ -192,7 +192,7 @@ function UpNextHero({
               onClick={onClockOut}
               className="inline-flex items-center justify-center gap-2 bg-orange-600 text-white text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
             >
-              <Square className="size-5" /> {t("Clock out")}
+              <Square className="size-5" /> {t("Leaving")}
             </button>
           ) : (
             <button
@@ -215,6 +215,43 @@ function UpNextHero({
 }
 
 
+
+/** Day clock: shows drive time between jobs and the end-of-day Clock out. */
+function ShiftBar({ trackGps }: { trackGps: boolean }) {
+  const t = useT();
+  const qc = useQueryClient();
+  const getFn = useServerFn(getMyShift);
+  const endFn = useServerFn(endMyShift);
+  const [busy, setBusy] = useState(false);
+  const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => getFn(), refetchInterval: 60000 });
+  if (!shift) return null;
+  const driving = !shift.on_site_since;
+  const since = driving ? shift.last_left_at ?? shift.started_at : shift.on_site_since!;
+  const mins = Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60000));
+  const clockOut = async () => {
+    if (!confirm(t("Clock out for the day?"))) return;
+    setBusy(true);
+    try {
+      let gps = null;
+      if (trackGps) { const res = await captureGps(); if (res.status === "ok") gps = res.gps; }
+      await endFn({ data: { gps } });
+      toast.success(t("Clocked out"));
+      ["my-shift", "my-jobs", "my-timesheet", "timesheet"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+    } catch (e: any) { toast.error(e?.message ?? "Something went wrong"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-clay-100/70 px-4 py-3 text-sm">
+      <span>
+        {driving ? <><strong>{t("Drive time")}</strong> · {mins} min {t("since")} {fmtTime(since)}</> : <><strong>{t("On site")}</strong> · {t("since")} {fmtTime(since)}</>}
+        <span className="text-muted-foreground"> · {t("Clocked in at")} {fmtTime(shift.started_at)}</span>
+      </span>
+      <button disabled={busy} onClick={clockOut} className="rounded-lg border border-border px-3 py-1.5 font-medium hover:bg-clay-50 disabled:opacity-50">
+        {t("Clock out for the day")}
+      </button>
+    </div>
+  );
+}
 
 function MyJobsPage() {
   const [tab, setTab] = useState<Tab>("today");
@@ -293,8 +330,9 @@ function TodayView() {
     }
     try {
       await doClockIn({ data: { job_id, gps } });
-      toast.success(gps ? `${t("Clocked in")} · 📍 ${t("Location captured")}` : t("Clocked in"));
+      toast.success(gps ? `${t("Arrived")} · 📍 ${t("Location captured")}` : t("Arrived"));
       qc.invalidateQueries({ queryKey: ["my-jobs"] });
+      qc.invalidateQueries({ queryKey: ["my-shift"] });
     } catch (e: any) {
       toast.error(e?.message ?? t("Failed to clock in"));
     }
@@ -319,7 +357,7 @@ function TodayView() {
   const now = Date.now();
   const todayStr = new Date().toDateString();
   const upNext =
-    jobs.find((j) => j.open_entry) ??
+    jobs.find((j) => j.on_site) ??
     jobs.find(
       (j) =>
         new Date(j.scheduled_start).toDateString() === todayStr &&
@@ -332,6 +370,7 @@ function TodayView() {
 
   return (
     <>
+      <ShiftBar trackGps={trackGps} />
       {upNext && (
         <UpNextHero
           job={upNext}
@@ -339,8 +378,8 @@ function TodayView() {
           onClockOut={() =>
             setCompleteFor({
               jobId: upNext.id,
-              entryId: upNext.open_entry?.id ?? null,
-              startedAt: upNext.open_entry?.started_at ?? null,
+              entryId: null,
+              startedAt: upNext.on_site?.arrived_at ?? null,
               serviceTypeId: upNext.service?.id ?? null,
             })
           }
@@ -401,22 +440,22 @@ function TodayView() {
                       </button>
                     </div>
                     <div className="shrink-0 flex flex-col items-end gap-2">
-                      {j.open_entry ? (
+                      {j.on_site ? (
                         <>
                           <button
                             onClick={() =>
                               setCompleteFor({
                                 jobId: j.id,
-                                entryId: j.open_entry!.id,
-                                startedAt: j.open_entry!.started_at,
+                                entryId: null,
+                                startedAt: j.on_site!.arrived_at,
                                 serviceTypeId: j.service?.id ?? null,
                               })
                             }
                             className="inline-flex items-center gap-2 bg-orange-600 text-white text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
                           >
-                            <Square className="size-4" /> {t("Clock out")}
+                            <Square className="size-4" /> {t("Leaving")}
                           </button>
-                          {j.open_entry.has_gps && (
+                          {j.open_entry?.has_gps && (
                             <span className="text-[11px] text-emerald-700 inline-flex items-center gap-1">📍 {t("Location captured")}</span>
                           )}
                         </>
@@ -451,6 +490,8 @@ function TodayView() {
           onDone={() => {
             qc.invalidateQueries({ queryKey: ["my-jobs"] });
             qc.invalidateQueries({ queryKey: ["my-timesheet"] });
+            qc.invalidateQueries({ queryKey: ["my-shift"] });
+            qc.invalidateQueries({ queryKey: ["timesheet"] });
             qc.invalidateQueries({ queryKey: ["jobs"] });
             qc.invalidateQueries({ queryKey: ["job", completeFor.jobId] });
             setCompleteFor(null);
@@ -585,6 +626,7 @@ function CompleteJobDialog({
           job_id: jobId,
           photos: uploaded,
           entry_id: entryId ?? undefined,
+          end_shift: false,
           notes: notes || undefined,
           clock_out_gps: clockOutGps,
           supplies_used: Object.entries(supplies)
@@ -592,7 +634,7 @@ function CompleteJobDialog({
             .map(([item_id, quantity]) => ({ item_id, quantity })),
         },
       });
-      toast.success(clockOutGps ? `${t("Clocked out")} · 📍 ${t("Location captured")}` : t("Clocked out"));
+      toast.success(t("Left job — drive time is counting until you tap Arrived at the next one"));
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       onDone();
     } catch (e: any) {
@@ -608,13 +650,13 @@ function CompleteJobDialog({
         className="bg-clay-50 rounded-xl border border-border/60 w-full max-w-xl p-6 my-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-medium mb-1">{t("Clock out")}</h3>
+        <h3 className="text-lg font-medium mb-1">{t("Leaving")}</h3>
         {hours !== null ? (
           <p className="text-sm text-muted-foreground mb-4">
-            You worked <strong className="text-foreground">{hours.toFixed(2)} hours</strong> (since {fmtTime(startedAt!)}).
+            You were at this job <strong className="text-foreground">{hours.toFixed(2)} hours</strong> (since {fmtTime(startedAt!)}). Your clock keeps running for drive time.
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground mb-4">{t("Add any before, after or damage photos, then clock out.")}</p>
+          <p className="text-sm text-muted-foreground mb-4">{t("Add any before, after or damage photos, then tap Leaving.")}</p>
         )}
 
         <div className="mb-4">
@@ -717,7 +759,7 @@ function CompleteJobDialog({
             onClick={onSubmit}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand text-brand-foreground disabled:opacity-50"
           >
-            {saving ? "Uploading…" : t("Clock out")}
+            {saving ? "Uploading…" : t("Leaving")}
           </button>
         </div>
       </div>
