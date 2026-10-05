@@ -26,6 +26,8 @@ export type MyJobRow = {
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   service: { id: string; name: string; color: string | null } | null;
   open_entry: { id: string; started_at: string; has_gps: boolean } | null;
+  /** This cleaner is currently at this job (tapped Arrived, not yet Leaving). */
+  on_site: { visit_id: string; arrived_at: string } | null;
   teammates: { id: string; full_name: string | null; avatar_url: string | null }[];
   property_specs: PropertySpecsSummary;
   client_notes: { note: string; created_at: string }[];
@@ -111,6 +113,12 @@ export const listMyJobs = createServerFn({ method: "POST" })
       });
     }
 
+    const { data: openVisits } = await (context.supabase as any)
+      .from("job_visits").select("id, job_id, arrived_at")
+      .eq("employee_id", uid).is("left_at", null).in("job_id", jobIds);
+    const visitMap = new Map<string, { visit_id: string; arrived_at: string }>();
+    for (const v of (openVisits ?? []) as any[]) visitMap.set(v.job_id, { visit_id: v.id, arrived_at: v.arrived_at });
+
     const allJobIds = (jobs ?? []).map((j: any) => j.id);
     const teammatesByJob = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }[]>();
     if (allJobIds.length) {
@@ -161,10 +169,48 @@ export const listMyJobs = createServerFn({ method: "POST" })
     return (jobs ?? []).map((j: any) => ({
       ...j,
       open_entry: openMap.get(j.id) ?? null,
+      on_site: visitMap.get(j.id) ?? null,
       teammates: teammatesByJob.get(j.id) ?? [],
       property_specs: j?.client?.id ? specsByClient.get(j.client.id) ?? null : null,
       client_notes: (j?.client?.id ? notesByClient.get(j.client.id) ?? [] : []).slice(0, 5),
     })) as MyJobRow[];
+  });
+
+export type MyShift = { entry_id: string; started_at: string; on_site_since: string | null; last_left_at: string | null } | null;
+
+/** The cleaner's running clock (if any), and whether they're at a job or between jobs (driving). */
+export const getMyShift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MyShift> => {
+    const { data: rows } = await context.supabase.from("time_entries").select("id, started_at")
+      .eq("user_id", context.userId).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
+    const e = rows?.[0];
+    if (!e) return null;
+    const sb = context.supabase as any;
+    const { data: open } = await sb.from("job_visits").select("arrived_at")
+      .eq("employee_id", context.userId).is("left_at", null).order("arrived_at", { ascending: false }).limit(1);
+    const { data: last } = await sb.from("job_visits").select("left_at")
+      .eq("employee_id", context.userId).not("left_at", "is", null).gte("left_at", e.started_at)
+      .order("left_at", { ascending: false }).limit(1);
+    return { entry_id: e.id, started_at: e.started_at, on_site_since: open?.[0]?.arrived_at ?? null, last_left_at: last?.[0]?.left_at ?? null };
+  });
+
+/** End of day: stop the clock and close any visit still open. */
+export const endMyShift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ gps: gpsSchema }).parse(input))
+  .handler(async ({ data, context }) => {
+    const now = new Date().toISOString();
+    const gps = data.gps ?? null;
+    const { error } = await context.supabase.from("time_entries").update({
+      ended_at: now,
+      clock_out_latitude: gps?.latitude ?? null,
+      clock_out_longitude: gps?.longitude ?? null,
+      clock_out_accuracy_meters: gps?.accuracy_meters ?? null,
+    }).eq("user_id", context.userId).is("ended_at", null);
+    if (error) throw new Error(error.message);
+    await (context.supabase as any).from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
+    return { ok: true };
   });
 
 export const getTenantGpsSettings = createServerFn({ method: "POST" })
@@ -273,7 +319,13 @@ export const clockIn = createServerFn({ method: "POST" })
     if (!prof) throw new Error("Profile not found");
     const gps = data.gps ?? null;
     const now = new Date().toISOString();
-    const { data: entry, error } = await context.supabase
+    // Already clocked in (e.g. driving from the last job)? Keep that clock running.
+    const { data: openRows } = await context.supabase
+      .from("time_entries")
+      .select("id, started_at, clock_in_latitude, clock_in_longitude, clock_in_accuracy_meters")
+      .eq("user_id", context.userId).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
+    const existing = openRows?.[0] ?? null;
+    const { data: entry, error } = existing ? { data: existing, error: null } : await context.supabase
       .from("time_entries")
       .insert({
         job_id: data.job_id,
