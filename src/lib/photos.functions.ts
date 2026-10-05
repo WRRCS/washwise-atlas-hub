@@ -90,6 +90,8 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
         photo_type: z.enum(["before", "after", "other", "damage"]).default("other"),
       })).default([]),
       entry_id: z.string().uuid().optional(),
+      // false = "Leaving": job done, but the cleaner stays clocked in (drive time keeps counting).
+      end_shift: z.boolean().default(true),
       notes: z.string().trim().max(2000).optional(),
       clock_out_gps: z.object({
         latitude: z.number(),
@@ -123,7 +125,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       for (const r of inserted ?? []) photoIds.push(r.id as string);
     }
 
-    if (data.entry_id) {
+    if (data.entry_id && data.end_shift) {
       const gps = data.clock_out_gps ?? null;
       const { error: te } = await context.supabase
         .from("time_entries")
@@ -154,8 +156,10 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
 
     await (context.supabase as any).from("job_visits").update({ left_at: endedAt })
       .eq("employee_id", context.userId).eq("job_id", data.job_id).is("left_at", null);
-    await context.supabase.from("time_entries").update({ ended_at: endedAt })
-      .eq("user_id", context.userId).eq("job_id", data.job_id).is("ended_at", null);
+    if (data.end_shift) {
+      await context.supabase.from("time_entries").update({ ended_at: endedAt })
+        .eq("user_id", context.userId).eq("job_id", data.job_id).is("ended_at", null);
+    }
 
     const { error: je } = await context.supabase
       .from("jobs")

@@ -35,7 +35,7 @@ function JobDetail() {
   return <JobDetailView jobId={jobId} />;
 }
 
-/** Arrived / Clock out — tracks time at this cleaning. Clock out also finishes the job. */
+/** Arrived / Leaving — tracks time at this cleaning. Leaving finishes the job; the day clock keeps running for drive time. */
 function VisitButtons({ jobId }: { jobId: string }) {
   const setStatus = useServerFn(updateJobStatus);
   const qc = useQueryClient();
@@ -53,9 +53,9 @@ function VisitButtons({ jobId }: { jobId: string }) {
   const t = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   if (visit && !visit.left_at) {
     return (
-      <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); qc.invalidateQueries({ queryKey: ["jobs"] }); qc.invalidateQueries({ queryKey: ["my-jobs"] }); }, "Clocked out")}
+      <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); qc.invalidateQueries({ queryKey: ["jobs"] }); qc.invalidateQueries({ queryKey: ["my-jobs"] }); }, "Left job — drive time is counting")}
         className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
-        Clock out (here since {t(visit.arrived_at)})
+        Leaving (here since {t(visit.arrived_at)})
       </button>
     );
   }
