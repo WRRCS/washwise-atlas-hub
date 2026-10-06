@@ -139,6 +139,16 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
         .eq("id", data.entry_id)
         .eq("user_id", context.userId);
       if (te) throw new Error(te.message);
+    } else if (data.notes) {
+      // "Leaving" without ending the shift: keep the timer running but still
+      // save the cleaner's note onto their open time entry for this job.
+      const { error: te } = await context.supabase
+        .from("time_entries")
+        .update({ notes: data.notes })
+        .eq("user_id", context.userId)
+        .eq("job_id", data.job_id)
+        .is("ended_at", null);
+      if (te) throw new Error(te.message);
     }
 
     if (data.supplies_used.length) {
