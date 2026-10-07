@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { myCapabilities } from "@/lib/entities.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { addDays, format, startOfDay } from "date-fns";
+import { addDays, format, startOfDay, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, Download, Pencil, Trash2, LogOut } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ type Issue = "No-Show" | "Late" | "Clocked in" | null;
 function TimesheetPage() {
   const tz = useBusinessTz();
   const [day, setDay] = useState(() => startOfDay(new Date()));
+  const [view, setView] = useState<"day" | "week">("day");
   const from = day.toISOString();
   const to = addDays(day, 1).toISOString();
   const fn = useServerFn(listDailyTimesheet);
@@ -85,6 +86,26 @@ function TimesheetPage() {
 
   const isToday = startOfDay(new Date()).getTime() === day.getTime();
 
+  const dayTotals = useMemo(() => {
+    const m = new Map<string, { name: string; onSite: number; drive: number }>();
+    for (const r of rows) {
+      const t = m.get(r.employee_id) ?? { name: r.employee_name, onSite: 0, drive: 0 };
+      if (r.arrived_at) t.onSite += mins(r.arrived_at, r.left_at);
+      t.drive += r.drive_min;
+      m.set(r.employee_id, t);
+    }
+    return Array.from(m.values()).filter((t) => t.onSite + t.drive > 0).sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows]);
+
+  if (view === "week") {
+    return (
+      <>
+        <PageHeader title="Timesheet" subtitle="Pay period (week) · Pacific time" />
+        <WeekView day={day} onBack={() => setView("day")} onPickDay={(d) => { setDay(d); setView("day"); }} setDay={setDay} />
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -97,6 +118,7 @@ function TimesheetPage() {
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, -1))}><ChevronLeft className="size-4 mr-1" />Prev</Button>
           <Button variant="outline" size="sm" disabled={isToday} onClick={() => setDay(startOfDay(new Date()))}>Today</Button>
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, 1))}>Next<ChevronRight className="size-4 ml-1" /></Button>
+          <Button variant="secondary" size="sm" onClick={() => setView("week")}>Pay period (week)</Button>
           <input
             type="date"
             className="ml-auto h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -128,6 +150,33 @@ function TimesheetPage() {
             </tbody>
           </table>
         </div>
+
+        {dayTotals.length > 0 && (
+          <section className="rounded-xl border border-border/60 bg-card">
+            <div className="px-4 py-3 border-b border-border/60">
+              <h2 className="font-semibold text-sm">Total hours for the day</h2>
+              <p className="text-xs text-muted-foreground">On site plus drive / other time.</p>
+            </div>
+            <table className="w-full text-sm">
+              <thead className="text-xs text-muted-foreground"><tr>
+                <th className="text-left px-4 py-2 font-medium">Team member</th>
+                <th className="text-right px-4 py-2 font-medium">On site</th>
+                <th className="text-right px-4 py-2 font-medium">Drive / other</th>
+                <th className="text-right px-4 py-2 font-medium">Total</th>
+              </tr></thead>
+              <tbody>
+                {dayTotals.map((t) => (
+                  <tr key={t.name} className="border-t border-border/40 tabular-nums">
+                    <td className="px-4 py-2">{t.name}</td>
+                    <td className="px-4 py-2 text-right">{shortDur(t.onSite)}</td>
+                    <td className="px-4 py-2 text-right">{shortDur(t.drive)}</td>
+                    <td className="px-4 py-2 text-right font-semibold">{shortDur(t.onSite + t.drive)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
 
         {isMgr && entries.length > 0 && (
           <section className="rounded-xl border border-border/60 bg-card">
@@ -293,6 +342,80 @@ function EntryEditor({ entry, time }: { entry: { id: string; started_at: string;
           <Trash2 className="size-3.5" />
         </Button>
       </span>
+    </div>
+  );
+}
+
+function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () => void; onPickDay: (d: Date) => void; setDay: (d: Date) => void }) {
+  const start = startOfWeek(day, { weekStartsOn: 1 });
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const fn = useServerFn(listDailyTimesheet);
+  const results = useQueries({
+    queries: days.map((d) => {
+      const from = d.toISOString();
+      return { queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to: addDays(d, 1).toISOString() } }) };
+    }),
+  });
+  const loading = results.some((r) => r.isLoading);
+  const people = new Map<string, { name: string; perDay: number[] }>();
+  results.forEach((res, i) => {
+    for (const r of res.data?.rows ?? []) {
+      const p = people.get(r.employee_id) ?? { name: r.employee_name, perDay: Array(7).fill(0) };
+      p.perDay[i] += (r.arrived_at ? mins(r.arrived_at, r.left_at) : 0) + r.drive_min;
+      people.set(r.employee_id, p);
+    }
+  });
+  const list = Array.from(people.values()).filter((p) => p.perDay.some((v) => v > 0)).sort((a, b) => a.name.localeCompare(b.name));
+  const hrs = (m: number) => (m ? (m / 60).toFixed(2) : "—");
+
+  const download = () => {
+    const lines = [["Employee", ...days.map((d) => format(d, "EEE MM/dd")), "Total hours"].join(",")];
+    for (const p of list) lines.push([p.name, ...p.perDay.map((v) => (v / 60).toFixed(2)), (p.perDay.reduce((a, b) => a + b, 0) / 60).toFixed(2)].map((v) => `"${v}"`).join(","));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    a.download = `timesheet-week-${format(start, "yyyy-MM-dd")}.csv`;
+    a.click();
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, -7))}><ChevronLeft className="size-4 mr-1" />Prev week</Button>
+        <Button variant="outline" size="sm" onClick={() => setDay(startOfDay(new Date()))}>This week</Button>
+        <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, 7))}>Next week<ChevronRight className="size-4 ml-1" /></Button>
+        <span className="text-sm font-medium ml-2">{format(start, "MMM d")} – {format(addDays(start, 6), "MMM d, yyyy")}</span>
+        <span className="ml-auto flex gap-2">
+          <Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />Download</Button>
+          <Button variant="secondary" size="sm" onClick={onBack}>Day view</Button>
+        </span>
+      </div>
+      <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
+          <thead className="text-xs text-muted-foreground border-b border-border/60">
+            <tr>
+              <th className="text-left px-4 py-3 font-medium">Team member</th>
+              {days.map((d) => (
+                <th key={d.toISOString()} className="text-right px-3 py-3 font-medium">
+                  <button className="hover:underline" onClick={() => onPickDay(d)}>{format(d, "EEE M/d")}</button>
+                </th>
+              ))}
+              <th className="text-right px-4 py-3 font-medium">Total hrs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>}
+            {!loading && list.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No time recorded this week.</td></tr>}
+            {list.map((p) => (
+              <tr key={p.name} className="border-b border-border/40 last:border-0 tabular-nums">
+                <td className="px-4 py-3 font-medium">{p.name}</td>
+                {p.perDay.map((v, i) => <td key={i} className="px-3 py-3 text-right">{hrs(v)}</td>)}
+                <td className="px-4 py-3 text-right font-semibold">{hrs(p.perDay.reduce((a, b) => a + b, 0))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted-foreground">Hours include on-site and drive / other time. Tap a day to see its details.</p>
     </div>
   );
 }
