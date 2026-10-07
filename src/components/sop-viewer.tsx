@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getSopForServiceType, markSopReviewed, getLatestSopReview, type SopDetail } from "@/lib/sops.functions";
+import { getSopForJob, markSopReviewed, getLatestSopReview, type SopDetail } from "@/lib/sops.functions";
 import { format } from "date-fns";
 import { useT, usePick } from "@/lib/i18n";
 import { Check, Download, FileText, X, ImageIcon } from "lucide-react";
@@ -20,7 +20,7 @@ export function SopViewer({
   jobId?: string;
   allowMarkReviewed?: boolean;
 }) {
-  const fetchSop = useServerFn(getSopForServiceType);
+  const fetchSop = useServerFn(getSopForJob);
   const fetchReview = useServerFn(getLatestSopReview);
   const markFn = useServerFn(markSopReviewed);
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -28,9 +28,9 @@ export function SopViewer({
   const pick = usePick();
 
   const sopQ = useQuery({
-    queryKey: ["sop-for-service", serviceTypeId],
-    queryFn: () => fetchSop({ data: { service_type_id: serviceTypeId! } }),
-    enabled: !!serviceTypeId,
+    queryKey: ["sop-for-job", jobId],
+    queryFn: () => fetchSop({ data: { job_id: jobId! } }),
+    enabled: !!jobId,
   });
 
   const sop = sopQ.data as SopDetail | null | undefined;
@@ -52,11 +52,12 @@ export function SopViewer({
     }
   };
 
-  if (!serviceTypeId) return <p className="text-sm text-muted-foreground">{t("No service type on this job.")}</p>;
+  void serviceTypeId;
+  if (!jobId) return null;
   if (sopQ.isLoading) return <p className="text-sm text-muted-foreground">{t("Loading SOP…")}</p>;
   if (!sop) return (
     <p className="text-sm text-muted-foreground">
-      {t("No SOP has been created for this service type yet.")}
+      {t("No SOP document is linked to this property yet.")}
     </p>
   );
 
