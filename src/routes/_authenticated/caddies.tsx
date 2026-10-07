@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -49,7 +49,6 @@ const LEVELS = [
 
 function CaddiesPage() {
   const { data } = useSuspenseQuery(caddyQO);
-  const router = useRouter();
   const saveItem = useServerFn(saveCaddyItem);
   const setLevel = useServerFn(setCaddyLevel);
   const delItem = useServerFn(deleteCaddyItem);
