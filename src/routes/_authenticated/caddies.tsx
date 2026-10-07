@@ -193,9 +193,11 @@ function CaddiesPage() {
                       <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditItem(it)}>
                         <Pencil className="size-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="size-8 text-red-600" onClick={() => onDelete(it)}>
-                        <Trash2 className="size-4" />
-                      </Button>
+                      {data.isManager && (
+                        <Button variant="ghost" size="icon" className="size-8 text-red-600" onClick={() => onDelete(it)}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
                     </div>
                   </li>
                 ))}
