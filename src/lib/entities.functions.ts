@@ -201,8 +201,14 @@ export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => input)
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("clients").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    const { data: gone, error } = await context.supabase.from("clients").delete().eq("id", data.id).select("id");
+    if (error) {
+      if (error.code === "23503") {
+        throw new Error("This client has jobs or invoices, so it can't be deleted. Move it to Previous Clients instead, or delete its jobs/invoices first.");
+      }
+      throw new Error(error.message);
+    }
+    if (!gone || gone.length === 0) throw new Error("Only owners and managers can delete clients.");
     return { ok: true };
   });
 

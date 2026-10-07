@@ -15,9 +15,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { listClients, createClient, myCapabilities, setClientArchived } from "@/lib/entities.functions";
+import { listClients, createClient, myCapabilities, setClientArchived, deleteClient } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
-import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/clients/")({
@@ -55,6 +55,16 @@ function ClientsPage() {
       qc.invalidateQueries({ queryKey: ["report-client-directory"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+  const deleteFn = useServerFn(deleteClient);
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Client deleted");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["report-client-directory"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed", { duration: 8000 }),
   });
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -173,6 +183,14 @@ function ClientsPage() {
                               <RotateCcw className="size-4 mr-2" /> Move back to current clients
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              if (confirm(`Delete ${fullName(c)} permanently? Use this for duplicates. Their properties, notes and messages are removed too. This can't be undone.`)) remove.mutate(c.id);
+                            }}
+                          >
+                            <Trash2 className="size-4 mr-2" /> Delete client
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
