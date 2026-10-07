@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listSops } from "@/lib/sops.functions";
+import { listSops, getSop, type SopDetail } from "@/lib/sops.functions";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -99,6 +99,7 @@ function ClientDetail() {
           <TabsList className="sticky top-0 z-10">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="properties">Properties</TabsTrigger>
+            <TabsTrigger value="sop">SOP</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -110,6 +111,9 @@ function ClientDetail() {
           </TabsContent>
           <TabsContent value="properties" className="mt-6">
             <PropertiesTab clientId={clientId} spec={client.spec} onSpecSaved={invalidate} />
+          </TabsContent>
+          <TabsContent value="sop" className="mt-6">
+            <ClientSopTab clientId={clientId} />
           </TabsContent>
           <TabsContent value="jobs" className="mt-6">
             <JobsTab clientId={clientId} />
@@ -1162,6 +1166,80 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- SOP ---------------- */
+
+function ClientSopTab({ clientId }: { clientId: string }) {
+  const listFn = useServerFn(listClientProperties);
+  const { data: props = [], isLoading } = useQuery({
+    queryKey: ["client-properties", clientId],
+    queryFn: () => listFn({ data: { client_id: clientId } }),
+  });
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const withSop = (props as ClientProperty[]).filter((p) => (p as any).sop_id || p.sop);
+  if (!withSop.length) return <p className="text-sm text-muted-foreground">No SOP is linked to this client's properties yet. Pick one in a property's edit window.</p>;
+  return (
+    <div className="space-y-6">
+      {withSop.map((p) => (
+        <section key={p.id} className="rounded-xl border border-border/60 bg-card">
+          <header className="border-b border-border/60 px-4 py-3">
+            <p className="text-sm font-semibold">{p.label || "Property"}</p>
+            {p.address && <p className="text-xs text-muted-foreground">{p.address}</p>}
+          </header>
+          <div className="p-4 space-y-4">
+            {(p as any).sop_id && <PropertySopDoc sopId={(p as any).sop_id} />}
+            {p.sop && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">Property notes</p>
+                <p className="text-sm whitespace-pre-wrap">{p.sop}</p>
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function PropertySopDoc({ sopId }: { sopId: string }) {
+  const getFn = useServerFn(getSop);
+  const { data, isLoading } = useQuery({ queryKey: ["sop", sopId], queryFn: () => getFn({ data: { id: sopId } }) });
+  const sop = data as SopDetail | null | undefined;
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading SOP…</p>;
+  if (!sop) return <p className="text-sm text-muted-foreground">SOP file not found.</p>;
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="font-medium">{sop.name}</p>
+        {sop.description && <p className="text-sm text-muted-foreground">{sop.description}</p>}
+      </div>
+      {sop.steps.length > 0 && (
+        <ol className="space-y-2">
+          {sop.steps.map((st) => (
+            <li key={st.id} className="flex gap-3 text-sm">
+              <span className="size-6 shrink-0 rounded-full bg-brand text-brand-foreground text-xs grid place-items-center">{st.step_number}</span>
+              <div className="min-w-0">
+                <p className="font-medium">{st.title}</p>
+                {st.description && <p className="text-muted-foreground whitespace-pre-wrap">{st.description}</p>}
+                {st.reference_photo_url && <img src={st.reference_photo_url} alt="" className="mt-2 max-h-48 rounded-lg" />}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      {sop.attachments.length > 0 && (
+        <ul className="space-y-1">
+          {sop.attachments.map((a) => (
+            <li key={a.id} className="text-sm flex items-center gap-2">
+              <FileText className="size-4 text-muted-foreground" />
+              {a.url ? <a href={a.url} target="_blank" rel="noreferrer" className="underline truncate">{a.original_filename}</a> : <span className="truncate">{a.original_filename}</span>}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
