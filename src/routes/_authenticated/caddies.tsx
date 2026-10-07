@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell, PageHeader, BrandButton } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Minus, Plus, Trash2, PackagePlus, Pencil } from "lucide-react";
+import { Minus, Plus, Trash2, PackagePlus, Pencil, ChevronDown, ChevronRight } from "lucide-react";
 import {
   getCaddyOverview, saveCaddyItem, setCaddyLevel, deleteCaddyItem,
   stockCaddyFromTemplate, saveCaddyTemplateItem, deleteCaddyTemplateItem,
@@ -57,6 +57,23 @@ function CaddiesPage() {
   const [addFor, setAddFor] = useState<CaddyEmployee | null>(null);
   const [editItem, setEditItem] = useState<CaddyItem | null>(null);
   const [showTemplate, setShowTemplate] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [seen, setSeen] = useState<Record<string, string>>({});
+  useEffect(() => {
+    try { setSeen(JSON.parse(localStorage.getItem(`caddy-seen-${data.myId}`) || "{}")); } catch { /* ignore */ }
+  }, [data.myId]);
+  const lastUpdate = (emp: CaddyEmployee) =>
+    emp.items.reduce<string>((m, i) => (i.updated_at && i.updated_at > m ? i.updated_at : m), "");
+  const isNew = (emp: CaddyEmployee) => {
+    if (!data.isManager || emp.id === data.myId) return false;
+    const last = lastUpdate(emp);
+    return !!last && (!seen[emp.id] || last > seen[emp.id]);
+  };
+  const markSeen = (emp: CaddyEmployee) => {
+    const next = { ...seen, [emp.id]: lastUpdate(emp) || new Date().toISOString() };
+    setSeen(next);
+    try { localStorage.setItem(`caddy-seen-${data.myId}`, JSON.stringify(next)); } catch { /* ignore */ }
+  };
 
   const qc = useQueryClient();
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["caddies"] }); };
@@ -108,10 +125,26 @@ function CaddiesPage() {
           <div className="text-muted-foreground">No team members yet.</div>
         )}
         {data.employees.map((emp) => (
-          <div key={emp.id} className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-            <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between gap-3">
-              <div className="font-medium">{emp.full_name}{emp.id === data.myId ? " (you)" : ""}</div>
+          <div key={emp.id} className={`bg-white rounded-xl overflow-hidden ${isNew(emp) ? "ring-2 ring-amber-400" : "ring-1 ring-black/5"}`}>
+            <div className={`px-4 py-3 border-b border-border/60 flex flex-wrap items-center justify-between gap-3 ${isNew(emp) ? "bg-amber-50" : ""}`}>
+              <button
+                type="button"
+                className="flex items-center gap-2 font-medium text-left"
+                aria-expanded={!collapsed[emp.id]}
+                onClick={() => setCollapsed((c) => ({ ...c, [emp.id]: !c[emp.id] }))}
+              >
+                {collapsed[emp.id] ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+                {emp.full_name}{emp.id === data.myId ? " (you)" : ""}
+                {isNew(emp) && (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full bg-amber-400 text-amber-950 px-2 py-0.5">
+                    Updated {new Date(lastUpdate(emp)).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </span>
+                )}
+              </button>
               <div className="flex items-center gap-2">
+                {isNew(emp) && (
+                  <Button variant="ghost" size="sm" onClick={() => markSeen(emp)}>Mark seen</Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => onStock(emp)}>
                   <PackagePlus className="size-4 mr-1.5" />Stock standard
                 </Button>
@@ -120,7 +153,7 @@ function CaddiesPage() {
                 </Button>
               </div>
             </div>
-            {emp.items.length === 0 ? (
+            {collapsed[emp.id] ? null : emp.items.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground text-sm">
                 Caddy is empty — tap “Stock standard” to fill it with the standard list.
               </div>
