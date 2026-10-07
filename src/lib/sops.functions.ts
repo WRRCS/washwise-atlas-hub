@@ -148,6 +148,21 @@ export const getSopForServiceType = createServerFn({ method: "POST" })
     return fetchSopDetail(context, (sop as any).id);
   });
 
+// SOP for a specific job: the library SOP linked to that job's property.
+export const getSopForJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ job_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: job } = await context.supabase
+      .from("jobs").select("property_id").eq("id", data.job_id).maybeSingle();
+    const pid = (job as any)?.property_id;
+    if (!pid) return null;
+    const { data: prop } = await (context.supabase as any)
+      .from("client_properties").select("sop_id").eq("id", pid).maybeSingle();
+    if (!prop?.sop_id) return null;
+    return fetchSopDetail(context, prop.sop_id);
+  });
+
 // ---------- Upload URL ----------
 
 export const createSopUploadUrl = createServerFn({ method: "POST" })

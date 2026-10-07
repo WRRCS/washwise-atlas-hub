@@ -186,7 +186,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
               )}
             </TabsContent>
             <TabsContent value="sop-doc" className="mt-4">
-              <SopViewer serviceTypeId={job.service?.id ?? null} />
+              <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} />
             </TabsContent>
             <TabsContent value="photos" className="mt-4">
               <PhotosTab jobId={jobId} />

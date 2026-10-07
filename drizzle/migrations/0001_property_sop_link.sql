@@ -1,0 +1,10 @@
+ALTER TABLE public.client_properties ADD COLUMN IF NOT EXISTS sop_id uuid REFERENCES public.sops(id) ON DELETE SET NULL;
+UPDATE public.client_properties SET sop_id='938394a2-abfa-421a-becb-a3c97f9eac40' WHERE id='f143e8fe-f905-433a-a686-2fb366ab97c4';
+UPDATE public.client_properties SET sop_id='2d976800-16ef-4597-8736-fd8fdcab88fe' WHERE id='dc754595-025f-4a86-9bac-d72ec7d1d3b8';
+UPDATE public.client_properties SET sop_id='240518b5-d0f4-46d6-bc51-61e36c6bfa06' WHERE id IN ('e99f50a1-429d-405f-9154-098e963c6c45','988a1fb3-ba2a-4834-8691-9501cef605fa');
+UPDATE public.client_properties SET sop_id='2725e824-3e99-4af7-8321-a923349a42d5' WHERE id='79f8bf5a-aaf2-4ac0-8c53-4078bb3fd060';
+UPDATE public.client_properties SET sop_id='56f79bb8-286a-43e9-8061-cbedf8f6f224' WHERE id='8cf2e4f5-3a79-44e5-81a1-8f6bb0b1f17a';
+UPDATE public.client_properties SET sop_id='c443f253-80bb-4774-9855-3e649c18ef5a' WHERE id='c644d633-7a78-48df-8263-4a68b629ab90';
+UPDATE public.client_properties SET sop_id='4acf15ef-3495-47e9-9063-8b38aea75c74' WHERE id='348af10e-93f2-4bf4-aedc-b73367e4adf9';
+UPDATE public.client_properties SET sop_id='dee4e66f-e72b-4217-a6da-e25a94753f08' WHERE id='0dea9e6c-a030-4842-afdd-fe4a2dae0a4b';
+UPDATE public.client_properties SET sop_id='0306c767-a1e8-48dc-9c07-6cdee38f98e6' WHERE id='4620fc34-ac37-4bed-9fec-7e79efd7a1c6';

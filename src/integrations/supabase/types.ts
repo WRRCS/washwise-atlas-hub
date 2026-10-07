@@ -445,6 +445,7 @@ export type Database = {
           property_type: string | null
           service_frequency: string | null
           sop: string | null
+          sop_id: string | null
           tenant_id: string
           updated_at: string
         }
@@ -461,6 +462,7 @@ export type Database = {
           property_type?: string | null
           service_frequency?: string | null
           sop?: string | null
+          sop_id?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -477,6 +479,7 @@ export type Database = {
           property_type?: string | null
           service_frequency?: string | null
           sop?: string | null
+          sop_id?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -486,6 +489,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_properties_sop_id_fkey"
+            columns: ["sop_id"]
+            isOneToOne: false
+            referencedRelation: "sops"
             referencedColumns: ["id"]
           },
           {

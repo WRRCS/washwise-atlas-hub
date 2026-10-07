@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { listSops } from "@/lib/sops.functions";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -940,10 +941,12 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
     queryKey: ["client-jobs", clientId],
     queryFn: () => jobsFn({ data: { client_id: clientId } }),
   });
+  const listSopsFn = useServerFn(listSops);
+  const { data: sopOptions = [] } = useQuery({ queryKey: ["sops"], queryFn: () => listSopsFn() });
   const [editing, setEditing] = useState<ClientProperty | null>(null);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "" };
+  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "", sop_id: "" };
   const [form, setForm] = useState(empty);
 
   const startAdd = () => { setForm(empty); setEditing(null); setAdding(true); };
@@ -954,6 +957,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
       property_type: p.property_type ?? "", service_frequency: p.service_frequency ?? "",
       priceStr: p.price_cents != null ? String(p.price_cents / 100) : "",
       sop: p.sop ?? "",
+      sop_id: p.sop_id ?? "",
     });
     setAdding(true);
   };
@@ -979,6 +983,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
           service_frequency: form.service_frequency.trim() || undefined,
           price_cents: form.priceStr.trim() !== "" ? Math.round((parseFloat(form.priceStr) || 0) * 100) : null,
           sop: form.sop.trim(),
+          sop_id: form.sop_id || null,
         },
       });
       toast.success(editing ? "Property updated" : "Property added");
@@ -1038,6 +1043,20 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
             <FieldRow label="Price ($)">
               <Input type="number" min={0} step="0.01" placeholder="Set price for this property" value={form.priceStr} onChange={(e) => setForm({ ...form, priceStr: e.target.value })} />
             </FieldRow>
+            <div className="md:col-span-2">
+              <FieldRow label="SOP document (from the SOP library)">
+                <select
+                  value={form.sop_id}
+                  onChange={(e) => setForm({ ...form, sop_id: e.target.value })}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">None</option>
+                  {sopOptions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </FieldRow>
+            </div>
             <div className="md:col-span-2">
               <FieldRow label="Property SOP (staff-only, shown on the job)">
                 <Textarea rows={8} value={form.sop} onChange={(e) => setForm({ ...form, sop: e.target.value })} placeholder="e.g. Microfiber only, no bleach. Feed the cat before leaving." />
