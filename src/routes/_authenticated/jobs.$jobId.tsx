@@ -19,7 +19,8 @@ import { format } from "date-fns";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X, Link2 } from "lucide-react";
-import { createPhotoLink } from "@/lib/invoice-photos.functions";
+import { createPhotoShareLink } from "@/lib/photo-share.functions";
+import { PhotoShareDialog } from "@/components/photo-share-dialog";
 import { toast } from "sonner";
 
 
@@ -396,6 +397,15 @@ function PhotosTab({ jobId }: { jobId: string }) {
   const uploadUrlFn = useServerFn(createJobPhotoUploadUrl);
   const registerFn = useServerFn(registerJobPhoto);
   const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
+  const [shareLink, setShareLink] = useState<{ url: string; title: string } | null>(null);
+  const shareFn = useServerFn(createPhotoShareLink);
+  const makeLink = async (group: PhotoType, photoId?: string) => {
+    try {
+      const { url } = await shareFn({ data: { job_id: jobId, photo_type: group, photo_id: photoId, origin: window.location.origin } });
+      const name = group[0].toUpperCase() + group.slice(1);
+      setShareLink({ url, title: photoId ? `${name} photo` : `All ${name.toLowerCase()} photos` });
+    } catch (e) { toast.error((e as Error).message); }
+  };
   const [photoType, setPhotoType] = useState<PhotoType>("other");
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -514,15 +524,24 @@ function PhotosTab({ jobId }: { jobId: string }) {
   return (
     <>
       {uploader}
+      <PhotoShareDialog link={shareLink} onClose={() => setShareLink(null)} />
       {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
       {(["before", "after", "damage", "other"] as PhotoType[]).map((group) => {
         const groupPhotos = photos.filter((p) => p.photo_type === group);
         if (!groupPhotos.length) return null;
         return (
       <section key={group} className="mb-6">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-        {group === "before" ? "Before" : group === "after" ? "After" : group === "damage" ? "Damage" : "Other"} · {groupPhotos.length}
-      </h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {group === "before" ? "Before" : group === "after" ? "After" : group === "damage" ? "Damage" : "Other"} · {groupPhotos.length}
+        </h3>
+        <button
+          onClick={() => makeLink(group)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          <Link2 className="size-3.5" /> Link to all {group}
+        </button>
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {groupPhotos.map((p) => (
           <div key={p.id} className="group relative rounded-lg overflow-hidden ring-1 ring-black/5 bg-clay-100">
@@ -544,13 +563,7 @@ function PhotosTab({ jobId }: { jobId: string }) {
                 </span>
                 <div className="flex gap-1">
                   <button
-                    onClick={async () => {
-                      try {
-                        const { url } = await createPhotoLink({ data: { photo_id: p.id } });
-                        await navigator.clipboard.writeText(url);
-                        toast.success("Photo link copied (works for 30 days)");
-                      } catch (e) { toast.error((e as Error).message); }
-                    }}
+                    onClick={() => makeLink(p.photo_type, p.id)}
                     className="p-1 text-muted-foreground hover:text-foreground"
                     aria-label="Copy photo link"
                   >

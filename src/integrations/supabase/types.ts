@@ -1891,6 +1891,39 @@ export type Database = {
           },
         ]
       }
+      photo_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          job_id: string
+          photo_ids: string[] | null
+          photo_type: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          job_id: string
+          photo_ids?: string[] | null
+          photo_type?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          job_id?: string
+          photo_ids?: string[] | null
+          photo_type?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       photo_share_log: {
         Row: {
           created_at: string
