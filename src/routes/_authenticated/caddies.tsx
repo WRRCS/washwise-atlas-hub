@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -59,9 +59,17 @@ function CaddiesPage() {
   const [editItem, setEditItem] = useState<CaddyItem | null>(null);
   const [showTemplate, setShowTemplate] = useState(false);
 
-  const refresh = () => router.invalidate();
+  const qc = useQueryClient();
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ["caddies"] }); };
 
   const pickLevel = async (item: CaddyItem, pct: number) => {
+    qc.setQueryData(caddyQO.queryKey, (old: any) => old && ({
+      ...old,
+      employees: old.employees.map((e: CaddyEmployee) => ({
+        ...e,
+        items: e.items.map((i) => (i.id === item.id ? { ...i, level_pct: pct } : i)),
+      })),
+    }));
     try {
       await setLevel({ data: { id: item.id, level_pct: pct } });
       refresh();
@@ -137,7 +145,7 @@ function CaddiesPage() {
                               key={l.pct}
                               type="button"
                               onClick={() => pickLevel(it, l.pct)}
-                              className={`px-2.5 h-8 text-xs font-medium border-r last:border-r-0 border-black/10 transition-colors ${
+                              className={`px-3 h-10 min-w-[2.75rem] text-xs touch-manipulation font-medium border-r last:border-r-0 border-black/10 transition-colors ${
                                 active
                                   ? l.pct === 0
                                     ? "bg-red-600 text-white"
@@ -222,7 +230,7 @@ function ItemDialog({ item, employeeId, onClose, onSaved, save }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Quantity</Label>
-              <Input type="number" min={0} step="1" value={qty} onChange={(e) => setQty(e.target.value)} />
+              <Input type="text" inputMode="decimal" value={qty} onFocus={(e) => e.target.select()} onChange={(e) => setQty(e.target.value.replace(/[^0-9.]/g, ""))} />
             </div>
             <div>
               <Label>Unit</Label>

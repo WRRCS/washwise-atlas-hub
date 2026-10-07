@@ -25,7 +25,6 @@ const OWNER_NAV = [
   { to: "/client-drafts", label: "Message drafts", icon: FileText },
   { to: "/leads", label: "Leads", icon: Inbox },
   { to: "/clients", label: "Clients", icon: Users },
-  { to: "/services", label: "Services", icon: Sparkles },
   { to: "/sops", label: "SOPs", icon: BookOpen },
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/team", label: "Team", icon: Users2 },
