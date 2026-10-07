@@ -629,9 +629,7 @@ function CompleteJobDialog({
           end_shift: false,
           notes: notes || undefined,
           clock_out_gps: clockOutGps,
-          supplies_used: Object.entries(supplies)
-            .filter(([, qty]) => qty > 0)
-            .map(([item_id, quantity]) => ({ item_id, quantity })),
+          supplies_used: [],
         },
       });
       toast.success(t("Left job — drive time is counting until you tap Arrived at the next one"));
@@ -737,11 +735,6 @@ function CompleteJobDialog({
           )}
         </div>
 
-        <SuppliesUsedSection
-          items={inventoryQ.data ?? []}
-          selected={supplies}
-          onChange={setSupplies}
-        />
 
         <label className="block text-sm font-medium mb-1">Notes (optional)</label>
         <textarea
