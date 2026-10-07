@@ -194,6 +194,7 @@ export const deleteCaddyItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    if (!(await isManager(context))) throw new Error("Only owners and managers can remove caddy items");
     const { error } = await context.supabase.from("employee_caddy_items").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
