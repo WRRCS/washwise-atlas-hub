@@ -21,6 +21,7 @@ export type CaddyItem = {
   level_pct: number;
   sort_order: number;
   notes: string | null;
+  updated_at: string | null;
 };
 
 export type CaddyEmployee = {
@@ -68,7 +69,7 @@ export const getCaddyOverview = createServerFn({ method: "GET" })
         .order("name"),
       context.supabase
         .from("employee_caddy_items")
-        .select("id,employee_id,template_item_id,name,unit,qty,level_pct,sort_order,notes")
+        .select("id,employee_id,template_item_id,name,unit,qty,level_pct,sort_order,notes,updated_at")
         .order("sort_order")
         .order("name"),
       context.supabase.rpc("staff_directory"),
@@ -94,6 +95,7 @@ export const getCaddyOverview = createServerFn({ method: "GET" })
         level_pct: r.level_pct == null ? 100 : Number(r.level_pct),
         sort_order: r.sort_order,
         notes: r.notes,
+        updated_at: r.updated_at ?? null,
       };
       const list = byEmployee.get(row.employee_id) ?? [];
       list.push(row);
