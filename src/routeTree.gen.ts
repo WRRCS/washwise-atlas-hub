@@ -40,6 +40,7 @@ import { Route as AuthenticatedTipsRouteImport } from './routes/_authenticated/t
 import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
+import { Route as PhotosShareIdRouteImport } from './routes/photos.$shareId'
 import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
 import { Route as PortalDemoRouteImport } from './routes/portal.demo'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
@@ -238,6 +239,11 @@ const PayInvoiceIdRoute = PayInvoiceIdRouteImport.update({
 const PayReturnRoute = PayReturnRouteImport.update({
   id: '/pay/return',
   path: '/pay/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PhotosShareIdRoute = PhotosShareIdRouteImport.update({
+  id: '/photos/$shareId',
+  path: '/photos/$shareId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalDashboardRoute = PortalDashboardRouteImport.update({
@@ -529,6 +535,7 @@ export interface FileRoutesByFullPath {
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/photos/$shareId': typeof PhotosShareIdRoute
   '/portal/dashboard': typeof PortalDashboardRoute
   '/portal/demo': typeof PortalDemoRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -603,6 +610,7 @@ export interface FileRoutesByTo {
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/photos/$shareId': typeof PhotosShareIdRoute
   '/portal/dashboard': typeof PortalDashboardRoute
   '/portal/demo': typeof PortalDemoRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -681,6 +689,7 @@ export interface FileRoutesById {
   '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
+  '/photos/$shareId': typeof PhotosShareIdRoute
   '/portal/dashboard': typeof PortalDashboardRoute
   '/portal/demo': typeof PortalDemoRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -759,6 +768,7 @@ export interface FileRouteTypes {
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/photos/$shareId'
     | '/portal/dashboard'
     | '/portal/demo'
     | '/clients/$clientId'
@@ -833,6 +843,7 @@ export interface FileRouteTypes {
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/photos/$shareId'
     | '/portal/dashboard'
     | '/portal/demo'
     | '/clients/$clientId'
@@ -910,6 +921,7 @@ export interface FileRouteTypes {
     | '/_authenticated/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
+    | '/photos/$shareId'
     | '/portal/dashboard'
     | '/portal/demo'
     | '/_authenticated/clients/$clientId'
@@ -966,6 +978,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
+  PhotosShareIdRoute: typeof PhotosShareIdRoute
   ApiPublicHooksExtendRecurringRoute: typeof ApiPublicHooksExtendRecurringRoute
   ApiPublicHooksProcessPushRoute: typeof ApiPublicHooksProcessPushRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -1197,6 +1210,13 @@ declare module '@tanstack/react-router' {
       path: '/pay/return'
       fullPath: '/pay/return'
       preLoaderRoute: typeof PayReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/photos/$shareId': {
+      id: '/photos/$shareId'
+      path: '/photos/$shareId'
+      fullPath: '/photos/$shareId'
+      preLoaderRoute: typeof PhotosShareIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal/dashboard': {
@@ -1702,6 +1722,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
+  PhotosShareIdRoute: PhotosShareIdRoute,
   ApiPublicHooksExtendRecurringRoute: ApiPublicHooksExtendRecurringRoute,
   ApiPublicHooksProcessPushRoute: ApiPublicHooksProcessPushRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
