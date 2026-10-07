@@ -187,3 +187,136 @@ export const deleteTimeEntry = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export type DailyRow = {
+  key: string;
+  employee_id: string;
+  employee_name: string;
+  job_id: string | null;
+  client: string;
+  property: string | null;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  visit_id: string | null;
+  arrived_at: string | null;
+  left_at: string | null;
+  drive_min: number;
+};
+
+export type DailyTimesheet = {
+  rows: DailyRow[];
+  entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[];
+};
+
+/** One row per cleaner per job for a single day: scheduled vs. actual arrive/leave, plus drive time between jobs. */
+export const listDailyTimesheet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ from: z.string(), to: z.string() }).parse(input))
+  .handler(async ({ data, context }): Promise<DailyTimesheet> => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+    const sb = context.supabase as any;
+    const jobSel = "id, scheduled_start, scheduled_end, status, assigned_to, client:clients(first_name,last_name), property:client_properties(label,address), job_employees(employee_id)";
+    let te = sb.from("time_entries").select("id, user_id, started_at, ended_at").gte("started_at", data.from).lt("started_at", data.to);
+    let jv = sb.from("job_visits").select("id, job_id, employee_id, arrived_at, left_at").gte("arrived_at", data.from).lt("arrived_at", data.to);
+    if (!isMgr) { te = te.eq("user_id", context.userId); jv = jv.eq("employee_id", context.userId); }
+    const [{ data: entries }, { data: visits }, { data: jobs }, { data: profs }] = await Promise.all([
+      te, jv,
+      sb.from("jobs").select(jobSel).gte("scheduled_start", data.from).lt("scheduled_start", data.to).neq("status", "canceled"),
+      context.supabase.rpc("staff_directory"),
+    ]);
+    const names = new Map<string, string>((profs ?? []).map((p: any) => [p.id, p.full_name ?? "Unknown"]));
+    const jobMap = new Map<string, any>((jobs ?? []).map((j: any) => [j.id, j]));
+    // Visits on jobs scheduled another day still need their job details.
+    const missing = [...new Set(((visits ?? []) as any[]).map((v) => v.job_id).filter((id) => id && !jobMap.has(id)))];
+    if (missing.length) {
+      const { data: extra } = await sb.from("jobs").select(jobSel).in("id", missing);
+      for (const j of extra ?? []) jobMap.set(j.id, j);
+    }
+    const label = (j: any) => {
+      const c = j?.client;
+      return [c?.first_name, c?.last_name].filter(Boolean).join(" ") || "Appointment";
+    };
+    const prop = (j: any) => j?.property ? (j.property.label || j.property.address || null) : null;
+    const rows: DailyRow[] = [];
+    const seen = new Set<string>();
+    for (const v of (visits ?? []) as any[]) {
+      const j = jobMap.get(v.job_id);
+      seen.add(`${v.employee_id}|${v.job_id}`);
+      rows.push({
+        key: v.id, employee_id: v.employee_id, employee_name: names.get(v.employee_id) ?? "Unknown",
+        job_id: v.job_id, client: label(j), property: prop(j),
+        scheduled_start: j?.scheduled_start ?? null, scheduled_end: j?.scheduled_end ?? null,
+        visit_id: v.id, arrived_at: v.arrived_at, left_at: v.left_at, drive_min: 0,
+      });
+    }
+    for (const j of (jobs ?? []) as any[]) {
+      const emps = new Set<string>([...(j.job_employees ?? []).map((x: any) => x.employee_id), ...(j.assigned_to ? [j.assigned_to] : [])]);
+      for (const e of emps) {
+        if (!isMgr && e !== context.userId) continue;
+        if (seen.has(`${e}|${j.id}`)) continue;
+        rows.push({
+          key: `${j.id}|${e}`, employee_id: e, employee_name: names.get(e) ?? "Unknown",
+          job_id: j.id, client: label(j), property: prop(j),
+          scheduled_start: j.scheduled_start, scheduled_end: j.scheduled_end,
+          visit_id: null, arrived_at: null, left_at: null, drive_min: 0,
+        });
+      }
+    }
+    // Drive/other time = gap since the cleaner clocked in or left their previous job.
+    const entryList = ((entries ?? []) as any[]).map((e) => ({
+      id: e.id, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at, ended_at: e.ended_at,
+    }));
+    const byEmp = new Map<string, DailyRow[]>();
+    for (const r of rows) if (r.arrived_at) byEmp.set(r.employee_id, [...(byEmp.get(r.employee_id) ?? []), r]);
+    for (const [emp, list] of byEmp) {
+      list.sort((a, b) => a.arrived_at!.localeCompare(b.arrived_at!));
+      const clockIn = entryList.filter((e) => e.employee_id === emp).map((e) => e.started_at).sort()[0] ?? null;
+      let prev: string | null = clockIn;
+      for (const r of list) {
+        if (prev && prev < r.arrived_at!) r.drive_min = (new Date(r.arrived_at!).getTime() - new Date(prev).getTime()) / 60000;
+        prev = r.left_at;
+      }
+    }
+    rows.sort((a, b) => a.employee_name.localeCompare(b.employee_name) ||
+      (a.arrived_at ?? a.scheduled_start ?? "").localeCompare(b.arrived_at ?? b.scheduled_start ?? ""));
+    entryList.sort((a, b) => a.employee_name.localeCompare(b.employee_name) || a.started_at.localeCompare(b.started_at));
+    return { rows, entries: entryList };
+  });
+
+async function assertManagerVisit(context: { supabase: any; userId: string }, visitId: string) {
+  const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+  if (!isMgr) throw new Error("Only owners and managers can change job times");
+  const tenantId = await tenantOf(context);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: v } = await supabaseAdmin.from("job_visits").select("id, tenant_id").eq("id", visitId).maybeSingle();
+  if (!v || v.tenant_id !== tenantId) throw new Error("Job visit not found");
+  return supabaseAdmin;
+}
+
+/** Owners/managers: fix a cleaner's arrive/leave times at one job. */
+export const updateJobVisit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      arrived_at: z.string().datetime({ offset: true }),
+      left_at: z.string().datetime({ offset: true }).nullable(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.left_at && data.left_at < data.arrived_at) throw new Error("Leave time must be after arrive time");
+    const admin = await assertManagerVisit(context, data.id);
+    const { error } = await admin.from("job_visits").update({ arrived_at: data.arrived_at, left_at: data.left_at }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteJobVisit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await assertManagerVisit(context, data.id);
+    const { error } = await admin.from("job_visits").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
