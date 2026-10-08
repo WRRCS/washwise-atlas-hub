@@ -237,18 +237,12 @@ function UpNextHero({
 
 
 
-/** Day clock: shows drive time between jobs and the end-of-day Clock out. */
-function ShiftBar({ trackGps }: { trackGps: boolean }) {
+/** End-of-day clock out (with confirm + optional GPS). */
+export function useClockOutDay(trackGps: boolean) {
   const t = useT();
   const qc = useQueryClient();
-  const getFn = useServerFn(getMyShift);
   const endFn = useServerFn(endMyShift);
   const [busy, setBusy] = useState(false);
-  const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => getFn(), refetchInterval: 60000 });
-  if (!shift) return null;
-  const driving = !shift.on_site_since;
-  const since = driving ? shift.last_left_at ?? shift.started_at : shift.on_site_since!;
-  const mins = Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60000));
   const clockOut = async () => {
     if (!confirm(t("Clock out for the day?"))) return;
     setBusy(true);
@@ -257,10 +251,23 @@ function ShiftBar({ trackGps }: { trackGps: boolean }) {
       if (trackGps) { const res = await captureGps(); if (res.status === "ok") gps = res.gps; }
       await endFn({ data: { gps } });
       toast.success(t("Clocked out"));
-      ["my-shift", "my-jobs", "my-timesheet", "timesheet"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      ["my-shift", "my-jobs", "my-timesheet", "timesheet", "job-visit"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     } catch (e: any) { toast.error(e?.message ?? "Something went wrong"); }
     finally { setBusy(false); }
   };
+  return { clockOut, busy };
+}
+
+/** Day clock: shows drive time between jobs and the end-of-day Clock out. */
+function ShiftBar({ trackGps }: { trackGps: boolean }) {
+  const t = useT();
+  const getFn = useServerFn(getMyShift);
+  const { clockOut, busy } = useClockOutDay(trackGps);
+  const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => getFn(), refetchInterval: 60000 });
+  if (!shift) return null;
+  const driving = !shift.on_site_since;
+  const since = driving ? shift.last_left_at ?? shift.started_at : shift.on_site_since!;
+  const mins = Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60000));
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-clay-100/70 px-4 py-3 text-sm">
       <span>
