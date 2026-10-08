@@ -317,6 +317,8 @@ function TodayView() {
   const qc = useQueryClient();
   const list = useServerFn(listMyJobs);
   const doClockIn = useServerFn(clockIn);
+  const doClockInDay = useServerFn(clockInDay);
+  const getShiftFn = useServerFn(getMyShift);
   const getGpsSettings = useServerFn(getTenantGpsSettings);
   const doLogConsent = useServerFn(logGpsConsent);
 
