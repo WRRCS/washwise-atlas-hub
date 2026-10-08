@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
-import { listJobGps } from "@/lib/time.functions";
+import { listJobGps, getMyShift, clockInDay, endMyShift } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
 import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,35 +36,57 @@ function JobDetail() {
   return <JobDetailView jobId={jobId} />;
 }
 
-/** Arrived / Leaving — tracks time at this cleaning. Leaving finishes the job; the day clock keeps running for drive time. */
+/** Clock in → Arrived → Leaving, plus a separate Clock out for the day. Leaving keeps the day clock running for drive time. */
 function VisitButtons({ jobId }: { jobId: string }) {
   const setStatus = useServerFn(updateJobStatus);
   const qc = useQueryClient();
   const getFn = useServerFn(getMyJobVisit);
   const arriveFn = useServerFn(arriveAtJob);
   const leaveFn = useServerFn(leaveJob);
+  const shiftFn = useServerFn(getMyShift);
+  const dayInFn = useServerFn(clockInDay);
+  const dayOutFn = useServerFn(endMyShift);
   const [busy, setBusy] = useState(false);
   const { data: visit } = useQuery({ queryKey: ["job-visit", jobId], queryFn: () => getFn({ data: { job_id: jobId } }) });
+  const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => shiftFn(), refetchInterval: 60000 });
   const run = async (f: () => Promise<unknown>, msg: string) => {
     setBusy(true);
-    try { await f(); toast.success(msg); qc.invalidateQueries({ queryKey: ["job-visit", jobId] }); qc.invalidateQueries({ queryKey: ["timesheet"] }); qc.invalidateQueries({ queryKey: ["job", jobId] }); }
+    try {
+      await f(); toast.success(msg);
+      ["job-visit", "timesheet", "my-shift", "my-jobs", "jobs"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      qc.invalidateQueries({ queryKey: ["job", jobId] });
+    }
     catch (e) { toast.error(e instanceof Error ? e.message : "Something went wrong"); }
     finally { setBusy(false); }
   };
   const t = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (visit && !visit.left_at) {
+  const onSite = visit && !visit.left_at;
+  if (!shift) {
     return (
-      <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); qc.invalidateQueries({ queryKey: ["jobs"] }); qc.invalidateQueries({ queryKey: ["my-jobs"] }); }, "Left job — drive time is counting")}
-        className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
-        Leaving (here since {t(visit.arrived_at)})
+      <button disabled={busy} onClick={() => run(() => dayInFn({ data: { job_id: jobId, gps: null } }), "Clocked in")}
+        className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
+        Clock in
       </button>
     );
   }
   return (
-    <button disabled={busy} onClick={() => run(() => arriveFn({ data: { job_id: jobId } }), "Arrival time saved")}
-      className="text-sm font-medium border border-brand text-brand rounded-lg px-3 py-2 hover:bg-brand/5 disabled:opacity-50">
-      {visit?.left_at ? `Arrived again (left ${t(visit.left_at)})` : "Arrived"}
-    </button>
+    <div className="flex flex-wrap gap-2">
+      {onSite ? (
+        <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit!.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); }, "Left job — drive time is counting")}
+          className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
+          Leaving (here since {t(visit!.arrived_at)})
+        </button>
+      ) : (
+        <button disabled={busy} onClick={() => run(() => arriveFn({ data: { job_id: jobId } }), "Arrival time saved")}
+          className="text-sm font-medium border border-brand text-brand rounded-lg px-3 py-2 hover:bg-brand/5 disabled:opacity-50">
+          {visit?.left_at ? `Arrived again (left ${t(visit.left_at)})` : "Arrived"}
+        </button>
+      )}
+      <button disabled={busy} onClick={() => { if (confirm("Clock out for the day?")) run(() => dayOutFn({ data: { gps: null } }), "Clocked out"); }}
+        className="text-sm font-medium border border-destructive text-destructive rounded-lg px-3 py-2 hover:bg-destructive/5 disabled:opacity-50">
+        Clock out for the day
+      </button>
+    </div>
   );
 }
 

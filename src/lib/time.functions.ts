@@ -195,6 +195,32 @@ export const getMyShift = createServerFn({ method: "POST" })
     return { entry_id: e.id, started_at: e.started_at, on_site_since: open?.[0]?.arrived_at ?? null, last_left_at: last?.[0]?.left_at ?? null };
   });
 
+/** Start of day: start the clock only. Time at a job starts when they tap Arrived. */
+export const clockInDay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ job_id: z.string().uuid(), gps: gpsSchema }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: prof } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (!prof) throw new Error("Profile not found");
+    const { data: open } = await context.supabase.from("time_entries").select("id, started_at")
+      .eq("user_id", context.userId).is("ended_at", null).limit(1);
+    if (open?.[0]) return open[0];
+    const gps = data.gps ?? null;
+    const now = new Date().toISOString();
+    const { data: entry, error } = await context.supabase.from("time_entries").insert({
+      job_id: data.job_id,
+      user_id: context.userId,
+      tenant_id: (prof as any).tenant_id,
+      started_at: now,
+      clock_in_latitude: gps?.latitude ?? null,
+      clock_in_longitude: gps?.longitude ?? null,
+      clock_in_accuracy_meters: gps?.accuracy_meters ?? null,
+      consent_given_at: gps ? now : null,
+    }).select("id, started_at").single();
+    if (error) throw new Error(error.message);
+    return entry;
+  });
+
 /** End of day: stop the clock and close any visit still open. */
 export const endMyShift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

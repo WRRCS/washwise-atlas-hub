@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { listMyJobs, clockIn, getMyShift, endMyShift, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
+import { listMyJobs, clockIn, clockInDay, getMyShift, endMyShift, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
 import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -127,12 +127,18 @@ function UpNextHero({
   onClockOut,
   onCompleteNow,
   onOpenSop,
+  clockedIn,
+  onClockInDay,
+  onClockOutDay,
 }: {
   job: MyJobRow;
   onClockIn: () => void;
   onClockOut: () => void;
   onCompleteNow: () => void;
   onOpenSop: () => void;
+  clockedIn: boolean;
+  onClockInDay: () => void;
+  onClockOutDay: () => void;
 }) {
   const t = useT();
   const address = job.client?.service_address ?? null;
@@ -194,12 +200,27 @@ function UpNextHero({
             >
               <Square className="size-5" /> {t("Leaving")}
             </button>
-          ) : (
+          ) : clockedIn ? (
             <button
               onClick={onClockIn}
               className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
             >
               <Play className="size-5" /> {t("Arrived")}
+            </button>
+          ) : (
+            <button
+              onClick={onClockInDay}
+              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+            >
+              <Clock className="size-5" /> {t("Clock in")}
+            </button>
+          )}
+          {clockedIn && (
+            <button
+              onClick={onClockOutDay}
+              className="inline-flex items-center justify-center gap-2 border border-destructive text-destructive text-sm font-semibold rounded-xl px-5 py-2.5 hover:bg-destructive/5"
+            >
+              {t("Clock out for the day")}
             </button>
           )}
           <button
@@ -216,18 +237,12 @@ function UpNextHero({
 
 
 
-/** Day clock: shows drive time between jobs and the end-of-day Clock out. */
-function ShiftBar({ trackGps }: { trackGps: boolean }) {
+/** End-of-day clock out (with confirm + optional GPS). */
+export function useClockOutDay(trackGps: boolean) {
   const t = useT();
   const qc = useQueryClient();
-  const getFn = useServerFn(getMyShift);
   const endFn = useServerFn(endMyShift);
   const [busy, setBusy] = useState(false);
-  const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => getFn(), refetchInterval: 60000 });
-  if (!shift) return null;
-  const driving = !shift.on_site_since;
-  const since = driving ? shift.last_left_at ?? shift.started_at : shift.on_site_since!;
-  const mins = Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60000));
   const clockOut = async () => {
     if (!confirm(t("Clock out for the day?"))) return;
     setBusy(true);
@@ -236,10 +251,23 @@ function ShiftBar({ trackGps }: { trackGps: boolean }) {
       if (trackGps) { const res = await captureGps(); if (res.status === "ok") gps = res.gps; }
       await endFn({ data: { gps } });
       toast.success(t("Clocked out"));
-      ["my-shift", "my-jobs", "my-timesheet", "timesheet"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      ["my-shift", "my-jobs", "my-timesheet", "timesheet", "job-visit"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     } catch (e: any) { toast.error(e?.message ?? "Something went wrong"); }
     finally { setBusy(false); }
   };
+  return { clockOut, busy };
+}
+
+/** Day clock: shows drive time between jobs and the end-of-day Clock out. */
+function ShiftBar({ trackGps }: { trackGps: boolean }) {
+  const t = useT();
+  const getFn = useServerFn(getMyShift);
+  const { clockOut, busy } = useClockOutDay(trackGps);
+  const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => getFn(), refetchInterval: 60000 });
+  if (!shift) return null;
+  const driving = !shift.on_site_since;
+  const since = driving ? shift.last_left_at ?? shift.started_at : shift.on_site_since!;
+  const mins = Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60000));
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-clay-100/70 px-4 py-3 text-sm">
       <span>
@@ -289,6 +317,8 @@ function TodayView() {
   const qc = useQueryClient();
   const list = useServerFn(listMyJobs);
   const doClockIn = useServerFn(clockIn);
+  const doClockInDay = useServerFn(clockInDay);
+  const getShiftFn = useServerFn(getMyShift);
   const getGpsSettings = useServerFn(getTenantGpsSettings);
   const doLogConsent = useServerFn(logGpsConsent);
 
@@ -315,7 +345,11 @@ function TodayView() {
     queryFn: () => list({ data: { from, to } }),
   });
 
-  const handleClockIn = async (job_id: string) => {
+  const shiftQ = useQuery({ queryKey: ["my-shift"], queryFn: () => getShiftFn(), refetchInterval: 60000 });
+  const clockedIn = !!shiftQ.data;
+  const { clockOut: clockOutDay } = useClockOutDay(trackGps);
+
+  const handleClockIn = async (job_id: string, dayOnly = false) => {
     let gps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
     if (trackGps) {
       const res = await captureGps();
@@ -329,8 +363,10 @@ function TodayView() {
       }
     }
     try {
-      await doClockIn({ data: { job_id, gps } });
-      toast.success(gps ? `${t("Arrived")} · 📍 ${t("Location captured")}` : t("Arrived"));
+      if (dayOnly) await doClockInDay({ data: { job_id, gps } });
+      else await doClockIn({ data: { job_id, gps } });
+      const label = dayOnly ? t("Clocked in") : t("Arrived");
+      toast.success(gps ? `${label} · 📍 ${t("Location captured")}` : label);
       qc.invalidateQueries({ queryKey: ["my-jobs"] });
       qc.invalidateQueries({ queryKey: ["my-shift"] });
     } catch (e: any) {
@@ -375,6 +411,9 @@ function TodayView() {
         <UpNextHero
           job={upNext}
           onClockIn={() => handleClockIn(upNext.id)}
+          clockedIn={clockedIn}
+          onClockInDay={() => handleClockIn(upNext.id, true)}
+          onClockOutDay={clockOutDay}
           onClockOut={() =>
             setCompleteFor({
               jobId: upNext.id,
@@ -461,12 +500,21 @@ function TodayView() {
                         </>
                       ) : j.status === "scheduled" || j.status === "in_progress" ? (
                         <>
-                          <button
-                            onClick={() => handleClockIn(j.id)}
-                            className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
-                          >
-                            <Play className="size-4" /> {t("Arrived")}
-                          </button>
+                          {clockedIn ? (
+                            <button
+                              onClick={() => handleClockIn(j.id)}
+                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
+                            >
+                              <Play className="size-4" /> {t("Arrived")}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleClockIn(j.id, true)}
+                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
+                            >
+                              <Clock className="size-4" /> {t("Clock in")}
+                            </button>
+                          )}
                         </>
                       ) : (
                         <span className="text-xs text-muted-foreground">{t("Done")}</span>
