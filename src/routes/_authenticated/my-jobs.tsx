@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
-import { listMyJobs, clockIn, getMyShift, endMyShift, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
+import { listMyJobs, clockIn, clockInDay, getMyShift, endMyShift, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
 import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
 import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -343,7 +343,11 @@ function TodayView() {
     queryFn: () => list({ data: { from, to } }),
   });
 
-  const handleClockIn = async (job_id: string) => {
+  const shiftQ = useQuery({ queryKey: ["my-shift"], queryFn: () => getShiftFn(), refetchInterval: 60000 });
+  const clockedIn = !!shiftQ.data;
+  const { clockOut: clockOutDay } = useClockOutDay(trackGps);
+
+  const handleClockIn = async (job_id: string, dayOnly = false) => {
     let gps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
     if (trackGps) {
       const res = await captureGps();
@@ -357,8 +361,10 @@ function TodayView() {
       }
     }
     try {
-      await doClockIn({ data: { job_id, gps } });
-      toast.success(gps ? `${t("Arrived")} · 📍 ${t("Location captured")}` : t("Arrived"));
+      if (dayOnly) await doClockInDay({ data: { job_id, gps } });
+      else await doClockIn({ data: { job_id, gps } });
+      const label = dayOnly ? t("Clocked in") : t("Arrived");
+      toast.success(gps ? `${label} · 📍 ${t("Location captured")}` : label);
       qc.invalidateQueries({ queryKey: ["my-jobs"] });
       qc.invalidateQueries({ queryKey: ["my-shift"] });
     } catch (e: any) {
@@ -403,6 +409,9 @@ function TodayView() {
         <UpNextHero
           job={upNext}
           onClockIn={() => handleClockIn(upNext.id)}
+          clockedIn={clockedIn}
+          onClockInDay={() => handleClockIn(upNext.id, true)}
+          onClockOutDay={clockOutDay}
           onClockOut={() =>
             setCompleteFor({
               jobId: upNext.id,
@@ -489,12 +498,21 @@ function TodayView() {
                         </>
                       ) : j.status === "scheduled" || j.status === "in_progress" ? (
                         <>
-                          <button
-                            onClick={() => handleClockIn(j.id)}
-                            className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
-                          >
-                            <Play className="size-4" /> {t("Arrived")}
-                          </button>
+                          {clockedIn ? (
+                            <button
+                              onClick={() => handleClockIn(j.id)}
+                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
+                            >
+                              <Play className="size-4" /> {t("Arrived")}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleClockIn(j.id, true)}
+                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
+                            >
+                              <Clock className="size-4" /> {t("Clock in")}
+                            </button>
+                          )}
                         </>
                       ) : (
                         <span className="text-xs text-muted-foreground">{t("Done")}</span>
