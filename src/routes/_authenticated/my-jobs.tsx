@@ -127,12 +127,18 @@ function UpNextHero({
   onClockOut,
   onCompleteNow,
   onOpenSop,
+  clockedIn,
+  onClockInDay,
+  onClockOutDay,
 }: {
   job: MyJobRow;
   onClockIn: () => void;
   onClockOut: () => void;
   onCompleteNow: () => void;
   onOpenSop: () => void;
+  clockedIn: boolean;
+  onClockInDay: () => void;
+  onClockOutDay: () => void;
 }) {
   const t = useT();
   const address = job.client?.service_address ?? null;
@@ -194,12 +200,27 @@ function UpNextHero({
             >
               <Square className="size-5" /> {t("Leaving")}
             </button>
-          ) : (
+          ) : clockedIn ? (
             <button
               onClick={onClockIn}
               className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
             >
               <Play className="size-5" /> {t("Arrived")}
+            </button>
+          ) : (
+            <button
+              onClick={onClockInDay}
+              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+            >
+              <Clock className="size-5" /> {t("Clock in")}
+            </button>
+          )}
+          {clockedIn && (
+            <button
+              onClick={onClockOutDay}
+              className="inline-flex items-center justify-center gap-2 border border-destructive text-destructive text-sm font-semibold rounded-xl px-5 py-2.5 hover:bg-destructive/5"
+            >
+              {t("Clock out for the day")}
             </button>
           )}
           <button
