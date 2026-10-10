@@ -3247,6 +3247,8 @@ export type Database = {
       tips: {
         Row: {
           amount_cents: number
+          clean_date: string | null
+          client_id: string | null
           created_at: string
           employee_id: string | null
           id: string
@@ -3260,6 +3262,8 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          clean_date?: string | null
+          client_id?: string | null
           created_at?: string
           employee_id?: string | null
           id?: string
@@ -3273,6 +3277,8 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          clean_date?: string | null
+          client_id?: string | null
           created_at?: string
           employee_id?: string | null
           id?: string
@@ -3285,6 +3291,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tips_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tips_employee_id_fkey"
             columns: ["employee_id"]
