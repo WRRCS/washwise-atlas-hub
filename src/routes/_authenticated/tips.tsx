@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { listTips, assignTip, addManualTip, canManageTips } from "@/lib/tips.functions";
-import { listEmployees } from "@/lib/entities.functions";
+import { listEmployees, listClients } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/tips")({
   head: () => ({
@@ -40,6 +40,7 @@ function TipsPage() {
   const empFn = useServerFn(listEmployees);
   const assignFn = useServerFn(assignTip);
   const addFn = useServerFn(addManualTip);
+  const clientsFn = useServerFn(listClients);
 
   const { data: perms } = useQuery({ queryKey: ["can-manage-tips"], queryFn: () => permsFn() });
   const isMgr = !!perms?.isManager;
@@ -50,6 +51,12 @@ function TipsPage() {
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
     queryFn: () => empFn(),
+    enabled: isMgr,
+  });
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients-for-tips"],
+    queryFn: () => clientsFn(),
     enabled: isMgr,
   });
 
@@ -76,11 +83,13 @@ function TipsPage() {
   const [amount, setAmount] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [cleanDate, setCleanDate] = useState("");
   const addMut = useMutation({
-    mutationFn: () => addFn({ data: { amount_cents: Math.round(parseFloat(amount) * 100), employee_ids: picked, note: note || undefined } }),
+    mutationFn: () => addFn({ data: { amount_cents: Math.round(parseFloat(amount) * 100), employee_ids: picked, note: note || undefined, client_id: clientId || undefined, clean_date: cleanDate || undefined } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tips"] });
-      setAddOpen(false); setAmount(""); setPicked([]); setNote("");
+      setAddOpen(false); setAmount(""); setPicked([]); setNote(""); setClientId(""); setCleanDate("");
       toast.success("Tip recorded");
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not save"),
@@ -120,17 +129,17 @@ function TipsPage() {
         <div className="rounded-xl border border-border/60 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground border-b border-border/60">
-              <tr><th className="p-3">Date</th><th className="p-3">Cleaner</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th></tr>
+              <tr><th className="p-3">Date</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th></tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td className="p-3" colSpan={4}>Loading…</td></tr>}
-              {error && <tr><td className="p-3 text-destructive" colSpan={4}>{(error as Error).message}</td></tr>}
+              {isLoading && <tr><td className="p-3" colSpan={5}>Loading…</td></tr>}
+              {error && <tr><td className="p-3 text-destructive" colSpan={5}>{(error as Error).message}</td></tr>}
               {!isLoading && !error && tips.length === 0 && (
-                <tr><td className="p-3 text-muted-foreground" colSpan={4}>No tips this month.</td></tr>
+                <tr><td className="p-3 text-muted-foreground" colSpan={5}>No tips this month.</td></tr>
               )}
               {tips.map((t) => (
                 <tr key={t.id} className="border-b border-border/40 last:border-0">
-                  <td className="p-3">{format(new Date(t.job_start ?? t.created_at), "MMM d, yyyy")}</td>
+                  <td className="p-3">{t.clean_date ? format(new Date(t.clean_date + "T12:00:00"), "MMM d, yyyy") : format(new Date(t.job_start ?? t.created_at), "MMM d, yyyy")}</td>
                   <td className="p-3">
                     {t.employee_id ? t.employee_name : isMgr ? (
                       <select className="border rounded-md px-2 py-1 bg-background" defaultValue=""
@@ -140,6 +149,7 @@ function TipsPage() {
                       </select>
                     ) : "Unassigned"}
                   </td>
+                  <td className="p-3">{t.client_name ?? "—"}</td>
                   <td className="p-3 text-muted-foreground">
                     {t.source === "manual" ? `Cash${t.note ? ` · ${t.note}` : ""}` : `Invoice ${t.invoice_number ?? ""}`}
                   </td>
@@ -158,6 +168,19 @@ function TipsPage() {
             <div className="space-y-1">
               <Label htmlFor="tip-amt">Amount ($)</Label>
               <Input id="tip-amt" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="tip-client">Client</Label>
+                <select id="tip-client" className="w-full h-9 border rounded-md px-2 bg-background text-sm" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                  <option value="">Choose client…</option>
+                  {(clients as any[]).map((c) => <option key={c.id} value={c.id}>{`${c.first_name ?? ""} ${c.last_name ?? ""}`.trim()}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="tip-date">Date of clean</Label>
+                <Input id="tip-date" type="date" value={cleanDate} onChange={(e) => setCleanDate(e.target.value)} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Split evenly between</Label>
