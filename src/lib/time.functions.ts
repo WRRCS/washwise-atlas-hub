@@ -218,6 +218,12 @@ export const clockInDay = createServerFn({ method: "POST" })
       consent_given_at: gps ? now : null,
     }).select("id, started_at").single();
     if (error) throw new Error(error.message);
+    // Clock in also counts as Arrived at this appointment.
+    await context.supabase.from("jobs").update({ status: "in_progress", actual_start: now })
+      .eq("id", data.job_id).in("status", ["scheduled", "in_progress"]);
+    const sb = context.supabase as any;
+    await sb.from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
+    await sb.from("job_visits").insert({ tenant_id: (prof as any).tenant_id, job_id: data.job_id, employee_id: context.userId, arrived_at: now });
     return entry;
   });
 
