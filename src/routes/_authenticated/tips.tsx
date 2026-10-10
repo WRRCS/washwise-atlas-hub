@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { addMonths, format, startOfMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { listTips, assignTip, addManualTip, canManageTips } from "@/lib/tips.functions";
+import { listTips, assignTip, addManualTip, canManageTips, updateTip, type TipRow } from "@/lib/tips.functions";
 import { listEmployees, listClients } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/tips")({
@@ -95,6 +95,29 @@ function TipsPage() {
     onError: (e: any) => toast.error(e?.message ?? "Could not save"),
   });
 
+  const updFn = useServerFn(updateTip);
+  const [edit, setEdit] = useState<null | { id: string; amount: string; employee_id: string; client_id: string; clean_date: string; note: string }>(null);
+  const openEdit = (t: TipRow) => setEdit({
+    id: t.id,
+    amount: (t.amount_cents / 100).toFixed(2),
+    employee_id: t.employee_id ?? "",
+    client_id: t.client_id ?? "",
+    clean_date: t.clean_date ?? "",
+    note: t.note ?? "",
+  });
+  const editMut = useMutation({
+    mutationFn: () => updFn({ data: {
+      id: edit!.id,
+      amount_cents: Math.round(parseFloat(edit!.amount) * 100),
+      employee_id: edit!.employee_id || null,
+      client_id: edit!.client_id || null,
+      clean_date: edit!.clean_date || null,
+      note: edit!.note || null,
+    } }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["tips"] }); setEdit(null); toast.success("Tip updated"); },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save"),
+  });
+
   return (
     <>
       <PageHeader
@@ -129,13 +152,13 @@ function TipsPage() {
         <div className="rounded-xl border border-border/60 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground border-b border-border/60">
-              <tr><th className="p-3">Date</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th></tr>
+              <tr><th className="p-3">Date</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th>{isMgr && <th className="p-3 w-10"></th>}</tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td className="p-3" colSpan={5}>Loading…</td></tr>}
-              {error && <tr><td className="p-3 text-destructive" colSpan={5}>{(error as Error).message}</td></tr>}
+              {isLoading && <tr><td className="p-3" colSpan={6}>Loading…</td></tr>}
+              {error && <tr><td className="p-3 text-destructive" colSpan={6}>{(error as Error).message}</td></tr>}
               {!isLoading && !error && tips.length === 0 && (
-                <tr><td className="p-3 text-muted-foreground" colSpan={5}>No tips this month.</td></tr>
+                <tr><td className="p-3 text-muted-foreground" colSpan={6}>No tips this month.</td></tr>
               )}
               {tips.map((t) => (
                 <tr key={t.id} className="border-b border-border/40 last:border-0">
@@ -154,6 +177,11 @@ function TipsPage() {
                     {t.source === "manual" ? `Cash${t.note ? ` · ${t.note}` : ""}` : `Invoice ${t.invoice_number ?? ""}`}
                   </td>
                   <td className="p-3 text-right font-medium">{money(t.amount_cents)}</td>
+                  {isMgr && (
+                    <td className="p-3">
+                      <Button size="icon" variant="ghost" aria-label="Edit tip" onClick={() => openEdit(t)}><Pencil className="size-4" /></Button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -204,6 +232,50 @@ function TipsPage() {
             <Button className="bg-brand text-brand-foreground hover:opacity-90"
               disabled={!(parseFloat(amount) > 0) || !picked.length || addMut.isPending}
               onClick={() => addMut.mutate()}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit tip</DialogTitle></DialogHeader>
+          {edit && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="e-amt">Amount ($)</Label>
+                <Input id="e-amt" type="number" min="0" step="0.01" value={edit.amount} onChange={(e) => setEdit({ ...edit, amount: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="e-emp">Cleaner</Label>
+                <select id="e-emp" className="w-full h-9 border rounded-md px-2 bg-background text-sm" value={edit.employee_id} onChange={(e) => setEdit({ ...edit, employee_id: e.target.value })}>
+                  <option value="">Unassigned</option>
+                  {(employees as any[]).map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="e-client">Client</Label>
+                  <select id="e-client" className="w-full h-9 border rounded-md px-2 bg-background text-sm" value={edit.client_id} onChange={(e) => setEdit({ ...edit, client_id: e.target.value })}>
+                    <option value="">None</option>
+                    {(clients as any[]).map((c) => <option key={c.id} value={c.id}>{`${c.first_name ?? ""} ${c.last_name ?? ""}`.trim()}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="e-date">Date of clean</Label>
+                  <Input id="e-date" type="date" value={edit.clean_date} onChange={(e) => setEdit({ ...edit, clean_date: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="e-note">Note</Label>
+                <Input id="e-note" value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEdit(null)}>Cancel</Button>
+            <Button className="bg-brand text-brand-foreground hover:opacity-90"
+              disabled={!edit || !(parseFloat(edit.amount) > 0) || editMut.isPending}
+              onClick={() => editMut.mutate()}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
