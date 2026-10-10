@@ -15,6 +15,13 @@
       "when": 1791389553230,
       "tag": "0001_property_sop_link",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791591590427,
+      "tag": "0002_tips_client_date",
+      "breakpoints": true
     }
   ]
 }
