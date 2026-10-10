@@ -96,7 +96,8 @@ function TipsPage() {
   });
 
   const updFn = useServerFn(updateTip);
-  const [edit, setEdit] = useState<null | { id: string; amount: string; employee_id: string; client_id: string; clean_date: string; note: string }>(null);
+  const paidFn = useServerFn(setTipPaid);
+  const [edit, setEdit] = useState<null | { id: string; amount: string; employee_id: string; client_id: string; clean_date: string; note: string; paid: boolean; paid_out_date: string }>(null);
   const openEdit = (t: TipRow) => setEdit({
     id: t.id,
     amount: (t.amount_cents / 100).toFixed(2),
@@ -104,6 +105,8 @@ function TipsPage() {
     client_id: t.client_id ?? "",
     clean_date: t.clean_date ?? "",
     note: t.note ?? "",
+    paid: t.paid,
+    paid_out_date: t.paid_out_date ?? "",
   });
   const editMut = useMutation({
     mutationFn: () => updFn({ data: {
@@ -113,8 +116,15 @@ function TipsPage() {
       client_id: edit!.client_id || null,
       clean_date: edit!.clean_date || null,
       note: edit!.note || null,
+      paid: edit!.paid,
+      paid_out_date: edit!.paid ? (edit!.paid_out_date || new Date().toISOString().slice(0,10)) : null,
     } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tips"] }); setEdit(null); toast.success("Tip updated"); },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save"),
+  });
+  const paidMut = useMutation({
+    mutationFn: (v: { id: string; paid: boolean }) => paidFn({ data: { id: v.id, paid: v.paid, paid_out_date: v.paid ? new Date().toISOString().slice(0,10) : null } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tips"] }),
     onError: (e: any) => toast.error(e?.message ?? "Could not save"),
   });
 
