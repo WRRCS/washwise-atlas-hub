@@ -1,0 +1,1 @@
+ALTER TABLE public.tips ADD COLUMN IF NOT EXISTS paid boolean NOT NULL DEFAULT false, ADD COLUMN IF NOT EXISTS paid_out_date date;
