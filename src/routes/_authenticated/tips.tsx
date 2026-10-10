@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { listTips, assignTip, addManualTip, canManageTips, updateTip, type TipRow } from "@/lib/tips.functions";
+import { listTips, assignTip, addManualTip, canManageTips, updateTip, setTipPaid, type TipRow } from "@/lib/tips.functions";
 import { listEmployees, listClients } from "@/lib/entities.functions";
 
 export const Route = createFileRoute("/_authenticated/tips")({
