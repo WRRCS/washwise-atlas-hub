@@ -3255,6 +3255,8 @@ export type Database = {
           invoice_id: string | null
           job_id: string | null
           note: string | null
+          paid: boolean
+          paid_out_date: string | null
           payment_id: string | null
           source: string
           tenant_id: string
@@ -3270,6 +3272,8 @@ export type Database = {
           invoice_id?: string | null
           job_id?: string | null
           note?: string | null
+          paid?: boolean
+          paid_out_date?: string | null
           payment_id?: string | null
           source?: string
           tenant_id: string
@@ -3285,6 +3289,8 @@ export type Database = {
           invoice_id?: string | null
           job_id?: string | null
           note?: string | null
+          paid?: boolean
+          paid_out_date?: string | null
           payment_id?: string | null
           source?: string
           tenant_id?: string
