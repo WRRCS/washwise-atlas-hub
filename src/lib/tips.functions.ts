@@ -92,6 +92,29 @@ export const addManualTip = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Owner/manager: edit a tip's amount, cleaner, client, clean date and note. */
+export const updateTip = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      amount_cents: z.number().int().positive(),
+      employee_id: z.string().uuid().nullable(),
+      client_id: z.string().uuid().nullable(),
+      clean_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+      note: z.string().max(300).nullable(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: ok } = await context.supabase.rpc("is_owner_or_manager" as any);
+    if (!ok) throw new Error("Only owners and managers can edit tips");
+    const { id, ...patch } = data;
+    const { data: rows, error } = await (context.supabase as any).from("tips").update(patch).eq("id", id).select("id");
+    if (error) throw new Error(error.message);
+    if (!rows?.length) throw new Error("Tip not found or not allowed");
+    return { ok: true };
+  });
+
 export const canManageTips = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
