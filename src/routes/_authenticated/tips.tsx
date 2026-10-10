@@ -117,13 +117,13 @@ function TipsPage() {
       clean_date: edit!.clean_date || null,
       note: edit!.note || null,
       paid: edit!.paid,
-      paid_out_date: edit!.paid ? (edit!.paid_out_date || new Date().toISOString().slice(0,10)) : null,
+      paid_out_date: edit!.paid ? (edit!.paid_out_date || format(new Date(), "yyyy-MM-dd")) : null,
     } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["tips"] }); setEdit(null); toast.success("Tip updated"); },
     onError: (e: any) => toast.error(e?.message ?? "Could not save"),
   });
   const paidMut = useMutation({
-    mutationFn: (v: { id: string; paid: boolean }) => paidFn({ data: { id: v.id, paid: v.paid, paid_out_date: v.paid ? new Date().toISOString().slice(0,10) : null } }),
+    mutationFn: (v: { id: string; paid: boolean }) => paidFn({ data: { id: v.id, paid: v.paid, paid_out_date: v.paid ? format(new Date(), "yyyy-MM-dd") : null } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tips"] }),
     onError: (e: any) => toast.error(e?.message ?? "Could not save"),
   });
@@ -162,13 +162,13 @@ function TipsPage() {
         <div className="rounded-xl border border-border/60 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground border-b border-border/60">
-              <tr><th className="p-3">Date</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th>{isMgr && <th className="p-3 w-10"></th>}</tr>
+              <tr><th className="p-3">Date</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th><th className="p-3">Paid</th><th className="p-3">Date paid out</th>{isMgr && <th className="p-3 w-10"></th>}</tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td className="p-3" colSpan={6}>Loading…</td></tr>}
-              {error && <tr><td className="p-3 text-destructive" colSpan={6}>{(error as Error).message}</td></tr>}
+              {isLoading && <tr><td className="p-3" colSpan={8}>Loading…</td></tr>}
+              {error && <tr><td className="p-3 text-destructive" colSpan={8}>{(error as Error).message}</td></tr>}
               {!isLoading && !error && tips.length === 0 && (
-                <tr><td className="p-3 text-muted-foreground" colSpan={6}>No tips this month.</td></tr>
+                <tr><td className="p-3 text-muted-foreground" colSpan={8}>No tips this month.</td></tr>
               )}
               {tips.map((t) => (
                 <tr key={t.id} className="border-b border-border/40 last:border-0">
@@ -187,6 +187,11 @@ function TipsPage() {
                     {t.source === "manual" ? `Cash${t.note ? ` · ${t.note}` : ""}` : `Invoice ${t.invoice_number ?? ""}`}
                   </td>
                   <td className="p-3 text-right font-medium">{money(t.amount_cents)}</td>
+                  <td className="p-3">
+                    <Checkbox aria-label="Paid" checked={t.paid} disabled={!isMgr || paidMut.isPending}
+                      onCheckedChange={(v) => paidMut.mutate({ id: t.id, paid: !!v })} />
+                  </td>
+                  <td className="p-3">{t.paid_out_date ? format(new Date(t.paid_out_date + "T12:00:00"), "MMM d, yyyy") : "—"}</td>
                   {isMgr && (
                     <td className="p-3">
                       <Button size="icon" variant="ghost" aria-label="Edit tip" onClick={() => openEdit(t)}><Pencil className="size-4" /></Button>
@@ -278,6 +283,16 @@ function TipsPage() {
               <div className="space-y-1">
                 <Label htmlFor="e-note">Note</Label>
                 <Input id="e-note" value={edit.note} onChange={(e) => setEdit({ ...edit, note: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <label className="flex items-center gap-2 text-sm cursor-pointer h-9">
+                  <Checkbox checked={edit.paid} onCheckedChange={(v) => setEdit({ ...edit, paid: !!v, paid_out_date: v ? (edit.paid_out_date || format(new Date(), "yyyy-MM-dd")) : "" })} />
+                  Paid
+                </label>
+                <div className="space-y-1">
+                  <Label htmlFor="e-paid-date">Date paid out</Label>
+                  <Input id="e-paid-date" type="date" disabled={!edit.paid} value={edit.paid_out_date} onChange={(e) => setEdit({ ...edit, paid_out_date: e.target.value })} />
+                </div>
               </div>
             </div>
           )}
