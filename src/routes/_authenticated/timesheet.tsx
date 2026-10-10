@@ -86,16 +86,7 @@ function TimesheetPage() {
 
   const isToday = startOfDay(new Date()).getTime() === day.getTime();
 
-  const dayTotals = useMemo(() => {
-    const m = new Map<string, { name: string; onSite: number; drive: number }>();
-    for (const r of rows) {
-      const t = m.get(r.employee_id) ?? { name: r.employee_name, onSite: 0, drive: 0 };
-      if (r.arrived_at) t.onSite += mins(r.arrived_at, r.left_at);
-      t.drive += r.drive_min;
-      m.set(r.employee_id, t);
-    }
-    return Array.from(m.values()).filter((t) => t.onSite + t.drive > 0).sort((a, b) => a.name.localeCompare(b.name));
-  }, [rows]);
+  const dayTotals = useMemo(() => computeTotals(q.data), [q.data]);
 
   if (view === "week") {
     return (
@@ -170,7 +161,7 @@ function TimesheetPage() {
                     <td className="px-4 py-2">{t.name}</td>
                     <td className="px-4 py-2 text-right">{shortDur(t.onSite)}</td>
                     <td className="px-4 py-2 text-right">{shortDur(t.drive)}</td>
-                    <td className="px-4 py-2 text-right font-semibold">{shortDur(t.onSite + t.drive)}</td>
+                    <td className="px-4 py-2 text-right font-semibold">{shortDur(t.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -346,6 +337,23 @@ function EntryEditor({ entry, time }: { entry: { id: string; started_at: string;
   );
 }
 
+/** Paid total = clock in → clock out (open entry counts to now); falls back to on-site + drive when no clock entry exists. */
+function computeTotals(data: { rows: any[]; entries: { employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[] } | undefined) {
+  const m = new Map<string, { id: string; name: string; onSite: number; clocked: number; legacy: number }>();
+  const get = (id: string, name: string) => { const t = m.get(id) ?? { id, name, onSite: 0, clocked: 0, legacy: 0 }; m.set(id, t); return t; };
+  for (const r of data?.rows ?? []) {
+    const t = get(r.employee_id, r.employee_name);
+    const on = r.arrived_at ? mins(r.arrived_at, r.left_at) : 0;
+    t.onSite += on;
+    t.legacy += on + (r.drive_min ?? 0);
+  }
+  for (const e of data?.entries ?? []) get(e.employee_id, e.employee_name).clocked += mins(e.started_at, e.ended_at);
+  return Array.from(m.values())
+    .map((t) => { const total = t.clocked > 0 ? t.clocked : t.legacy; return { ...t, total, drive: Math.max(0, total - t.onSite) }; })
+    .filter((t) => t.total > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () => void; onPickDay: (d: Date) => void; setDay: (d: Date) => void }) {
   const start = startOfWeek(day, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
@@ -359,10 +367,10 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   const loading = results.some((r) => r.isLoading);
   const people = new Map<string, { name: string; perDay: number[] }>();
   results.forEach((res, i) => {
-    for (const r of res.data?.rows ?? []) {
-      const p = people.get(r.employee_id) ?? { name: r.employee_name, perDay: Array(7).fill(0) };
-      p.perDay[i] += (r.arrived_at ? mins(r.arrived_at, r.left_at) : 0) + r.drive_min;
-      people.set(r.employee_id, p);
+    for (const t of computeTotals(res.data)) {
+      const p = people.get(t.id) ?? { name: t.name, perDay: Array(7).fill(0) };
+      p.perDay[i] += t.total;
+      people.set(t.id, p);
     }
   });
   const list = Array.from(people.values()).filter((p) => p.perDay.some((v) => v > 0)).sort((a, b) => a.name.localeCompare(b.name));
