@@ -13,6 +13,9 @@ export type TipRow = {
   invoice_number: string | null;
   job_id: string | null;
   job_start: string | null;
+  client_id: string | null;
+  client_name: string | null;
+  clean_date: string | null;
 };
 
 /** Owners/managers get every tip; employees only their own (enforced by RLS). */
@@ -22,7 +25,7 @@ export const listTips = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<TipRow[]> => {
     const { data: rows, error } = await (context.supabase as any)
       .from("tips")
-      .select("id, amount_cents, created_at, source, note, employee_id, job_id, employee:profiles!tips_employee_id_fkey(full_name), invoice:invoices(number), job:jobs(scheduled_start)")
+      .select("id, amount_cents, created_at, source, note, employee_id, job_id, employee:profiles!tips_employee_id_fkey(full_name), invoice:invoices(number), job:jobs(scheduled_start, client:clients(first_name, last_name)), client_id, clean_date, client:clients(first_name, last_name)")
       .gte("created_at", data.from)
       .lt("created_at", data.to)
       .order("created_at", { ascending: false });
@@ -38,6 +41,9 @@ export const listTips = createServerFn({ method: "POST" })
       invoice_number: r.invoice?.number ?? null,
       job_id: r.job_id,
       job_start: r.job?.scheduled_start ?? null,
+      client_id: r.client_id ?? null,
+      client_name: (() => { const c = r.client ?? r.job?.client; return c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() : null; })(),
+      clean_date: r.clean_date ?? null,
     }));
   });
 
@@ -62,6 +68,8 @@ export const addManualTip = createServerFn({ method: "POST" })
       amount_cents: z.number().int().positive(),
       employee_ids: z.array(z.string().uuid()).min(1),
       note: z.string().max(300).optional(),
+      client_id: z.string().uuid().optional(),
+      clean_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -76,6 +84,8 @@ export const addManualTip = createServerFn({ method: "POST" })
       amount_cents: share + (i < rem ? 1 : 0),
       source: "manual",
       note: data.note ?? null,
+      client_id: data.client_id ?? null,
+      clean_date: data.clean_date ?? null,
     }));
     const { error } = await (context.supabase as any).from("tips").insert(rows);
     if (error) throw new Error(error.message);
