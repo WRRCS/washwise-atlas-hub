@@ -16,6 +16,8 @@ export type TipRow = {
   client_id: string | null;
   client_name: string | null;
   clean_date: string | null;
+  paid: boolean;
+  paid_out_date: string | null;
 };
 
 /** Owners/managers get every tip; employees only their own (enforced by RLS). */
@@ -25,7 +27,7 @@ export const listTips = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<TipRow[]> => {
     const { data: rows, error } = await (context.supabase as any)
       .from("tips")
-      .select("id, amount_cents, created_at, source, note, employee_id, job_id, employee:profiles!tips_employee_id_fkey(full_name), invoice:invoices(number), job:jobs(scheduled_start, client:clients(first_name, last_name)), client_id, clean_date, client:clients(first_name, last_name)")
+      .select("id, amount_cents, created_at, source, note, employee_id, job_id, employee:profiles!tips_employee_id_fkey(full_name), invoice:invoices(number), job:jobs(scheduled_start, client:clients(first_name, last_name)), client_id, clean_date, paid, paid_out_date, client:clients(first_name, last_name)")
       .gte("created_at", data.from)
       .lt("created_at", data.to)
       .order("created_at", { ascending: false });
@@ -44,6 +46,8 @@ export const listTips = createServerFn({ method: "POST" })
       client_id: r.client_id ?? null,
       client_name: (() => { const c = r.client ?? r.job?.client; return c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() : null; })(),
       clean_date: r.clean_date ?? null,
+      paid: !!r.paid,
+      paid_out_date: r.paid_out_date ?? null,
     }));
   });
 
@@ -103,6 +107,8 @@ export const updateTip = createServerFn({ method: "POST" })
       client_id: z.string().uuid().nullable(),
       clean_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
       note: z.string().max(300).nullable(),
+      paid: z.boolean().optional(),
+      paid_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -120,4 +126,20 @@ export const canManageTips = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data } = await context.supabase.rpc("is_owner_or_manager" as any);
     return { isManager: !!data };
+  });
+
+/** Owner/manager: mark a tip paid out (or not) with the payout date. */
+export const setTipPaid = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), paid: z.boolean(), paid_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: ok } = await context.supabase.rpc("is_owner_or_manager" as any);
+    if (!ok) throw new Error("Only owners and managers can mark tips paid");
+    const { id, ...patch } = data;
+    const { data: rows, error } = await (context.supabase as any).from("tips").update(patch).eq("id", id).select("id");
+    if (error) throw new Error(error.message);
+    if (!rows?.length) throw new Error("Tip not found or not allowed");
+    return { ok: true };
   });
