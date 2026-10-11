@@ -3,7 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { addMonths, format, startOfMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -13,6 +16,26 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { listTips, assignTip, addManualTip, canManageTips, updateTip, setTipPaid, type TipRow } from "@/lib/tips.functions";
 import { listEmployees, listClients } from "@/lib/entities.functions";
+
+function DatePick({ value, onChange, id }: { value: string; onChange: (v: string) => void; id?: string }) {
+  const [open, setOpen] = useState(false);
+  const date = value ? new Date(value + "T12:00:00") : undefined;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button id={id} type="button" variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
+          <CalendarIcon className="size-4" />
+          {date ? format(date, "MMM d, yyyy") : <span>Pick a date</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar mode="single" selected={date} defaultMonth={date}
+          onSelect={(d) => { if (d) { onChange(format(d, "yyyy-MM-dd")); setOpen(false); } }}
+          initialFocus className={cn("p-3 pointer-events-auto")} />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/tips")({
   head: () => ({
@@ -85,11 +108,12 @@ function TipsPage() {
   const [note, setNote] = useState("");
   const [clientId, setClientId] = useState("");
   const [cleanDate, setCleanDate] = useState("");
+  const [receivedDate, setReceivedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const addMut = useMutation({
-    mutationFn: () => addFn({ data: { amount_cents: Math.round(parseFloat(amount) * 100), employee_ids: picked, note: note || undefined, client_id: clientId || undefined, clean_date: cleanDate || undefined } }),
+    mutationFn: () => addFn({ data: { amount_cents: Math.round(parseFloat(amount) * 100), employee_ids: picked, note: note || undefined, client_id: clientId || undefined, clean_date: cleanDate || undefined, received_date: receivedDate || undefined } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tips"] });
-      setAddOpen(false); setAmount(""); setPicked([]); setNote(""); setClientId(""); setCleanDate("");
+      setAddOpen(false); setAmount(""); setPicked([]); setNote(""); setClientId(""); setCleanDate(""); setReceivedDate(format(new Date(), "yyyy-MM-dd"));
       toast.success("Tip recorded");
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not save"),
@@ -97,13 +121,14 @@ function TipsPage() {
 
   const updFn = useServerFn(updateTip);
   const paidFn = useServerFn(setTipPaid);
-  const [edit, setEdit] = useState<null | { id: string; amount: string; employee_id: string; client_id: string; clean_date: string; note: string; paid: boolean; paid_out_date: string }>(null);
+  const [edit, setEdit] = useState<null | { id: string; amount: string; employee_id: string; client_id: string; clean_date: string; received_date: string; note: string; paid: boolean; paid_out_date: string }>(null);
   const openEdit = (t: TipRow) => setEdit({
     id: t.id,
     amount: (t.amount_cents / 100).toFixed(2),
     employee_id: t.employee_id ?? "",
     client_id: t.client_id ?? "",
     clean_date: t.clean_date ?? "",
+    received_date: t.received_date ?? format(new Date(t.created_at), "yyyy-MM-dd"),
     note: t.note ?? "",
     paid: t.paid,
     paid_out_date: t.paid_out_date ?? "",
@@ -115,6 +140,7 @@ function TipsPage() {
       employee_id: edit!.employee_id || null,
       client_id: edit!.client_id || null,
       clean_date: edit!.clean_date || null,
+      received_date: edit!.received_date || undefined,
       note: edit!.note || null,
       paid: edit!.paid,
       paid_out_date: edit!.paid ? (edit!.paid_out_date || format(new Date(), "yyyy-MM-dd")) : null,
@@ -162,17 +188,18 @@ function TipsPage() {
         <div className="rounded-xl border border-border/60 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground border-b border-border/60">
-              <tr><th className="p-3">Date</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th><th className="p-3">Paid</th><th className="p-3">Date paid out</th>{isMgr && <th className="p-3 w-10"></th>}</tr>
+              <tr><th className="p-3">Received</th><th className="p-3">Date of clean</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th><th className="p-3">Paid</th><th className="p-3">Date paid out</th>{isMgr && <th className="p-3 w-10"></th>}</tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td className="p-3" colSpan={8}>Loading…</td></tr>}
-              {error && <tr><td className="p-3 text-destructive" colSpan={8}>{(error as Error).message}</td></tr>}
+              {isLoading && <tr><td className="p-3" colSpan={9}>Loading…</td></tr>}
+              {error && <tr><td className="p-3 text-destructive" colSpan={9}>{(error as Error).message}</td></tr>}
               {!isLoading && !error && tips.length === 0 && (
-                <tr><td className="p-3 text-muted-foreground" colSpan={8}>No tips this month.</td></tr>
+                <tr><td className="p-3 text-muted-foreground" colSpan={9}>No tips this month.</td></tr>
               )}
               {tips.map((t) => (
                 <tr key={t.id} className="border-b border-border/40 last:border-0">
-                  <td className="p-3">{t.clean_date ? format(new Date(t.clean_date + "T12:00:00"), "MMM d, yyyy") : format(new Date(t.job_start ?? t.created_at), "MMM d, yyyy")}</td>
+                  <td className="p-3">{format(new Date(t.received_date ? t.received_date + "T12:00:00" : t.created_at), "MMM d, yyyy")}</td>
+                  <td className="p-3">{t.clean_date ? format(new Date(t.clean_date + "T12:00:00"), "MMM d, yyyy") : t.job_start ? format(new Date(t.job_start), "MMM d, yyyy") : "—"}</td>
                   <td className="p-3">
                     {t.employee_id ? t.employee_name : isMgr ? (
                       <select className="border rounded-md px-2 py-1 bg-background" defaultValue=""
@@ -211,6 +238,10 @@ function TipsPage() {
             <div className="space-y-1">
               <Label htmlFor="tip-amt">Amount ($)</Label>
               <Input id="tip-amt" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="tip-received">Date tip came in</Label>
+              <DatePick id="tip-received" value={receivedDate} onChange={setReceivedDate} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -266,6 +297,10 @@ function TipsPage() {
                   <option value="">Unassigned</option>
                   {(employees as any[]).map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
                 </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="e-received">Date tip came in</Label>
+                <DatePick id="e-received" value={edit.received_date} onChange={(v) => setEdit({ ...edit, received_date: v })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
