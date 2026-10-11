@@ -41,7 +41,7 @@ import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PhotosShareIdRouteImport } from './routes/photos.$shareId'
-import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
+import { Route as PortalDashboardRouteImport } from './routes/portal_.dashboard'
 import { Route as PortalDemoRouteImport } from './routes/portal_.demo'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
@@ -247,9 +247,9 @@ const PhotosShareIdRoute = PhotosShareIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalDashboardRoute = PortalDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => PortalRoute,
+  id: '/portal_/dashboard',
+  path: '/portal/dashboard',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PortalDemoRoute = PortalDemoRouteImport.update({
   id: '/portal_/demo',
@@ -508,7 +508,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/portal': typeof PortalRouteWithChildren
+  '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/caddies': typeof AuthenticatedCaddiesRoute
@@ -585,7 +585,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/portal': typeof PortalRouteWithChildren
+  '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/caddies': typeof AuthenticatedCaddiesRoute
@@ -662,7 +662,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/portal': typeof PortalRouteWithChildren
+  '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_authenticated/caddies': typeof AuthenticatedCaddiesRoute
@@ -690,7 +690,7 @@ export interface FileRoutesById {
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
   '/photos/$shareId': typeof PhotosShareIdRoute
-  '/portal/dashboard': typeof PortalDashboardRoute
+  '/portal_/dashboard': typeof PortalDashboardRoute
   '/portal_/demo': typeof PortalDemoRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
@@ -922,7 +922,7 @@ export interface FileRouteTypes {
     | '/pay/$invoiceId'
     | '/pay/return'
     | '/photos/$shareId'
-    | '/portal/dashboard'
+    | '/portal_/dashboard'
     | '/portal_/demo'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/inventory/recipes'
@@ -973,12 +973,13 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  PortalRoute: typeof PortalRouteWithChildren
+  PortalRoute: typeof PortalRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
   PhotosShareIdRoute: typeof PhotosShareIdRoute
+  PortalDashboardRoute: typeof PortalDashboardRoute
   PortalDemoRoute: typeof PortalDemoRoute
   ApiPublicHooksExtendRecurringRoute: typeof ApiPublicHooksExtendRecurringRoute
   ApiPublicHooksProcessPushRoute: typeof ApiPublicHooksProcessPushRoute
@@ -1220,12 +1221,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PhotosShareIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portal/dashboard': {
-      id: '/portal/dashboard'
-      path: '/dashboard'
+    '/portal_/dashboard': {
+      id: '/portal_/dashboard'
+      path: '/portal/dashboard'
       fullPath: '/portal/dashboard'
       preLoaderRoute: typeof PortalDashboardRouteImport
-      parentRoute: typeof PortalRoute
+      parentRoute: typeof rootRouteImport
     }
     '/portal_/demo': {
       id: '/portal_/demo'
@@ -1700,28 +1701,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface PortalRouteChildren {
-  PortalDashboardRoute: typeof PortalDashboardRoute
-}
-
-const PortalRouteChildren: PortalRouteChildren = {
-  PortalDashboardRoute: PortalDashboardRoute,
-}
-
-const PortalRouteWithChildren =
-  PortalRoute._addFileChildren(PortalRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  PortalRoute: PortalRouteWithChildren,
+  PortalRoute: PortalRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
   PhotosShareIdRoute: PhotosShareIdRoute,
+  PortalDashboardRoute: PortalDashboardRoute,
   PortalDemoRoute: PortalDemoRoute,
   ApiPublicHooksExtendRecurringRoute: ApiPublicHooksExtendRecurringRoute,
   ApiPublicHooksProcessPushRoute: ApiPublicHooksProcessPushRoute,
