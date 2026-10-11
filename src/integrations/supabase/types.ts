@@ -3258,6 +3258,7 @@ export type Database = {
           paid: boolean
           paid_out_date: string | null
           payment_id: string | null
+          received_date: string | null
           source: string
           tenant_id: string
           updated_at: string
@@ -3275,6 +3276,7 @@ export type Database = {
           paid?: boolean
           paid_out_date?: string | null
           payment_id?: string | null
+          received_date?: string | null
           source?: string
           tenant_id: string
           updated_at?: string
@@ -3292,6 +3294,7 @@ export type Database = {
           paid?: boolean
           paid_out_date?: string | null
           payment_id?: string | null
+          received_date?: string | null
           source?: string
           tenant_id?: string
           updated_at?: string

@@ -29,6 +29,13 @@
       "when": 1791669369480,
       "tag": "0003_tips_paid_out",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791679483997,
+      "tag": "0004_tips_received_date",
+      "breakpoints": true
     }
   ]
 }
