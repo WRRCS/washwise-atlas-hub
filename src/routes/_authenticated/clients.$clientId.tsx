@@ -23,6 +23,8 @@ import { getClientSummary, listClientJobs } from "@/lib/client-page.functions";
 import { listInvoices } from "@/lib/invoices.functions";
 import { listQuoteTemplates, listEmailTemplates, getClientPreference, setClientQuotePreference, sendClientEmail, renderTemplate, COMPANY_NAME } from "@/lib/templates.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { listClientSeries, updateClientSeries, type ClientSeries } from "@/lib/client-recurring.functions";
+import { RECURRENCE_LABELS, type RecurrenceRule } from "@/lib/recurrence";
 import { ArrowLeft, ChevronDown, ChevronRight, FileText, Lock, Mail, MapPin, MessageSquare, Plus, Star, Trash2, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
@@ -100,6 +102,7 @@ function ClientDetail() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="properties">Properties</TabsTrigger>
             <TabsTrigger value="sop">SOP</TabsTrigger>
+            <TabsTrigger value="recurring">Recurring</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -114,6 +117,9 @@ function ClientDetail() {
           </TabsContent>
           <TabsContent value="sop" className="mt-6">
             <ClientSopTab clientId={clientId} />
+          </TabsContent>
+          <TabsContent value="recurring" className="mt-6">
+            <RecurringTab clientId={clientId} isManagement={isManagement} />
           </TabsContent>
           <TabsContent value="jobs" className="mt-6">
             <JobsTab clientId={clientId} />
@@ -605,6 +611,83 @@ function NotesTab({ clientId, notes, onChanged, isManagement }: {
 }
 
 /* ---------------- Jobs ---------------- */
+
+function RecurringTab({ clientId, isManagement }: { clientId: string; isManagement: boolean }) {
+  const listFn = useServerFn(listClientSeries);
+  const q = useQuery({ queryKey: ["client-series", clientId], queryFn: () => listFn({ data: { clientId } }) });
+  if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const series = q.data ?? [];
+  if (!series.length)
+    return (
+      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        This client has no repeating appointments. Use <b>Add shift</b> on the schedule and choose "Recurring" to start one.
+      </div>
+    );
+  return (
+    <div className="space-y-3">
+      {series.map((s) => <SeriesCard key={s.group_id} s={s} clientId={clientId} isManagement={isManagement} />)}
+    </div>
+  );
+}
+
+function SeriesCard({ s, clientId, isManagement }: { s: ClientSeries; clientId: string; isManagement: boolean }) {
+  const qc = useQueryClient();
+  const updFn = useServerFn(updateClientSeries);
+  const [rule, setRule] = useState<string>(s.rule ?? "none");
+  const [end, setEnd] = useState<string>(s.end ?? "");
+  const [saving, setSaving] = useState(false);
+  const dirty = rule !== (s.rule ?? "none") || end !== (s.end ?? "");
+  const save = async () => {
+    const stopping = rule === "none";
+    if (!confirm(stopping
+      ? "Stop repeating? Every future visit after the next one will be removed from the calendar."
+      : "Update the repeat? Future visits on the calendar will be replaced to match the new pattern.")) return;
+    setSaving(true);
+    try {
+      const r = await updFn({ data: { groupId: s.group_id, rule: stopping ? null : (rule as RecurrenceRule), end: end || null } });
+      toast.success(stopping ? `Stopped. Removed ${r.removed} future visit(s).` : `Updated. ${r.created} visit(s) now on the calendar.`);
+      qc.invalidateQueries({ queryKey: ["client-series", clientId] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["schedule"] });
+      qc.invalidateQueries();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="bg-card rounded-xl ring-1 ring-border p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
+        <div>
+          <p className="font-medium">{s.property ?? "Main address"}{s.service ? ` · ${s.service}` : ""}</p>
+          <p className="text-sm text-muted-foreground">
+            {s.next_start ? `Next visit ${format(new Date(s.next_start), "EEE, MMM d · h:mm a")}` : "No upcoming visits"} · {s.upcoming} upcoming
+          </p>
+        </div>
+        <span className="text-xs rounded-full bg-brand/10 text-brand px-2 py-0.5">
+          {s.rule ? RECURRENCE_LABELS[s.rule as RecurrenceRule] ?? s.rule : "Not repeating"}
+        </span>
+      </div>
+      {isManagement && (
+        <div className="grid sm:grid-cols-3 gap-3 items-end">
+          <div>
+            <Label>Repeats</Label>
+            <select value={rule} onChange={(e) => setRule(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm">
+              {(Object.keys(RECURRENCE_LABELS) as RecurrenceRule[]).map((k) => <option key={k} value={k}>{RECURRENCE_LABELS[k]}</option>)}
+              <option value="none">Stop repeating</option>
+            </select>
+          </div>
+          <div>
+            <Label>Ends on (optional)</Label>
+            <Input type="date" value={end} disabled={rule === "none"} onChange={(e) => setEnd(e.target.value)} />
+          </div>
+          <Button onClick={save} disabled={!dirty || saving}>{saving ? "Saving…" : "Save changes"}</Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function JobsTab({ clientId }: { clientId: string }) {
   const listFn = useServerFn(listClientJobs);
