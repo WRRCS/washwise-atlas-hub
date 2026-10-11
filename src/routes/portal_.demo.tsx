@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, subDays } from "date-fns";
 
-export const Route = createFileRoute("/portal/demo")({
+export const Route = createFileRoute("/portal_/demo")({
   ssr: false,
   head: () => ({
     meta: [
