@@ -42,7 +42,7 @@ import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
 import { Route as PhotosShareIdRouteImport } from './routes/photos.$shareId'
 import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
-import { Route as PortalDemoRouteImport } from './routes/portal.demo'
+import { Route as PortalDemoRouteImport } from './routes/portal_.demo'
 import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_authenticated/inventory.recipes'
@@ -252,9 +252,9 @@ const PortalDashboardRoute = PortalDashboardRouteImport.update({
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalDemoRoute = PortalDemoRouteImport.update({
-  id: '/demo',
-  path: '/demo',
-  getParentRoute: () => PortalRoute,
+  id: '/portal_/demo',
+  path: '/portal/demo',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedClientsIndexRoute =
   AuthenticatedClientsIndexRouteImport.update({
@@ -691,7 +691,7 @@ export interface FileRoutesById {
   '/pay/return': typeof PayReturnRoute
   '/photos/$shareId': typeof PhotosShareIdRoute
   '/portal/dashboard': typeof PortalDashboardRoute
-  '/portal/demo': typeof PortalDemoRoute
+  '/portal_/demo': typeof PortalDemoRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/_authenticated/inventory/usage': typeof AuthenticatedInventoryUsageRoute
@@ -923,7 +923,7 @@ export interface FileRouteTypes {
     | '/pay/return'
     | '/photos/$shareId'
     | '/portal/dashboard'
-    | '/portal/demo'
+    | '/portal_/demo'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/inventory/recipes'
     | '/_authenticated/inventory/usage'
@@ -979,6 +979,7 @@ export interface RootRouteChildren {
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
   PhotosShareIdRoute: typeof PhotosShareIdRoute
+  PortalDemoRoute: typeof PortalDemoRoute
   ApiPublicHooksExtendRecurringRoute: typeof ApiPublicHooksExtendRecurringRoute
   ApiPublicHooksProcessPushRoute: typeof ApiPublicHooksProcessPushRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -1226,12 +1227,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalDashboardRouteImport
       parentRoute: typeof PortalRoute
     }
-    '/portal/demo': {
-      id: '/portal/demo'
-      path: '/demo'
+    '/portal_/demo': {
+      id: '/portal_/demo'
+      path: '/portal/demo'
       fullPath: '/portal/demo'
       preLoaderRoute: typeof PortalDemoRouteImport
-      parentRoute: typeof PortalRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/clients/': {
       id: '/_authenticated/clients/'
@@ -1701,12 +1702,10 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface PortalRouteChildren {
   PortalDashboardRoute: typeof PortalDashboardRoute
-  PortalDemoRoute: typeof PortalDemoRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
   PortalDashboardRoute: PortalDashboardRoute,
-  PortalDemoRoute: PortalDemoRoute,
 }
 
 const PortalRouteWithChildren =
@@ -1723,6 +1722,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
   PhotosShareIdRoute: PhotosShareIdRoute,
+  PortalDemoRoute: PortalDemoRoute,
   ApiPublicHooksExtendRecurringRoute: ApiPublicHooksExtendRecurringRoute,
   ApiPublicHooksProcessPushRoute: ApiPublicHooksProcessPushRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
