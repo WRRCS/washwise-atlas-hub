@@ -1,0 +1,1 @@
+ALTER TABLE public.tips ALTER COLUMN received_date SET DEFAULT ((now() AT TIME ZONE 'America/Los_Angeles')::date);

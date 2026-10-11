@@ -16,6 +16,7 @@ export type TipRow = {
   client_id: string | null;
   client_name: string | null;
   clean_date: string | null;
+  received_date: string | null;
   paid: boolean;
   paid_out_date: string | null;
 };
@@ -27,9 +28,10 @@ export const listTips = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<TipRow[]> => {
     const { data: rows, error } = await (context.supabase as any)
       .from("tips")
-      .select("id, amount_cents, created_at, source, note, employee_id, job_id, employee:profiles!tips_employee_id_fkey(full_name), invoice:invoices(number), job:jobs(scheduled_start, client:clients(first_name, last_name)), client_id, clean_date, paid, paid_out_date, client:clients(first_name, last_name)")
-      .gte("created_at", data.from)
-      .lt("created_at", data.to)
+      .select("id, amount_cents, created_at, source, note, employee_id, job_id, employee:profiles!tips_employee_id_fkey(full_name), invoice:invoices(number), job:jobs(scheduled_start, client:clients(first_name, last_name)), client_id, clean_date, received_date, paid, paid_out_date, client:clients(first_name, last_name)")
+      .gte("received_date", data.from.slice(0, 10))
+      .lt("received_date", data.to.slice(0, 10))
+      .order("received_date", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return (rows ?? []).map((r: any) => ({
@@ -46,6 +48,7 @@ export const listTips = createServerFn({ method: "POST" })
       client_id: r.client_id ?? null,
       client_name: (() => { const c = r.client ?? r.job?.client; return c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() : null; })(),
       clean_date: r.clean_date ?? null,
+      received_date: r.received_date ?? null,
       paid: !!r.paid,
       paid_out_date: r.paid_out_date ?? null,
     }));
@@ -74,6 +77,7 @@ export const addManualTip = createServerFn({ method: "POST" })
       note: z.string().max(300).optional(),
       client_id: z.string().uuid().optional(),
       clean_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      received_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -90,6 +94,7 @@ export const addManualTip = createServerFn({ method: "POST" })
       note: data.note ?? null,
       client_id: data.client_id ?? null,
       clean_date: data.clean_date ?? null,
+      ...(data.received_date ? { received_date: data.received_date } : {}),
     }));
     const { error } = await (context.supabase as any).from("tips").insert(rows);
     if (error) throw new Error(error.message);
@@ -106,6 +111,7 @@ export const updateTip = createServerFn({ method: "POST" })
       employee_id: z.string().uuid().nullable(),
       client_id: z.string().uuid().nullable(),
       clean_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+      received_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       note: z.string().max(300).nullable(),
       paid: z.boolean().optional(),
       paid_out_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
