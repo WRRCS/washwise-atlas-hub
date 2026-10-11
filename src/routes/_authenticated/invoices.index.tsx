@@ -217,7 +217,7 @@ function MonthlyBundleDialog({
         <DialogHeader>
           <DialogTitle>Create monthly bundle</DialogTitle>
           <DialogDescription>
-            Bundle all of a client's completed jobs from a chosen month into one invoice. Any existing draft invoices for those jobs are replaced.
+            Puts every completed cleaning that month on one invoice. Separate draft invoices for those cleanings are folded in; sent or paid ones are left alone. Clients set to "Bill monthly" get this automatically as each cleaning is completed.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

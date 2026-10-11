@@ -147,6 +147,7 @@ type ClientRecord = {
   billing_address: string | null; service_address: string | null;
   is_active: boolean; created_at?: string;
   payment_terms_days?: number | null;
+  bill_monthly?: boolean | null;
   client_sop?: string | null;
   company_name?: string | null;
   secondary_phone?: string | null;
@@ -228,6 +229,7 @@ function OverviewTab({ client, clientId, isManagement, onSaved }: {
             <Info label="Lead source" value={client.lead_source ?? null} />
             <Info label="Billing address" value={client.billing_address} />
             <Info label="Payment terms" value={client.payment_terms_days == null ? "Business default" : termsLabel(client.payment_terms_days)} />
+            <Info label="Billing" value={client.bill_monthly ? "One invoice per month" : "Invoice each visit"} />
             <Info label="Preferred contact" value={client.email ? "Email" : client.phone ? "Phone" : null} />
           </dl>
         ) : (
@@ -303,6 +305,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
     is_active: client.is_active,
     payment_terms_days: client.payment_terms_days == null ? "" : String(client.payment_terms_days),
     client_sop: client.client_sop ?? "",
+    bill_monthly: !!client.bill_monthly,
     company_name: client.company_name ?? "",
     secondary_phone: client.secondary_phone ?? "",
     lead_source: client.lead_source ?? "",
@@ -326,6 +329,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
           is_active: form.is_active,
           payment_terms_days: form.payment_terms_days === "" ? null : Number(form.payment_terms_days),
           client_sop: form.client_sop.trim(),
+          bill_monthly: form.bill_monthly,
           company_name: form.company_name.trim(),
           secondary_phone: form.secondary_phone.trim(),
           lead_source: form.lead_source.trim(),
@@ -366,6 +370,10 @@ function ProfileForm({ client, onSaved, onCancel }: {
           {PAYMENT_TERMS.map((t) => <option key={t.days} value={String(t.days)}>{t.label}</option>)}
         </select>
       </FieldRow>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={form.bill_monthly} onChange={(e) => setForm({ ...form, bill_monthly: e.target.checked })} />
+        Bill monthly — put every completed cleaning in the month on one invoice
+      </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
         Current client

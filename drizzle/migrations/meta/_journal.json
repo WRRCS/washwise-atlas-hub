@@ -43,6 +43,13 @@
       "when": 1791679507326,
       "tag": "0005_tips_received_date_default",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791685814103,
+      "tag": "0006_monthly_billing",
+      "breakpoints": true
     }
   ]
 }

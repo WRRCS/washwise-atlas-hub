@@ -258,98 +258,116 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
 
-    // Find completed jobs for client in the given month without an invoice yet
-    const { data: jobs, error: je } = await context.supabase
+    const sb = context.supabase;
+    const monthStart = `${data.month}-01`;
+    // Completed jobs for the client in the month (UTC-padded window, then filter by Pacific date)
+    const { data: rawJobs, error: je } = await sb
       .from("jobs")
       .select("id, scheduled_start, price_cents, service_type:service_types(name)")
       .eq("client_id", data.client_id)
       .eq("status", "completed")
-      .gte("scheduled_start", start.toISOString())
-      .lt("scheduled_start", end.toISOString())
+      .gte("scheduled_start", new Date(start.getTime() - 86400000).toISOString())
+      .lt("scheduled_start", new Date(end.getTime() + 86400000).toISOString())
       .order("scheduled_start");
     if (je) throw new Error(je.message);
-    if (!jobs || jobs.length === 0) throw new Error("No completed jobs found in that month.");
-
-    // Filter out those already invoiced
+    const pacificDate = (iso: string) =>
+      new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+    const jobs = (rawJobs ?? []).filter((j) => pacificDate(j.scheduled_start).startsWith(data.month));
+    if (jobs.length === 0) throw new Error("No completed jobs found in that month.");
     const jobIds = jobs.map((j) => j.id);
-    const { data: existing } = await context.supabase
-      .from("invoices").select("job_id").in("job_id", jobIds);
-    const invoiced = new Set((existing ?? []).map((e) => e.job_id));
-    const eligible = jobs.filter((j) => !invoiced.has(j.id));
-    if (eligible.length === 0) throw new Error("All completed jobs in that month are already invoiced.");
 
-    // Delete auto-invoices for those jobs so we can bundle them (they were draft only)
-    // Actually: keep them intact but skip. To bundle, we cancel prior drafts for these jobs.
-    const draftIds = (existing ?? []).filter((e) => jobIds.includes(e.job_id as string)).map((e) => e.job_id!);
-    if (draftIds.length) {
-      await context.supabase
-        .from("invoices")
-        .delete()
-        .in("job_id", draftIds)
-        .eq("status", "draft");
+    // Existing draft bundle for this month (reuse it so attached photos are kept)
+    const { data: bundle } = await sb
+      .from("invoices").select("id, number")
+      .eq("client_id", data.client_id).eq("bundle_month", monthStart).eq("status", "draft")
+      .order("created_at").limit(1).maybeSingle();
+
+    // Jobs already on a sent/paid invoice stay where they are
+    const [{ data: single }, { data: lines }] = await Promise.all([
+      sb.from("invoices").select("id, job_id, status").in("job_id", jobIds),
+      sb.from("invoice_line_items").select("job_id, invoice:invoices(id, status)").in("job_id", jobIds),
+    ]);
+    const locked = new Set<string>();
+    const singleDrafts: string[] = [];
+    for (const i of single ?? []) {
+      if (i.status === "draft") singleDrafts.push(i.id);
+      else locked.add(i.job_id as string);
     }
-    const toBundle = jobs; // include all jobs in the month once drafts cleared
+    for (const l of (lines ?? []) as any[]) {
+      if (l.invoice && l.invoice.status !== "draft" && l.invoice.id !== bundle?.id) locked.add(l.job_id);
+    }
+    const toBundle = jobs.filter((j) => !locked.has(j.id));
+    if (toBundle.length === 0)
+      throw new Error("Every completed cleaning that month is already on a sent or paid invoice.");
 
-    // Next invoice number uses the tenant's configured prefix + year series.
-    const { data: number, error: ne } = await context.supabase
-      .rpc("next_invoice_number", { _tenant: prof.tenant_id as string });
-    if (ne || !number) throw new Error(ne?.message ?? "Could not generate invoice number");
+    // Remove the separate draft invoices for these jobs; they move onto the bundle
+    const draftToDelete = (single ?? [])
+      .filter((i) => i.status === "draft" && toBundle.some((j) => j.id === i.job_id))
+      .map((i) => i.id);
+    if (draftToDelete.length) {
+      await sb.from("invoice_line_items").delete().in("invoice_id", draftToDelete);
+      const { error: de } = await sb.from("invoices").delete().in("id", draftToDelete);
+      if (de) throw new Error(de.message);
+    }
+    void singleDrafts;
 
-    // Payment terms: client's own terms, else the business default, else Net 14.
     const [{ data: clientRow }, { data: tenantRow }] = await Promise.all([
-      context.supabase.from("clients").select("payment_terms_days").eq("id", data.client_id).maybeSingle(),
-      context.supabase.from("tenants").select("payment_terms_days").eq("id", prof.tenant_id).maybeSingle(),
+      sb.from("clients").select("payment_terms_days").eq("id", data.client_id).maybeSingle(),
+      sb.from("tenants").select("payment_terms_days").eq("id", prof.tenant_id).maybeSingle(),
     ]);
     const terms =
       (clientRow as { payment_terms_days?: number | null } | null)?.payment_terms_days ??
       (tenantRow as { payment_terms_days?: number | null } | null)?.payment_terms_days ??
       14;
-
     const subtotal = toBundle.reduce((sum, j) => sum + (j.price_cents ?? 0), 0);
-    const today = new Date().toISOString().slice(0, 10);
-    const due = dueDateFrom(today, terms);
+    const lastDay = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+    const issue = lastDay;
+    const due = dueDateFrom(issue, terms);
 
-    const { data: invoice, error: ie } = await context.supabase
-      .from("invoices")
-      .insert({
-        tenant_id: prof.tenant_id,
-        client_id: data.client_id,
-        job_id: null,
-        number,
-        status: "draft",
-        currency: "usd",
-        subtotal_cents: subtotal,
-        surcharge_cents: 0,
-        total_cents: subtotal,
-        amount_cents: subtotal,
-        issue_date: today,
-        due_date: due,
-        payment_terms_days: terms,
-        cleanings_count: toBundle.length,
-        bundle_month: `${data.month}-01`,
-      })
-      .select("id").single();
-    if (ie) throw new Error(ie.message);
+    let invoiceId: string;
+    let number: string;
+    if (bundle) {
+      invoiceId = bundle.id;
+      number = bundle.number;
+      await sb.from("invoice_line_items").delete().eq("invoice_id", invoiceId);
+      const { error: ue } = await sb.from("invoices").update({
+        subtotal_cents: subtotal, total_cents: subtotal, amount_cents: subtotal, surcharge_cents: 0,
+        cleanings_count: toBundle.length, issue_date: issue, due_date: due, payment_terms_days: terms,
+      }).eq("id", invoiceId);
+      if (ue) throw new Error(ue.message);
+    } else {
+      const { data: num, error: ne } = await sb.rpc("next_invoice_number", { _tenant: prof.tenant_id as string });
+      if (ne || !num) throw new Error(ne?.message ?? "Could not generate invoice number");
+      number = num as string;
+      const { data: invoice, error: ie } = await sb
+        .from("invoices")
+        .insert({
+          tenant_id: prof.tenant_id, client_id: data.client_id, job_id: null, number, status: "draft",
+          currency: "usd", subtotal_cents: subtotal, surcharge_cents: 0, total_cents: subtotal,
+          amount_cents: subtotal, issue_date: issue, due_date: due, payment_terms_days: terms,
+          cleanings_count: toBundle.length, bundle_month: monthStart,
+        })
+        .select("id").single();
+      if (ie) throw new Error(ie.message);
+      invoiceId = invoice.id;
+    }
 
     const items = toBundle.map((j, i) => {
-      const d = new Date(j.scheduled_start);
-      const label = d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+      const label = new Date(j.scheduled_start).toLocaleDateString("en-US", {
+        year: "numeric", month: "long", day: "numeric", timeZone: "America/Los_Angeles",
+      });
       const svc = (j.service_type as { name?: string } | null)?.name ?? "Cleaning";
       return {
-        invoice_id: invoice.id,
-        tenant_id: prof.tenant_id,
-        description: `${svc} — ${label}`,
-        quantity: 1,
-        unit_price_cents: j.price_cents,
-        line_total_cents: j.price_cents,
-        service_date: j.scheduled_start.slice(0, 10),
-        sort_order: i,
+        invoice_id: invoiceId, tenant_id: prof.tenant_id, job_id: j.id,
+        description: `${svc} — ${label}`, quantity: 1,
+        unit_price_cents: j.price_cents ?? 0, line_total_cents: j.price_cents ?? 0,
+        service_date: pacificDate(j.scheduled_start), sort_order: i,
       };
     });
-    const { error: lie } = await context.supabase.from("invoice_line_items").insert(items);
+    const { error: lie } = await sb.from("invoice_line_items").insert(items);
     if (lie) throw new Error(lie.message);
 
-    return { id: invoice.id, number, count: toBundle.length };
+    return { id: invoiceId, number, count: toBundle.length };
   });
 
 // Completed jobs count for the client in a given month (for the bundle UI preview)

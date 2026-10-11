@@ -619,6 +619,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          bill_monthly: boolean
           billing_address: string | null
           client_sop: string | null
           color: string | null
@@ -640,6 +641,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bill_monthly?: boolean
           billing_address?: string | null
           client_sop?: string | null
           color?: string | null
@@ -661,6 +663,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bill_monthly?: boolean
           billing_address?: string | null
           client_sop?: string | null
           color?: string | null
@@ -1178,6 +1181,7 @@ export type Database = {
           description: string
           id: string
           invoice_id: string
+          job_id: string | null
           line_total_cents: number
           quantity: number
           service_date: string | null
@@ -1190,6 +1194,7 @@ export type Database = {
           description: string
           id?: string
           invoice_id: string
+          job_id?: string | null
           line_total_cents?: number
           quantity?: number
           service_date?: string | null
@@ -1202,6 +1207,7 @@ export type Database = {
           description?: string
           id?: string
           invoice_id?: string
+          job_id?: string | null
           line_total_cents?: number
           quantity?: number
           service_date?: string | null

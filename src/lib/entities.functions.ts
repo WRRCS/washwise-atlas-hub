@@ -139,6 +139,7 @@ export const updateClient = createServerFn({ method: "POST" })
       is_active: z.boolean().optional(),
       payment_terms_days: z.coerce.number().int().min(0).max(365).nullable().optional(),
       client_sop: z.string().trim().max(12000).optional(),
+      bill_monthly: z.boolean().optional(),
       company_name: z.string().trim().max(120).optional(),
       secondary_phone: z.string().trim().max(40).optional(),
       secondary_email: z.union([z.string().trim().email(), z.literal("")]).optional(),
@@ -156,6 +157,7 @@ export const updateClient = createServerFn({ method: "POST" })
       is_active: data.is_active ?? true,
       ...(data.payment_terms_days !== undefined ? { payment_terms_days: data.payment_terms_days } : {}),
       ...(data.client_sop !== undefined ? { client_sop: data.client_sop || null } : {}),
+      ...(data.bill_monthly !== undefined ? { bill_monthly: data.bill_monthly } : {}),
       ...(data.company_name !== undefined ? { company_name: data.company_name || null } : {}),
       ...(data.secondary_phone !== undefined ? { secondary_phone: data.secondary_phone || null } : {}),
       ...(data.secondary_email !== undefined ? { secondary_email: data.secondary_email || null } : {}),
@@ -218,7 +220,7 @@ export const getClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: client, error } = await context.supabase
       .from("clients")
-      .select("id, first_name, last_name, service_address, is_active, created_at, payment_terms_days, company_name")
+      .select("id, first_name, last_name, service_address, is_active, created_at, payment_terms_days, company_name, bill_monthly")
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!client) return null;
