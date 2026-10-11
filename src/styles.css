@@ -113,6 +113,8 @@
 }
 
 @layer base {
+  /* Larger text on the admin (tablet/desktop) layout */
+  @media (min-width: 768px) { html { font-size: 112.5%; } }
   * { border-color: var(--color-border); }
   body {
     background-color: var(--color-background);

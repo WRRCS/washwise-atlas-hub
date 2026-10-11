@@ -47,6 +47,26 @@ const CHIP_PALETTE = [
   "#65a30d", "#ca8a04", "#2563eb", "#4f46e5", "#7e22ce",
   "#db2777", "#475569", "#c2410c",
 ];
+// Picker: 5 shades per color family, shown in a scrollable list
+const PICKER_FAMILIES: { name: string; shades: string[] }[] = [
+  { name: "Red", shades: ["#fca5a5", "#f87171", "#ef4444", "#dc2626", "#991b1b"] },
+  { name: "Rose", shades: ["#fda4af", "#fb7185", "#f43f5e", "#e11d48", "#9f1239"] },
+  { name: "Orange", shades: ["#fdba74", "#fb923c", "#f97316", "#ea580c", "#9a3412"] },
+  { name: "Amber", shades: ["#fcd34d", "#fbbf24", "#f59e0b", "#d97706", "#92400e"] },
+  { name: "Yellow", shades: ["#fde047", "#facc15", "#eab308", "#ca8a04", "#854d0e"] },
+  { name: "Lime", shades: ["#bef264", "#a3e635", "#84cc16", "#65a30d", "#3f6212"] },
+  { name: "Green", shades: ["#86efac", "#4ade80", "#22c55e", "#16a34a", "#166534"] },
+  { name: "Teal", shades: ["#5eead4", "#2dd4bf", "#14b8a6", "#0d9488", "#115e59"] },
+  { name: "Cyan", shades: ["#67e8f9", "#22d3ee", "#06b6d4", "#0891b2", "#155e75"] },
+  { name: "Sky", shades: ["#7dd3fc", "#38bdf8", "#0ea5e9", "#0284c7", "#075985"] },
+  { name: "Blue", shades: ["#93c5fd", "#60a5fa", "#3b82f6", "#2563eb", "#1e40af"] },
+  { name: "Indigo", shades: ["#a5b4fc", "#818cf8", "#6366f1", "#4f46e5", "#3730a3"] },
+  { name: "Purple", shades: ["#d8b4fe", "#c084fc", "#a855f7", "#9333ea", "#6b21a8"] },
+  { name: "Pink", shades: ["#f9a8d4", "#f472b6", "#ec4899", "#db2777", "#9d174d"] },
+  { name: "Brown", shades: ["#d6b89a", "#b08968", "#8b5e3c", "#6f4518", "#4a2c0f"] },
+  { name: "Gray", shades: ["#cbd5e1", "#94a3b8", "#64748b", "#475569", "#1e293b"] },
+];
+
 function chipColor(seed: string | null | undefined) {
   const s = seed ?? "x";
   let h = 0;
@@ -557,23 +577,30 @@ function SchedulePage() {
                                   <p className="text-[11px] text-muted-foreground mb-2">
                                     {clientId ? "Pick a color for this client — it applies to every appointment." : "Assign a client to save a persistent color."}
                                   </p>
-                                  <div className="grid grid-cols-5 gap-1.5 mb-3">
-                                    {CHIP_PALETTE.map((swatch) => {
-                                      const selected = (customColor ?? "").toLowerCase() === swatch.toLowerCase();
-                                      return (
-                                        <button
-                                          key={swatch}
-                                          type="button"
-                                          disabled={!clientId || colorMut.isPending}
-                                          onClick={() => clientId && colorMut.mutate({ clientId, color: swatch })}
-                                          className="relative size-7 rounded-md ring-1 ring-black/10 disabled:opacity-50 hover:scale-105 transition"
-                                          style={{ backgroundColor: swatch }}
-                                          aria-label={`Set color ${swatch}`}
-                                        >
-                                          {selected && <Check className="size-4 text-white absolute inset-0 m-auto" />}
-                                        </button>
-                                      );
-                                    })}
+                                  <div className="max-h-64 overflow-y-auto pr-1 mb-3 space-y-2">
+                                    {PICKER_FAMILIES.map((fam) => (
+                                      <div key={fam.name}>
+                                        <p className="text-xs text-muted-foreground mb-1">{fam.name}</p>
+                                        <div className="grid grid-cols-5 gap-1.5">
+                                          {fam.shades.map((swatch) => {
+                                            const selected = (customColor ?? "").toLowerCase() === swatch.toLowerCase();
+                                            return (
+                                              <button
+                                                key={swatch}
+                                                type="button"
+                                                disabled={!clientId || colorMut.isPending}
+                                                onClick={() => clientId && colorMut.mutate({ clientId, color: swatch })}
+                                                className="relative size-8 rounded-md ring-1 ring-black/10 disabled:opacity-50 hover:scale-105 transition"
+                                                style={{ backgroundColor: swatch }}
+                                                aria-label={`Set color ${fam.name} ${swatch}`}
+                                              >
+                                                {selected && <Check className="size-4 text-white absolute inset-0 m-auto drop-shadow" />}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                   <button
                                     type="button"
@@ -590,7 +617,7 @@ function SchedulePage() {
                                       <button
                                         type="button"
                                         onClick={() => setColorEditId(colorEditId === j.id ? null : j.id)}
-                                        className="text-[11px] text-muted-foreground hover:text-foreground"
+                                        className="text-xs font-semibold text-brand-accent hover:opacity-80"
                                       >
                                         {colorEditId === j.id ? "Hide colors" : "Change color"}
                                       </button>
