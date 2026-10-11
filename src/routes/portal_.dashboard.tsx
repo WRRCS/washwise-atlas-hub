@@ -14,7 +14,7 @@ import { PushToggle } from "@/components/push-toggle";
 import { ReminderPrefsEditor } from "@/components/reminder-prefs-editor";
 import type { ReminderChannel } from "@/lib/reminder-prefs.functions";
 
-export const Route = createFileRoute("/portal/dashboard")({
+export const Route = createFileRoute("/portal_/dashboard")({
   ssr: false,
   head: () => ({
     meta: [
