@@ -8,7 +8,7 @@ import { myPermissions } from "@/lib/team.functions";
 import { format, startOfDay, endOfDay, addDays, startOfWeek, isSameDay } from "date-fns";
 import { useState } from "react";
 
-export const Route = createFileRoute("/_authenticated/jobs")({
+export const Route = createFileRoute("/_authenticated/jobs/")({
   component: JobsPage,
   errorComponent: ({ error }) => (
     <AppShell><div className="p-8 text-sm text-destructive">Failed to load jobs: {(error as Error).message}</div></AppShell>
