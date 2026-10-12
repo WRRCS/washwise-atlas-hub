@@ -13,6 +13,7 @@ import { directionsUrl } from "@/lib/maps";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePick } from "@/lib/i18n";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
@@ -93,6 +94,7 @@ function VisitButtons({ jobId }: { jobId: string }) {
 /** Job detail body — also shown in a pop-up on the schedule. */
 export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () => void }) {
   const qc = useQueryClient();
+  const [sopOpen, setSopOpen] = useState(false);
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const confirmSop = useServerFn(confirmJobSop);
@@ -178,7 +180,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
           <Tabs defaultValue="sop">
             <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
               <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SOP Checklist</TabsTrigger>
-              <TabsTrigger value="sop-doc" className="rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 data-[state=active]:bg-brand data-[state=active]:text-brand-foreground">SOP</TabsTrigger>
+              <button type="button" onClick={() => setSopOpen(true)} className="rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 text-sm hover:bg-brand hover:text-brand-foreground">SOP</button>
               <TabsTrigger value="photos" className="rounded-lg border-2 border-success/40 bg-success/10 text-success font-semibold px-3 py-2 data-[state=active]:bg-success data-[state=active]:text-primary-foreground">Photos</TabsTrigger>
               <TabsTrigger value="gps" className="rounded-lg border-2 border-warning/40 bg-warning/10 text-warning font-semibold px-3 py-2 data-[state=active]:bg-warning data-[state=active]:text-primary-foreground">Location</TabsTrigger>
             </TabsList>
@@ -207,9 +209,6 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                 </ul>
               )}
             </TabsContent>
-            <TabsContent value="sop-doc" className="mt-4">
-              <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} />
-            </TabsContent>
             <TabsContent value="photos" className="mt-4">
               <PhotosTab jobId={jobId} />
             </TabsContent>
@@ -217,6 +216,12 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
               <GpsTab jobId={jobId} />
             </TabsContent>
           </Tabs>
+          <Dialog open={sopOpen} onOpenChange={setSopOpen}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>SOP</DialogTitle></DialogHeader>
+              <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} />
+            </DialogContent>
+          </Dialog>
         </section>
         <aside className="space-y-6">
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
