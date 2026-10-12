@@ -1,0 +1,2 @@
+ALTER TABLE public.client_properties ADD COLUMN IF NOT EXISTS color text;
+UPDATE public.client_properties p SET color = c.color FROM public.clients c WHERE p.client_id = c.id AND c.color IS NOT NULL AND p.color IS NULL;
