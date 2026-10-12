@@ -44,14 +44,23 @@ function ClientDetail() {
   const delFn = useServerFn(deleteClient);
   const capsFn = useServerFn(myCapabilities);
 
-  const { data: client, isLoading } = useQuery({
+  const { data: client, isLoading, error, refetch } = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => fetchFn({ data: { id: clientId } }),
+    retry: 2,
   });
   const capsQ = useQuery({ queryKey: ["my-capabilities"], queryFn: () => capsFn() });
   const isManagement = !!(capsQ.data?.isOwner || capsQ.data?.canManage);
 
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (error) {
+    return (
+      <div className="p-8 space-y-3">
+        <p className="text-sm text-destructive">Couldn't load this client: {(error as Error).message}</p>
+        <Button size="sm" variant="outline" onClick={() => refetch()}>Try again</Button>
+      </div>
+    );
+  }
   if (!client) return <div className="p-8">Client not found.</div>;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["client", clientId] });
