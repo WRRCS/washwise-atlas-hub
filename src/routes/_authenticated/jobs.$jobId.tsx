@@ -94,6 +94,7 @@ function VisitButtons({ jobId }: { jobId: string }) {
 /** Job detail body — also shown in a pop-up on the schedule. */
 export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () => void }) {
   const qc = useQueryClient();
+  const [sopOpen, setSopOpen] = useState(false);
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const confirmSop = useServerFn(confirmJobSop);
