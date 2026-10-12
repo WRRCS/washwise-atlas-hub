@@ -52,7 +52,7 @@ export const listJobs = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<JobRow[]> => {
     let q = context.supabase
       .from("jobs")
-      .select("id, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, client:clients(id,first_name,last_name,service_address,color), property:client_properties!jobs_property_id_fkey(id,label,address), service:service_types(id,kind,name,color)")
+      .select("id, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, client:clients(id,first_name,last_name,service_address,color), property:client_properties!jobs_property_id_fkey(id,label,address,color), service:service_types(id,kind,name,color)")
       .order("scheduled_start", { ascending: true });
     if (data.from) q = q.gte("scheduled_start", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);

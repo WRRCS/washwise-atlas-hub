@@ -187,14 +187,15 @@ export const setClientColor = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
       id: z.string().uuid(),
+      property_id: z.string().uuid().nullable().optional(),
       color: z.union([z.string().trim().regex(/^#[0-9a-fA-F]{6}$/), z.null()]),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("clients")
+      .from(data.property_id ? "client_properties" : "clients")
       .update({ color: data.color })
-      .eq("id", data.id);
+      .eq("id", data.property_id ?? data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
