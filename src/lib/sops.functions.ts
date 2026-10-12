@@ -154,13 +154,21 @@ export const getSopForJob = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ job_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: job } = await context.supabase
-      .from("jobs").select("property_id").eq("id", data.job_id).maybeSingle();
+      .from("jobs").select("property_id, client_id").eq("id", data.job_id).maybeSingle();
     const pid = (job as any)?.property_id;
-    if (!pid) return null;
-    const { data: prop } = await (context.supabase as any)
-      .from("client_properties").select("sop_id").eq("id", pid).maybeSingle();
-    if (!prop?.sop_id) return null;
-    return fetchSopDetail(context, prop.sop_id);
+    if (pid) {
+      const { data: prop } = await (context.supabase as any)
+        .from("client_properties").select("sop_id").eq("id", pid).maybeSingle();
+      return prop?.sop_id ? fetchSopDetail(context, prop.sop_id) : null;
+    }
+    // Job has no property picked: use the client's SOP if exactly one property has one.
+    const cid = (job as any)?.client_id;
+    if (!cid) return null;
+    const { data: props } = await (context.supabase as any)
+      .from("client_properties").select("sop_id").eq("client_id", cid).not("sop_id", "is", null);
+    const ids = Array.from(new Set((props ?? []).map((p: { sop_id: string }) => p.sop_id)));
+    if (ids.length !== 1) return null;
+    return fetchSopDetail(context, ids[0] as string);
   });
 
 // ---------- Upload URL ----------
