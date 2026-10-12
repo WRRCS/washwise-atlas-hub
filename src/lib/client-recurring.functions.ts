@@ -79,6 +79,20 @@ export const updateClientSeries = createServerFn({ method: "POST" })
       const { error: delErr } = await sb.from("jobs").delete().in("id", toDelete);
       if (delErr) throw new Error(delErr.message);
     }
+    // Skipped (canceled) future visits belong to the old pattern. Remove any after the
+    // kept visit so they can't become the anchor and leave a gap in the new schedule.
+    if (list[0]) {
+      const { data: keep } = await sb.from("jobs").select("scheduled_start").eq("id", list[0].id).single();
+      if (keep) {
+        const { error: cErr } = await sb
+          .from("jobs")
+          .delete()
+          .eq("recurrence_group_id", data.groupId)
+          .eq("status", "canceled")
+          .gt("scheduled_start", keep.scheduled_start);
+        if (cErr) throw new Error(cErr.message);
+      }
+    }
 
     const { error: upErr } = await sb
       .from("jobs")
