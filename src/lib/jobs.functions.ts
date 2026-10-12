@@ -25,7 +25,7 @@ export type JobRow = {
   recurrence_end: string | null;
   published_at: string | null;
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
-  property: { id: string; label: string; address: string } | null;
+  property: { id: string; label: string; address: string; color?: string | null } | null;
   service: { id: string; kind: string; name: string; color: string | null } | null;
   assignees: JobAssignee[];
 };
