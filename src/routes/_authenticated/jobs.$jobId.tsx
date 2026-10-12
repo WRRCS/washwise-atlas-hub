@@ -176,11 +176,11 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-8 grid md:grid-cols-3 gap-8">
         <section className="md:col-span-2 bg-card p-6 rounded-xl ring-1 ring-black/5">
           <Tabs defaultValue="sop">
-            <TabsList>
-              <TabsTrigger value="sop">SOP Checklist</TabsTrigger>
-              <TabsTrigger value="sop-doc">SOP</TabsTrigger>
-              <TabsTrigger value="photos">Photos</TabsTrigger>
-              <TabsTrigger value="gps">Location</TabsTrigger>
+            <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
+              <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SOP Checklist</TabsTrigger>
+              <TabsTrigger value="sop-doc" className="rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 data-[state=active]:bg-brand data-[state=active]:text-brand-foreground">SOP</TabsTrigger>
+              <TabsTrigger value="photos" className="rounded-lg border-2 border-success/40 bg-success/10 text-success font-semibold px-3 py-2 data-[state=active]:bg-success data-[state=active]:text-primary-foreground">Photos</TabsTrigger>
+              <TabsTrigger value="gps" className="rounded-lg border-2 border-warning/40 bg-warning/10 text-warning font-semibold px-3 py-2 data-[state=active]:bg-warning data-[state=active]:text-primary-foreground">Location</TabsTrigger>
             </TabsList>
             <TabsContent value="sop" className="mt-4">
               <div className="flex justify-between items-center mb-4">
