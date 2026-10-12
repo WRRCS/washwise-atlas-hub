@@ -1,0 +1,1 @@
+GRANT SELECT (bill_monthly) ON public.clients TO authenticated;
