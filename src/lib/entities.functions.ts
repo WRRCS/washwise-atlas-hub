@@ -204,6 +204,16 @@ export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => input)
   .handler(async ({ data, context }) => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    if (!isMgr) throw new Error("Only owners and managers can delete clients.");
+    const { data: c } = await context.supabase.from("clients").select("id, tenant_id").eq("id", data.id).maybeSingle();
+    if (!c) throw new Error("Client not found.");
+    const { count: invCount } = await context.supabase.from("invoices").select("id", { count: "exact", head: true }).eq("client_id", data.id);
+    if ((invCount ?? 0) > 0) throw new Error("This client has invoices, so it can't be deleted. Delete its invoices first or move it to Previous Clients.");
+    // Remove the client's jobs (and their visits/photos/etc. via cascades) before the client itself.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: jobErr } = await supabaseAdmin.from("jobs").delete().eq("client_id", data.id).eq("tenant_id", (c as { tenant_id: string }).tenant_id);
+    if (jobErr) throw new Error(jobErr.message);
     const { data: gone, error } = await context.supabase.from("clients").delete().eq("id", data.id).select("id");
     if (error) {
       if (error.code === "23503") {

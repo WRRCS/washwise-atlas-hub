@@ -186,7 +186,7 @@ function ClientsPage() {
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
                             onClick={() => {
-                              if (confirm(`Delete ${fullName(c)} permanently? Use this for duplicates. Their properties, notes and messages are removed too. This can't be undone.`)) remove.mutate(c.id);
+                              if (confirm(`Delete ${fullName(c)} permanently? Use this for duplicates. ALL of their jobs, properties, notes and messages are removed too. This can't be undone.`)) remove.mutate(c.id);
                             }}
                           >
                             <Trash2 className="size-4 mr-2" /> Delete client
