@@ -58,7 +58,7 @@ function ClientDetail() {
   const name = [client.first_name, client.last_name].filter(Boolean).join(" ") || "Unnamed client";
 
   const onDelete = async () => {
-    if (!confirm(`Delete ${name}? This removes their notes, photos, and property specs.`)) return;
+    if (!confirm(`Delete ${name}? This permanently removes ALL of their scheduled jobs, notes, photos, and properties.`)) return;
     try {
       await delFn({ data: { id: clientId } });
       toast.success("Client deleted");
