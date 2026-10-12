@@ -278,6 +278,7 @@ function HistoryPanel({ item, onClose }: { item: InventoryItem; onClose: () => v
 function ItemFormDialog({ item, onClose, onDone }: { item: InventoryItem | null; onClose: () => void; onDone: () => void }) {
   const create = useServerFn(createInventoryItem);
   const update = useServerFn(updateInventoryItem);
+  const logTx = useServerFn(logInventoryTransaction);
   const [name, setName] = useState(item?.name ?? "");
   const [sku, setSku] = useState(item?.sku ?? "");
   const [unit, setUnit] = useState(item?.unit ?? "each");
@@ -305,6 +306,10 @@ function ItemFormDialog({ item, onClose, onDone }: { item: InventoryItem | null;
     try {
       if (item) {
         await update({ data: { id: item.id, ...payload } });
+        const diff = (Number(qty) || 0) - item.quantity_on_hand;
+        if (diff !== 0) {
+          await logTx({ data: { item_id: item.id, change_amount: diff, reason: "manual_adjustment", notes: "Stock count updated" } });
+        }
         toast.success("Updated");
       } else {
         await create({ data: { ...payload, quantity_on_hand: Number(qty) || 0 } });
@@ -332,10 +337,8 @@ function ItemFormDialog({ item, onClose, onDone }: { item: InventoryItem | null;
             <div><Label>SKU (optional)</Label><Input value={sku} onChange={(e) => setSku(e.target.value)} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {!item && (
-              <div><Label>Starting quantity</Label><Input type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} /></div>
-            )}
-            <div className={item ? "col-span-2 sm:col-span-1" : ""}>
+            <div><Label>{item ? "Currently on hand" : "Starting quantity"}</Label><Input type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} /></div>
+            <div>
               <Label>Reorder threshold</Label>
               <Input type="number" min="0" step="any" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
             </div>
