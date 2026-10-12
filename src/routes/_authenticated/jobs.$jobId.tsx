@@ -219,6 +219,40 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
           <Dialog open={sopOpen} onOpenChange={setSopOpen}>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
               <DialogHeader><DialogTitle>SOP</DialogTitle></DialogHeader>
+          {job.client?.client_sop && job.client.client_sop.trim() && (
+            <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2 border-l-4 border-brand">
+              <h4 className="text-xs uppercase tracking-wider text-brand">Property SOP</h4>
+              
+              <p className="text-base whitespace-pre-wrap">{job.client.client_sop}</p>
+              {(() => {
+                const confirmedAt = (job as { sop_confirmed_at?: string | null }).sop_confirmed_at;
+                return (
+                  <label className={`mt-3 flex items-start gap-3 rounded-lg p-3 ring-1 cursor-pointer ${confirmedAt ? "bg-brand/10 ring-brand/30" : "bg-clay-50 ring-border"}`}>
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-5 accent-[var(--color-brand)]"
+                      checked={!!confirmedAt}
+                      onChange={async (e) => {
+                        try {
+                          await confirmSop({ data: { job_id: job.id, confirmed: e.target.checked } });
+                          qc.invalidateQueries({ queryKey: ["job", jobId] });
+                          toast.success(e.target.checked ? "SOP confirmed" : "Confirmation removed");
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Could not save");
+                        }
+                      }}
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">I followed this SOP</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {confirmedAt ? `Confirmed ${format(new Date(confirmedAt), "PP p")}` : "Check this when every step is done."}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })()}
+            </div>
+          )}
               <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} />
             </DialogContent>
           </Dialog>
@@ -355,40 +389,6 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
             );
           })()}
 
-          {job.client?.client_sop && job.client.client_sop.trim() && (
-            <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2 border-l-4 border-brand">
-              <h4 className="text-xs uppercase tracking-wider text-brand">Property SOP</h4>
-              <p className="text-[11px] text-muted-foreground">Applies to this property on top of the standard service SOP.</p>
-              <p className="text-sm whitespace-pre-wrap">{job.client.client_sop}</p>
-              {(() => {
-                const confirmedAt = (job as { sop_confirmed_at?: string | null }).sop_confirmed_at;
-                return (
-                  <label className={`mt-3 flex items-start gap-3 rounded-lg p-3 ring-1 cursor-pointer ${confirmedAt ? "bg-brand/10 ring-brand/30" : "bg-clay-50 ring-border"}`}>
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 size-5 accent-[var(--color-brand)]"
-                      checked={!!confirmedAt}
-                      onChange={async (e) => {
-                        try {
-                          await confirmSop({ data: { job_id: job.id, confirmed: e.target.checked } });
-                          qc.invalidateQueries({ queryKey: ["job", jobId] });
-                          toast.success(e.target.checked ? "SOP confirmed" : "Confirmation removed");
-                        } catch (err) {
-                          toast.error(err instanceof Error ? err.message : "Could not save");
-                        }
-                      }}
-                    />
-                    <span className="text-sm">
-                      <span className="font-medium">I followed this SOP</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {confirmedAt ? `Confirmed ${format(new Date(confirmedAt), "PP p")}` : "Check this when every step is done."}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })()}
-            </div>
-          )}
 
           {(job as any).external_source === "turno" && (job as any).external_metadata && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
