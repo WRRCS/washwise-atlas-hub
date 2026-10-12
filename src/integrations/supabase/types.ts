@@ -435,6 +435,7 @@ export type Database = {
         Row: {
           address: string
           client_id: string
+          color: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -452,6 +453,7 @@ export type Database = {
         Insert: {
           address: string
           client_id: string
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -469,6 +471,7 @@ export type Database = {
         Update: {
           address?: string
           client_id?: string
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean

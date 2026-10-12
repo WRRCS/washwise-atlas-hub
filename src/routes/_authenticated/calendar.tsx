@@ -97,12 +97,12 @@ function SchedulePage() {
   const canSeeWages = false;
 
   const colorMut = useMutation({
-    mutationFn: (v: { clientId: string; color: string | null }) =>
-      setColorFn({ data: { id: v.clientId, color: v.color } }),
+    mutationFn: (v: { clientId: string; propertyId?: string | null; color: string | null }) =>
+      setColorFn({ data: { id: v.clientId, property_id: v.propertyId ?? null, color: v.color } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
       qc.invalidateQueries({ queryKey: ["clients"] });
-      toast.success("Color saved for client");
+      toast.success("Color saved");
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not save color"),
   });
@@ -521,8 +521,9 @@ function SchedulePage() {
                               j.service?.name ||
                               "Shift";
                             const clientId = j.client?.id as string | undefined;
-                            const customColor = j.client?.color as string | undefined | null;
-                            const c = customColor || chipColor(clientId ?? j.notes);
+                            const propertyId = j.property?.id as string | undefined;
+                            const customColor = (propertyId ? j.property?.color : j.client?.color) as string | undefined | null;
+                            const c = customColor || chipColor(propertyId ?? clientId ?? j.notes);
                             const draft = !j.published_at;
                             const s = new Date(j.scheduled_start).getTime();
                             const e = new Date(j.scheduled_end).getTime();
@@ -575,7 +576,7 @@ function SchedulePage() {
                                   {canManageSchedule && colorEditId === j.id && (
                                     <>
                                   <p className="text-[11px] text-muted-foreground mb-2">
-                                    {clientId ? "Pick a color for this client — it applies to every appointment." : "Assign a client to save a persistent color."}
+                                    {clientId ? propertyId ? "Pick a color for this property — only its appointments change." : "Pick a color for this client's main address." : "Assign a client to save a persistent color."}
                                   </p>
                                   <div className="max-h-64 overflow-y-auto pr-1 mb-3 space-y-2">
                                     {PICKER_FAMILIES.map((fam) => (
@@ -589,7 +590,7 @@ function SchedulePage() {
                                                 key={swatch}
                                                 type="button"
                                                 disabled={!clientId || colorMut.isPending}
-                                                onClick={() => clientId && colorMut.mutate({ clientId, color: swatch })}
+                                                onClick={() => clientId && colorMut.mutate({ clientId, propertyId, color: swatch })}
                                                 className="relative size-8 rounded-md ring-1 ring-black/10 disabled:opacity-50 hover:scale-105 transition"
                                                 style={{ backgroundColor: swatch }}
                                                 aria-label={`Set color ${fam.name} ${swatch}`}
@@ -605,7 +606,7 @@ function SchedulePage() {
                                   <button
                                     type="button"
                                     disabled={!clientId || !customColor || colorMut.isPending}
-                                    onClick={() => clientId && colorMut.mutate({ clientId, color: null })}
+                                    onClick={() => clientId && colorMut.mutate({ clientId, propertyId, color: null })}
                                     className="mb-2 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40"
                                   >
                                     Reset to default
