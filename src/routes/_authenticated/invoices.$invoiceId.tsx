@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { InvoicePhotosCard } from "@/components/invoice-photos-card";
 import { format } from "date-fns";
 import {
-  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge, setInvoiceTerms,
+  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions,
 } from "@/lib/invoices.functions";
 import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
@@ -49,6 +49,7 @@ function InvoiceDetailPage() {
   const paidFn = useServerFn(markInvoicePaid);
   const cancelFn = useServerFn(cancelInvoice);
   const toggleFn = useServerFn(setCardSurcharge);
+  const payOptsFn = useServerFn(setInvoicePaymentOptions);
   const termsFn = useServerFn(setInvoiceTerms);
 
   const { data: inv, isLoading } = useQuery({
@@ -191,6 +192,27 @@ function InvoiceDetailPage() {
             <Label htmlFor="card-surcharge" className="text-sm">
               Add card surcharge <span className="text-muted-foreground">(3% + $0.30 if paying by card)</span>
             </Label>
+          </div>
+          <div className="flex items-center gap-4">
+            {([["allow_card", "Show card payment"], ["allow_venmo", "Show Venmo"]] as const).map(([key, label]) => (
+              <div key={key} className="flex items-center gap-2">
+                <Switch
+                  id={key}
+                  checked={(inv as any)[key] !== false}
+                  disabled={!canEdit}
+                  onCheckedChange={async (v) => {
+                    try {
+                      await payOptsFn({ data: { id: inv.id, [key]: v } });
+                      toast.success(`${label.replace("Show ", "")} ${v ? "shown" : "hidden"} for this invoice`);
+                      refresh();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Failed");
+                    }
+                  }}
+                />
+                <Label htmlFor={key} className="text-sm">{label}</Label>
+              </div>
+            ))}
           </div>
           <div className="flex gap-2">
             {inv.status === "draft" && (

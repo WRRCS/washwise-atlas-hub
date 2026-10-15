@@ -16,6 +16,8 @@ type InvoiceSummary = {
   client_name: string;
   client_email: string | null;
   photos: { url: string; caption: string | null; photo_type: string }[];
+  allow_card: boolean;
+  venmo_link: string | null;
 } | { error: string };
 
 // Public: fetch minimal invoice info by id for the pay page
@@ -25,7 +27,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invoices")
-      .select("id, number, status, total_cents, subtotal_cents, surcharge_cents, card_surcharge, currency, due_date, photo_ids, client:clients(first_name, last_name, email)")
+      .select("id, tenant_id, number, status, total_cents, subtotal_cents, surcharge_cents, card_surcharge, allow_card, allow_venmo, currency, due_date, photo_ids, client:clients(first_name, last_name, email)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) return { error: error.message };
@@ -43,8 +45,26 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       }));
       photos = signed.filter((x): x is NonNullable<typeof x> => !!x);
     }
+    const allowCard = (inv as any).allow_card !== false;
+    const allowVenmo = (inv as any).allow_venmo !== false;
+    // Venmo goes straight to the business's own Venmo handle — no app processing fee.
+    let venmoLink: string | null = null;
+    if (allowVenmo) {
+      const { data: vr } = await supabaseAdmin
+        .from("integrations").select("is_connected, settings")
+        .eq("tenant_id", (inv as any).tenant_id).eq("provider", "venmo").maybeSingle();
+      const handle = ((vr?.settings as { handle?: string } | null)?.handle ?? "").replace(/^@/, "");
+      if (vr?.is_connected && handle) {
+        // Venmo amount excludes the card surcharge.
+        const amount = (((inv.subtotal_cents ?? inv.total_cents) ?? 0) / 100).toFixed(2);
+        const params = new URLSearchParams({ txn: "pay", amount, note: `Invoice ${inv.number ?? ""}`.trim() });
+        venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
+      }
+    }
     return {
       photos,
+      allow_card: allowCard,
+      venmo_link: venmoLink,
       id: inv.id,
       number: inv.number,
       status: inv.status,
@@ -84,7 +104,7 @@ export const createInvoiceCheckout = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: inv, error } = await supabaseAdmin
         .from("invoices")
-        .select("id, tenant_id, number, status, total_cents, currency, client:clients(first_name, last_name, email)")
+        .select("id, tenant_id, number, status, total_cents, currency, allow_card, client:clients(first_name, last_name, email)")
         .eq("id", data.invoice_id)
         .maybeSingle();
       if (error) return { error: error.message };
@@ -92,6 +112,7 @@ export const createInvoiceCheckout = createServerFn({ method: "POST" })
       if (inv.status === "paid") return { error: "This invoice is already paid" };
       if (inv.status === "cancelled" || inv.status === "void") return { error: "This invoice is no longer payable" };
       if (inv.status === "draft") return { error: "This invoice is not available for payment." };
+      if ((inv as any).allow_card === false) return { error: "Card payment is not offered for this invoice." };
       const total = inv.total_cents ?? 0;
       if (total < 50) return { error: "Invoice amount is too small to process" };
 

@@ -91,6 +91,17 @@ function PayInvoicePage() {
             </div>
           )}
 
+          {!isPaid && !isDead && inv.venmo_link && !confirmed && (
+            <a
+              href={inv.venmo_link}
+              target="_blank"
+              rel="noreferrer"
+              className="block w-full mb-4 rounded-lg ring-1 ring-black/10 bg-card px-4 py-3 text-center text-sm font-medium hover:bg-muted"
+            >
+              Pay {money(inv.subtotal_cents || inv.total_cents, inv.currency)} with Venmo
+            </a>
+          )}
+
           {isPaid ? (
             <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
               <p className="font-medium text-green-800">This invoice has been paid — thank you!</p>
@@ -99,6 +110,12 @@ function PayInvoicePage() {
             <div className="bg-muted rounded-xl p-6 text-center text-sm text-muted-foreground">
               This invoice is no longer payable.
             </div>
+          ) : !inv.allow_card ? (
+            !inv.venmo_link ? (
+              <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 text-center text-sm text-muted-foreground">
+                Please pay this invoice by check, payable to Wash Rinse Repeat Cleaning.
+              </div>
+            ) : null
           ) : !confirmed ? (
             <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 text-center space-y-4">
               <p className="text-sm font-medium">Please verify before paying</p>
@@ -111,7 +128,7 @@ function PayInvoicePage() {
                 onClick={() => setConfirmed(true)}
                 className="w-full rounded-lg bg-brand text-brand-foreground px-4 py-3 text-sm font-medium hover:opacity-90"
               >
-                Confirm amount and continue to payment
+                Confirm amount and continue to card payment
               </button>
             </div>
           ) : (

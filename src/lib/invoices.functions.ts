@@ -52,7 +52,7 @@ export const getInvoice = createServerFn({ method: "POST" })
     const [{ data: inv, error }, { data: items, error: ie }] = await Promise.all([
       context.supabase
         .from("invoices")
-        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, cleanings_count, payment_terms_days, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, service_address)")
+        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, allow_card, allow_venmo, cleanings_count, payment_terms_days, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, service_address)")
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
@@ -105,6 +105,21 @@ export const setCardSurcharge = createServerFn({ method: "POST" })
     return { ok: true, surcharge_cents: surcharge, total_cents: total };
   });
 
+/** Show or hide the card / Venmo payment options for one invoice (e.g. check-paying clients). */
+export const setInvoicePaymentOptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), allow_card: z.boolean().optional(), allow_venmo: z.boolean().optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const patch: Record<string, boolean> = {};
+    if (data.allow_card !== undefined) patch.allow_card = data.allow_card;
+    if (data.allow_venmo !== undefined) patch.allow_venmo = data.allow_venmo;
+    const { error } = await (context.supabase as any).from("invoices").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // ============= Send =============
 
 export const sendInvoice = createServerFn({ method: "POST" })
@@ -113,7 +128,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: inv, error: ge } = await context.supabase
       .from("invoices")
-      .select("id, tenant_id, client_id, number, total_cents, client:clients(first_name, last_name)")
+      .select("id, tenant_id, client_id, number, total_cents, allow_venmo, client:clients(first_name, last_name)")
       .eq("id", data.id).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!inv) throw new Error("Invoice not found");
@@ -132,7 +147,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
         .select("is_connected, settings")
         .eq("tenant_id", inv.tenant_id).eq("provider", "venmo").maybeSingle();
       const vs = (venmoRow?.settings as { handle?: string; test_mode?: boolean } | null) ?? {};
-      if (venmoRow?.is_connected && vs.handle) {
+      if ((inv as any).allow_venmo !== false && venmoRow?.is_connected && vs.handle) {
         const handle = vs.handle.replace(/^@/, "");
         const amount = ((inv.total_cents ?? 0) / 100).toFixed(2);
         const note = vs.test_mode ? `[TEST] Invoice ${inv.number ?? ""}` : `Invoice ${inv.number ?? ""}`;
