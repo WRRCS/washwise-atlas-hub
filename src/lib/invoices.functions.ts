@@ -57,7 +57,7 @@ export const getInvoice = createServerFn({ method: "POST" })
         .maybeSingle(),
       context.supabase
         .from("invoice_line_items")
-        .select("id, description, quantity, unit_price_cents, line_total_cents, service_date, sort_order")
+        .select("id, description, quantity, unit_price_cents, line_total_cents, service_date, sort_order, hours, hours_manual, job_id")
         .eq("invoice_id", data.id)
         .order("sort_order")
         .order("service_date"),
@@ -334,7 +334,22 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
       (clientRow as { payment_terms_days?: number | null } | null)?.payment_terms_days ??
       (tenantRow as { payment_terms_days?: number | null } | null)?.payment_terms_days ??
       14;
-    const subtotal = toBundle.reduce((sum, j) => sum + (j.price_cents ?? 0), 0);
+    // Jobs with no set price bill hourly from the cleaners' clocked time.
+    const { data: tenantRate } = await (sb as any).from("tenants").select("hourly_rate_cents").eq("id", prof.tenant_id).maybeSingle();
+    const rate = (tenantRate?.hourly_rate_cents as number | undefined) ?? 4500;
+    const { data: tes } = await sb.from("time_entries").select("job_id, started_at, ended_at").in("job_id", toBundle.map((j) => j.id));
+    const hoursByJob = new Map<string, number>();
+    for (const t of tes ?? []) {
+      if (!t.ended_at) continue;
+      const h = (new Date(t.ended_at).getTime() - new Date(t.started_at).getTime()) / 3600000;
+      hoursByJob.set(t.job_id, (hoursByJob.get(t.job_id) ?? 0) + h);
+    }
+    const lineFor = (j: { id: string; price_cents: number | null }) => {
+      if ((j.price_cents ?? 0) > 0) return { unit: j.price_cents as number, total: j.price_cents as number, hours: null as number | null };
+      const h = Math.round((hoursByJob.get(j.id) ?? 0) * 100) / 100;
+      return { unit: rate, total: Math.round(h * rate), hours: h };
+    };
+    const subtotal = toBundle.reduce((sum, j) => sum + lineFor(j).total, 0);
     const lastDay = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
     const issue = lastDay;
     const due = dueDateFrom(issue, terms);
@@ -375,7 +390,7 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
       return {
         invoice_id: invoiceId, tenant_id: prof.tenant_id, job_id: j.id,
         description: `${svc} — ${label}`, quantity: 1,
-        unit_price_cents: j.price_cents ?? 0, line_total_cents: j.price_cents ?? 0,
+        unit_price_cents: lineFor(j).unit, line_total_cents: lineFor(j).total, hours: lineFor(j).hours,
         service_date: pacificDate(j.scheduled_start), sort_order: i,
       };
     });
@@ -436,4 +451,45 @@ export const setInvoiceTerms = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+// ============= Hourly lines =============
+
+/** Edit (or reset to clocked time) the billed hours on an hourly line of a draft invoice. */
+export const setLineItemHours = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), hours: z.number().min(0).max(1000).nullable() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { data: li, error } = await sb
+      .from("invoice_line_items")
+      .select("id, invoice_id, job_id, unit_price_cents, hours, invoice:invoices(status, card_surcharge)")
+      .eq("id", data.id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!li) throw new Error("Line not found");
+    if (li.invoice?.status !== "draft") throw new Error("Hours can only be changed while the invoice is a draft.");
+    let hours = data.hours;
+    let manual = true;
+    if (hours === null) {
+      manual = false;
+      const { data: te } = await sb.from("time_entries").select("started_at, ended_at").eq("job_id", li.job_id);
+      const secs = (te ?? []).reduce((s: number, t: any) =>
+        s + (t.ended_at ? (new Date(t.ended_at).getTime() - new Date(t.started_at).getTime()) / 1000 : 0), 0);
+      hours = Math.round((secs / 3600) * 100) / 100;
+    }
+    const lineTotal = Math.round(hours * li.unit_price_cents);
+    const { error: ue } = await sb.from("invoice_line_items")
+      .update({ hours, hours_manual: manual, line_total_cents: lineTotal }).eq("id", data.id);
+    if (ue) throw new Error(ue.message);
+    const { data: lines } = await sb.from("invoice_line_items").select("line_total_cents").eq("invoice_id", li.invoice_id);
+    const subtotal = (lines ?? []).reduce((s: number, l: any) => s + (l.line_total_cents ?? 0), 0);
+    const surcharge = li.invoice?.card_surcharge ? calcSurcharge(subtotal) : 0;
+    const total = subtotal + surcharge;
+    const { error: ie } = await sb.from("invoices")
+      .update({ subtotal_cents: subtotal, surcharge_cents: surcharge, total_cents: total, amount_cents: total })
+      .eq("id", li.invoice_id);
+    if (ie) throw new Error(ie.message);
+    return { ok: true, hours };
   });
