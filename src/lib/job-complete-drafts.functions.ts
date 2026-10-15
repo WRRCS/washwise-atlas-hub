@@ -106,10 +106,14 @@ export const sendJobCompleteDraft = createServerFn({ method: "POST" })
       const { sendClientSms } = await import("@/lib/sms.server");
       await sendClientSms(context, (draft as any).client_id, (draft as any).body);
     } else if ((draft as any).channel === "email") {
-      const { data: client } = await context.supabase
+      // Email isn't readable by signed-in users directly; the draft was already
+      // loaded under the caller's permissions, so look up the address server-side.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: client } = await supabaseAdmin
         .from("clients")
         .select("email")
         .eq("id", (draft as any).client_id)
+        .eq("tenant_id", (draft as any).tenant_id)
         .maybeSingle();
       const to = (client as any)?.email as string | null;
       if (!to) throw new Error("This client has no email address on file.");
