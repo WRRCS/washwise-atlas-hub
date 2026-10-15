@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { InvoicePhotosCard } from "@/components/invoice-photos-card";
 import { format } from "date-fns";
 import {
-  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions,
+  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours,
 } from "@/lib/invoices.functions";
 import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
@@ -138,7 +138,7 @@ function InvoiceDetailPage() {
             <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-clay-100/50">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Description</th>
-                <th className="text-right px-4 py-3 font-medium">Qty</th>
+                <th className="text-right px-4 py-3 font-medium">Qty / Hours</th>
                 <th className="text-right px-4 py-3 font-medium">Unit</th>
                 <th className="text-right px-4 py-3 font-medium">Total</th>
               </tr>
@@ -147,8 +147,12 @@ function InvoiceDetailPage() {
               {inv.line_items.map((li) => (
                 <tr key={li.id} className="border-t border-border/40">
                   <td className="px-4 py-3">{li.description}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{li.quantity}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{money(li.unit_price_cents)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {(li as any).hours != null ? (
+                      <HoursCell line={li as any} editable={inv.status === "draft"} invoiceId={inv.id} />
+                    ) : li.quantity}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{money(li.unit_price_cents)}{(li as any).hours != null ? "/hr" : ""}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium">{money(li.line_total_cents)}</td>
                 </tr>
               ))}
@@ -527,5 +531,41 @@ function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function HoursCell({ line, editable, invoiceId }: { line: { id: string; hours: number; hours_manual: boolean }; editable: boolean; invoiceId: string }) {
+  const qc = useQueryClient();
+  const save = useServerFn(setLineItemHours);
+  const [val, setVal] = useState(String(line.hours));
+  const [busy, setBusy] = useState(false);
+  const run = async (hours: number | null) => {
+    setBusy(true);
+    try {
+      const r = await save({ data: { id: line.id, hours } });
+      setVal(String(r.hours));
+      await qc.invalidateQueries();
+      toast.success(hours === null ? "Hours reset to clocked time" : "Hours updated");
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
+  };
+  void invoiceId;
+  if (!editable) return <span>{Number(line.hours).toFixed(2)} hrs</span>;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1">
+        <input
+          type="number" step="0.25" min="0" inputMode="decimal" aria-label="Hours"
+          className="w-20 rounded-md border border-input bg-background px-2 py-1 text-right"
+          value={val} disabled={busy}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={() => { const n = Number(val); if (!Number.isNaN(n) && n !== Number(line.hours)) run(n); }}
+          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+        />
+        <span className="text-xs text-muted-foreground">hrs</span>
+      </div>
+      {line.hours_manual ? (
+        <button type="button" className="text-xs text-primary underline" disabled={busy} onClick={() => run(null)}>Use clocked time</button>
+      ) : <span className="text-xs text-muted-foreground">from clocked time</span>}
+    </div>
   );
 }

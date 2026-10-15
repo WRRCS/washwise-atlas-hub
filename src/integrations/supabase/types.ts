@@ -1185,6 +1185,8 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          hours: number | null
+          hours_manual: boolean
           id: string
           invoice_id: string
           job_id: string | null
@@ -1198,6 +1200,8 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          hours?: number | null
+          hours_manual?: boolean
           id?: string
           invoice_id: string
           job_id?: string | null
@@ -1211,6 +1215,8 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          hours?: number | null
+          hours_manual?: boolean
           id?: string
           invoice_id?: string
           job_id?: string | null
@@ -3059,6 +3065,7 @@ export type Database = {
           business_phone: string | null
           created_at: string
           gps_retention_days: number
+          hourly_rate_cents: number
           id: string
           invoice_footer: string | null
           invoice_prefix: string | null
@@ -3091,6 +3098,7 @@ export type Database = {
           business_phone?: string | null
           created_at?: string
           gps_retention_days?: number
+          hourly_rate_cents?: number
           id?: string
           invoice_footer?: string | null
           invoice_prefix?: string | null
@@ -3123,6 +3131,7 @@ export type Database = {
           business_phone?: string | null
           created_at?: string
           gps_retention_days?: number
+          hourly_rate_cents?: number
           id?: string
           invoice_footer?: string | null
           invoice_prefix?: string | null
@@ -3769,6 +3778,8 @@ export type Database = {
         Returns: Json
       }
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
+      recalc_invoice_totals: { Args: { _invoice: string }; Returns: undefined }
+      recalc_job_hours: { Args: { _job: string }; Returns: undefined }
       report_client_account: { Args: { _client_id: string }; Returns: Json }
       report_client_balances: {
         Args: never
