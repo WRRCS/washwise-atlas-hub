@@ -1,3 +1,5 @@
+import { closeJobs } from "@/lib/jobs.functions";
+import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -120,6 +122,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   });
 
   const pick = usePick();
+  const closeFn = useServerFn(closeJobs);
 
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   if (!job) return <div className="p-8">Not found.</div>;
@@ -166,7 +169,11 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
             )}
             {job.status !== "canceled" && job.status !== "completed" && <VisitButtons jobId={jobId} />}
             {canMessageClient && job.status !== "completed" && job.status !== "canceled" && (
-              <button onClick={() => onStatus("completed")} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90">Complete</button>
+              <button onClick={async () => {
+                if (!confirm("Mark this job complete? Its invoice is created, and anyone still clocked in on it is clocked out of the job.")) return;
+                try { await closeFn({ data: { ids: [jobId] } }); toast.success("Job marked complete"); qc.invalidateQueries(); }
+                catch (e) { toast.error((e as Error).message); }
+              }} className="text-sm font-medium bg-foreground text-background rounded-lg px-3 py-2 hover:opacity-90 inline-flex items-center gap-1.5"><CheckCircle2 className="size-4" /> Mark complete</button>
             )}
             {canMessageClient && job.status !== "canceled" && job.status !== "completed" && (
               <button onClick={() => onStatus("canceled")} className="text-sm font-medium border border-destructive/40 text-destructive rounded-lg px-3 py-2 hover:bg-destructive/5">Cancel job</button>

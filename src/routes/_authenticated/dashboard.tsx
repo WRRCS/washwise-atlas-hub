@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { closeJobs } from "@/lib/jobs.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { LogLeadDialog } from "@/components/log-lead-dialog";
@@ -154,6 +155,13 @@ function DashboardPage() {
     queryFn: () => fetchNeedsReply(),
   });
 
+  const closeFn = useServerFn(closeJobs);
+  const qcDash = useQueryClient();
+  const markDone = async (id: string) => {
+    if (!confirm("Mark this job complete? Its invoice is created, and anyone still clocked in on it is clocked out of the job.")) return;
+    try { await closeFn({ data: { ids: [id] } }); toast.success("Job marked complete"); qcDash.invalidateQueries(); }
+    catch (e) { toast.error((e as Error).message); }
+  };
   const openToday = today.filter((j) => j.assignees.length === 0).length;
 
   return (
@@ -225,6 +233,15 @@ function DashboardPage() {
                           </p>
                         </div>
                       </Link>
+                      {j.status !== "completed" && j.status !== "canceled" && (
+                        <button
+                          type="button"
+                          onClick={() => markDone(j.id)}
+                          className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+                        >
+                          <CheckCircle2 className="size-3.5" /> Mark complete
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -460,6 +460,10 @@ export const closeJobs = createServerFn({ method: "POST" })
         .update({ status: "completed", actual_end: (j as any).scheduled_end })
         .eq("id", (j as any).id);
       if (error) throw new Error(error.message);
+      // End any job time still running so the hours land on the invoice.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("time_entries").update({ ended_at: new Date().toISOString() })
+        .eq("job_id", (j as any).id).is("ended_at", null);
       closed++;
     }
     return { closed };

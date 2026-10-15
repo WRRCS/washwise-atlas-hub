@@ -531,6 +531,7 @@ function SchedulePage() {
                             const cardBody = (
                               <>
                                 <div className="flex items-center gap-1 font-semibold">
+                                  {j.status === "completed" && <CheckCircle2 aria-label="Completed" className="size-3.5 shrink-0" />}
                                   {conflict && <AlertTriangle className="size-3 shrink-0" />}
                                   <span>{fmtTimeTZ(j.scheduled_start, tz)}-{fmtTimeTZ(j.scheduled_end, tz)}</span>
                                 </div>
@@ -656,11 +657,11 @@ function SchedulePage() {
                                           type="button"
                                           disabled={closeMut.isPending}
                                           onClick={() => {
-                                            if (window.confirm("Close this job and create its invoice?")) closeMut.mutate([j.id]);
+                                            if (window.confirm("Mark this job complete? Its invoice is created, and anyone still clocked in on it is clocked out of the job.")) closeMut.mutate([j.id]);
                                           }}
                                           className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-foreground text-background text-[11px] font-medium py-1.5 hover:opacity-90 disabled:opacity-50"
                                         >
-                                          <CheckCircle2 className="size-3" /> Close &amp; invoice
+                                          <CheckCircle2 className="size-3" /> Mark complete
                                         </button>
                                       )}
                                       <button
