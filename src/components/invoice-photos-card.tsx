@@ -74,6 +74,19 @@ export function InvoicePhotosCard({ invoiceId }: { invoiceId: string }) {
             <DialogTitle>Attach job photos</DialogTitle>
             <DialogDescription>Tap photos to attach them, or copy a link to any photo.</DialogDescription>
           </DialogHeader>
+          {photos.length > 0 && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="text-sm text-brand hover:underline"
+                onClick={() =>
+                  setPicked(picked.size === photos.length ? new Set() : new Set(photos.map((p) => p.id)))
+                }
+              >
+                {picked.size === photos.length ? "Clear all" : "Select all"}
+              </button>
+            </div>
+          )}
           {photos.length === 0 ? (
             <p className="text-sm text-muted-foreground">No job photos for this client yet.</p>
           ) : (
