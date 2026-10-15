@@ -49,6 +49,7 @@ function InvoiceDetailPage() {
   const paidFn = useServerFn(markInvoicePaid);
   const cancelFn = useServerFn(cancelInvoice);
   const toggleFn = useServerFn(setCardSurcharge);
+  const payOptsFn = useServerFn(setInvoicePaymentOptions);
   const termsFn = useServerFn(setInvoiceTerms);
 
   const { data: inv, isLoading } = useQuery({
