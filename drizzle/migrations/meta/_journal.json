@@ -64,6 +64,13 @@
       "when": 1791771258599,
       "tag": "0008_grant_bill_monthly_select",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792035440660,
+      "tag": "0009_migration",
+      "breakpoints": true
     }
   ]
 }

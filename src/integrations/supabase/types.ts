@@ -636,6 +636,7 @@ export type Database = {
           last_name: string | null
           lead_source: string | null
           payment_terms_days: number | null
+          pays_by_check: boolean
           phone: string | null
           secondary_email: string | null
           secondary_phone: string | null
@@ -658,6 +659,7 @@ export type Database = {
           last_name?: string | null
           lead_source?: string | null
           payment_terms_days?: number | null
+          pays_by_check?: boolean
           phone?: string | null
           secondary_email?: string | null
           secondary_phone?: string | null
@@ -680,6 +682,7 @@ export type Database = {
           last_name?: string | null
           lead_source?: string | null
           payment_terms_days?: number | null
+          pays_by_check?: boolean
           phone?: string | null
           secondary_email?: string | null
           secondary_phone?: string | null
@@ -1230,6 +1233,8 @@ export type Database = {
       }
       invoices: {
         Row: {
+          allow_card: boolean
+          allow_venmo: boolean
           amount_cents: number
           bundle_month: string | null
           card_surcharge: boolean
@@ -1255,6 +1260,8 @@ export type Database = {
           total_cents: number
         }
         Insert: {
+          allow_card?: boolean
+          allow_venmo?: boolean
           amount_cents?: number
           bundle_month?: string | null
           card_surcharge?: boolean
@@ -1280,6 +1287,8 @@ export type Database = {
           total_cents?: number
         }
         Update: {
+          allow_card?: boolean
+          allow_venmo?: boolean
           amount_cents?: number
           bundle_month?: string | null
           card_surcharge?: boolean
