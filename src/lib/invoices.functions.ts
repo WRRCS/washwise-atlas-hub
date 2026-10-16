@@ -135,11 +135,6 @@ export const sendInvoice = createServerFn({ method: "POST" })
     if (ge) throw new Error(ge.message);
     if (!inv) throw new Error("Invoice not found");
 
-    const { error } = await context.supabase
-      .from("invoices")
-      .update({ status: "sent", sent_at: new Date().toISOString() })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
 
     // Build Venmo pay link if the tenant has Venmo configured.
     let venmoLink = "";
@@ -173,22 +168,46 @@ export const sendInvoice = createServerFn({ method: "POST" })
         venmo_link: venmoLink,
       },
     });
-    if (rendered && inv.client_id) {
-      await context.supabase.from("notifications").insert({
-        tenant_id: inv.tenant_id,
-        recipient_type: "client",
-        recipient_id: inv.client_id,
-        channel: "email",
-        template_name: rendered.template_name,
-        payload: {
-          subject: rendered.subject, body_html: rendered.body_html, invoice_id: inv.id,
-          ...(data.to_email ? { to: data.to_email } : {}),
-        },
-        scheduled_for: new Date().toISOString(),
-      });
+    // Recipient: the address typed in the Send box, else the client's saved email.
+    let to = data.to_email ?? null;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!to && inv.client_id) {
+      const { data: cl } = await supabaseAdmin
+        .from("clients").select("email").eq("id", inv.client_id).eq("tenant_id", inv.tenant_id).maybeSingle();
+      to = ((cl as any)?.email as string | null) ?? null;
+    }
+    if (!to) throw new Error("Enter an email address to send this invoice to.");
+
+    const amountStr = `$${((inv.total_cents ?? 0) / 100).toFixed(2)}`;
+    const subject = rendered?.subject || `Invoice ${inv.number ?? ""} from Wash Rinse Repeat Cleaning`.replace("  ", " ");
+    const html = rendered?.body_html ||
+      `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222">Hi ${[c?.first_name, c?.last_name].filter(Boolean).join(" ") || "there"},<br><br>Your invoice ${inv.number ?? ""} for ${amountStr} is ready.${venmoLink ? `<br><br><a href="${venmoLink}">Pay with Venmo</a>` : ""}<br><br>Thank you,<br>Wash Rinse Repeat Cleaning</div>`;
+
+    const { sendLovableEmail } = await import("@lovable.dev/email-js");
+    const result: any = await sendLovableEmail(
+      {
+        to,
+        from: "Wash Rinse Repeat Cleaning <info@washrinserepeatcleaning.com>",
+        sender_domain: "notify.washrinserepeatcleaning.com",
+        subject,
+        html,
+        purpose: "transactional",
+        idempotency_key: `invoice-sent-${inv.id}-${Date.now()}`,
+        label: "invoice_sent",
+      },
+      { apiKey: process.env["LOVABLE_API_KEY"]!, sendUrl: process.env["LOVABLE_SEND_URL"] },
+    );
+    if (result && result.sent === false) {
+      throw new Error("That email address has unsubscribed or bounced before, so the invoice wasn't emailed.");
     }
 
-    return { ok: true };
+    const { error } = await context.supabase
+      .from("invoices")
+      .update({ status: "sent", sent_at: new Date().toISOString() })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    return { ok: true, to };
   });
 
 // ============= Delete =============
