@@ -289,6 +289,36 @@ function InvoiceDetailPage() {
 
 
         <InvoicePhotosCard invoiceId={inv.id} />
+      <Dialog open={sendOpen} onOpenChange={setSendOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send invoice {inv.number}</DialogTitle>
+            <DialogDescription>Change the email address if you want it to go somewhere else this time. The client's saved email isn't changed.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="send-to">Send to</Label>
+            <Input id="send-to" type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="name@example.com" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendOpen(false)}>Cancel</Button>
+            <Button
+              disabled={sending || !sendTo.trim()}
+              className="bg-brand text-brand-foreground hover:opacity-90"
+              onClick={async () => {
+                setSending(true);
+                try {
+                  await sendFn({ data: { id: inv.id, to_email: sendTo.trim() } });
+                  toast.success("Invoice sent"); setSendOpen(false); refresh();
+                } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+                finally { setSending(false); }
+              }}
+            >
+              <Send className="size-4 mr-1.5" /> Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
         <PaymentLinksCard invoiceId={inv.id} status={inv.status} totalCents={inv.total_cents} onPaid={refresh} />
 
         {inv.job_id && (
@@ -448,36 +478,6 @@ function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId
           </div>
         )}
       </div>
-
-      <Dialog open={sendOpen} onOpenChange={setSendOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Send invoice {inv.number}</DialogTitle>
-            <DialogDescription>Change the email address if you want it to go somewhere else this time. The client's saved email isn't changed.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="send-to">Send to</Label>
-            <Input id="send-to" type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="name@example.com" />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSendOpen(false)}>Cancel</Button>
-            <Button
-              disabled={sending || !sendTo.trim()}
-              className="bg-brand text-brand-foreground hover:opacity-90"
-              onClick={async () => {
-                setSending(true);
-                try {
-                  await sendFn({ data: { id: inv.id, to_email: sendTo.trim() } });
-                  toast.success("Invoice sent"); setSendOpen(false); refresh();
-                } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
-                finally { setSending(false); }
-              }}
-            >
-              <Send className="size-4 mr-1.5" /> Send
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!cardConfirm} onOpenChange={(o) => !o && setCardConfirm(null)}>
         <DialogContent>
