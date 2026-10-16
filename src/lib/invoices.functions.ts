@@ -337,11 +337,11 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
     // Jobs with no set price bill hourly from the cleaners' clocked time.
     const { data: tenantRate } = await (sb as any).from("tenants").select("hourly_rate_cents").eq("id", prof.tenant_id).maybeSingle();
     const rate = (tenantRate?.hourly_rate_cents as number | undefined) ?? 4500;
-    const { data: tes } = await sb.from("time_entries").select("job_id, started_at, ended_at").in("job_id", toBundle.map((j) => j.id));
+    const { data: tes } = await (sb as any).from("job_visits").select("job_id, arrived_at, left_at").in("job_id", toBundle.map((j) => j.id));
     const hoursByJob = new Map<string, number>();
-    for (const t of tes ?? []) {
-      if (!t.ended_at) continue;
-      const h = (new Date(t.ended_at).getTime() - new Date(t.started_at).getTime()) / 3600000;
+    for (const t of (tes ?? []) as any[]) {
+      if (!t.left_at) continue;
+      const h = (new Date(t.left_at).getTime() - new Date(t.arrived_at).getTime()) / 3600000;
       hoursByJob.set(t.job_id, (hoursByJob.get(t.job_id) ?? 0) + h);
     }
     const lineFor = (j: { id: string; price_cents: number | null }) => {
@@ -474,9 +474,9 @@ export const setLineItemHours = createServerFn({ method: "POST" })
     let manual = true;
     if (hours === null) {
       manual = false;
-      const { data: te } = await sb.from("time_entries").select("started_at, ended_at").eq("job_id", li.job_id);
+      const { data: te } = await (sb as any).from("job_visits").select("arrived_at, left_at").eq("job_id", li.job_id);
       const secs = (te ?? []).reduce((s: number, t: any) =>
-        s + (t.ended_at ? (new Date(t.ended_at).getTime() - new Date(t.started_at).getTime()) / 1000 : 0), 0);
+        s + (t.left_at ? (new Date(t.left_at).getTime() - new Date(t.arrived_at).getTime()) / 1000 : 0), 0);
       hours = Math.round((secs / 3600) * 100) / 100;
     }
     const lineTotal = Math.round(hours * li.unit_price_cents);

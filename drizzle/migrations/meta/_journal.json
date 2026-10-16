@@ -78,6 +78,13 @@
       "when": 1792037497358,
       "tag": "0010_hourly_invoice_lines",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792122021358,
+      "tag": "0011_hours_from_job_visits",
+      "breakpoints": true
     }
   ]
 }
