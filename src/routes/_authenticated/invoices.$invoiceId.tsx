@@ -11,12 +11,14 @@ import { toast } from "sonner";
 import { InvoicePhotosCard } from "@/components/invoice-photos-card";
 import { format } from "date-fns";
 import {
-  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours,
+  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, deleteInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours,
 } from "@/lib/invoices.functions";
 import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
 import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functions";
-import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2 } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2, Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   component: InvoiceDetailPage,
@@ -48,6 +50,11 @@ function InvoiceDetailPage() {
   const unsendFn = useServerFn(unsendInvoice);
   const paidFn = useServerFn(markInvoicePaid);
   const cancelFn = useServerFn(cancelInvoice);
+  const deleteFn = useServerFn(deleteInvoice);
+  const navigate = useNavigate();
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendTo, setSendTo] = useState("");
+  const [sending, setSending] = useState(false);
   const toggleFn = useServerFn(setCardSurcharge);
   const payOptsFn = useServerFn(setInvoicePaymentOptions);
   const termsFn = useServerFn(setInvoiceTerms);
@@ -221,10 +228,7 @@ function InvoiceDetailPage() {
           <div className="flex gap-2">
             {inv.status === "draft" && (
               <Button
-                onClick={async () => {
-                  try { await sendFn({ data: { id: inv.id } }); toast.success("Invoice sent"); refresh(); }
-                  catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
-                }}
+                onClick={() => { setSendTo(inv.client?.email ?? ""); setSendOpen(true); }}
                 className="bg-brand text-brand-foreground hover:opacity-90"
               >
                 <Send className="size-4 mr-1.5" /> Send
@@ -264,6 +268,21 @@ function InvoiceDetailPage() {
                 <X className="size-4 mr-1.5" /> Cancel
               </Button>
             )}
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={async () => {
+                if (!confirm(`Delete invoice ${inv.number} permanently? This can't be undone.`)) return;
+                try {
+                  await deleteFn({ data: { id: inv.id } });
+                  toast.success("Invoice deleted");
+                  qc.invalidateQueries({ queryKey: ["invoices"] });
+                  navigate({ to: "/invoices" });
+                } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+              }}
+            >
+              <Trash2 className="size-4 mr-1.5" /> Delete
+            </Button>
           </div>
         </div>
 
