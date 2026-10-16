@@ -191,6 +191,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
         sender_domain: "notify.washrinserepeatcleaning.com",
         subject,
         html,
+        text: html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").trim(),
         purpose: "transactional",
         idempotency_key: `invoice-sent-${inv.id}-${Date.now()}`,
         label: "invoice_sent",
