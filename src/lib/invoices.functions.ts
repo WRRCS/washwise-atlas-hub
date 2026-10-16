@@ -124,7 +124,9 @@ export const setInvoicePaymentOptions = createServerFn({ method: "POST" })
 
 export const sendInvoice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), to_email: z.string().trim().email().max(255).optional() }).parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { data: inv, error: ge } = await context.supabase
       .from("invoices")
@@ -178,14 +180,32 @@ export const sendInvoice = createServerFn({ method: "POST" })
         recipient_id: inv.client_id,
         channel: "email",
         template_name: rendered.template_name,
-        payload: { subject: rendered.subject, body_html: rendered.body_html, invoice_id: inv.id },
+        payload: {
+          subject: rendered.subject, body_html: rendered.body_html, invoice_id: inv.id,
+          ...(data.to_email ? { to: data.to_email } : {}),
+        },
         scheduled_for: new Date().toISOString(),
       });
     }
 
+    return { ok: true };
+  });
 
+// ============= Delete =============
 
-
+/** Permanently delete an invoice and its lines. Owners/managers only. */
+export const deleteInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    if (!isMgr) throw new Error("Only owners and managers can delete invoices.");
+    const { data: inv } = await context.supabase.from("invoices").select("id").eq("id", data.id).maybeSingle();
+    if (!inv) throw new Error("Invoice not found");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("invoice_line_items").delete().eq("invoice_id", data.id);
+    const { error } = await supabaseAdmin.from("invoices").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
