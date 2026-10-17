@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Preserve appointment-selected addresses across saving, recurring visits, cleaner views and notifications; verify separation.
+
 - [x] Open shifts row above the schedule dates (unassigned jobs; owners drag/assign, employees can claim)
 - [x] Dashboard: today's jobs from the actual schedule (replaces Ongoing / Completed screenshot tabs)
 - [x] Arrived / Leaving buttons on each job (per-appointment visit times)
