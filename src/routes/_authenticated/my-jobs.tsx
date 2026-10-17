@@ -11,7 +11,8 @@ import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/in
 import { supabase } from "@/integrations/supabase/client";
 import { captureGps } from "@/lib/geolocation";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen, Navigation, StickyNote } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { SopViewer } from "@/components/sop-viewer";
 import { PushToggle } from "@/components/push-toggle";
 import { useT } from "@/lib/i18n";
@@ -552,11 +553,12 @@ function TodayView() {
       )}
       {sopFor && (
         <Dialog open onOpenChange={(v) => !v && setSopFor(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="w-[calc(100%-1rem)] max-w-4xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader className="pr-8">
               <DialogTitle>SOP · {sopFor.label}</DialogTitle>
             </DialogHeader>
             <SopViewer serviceTypeId={sopFor.serviceTypeId} jobId={sopFor.jobId} allowMarkReviewed />
+            <DialogClose asChild><Button variant="outline">Close SOP</Button></DialogClose>
           </DialogContent>
         </Dialog>
       )}

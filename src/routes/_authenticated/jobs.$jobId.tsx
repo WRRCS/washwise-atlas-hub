@@ -17,7 +17,8 @@ import { directionsUrl } from "@/lib/maps";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePick } from "@/lib/i18n";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
@@ -198,7 +199,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
           <Tabs defaultValue="sop">
             <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
               <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SOP Checklist</TabsTrigger>
-              <button type="button" onClick={() => setSopOpen(true)} className="rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 text-sm hover:bg-brand hover:text-brand-foreground">SOP</button>
+              <Button variant="outline" type="button" onClick={() => setSopOpen(true)} className="h-auto rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 hover:bg-brand hover:text-brand-foreground">SOP</Button>
               <TabsTrigger value="photos" className="rounded-lg border-2 border-success/40 bg-success/10 text-success font-semibold px-3 py-2 data-[state=active]:bg-success data-[state=active]:text-primary-foreground">Photos</TabsTrigger>
               <TabsTrigger value="gps" className="rounded-lg border-2 border-warning/40 bg-warning/10 text-warning font-semibold px-3 py-2 data-[state=active]:bg-warning data-[state=active]:text-primary-foreground">Location</TabsTrigger>
             </TabsList>
@@ -303,8 +304,8 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
             </TabsContent>
           </Tabs>
           <Dialog open={sopOpen} onOpenChange={setSopOpen}>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>SOP</DialogTitle></DialogHeader>
+            <DialogContent className="w-[calc(100%-1rem)] max-w-4xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6">
+              <DialogHeader className="pr-8"><DialogTitle>SOP</DialogTitle></DialogHeader>
           {job.client?.client_sop && job.client.client_sop.trim() && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2 border-l-4 border-brand">
               <h4 className="text-xs uppercase tracking-wider text-brand">Property SOP</h4>
@@ -339,7 +340,8 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
               })()}
             </div>
           )}
-              <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} />
+              <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} hasTextSop={!!job.client?.client_sop?.trim()} />
+              <DialogClose asChild><Button variant="outline">Close SOP</Button></DialogClose>
             </DialogContent>
           </Dialog>
         </section>
