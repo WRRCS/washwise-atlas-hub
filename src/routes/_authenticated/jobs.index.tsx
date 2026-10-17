@@ -1,3 +1,4 @@
+import { jobLocation } from "@/lib/job-location";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -9,6 +10,7 @@ import { format, startOfDay, endOfDay, addDays, startOfWeek, isSameDay } from "d
 import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/jobs/")({
+  head: () => ({ meta: [{ title: "Appointments | WRRCS" }, { name: "description", content: "Review scheduled cleanings and appointment locations." }, { property: "og:title", content: "Appointments | WRRCS" }, { property: "og:description", content: "Review scheduled cleanings and appointment locations." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: JobsPage,
   errorComponent: ({ error }) => (
     <AppShell><div className="p-8 text-sm text-destructive">Failed to load jobs: {(error as Error).message}</div></AppShell>
@@ -106,7 +108,7 @@ function JobsPage() {
                       <span className="inline-block px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-medium uppercase tracking-wider mb-2">
                         {job.service?.name ?? "Service"}
                       </span>
-                      <h3 className="text-lg font-medium truncate">{job.property?.label ?? job.client?.service_address ?? "—"}</h3>
+                      <h3 className="text-lg font-medium truncate">{jobLocation(job).display}</h3>
                       <p className="text-sm text-muted-foreground truncate">
                         Client: {fmtClient(job.client)} · {format(new Date(job.scheduled_start), "h:mm a")} — {format(new Date(job.scheduled_end), "h:mm a")}
                       </p>

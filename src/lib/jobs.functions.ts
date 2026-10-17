@@ -24,6 +24,9 @@ export type JobRow = {
   recurrence_rule: string | null;
   recurrence_end: string | null;
   published_at: string | null;
+  service_address: string | null;
+  service_location_label: string | null;
+  location_needs_review: boolean;
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   property: { id: string; label: string; address: string; color?: string | null } | null;
   service: { id: string; kind: string; name: string; color: string | null } | null;
@@ -52,7 +55,7 @@ export const listJobs = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<JobRow[]> => {
     let q = context.supabase
       .from("jobs")
-      .select("id, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, client:clients(id,first_name,last_name,service_address,color), property:client_properties!jobs_property_id_fkey(id,label,address,color), service:service_types(id,kind,name,color)")
+      .select("id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, client:clients(id,first_name,last_name,service_address,color), property:client_properties!jobs_property_id_fkey(id,label,address,color), service:service_types(id,kind,name,color)")
       .order("scheduled_start", { ascending: true });
     if (data.from) q = q.gte("scheduled_start", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);
@@ -73,6 +76,7 @@ export const listJobs = createServerFn({ method: "POST" })
 const createJobSchema = z.object({
   client_id: z.string().uuid(),
   property_id: z.string().uuid().nullable().optional(),
+  service_address: z.string().trim().max(400).optional(),
   service_type_id: z.string().uuid(),
   scheduled_start: z.string(),
   scheduled_end: z.string(),
@@ -117,6 +121,14 @@ export const createJob = createServerFn({ method: "POST" })
       context.supabase.from("service_types").select("default_price_cents, sop_steps").eq("id", data.service_type_id).maybeSingle(),
       context.supabase.from("tenants").select("timezone").eq("id", prof.tenant_id).maybeSingle(),
     ]);
+    let address = data.service_address?.trim() || null;
+    let locationLabel: string | null = null;
+    if (data.property_id) {
+      const { data: property, error } = await context.supabase.from("client_properties").select("address, label").eq("id", data.property_id).eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id).single();
+      if (error || !property) throw new Error("Select a property belonging to this client");
+      address = property.address.trim(); locationLabel = property.label;
+    }
+    if (!address) throw new Error("Select a service location before saving this appointment");
     const tz = (tenant as any)?.timezone || DEFAULT_TZ;
     const price = data.price_cents ?? st?.default_price_cents ?? 0;
     const steps = (st?.sop_steps as string[] | null) ?? [];
@@ -154,6 +166,8 @@ export const createJob = createServerFn({ method: "POST" })
           tenant_id: prof.tenant_id,
           client_id: data.client_id,
           property_id: data.property_id ?? null,
+          service_address: address,
+          service_location_label: locationLabel,
           service_type_id: data.service_type_id,
           scheduled_start: occ.start.toISOString(),
           scheduled_end: occ.end.toISOString(),
@@ -215,7 +229,7 @@ export const getJob = createServerFn({ method: "POST" })
     // Data API; it is merged in below through the permission-checked RPC.
     const { data: job, error } = await context.supabase
       .from("jobs")
-      .select("*, client:clients(id, first_name, last_name, service_address, color), service:service_types(*), sop:job_sop_items(*)")
+      .select("*, client:clients(id, first_name, last_name, service_address, color), property:client_properties!jobs_property_id_fkey(id,label,address,color), service:service_types(*), sop:job_sop_items(*)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -458,7 +472,7 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: src, error: srcErr } = await context.supabase
       .from("jobs")
-      .select("tenant_id, client_id, property_id, service_type_id, scheduled_start, scheduled_end, notes, price_cents")
+      .select("tenant_id, client_id, property_id, service_address, service_location_label, service_type_id, scheduled_start, scheduled_end, notes, price_cents")
       .eq("id", data.id)
       .maybeSingle();
     if (srcErr) throw new Error(srcErr.message);
@@ -473,6 +487,8 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
         tenant_id: src.tenant_id,
         client_id: src.client_id,
         property_id: src.property_id,
+        service_address: src.service_address,
+        service_location_label: src.service_location_label,
         service_type_id: src.service_type_id,
         scheduled_start: start,
         scheduled_end: end,
@@ -541,5 +557,24 @@ export const confirmJobSop = createServerFn({ method: "POST" })
       _job: data.job_id, _confirmed: data.confirmed,
     } as never);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Change only this visit, or explicitly selected scheduled future series visits. */
+export const updateJobLocation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid(), property_id: z.string().uuid(), scope: z.enum(["this", "future"]) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: allowed } = await context.supabase.rpc("is_owner_or_manager");
+    if (!allowed) throw new Error("Only owners and managers can change locations");
+    const { data: job, error } = await context.supabase.from("jobs").select("client_id, tenant_id, recurrence_group_id, scheduled_start").eq("id", data.id).single();
+    if (error || !job) throw new Error("Appointment not found");
+    const { data: property } = await context.supabase.from("client_properties").select("id, address, label").eq("id", data.property_id).eq("client_id", job.client_id).eq("tenant_id", job.tenant_id).single();
+    if (!property?.address.trim()) throw new Error("Select a property with a service address");
+    let q = context.supabase.from("jobs").update({ property_id: property.id, service_address: property.address, service_location_label: property.label });
+    if (data.scope === "future" && job.recurrence_group_id) q = q.eq("recurrence_group_id", job.recurrence_group_id).gte("scheduled_start", job.scheduled_start).eq("status", "scheduled");
+    else q = q.eq("id", data.id);
+    const { error: saveError } = await q;
+    if (saveError) throw new Error(saveError.message);
     return { ok: true };
   });

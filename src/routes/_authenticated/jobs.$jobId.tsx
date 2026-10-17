@@ -1,4 +1,6 @@
 import { closeJobs } from "@/lib/jobs.functions";
+import { jobLocation } from "@/lib/job-location";
+import { JobLocationEditor } from "@/components/job-location-editor";
 import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +30,7 @@ import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
+  head: () => ({ meta: [{ title: "Appointment details | WRRCS" }, { name: "description", content: "Review appointment location, cleaner checklists and photos." }, { property: "og:title", content: "Appointment details | WRRCS" }, { property: "og:description", content: "Review appointment location, cleaner checklists and photos." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: JobDetail,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
   notFoundComponent: () => <div className="p-8">Job not found.</div>,
@@ -159,7 +162,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
       <PageHeader
         back={onBack}
         title={job.service?.name ?? "Job"}
-        subtitle={`${job.client?.service_address ?? "No address"} · ${format(new Date(job.scheduled_start), "PPp")}`}
+        subtitle={`${jobLocation(job).display} · ${format(new Date(job.scheduled_start), "PPp")}`}
         action={
           <div className="flex flex-wrap gap-2 [&>*]:flex-1 [&>*]:justify-center sm:[&>*]:flex-none">
             {canMessageClient && canSeePricing && job.client?.phone && (
@@ -357,19 +360,20 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service address</h4>
-            {job.client?.service_address ? (
+            {jobLocation(job).address ? (
               <a
-                href={directionsUrl(job.client.service_address)}
+                href={directionsUrl(jobLocation(job).address ?? "")}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-start gap-2 text-sm text-brand hover:underline whitespace-pre-wrap"
               >
                 <Navigation className="size-4 mt-0.5 shrink-0" />
-                <span>{job.client.service_address}</span>
+                <span>{jobLocation(job).display}</span>
               </a>
             ) : (
-              <p className="text-sm text-muted-foreground">—</p>
+              <p className="text-sm text-destructive">Location needs review</p>
             )}
+            {canMessageClient && job.client_id && <JobLocationEditor jobId={jobId} clientId={job.client_id} propertyId={job.property_id} recurring={!!job.recurrence_group_id} />}
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service</h4>

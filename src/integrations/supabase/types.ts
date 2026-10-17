@@ -1560,6 +1560,7 @@ export type Database = {
           external_source: string | null
           id: string
           is_recurring: boolean
+          location_needs_review: boolean
           notes: string | null
           price_cents: number
           property_id: string | null
@@ -1569,6 +1570,8 @@ export type Database = {
           recurrence_rule: string | null
           scheduled_end: string
           scheduled_start: string
+          service_address: string | null
+          service_location_label: string | null
           service_type_id: string
           sop_confirmed_at: string | null
           sop_confirmed_by: string | null
@@ -1587,6 +1590,7 @@ export type Database = {
           external_source?: string | null
           id?: string
           is_recurring?: boolean
+          location_needs_review?: boolean
           notes?: string | null
           price_cents?: number
           property_id?: string | null
@@ -1596,6 +1600,8 @@ export type Database = {
           recurrence_rule?: string | null
           scheduled_end: string
           scheduled_start: string
+          service_address?: string | null
+          service_location_label?: string | null
           service_type_id: string
           sop_confirmed_at?: string | null
           sop_confirmed_by?: string | null
@@ -1614,6 +1620,7 @@ export type Database = {
           external_source?: string | null
           id?: string
           is_recurring?: boolean
+          location_needs_review?: boolean
           notes?: string | null
           price_cents?: number
           property_id?: string | null
@@ -1623,6 +1630,8 @@ export type Database = {
           recurrence_rule?: string | null
           scheduled_end?: string
           scheduled_start?: string
+          service_address?: string | null
+          service_location_label?: string | null
           service_type_id?: string
           sop_confirmed_at?: string | null
           sop_confirmed_by?: string | null
