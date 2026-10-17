@@ -424,7 +424,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   );
 }
 
-function PhotosTab({ jobId }: { jobId: string }) {
+function PhotosTab({ jobId, employeeId, readOnly }: { jobId: string; employeeId?: string; readOnly?: boolean }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listJobPhotos);
   const delFn = useServerFn(deleteJobPhoto);
@@ -475,8 +475,8 @@ function PhotosTab({ jobId }: { jobId: string }) {
   };
 
   const { data: photos = [], isLoading } = useQuery({
-    queryKey: ["job-photos", jobId],
-    queryFn: () => listFn({ data: { job_id: jobId } }),
+    queryKey: ["job-photos", jobId, employeeId ?? "all"],
+    queryFn: () => listFn({ data: { job_id: jobId, employee_id: employeeId } }),
   });
 
   const onDelete = async (p: JobPhotoRow) => {
@@ -557,7 +557,7 @@ function PhotosTab({ jobId }: { jobId: string }) {
 
   return (
     <>
-      {uploader}
+      {!readOnly && uploader}
       <PhotoShareDialog link={shareLink} onClose={() => setShareLink(null)} />
       {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
       {(["before", "after", "damage", "other"] as PhotoType[]).map((group) => {
