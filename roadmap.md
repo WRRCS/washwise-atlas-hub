@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Preserve appointment-selected addresses across saving, recurring visits, cleaner views and notifications; verify separation.
+- [x] Preserve appointment-selected addresses across saving, recurring visits, cleaner views and notifications; address tests pass.
+- [ ] Verify scheduling-to-cleaner workflow signed in — blocked: requesting user has no matching account/session; preview sign-in required.
 
 - [x] Open shifts row above the schedule dates (unassigned jobs; owners drag/assign, employees can claim)
 - [x] Dashboard: today's jobs from the actual schedule (replaces Ongoing / Completed screenshot tabs)

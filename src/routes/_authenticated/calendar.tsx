@@ -538,6 +538,7 @@ function SchedulePage() {
                                   <span>{fmtTimeTZ(j.scheduled_start, tz)}-{fmtTimeTZ(j.scheduled_end, tz)}</span>
                                 </div>
                                 <p className="uppercase font-semibold truncate">{label}</p>
+                                <p className="truncate" title={jobLocation(j).display}>{jobLocation(j).address ?? "Location needs review"}</p>
                               </>
                             );
                             if (!canManageSchedule) {
@@ -576,6 +577,7 @@ function SchedulePage() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-3" align="start">
                                   <p className="text-xs font-semibold mb-2 truncate">{label}</p>
+                                  <p className="text-sm whitespace-pre-wrap mb-3">{jobLocation(j).display}</p>
                                   {canManageSchedule && colorEditId === j.id && (
                                     <>
                                   <p className="text-[11px] text-muted-foreground mb-2">
