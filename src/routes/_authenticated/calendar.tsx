@@ -1,3 +1,4 @@
+import { jobLocation } from "@/lib/job-location";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -758,7 +759,7 @@ function SchedulePage() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{j.property?.label || j.notes || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{j.property?.address ?? j.client?.service_address ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{jobLocation(j).display}</p>
                 </div>
                 <div className="flex -space-x-1">
                   {j.assignees.slice(0, 3).map((a: any) => (
@@ -862,12 +863,12 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
   const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
   const selectedClient = clients.find((c: any) => c.id === clientId);
   const mainAddress: string = (selectedClient?.service_address ?? "").trim();
-  const norm = (a: string) => a.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const showMainOption = !!mainAddress && !properties.some((p) => norm(p.address).startsWith(norm(mainAddress).slice(0, 12)));
-  if (clientId && properties.length && !propertyId && !showMainOption) setPropertyId((properties.find((p) => p.is_primary) ?? properties[0]).id);
-  if (!clientId && propertyId) setPropertyId("");
-  // Drop a property that belongs to a previously selected client so the list is never blank.
-  if (clientId && propertyId && propsLoaded && !properties.some((p) => p.id === propertyId)) setPropertyId("");
+  const showMainOption = !!mainAddress && !properties.some((p) => p.address.trim() === mainAddress);
+  useEffect(() => {
+    if (!clientId || !propsLoaded) return;
+    if (propertyId === "__main" || (propertyId && properties.some((p) => p.id === propertyId))) return;
+    setPropertyId((properties.find((p) => p.is_primary) ?? properties[0])?.id ?? (mainAddress ? "__main" : ""));
+  }, [clientId, propsLoaded, properties, propertyId, mainAddress]);
   const [addingProp, setAddingProp] = useState(false);
   const [newPropLabel, setNewPropLabel] = useState("");
   const [newPropAddress, setNewPropAddress] = useState("");
@@ -925,6 +926,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   const doSave = async (force = false, addAnother = false) => {
     if (!clientId || !serviceId) { toast.error("Client and service required"); return; }
+    if (!propsLoaded || addingProp || (!selectedProperty && !mainAddress)) { toast.error("Select a service location before saving"); return; }
     setSaving(true);
     try {
       if (!force && assignees.length) {
@@ -939,6 +941,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
         data: {
           client_id: clientId,
           property_id: selectedProperty?.id ?? null,
+          service_address: selectedProperty?.address ?? mainAddress,
           service_type_id: serviceId,
           scheduled_start: startISO,
           scheduled_end: endISO,
@@ -1017,7 +1020,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
                 onChange={(e) => { if (e.target.value === "__new") setAddingProp(true); else setPropertyId(e.target.value); }}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
               >
-                {showMainOption && <option value="">Main address — {mainAddress}</option>}
+                {showMainOption && <option value="__main">Main address — {mainAddress}</option>}
                 {!showMainOption && !properties.length && <option value="">No address on file</option>}
                 {properties.map((p) => <option key={p.id} value={p.id}>{p.label} — {p.address.replace(/\n/g, ", ")}</option>)}
                 <option value="__new">+ Add another property…</option>

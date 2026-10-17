@@ -23,6 +23,10 @@ export type MyJobRow = {
   scheduled_start: string;
   scheduled_end: string;
   notes: string | null;
+  service_address: string | null;
+  service_location_label: string | null;
+  location_needs_review: boolean;
+  property: { label: string; address: string } | null;
   client: { id: string; first_name: string | null; last_name: string | null; service_address: string | null } | null;
   service: { id: string; name: string; color: string | null } | null;
   open_entry: { id: string; started_at: string; has_gps: boolean } | null;
@@ -90,7 +94,7 @@ export const listMyJobs = createServerFn({ method: "POST" })
 
     let q = context.supabase
       .from("jobs")
-      .select("id, status, scheduled_start, scheduled_end, notes, client:clients(id,first_name,last_name,service_address), service:service_types(id,name,color)")
+      .select("id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, notes, property:client_properties!jobs_property_id_fkey(label,address), client:clients(id,first_name,last_name,service_address), service:service_types(id,name,color)")
       .in("id", jobIds)
       .order("scheduled_start", { ascending: true });
     if (data.from) q = q.gte("scheduled_start", data.from);

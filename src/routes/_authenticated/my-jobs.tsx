@@ -1,3 +1,4 @@
+import { jobLocation } from "@/lib/job-location";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -141,7 +142,8 @@ function UpNextHero({
   onClockOutDay: () => void;
 }) {
   const t = useT();
-  const address = job.client?.service_address ?? null;
+  const location = jobLocation(job);
+  const address = location.address;
   const notes = collectStaffNotes(job);
   const isToday = new Date(job.scheduled_start).toDateString() === new Date().toDateString();
   const isOpen = !!job.on_site;
@@ -171,9 +173,10 @@ function UpNextHero({
                 className="inline-flex items-start gap-2 text-brand hover:underline"
               >
                 <Navigation className="size-4 mt-0.5 shrink-0" />
-                <span>{address}<span className="ml-2 text-xs text-muted-foreground">{t("Tap for directions")}</span></span>
+                <span>{location.display}<span className="ml-2 text-xs text-muted-foreground">{t("Tap for directions")}</span></span>
               </a>
             )}
+            {!address && <p className="text-destructive">Location needs review</p>}
           </div>
           {notes.length > 0 && (
             <div className="mt-4 rounded-lg bg-clay-100/70 p-3">
@@ -454,16 +457,16 @@ function TodayView() {
                         <StatusPill status={j.status} />
                       </div>
                       <p className="font-medium">{clientName(j.client)}</p>
-                      {j.client?.service_address && (
+                      {jobLocation(j).address ? (
                         <a
-                          href={directionsUrl(j.client.service_address)}
+                          href={directionsUrl(jobLocation(j).address ?? "")}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-brand hover:underline flex items-center gap-1 mt-1"
                         >
-                          <MapPin className="size-3" /> {j.client.service_address}
+                          <MapPin className="size-3" /> {jobLocation(j).display}
                         </a>
-                      )}
+                      ) : <p className="text-sm text-destructive">Location needs review</p>}
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
                       </p>

@@ -17,6 +17,8 @@ type SeriesJob = {
   tenant_id: string;
   client_id: string;
   property_id: string | null;
+  service_address: string | null;
+  service_location_label: string | null;
   service_type_id: string;
   scheduled_start: string;
   scheduled_end: string;
@@ -38,7 +40,7 @@ export async function extendRecurringSeries(
   let q = supabase
     .from("jobs")
     .select(
-      "id, tenant_id, client_id, property_id, service_type_id, scheduled_start, scheduled_end, price_cents, notes, assigned_to, recurrence_rule, recurrence_end, recurrence_group_id",
+      "id, tenant_id, client_id, property_id, service_address, service_location_label, service_type_id, scheduled_start, scheduled_end, price_cents, notes, assigned_to, recurrence_rule, recurrence_end, recurrence_group_id",
     )
     .not("recurrence_group_id", "is", null)
     .order("scheduled_start", { ascending: false })
@@ -66,7 +68,7 @@ export async function extendRecurringSeries(
 
   for (const job of latest.values()) {
     if (groups >= maxGroups) break;
-    if (!job.recurrence_rule) continue;
+    if (!job.recurrence_rule || !job.service_address) continue;
     const seriesEnd = job.recurrence_end ? new Date(job.recurrence_end + "T23:59:59Z").toISOString() : null;
     const throughISO =
       seriesEnd && new Date(seriesEnd).getTime() < new Date(horizonISO).getTime() ? seriesEnd : horizonISO;
@@ -103,6 +105,8 @@ export async function extendRecurringSeries(
           tenant_id: job.tenant_id,
           client_id: job.client_id,
           property_id: job.property_id,
+          service_address: job.service_address,
+          service_location_label: job.service_location_label,
           service_type_id: job.service_type_id,
           scheduled_start: startISO,
           scheduled_end: new Date(new Date(startISO).getTime() + dur).toISOString(),
