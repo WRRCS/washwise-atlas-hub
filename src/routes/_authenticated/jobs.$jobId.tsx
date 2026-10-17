@@ -129,6 +129,14 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
 
   const sop = (job.sop ?? []).slice().sort((a, b) => a.position - b.position);
   const done = sop.filter((s) => s.completed).length;
+  // Owners/managers reviewing a multi-cleaner job get one tab per cleaner.
+  const sopByEmployee = (job as { sopByEmployee?: { employee_id: string; name: string; items: typeof sop }[] | null }).sopByEmployee ?? null;
+  const isReviewer = canMessageClient; // owners/managers only
+  const cleanerTabs = isReviewer && (sopByEmployee?.length || job.assignees?.length)
+    ? (sopByEmployee?.length
+        ? sopByEmployee
+        : (job.assignees ?? []).map((a) => ({ employee_id: a.id, name: a.full_name ?? "Cleaner", items: [] as typeof sop })))
+    : null;
 
 
   const onToggle = async (id: string, completed: boolean) => {
@@ -603,13 +611,15 @@ function PhotosTab({ jobId, employeeId, readOnly }: { jobId: string; employeeId?
                   >
                     <Link2 className="size-3.5" />
                   </button>
-                  <button
-                    onClick={() => onDelete(p)}
-                    className="p-1 text-muted-foreground hover:text-destructive"
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() => onDelete(p)}
+                      className="p-1 text-muted-foreground hover:text-destructive"
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
               {p.caption && <p className="text-xs text-muted-foreground truncate">{p.caption}</p>}
