@@ -14,6 +14,7 @@ import { listClientProperties } from "@/lib/client-properties.functions";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
+  head: () => ({ meta: [{ title: "Schedule a cleaning | WRRCS" }, { name: "description", content: "Schedule a cleaning at a selected client property." }, { property: "og:title", content: "Schedule a cleaning | WRRCS" }, { property: "og:description", content: "Schedule a cleaning at a selected client property." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: NewJob,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
   notFoundComponent: () => <div className="p-8">Not found.</div>,
@@ -74,6 +75,7 @@ function NewJob() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId || !serviceId || !start) return;
+    if (!selectedProperty?.address && !selectedClient?.service_address) { toast.error("Select a service location before saving"); return; }
     setSaving(true);
     try {
       const effDate = effectiveStartDate(recur, startDate);
@@ -86,6 +88,7 @@ function NewJob() {
         data: {
           client_id: clientId,
           property_id: propertyId || null,
+           service_address: selectedProperty?.address ?? selectedClient?.service_address ?? undefined,
           service_type_id: serviceId,
           scheduled_start: startDate2.toISOString(),
           scheduled_end: endDate.toISOString(),
@@ -123,7 +126,7 @@ function NewJob() {
               </select>
             </Field>
             <Field label={properties.length > 1 ? "Location" : "Service address"}>
-              {properties.length > 1 ? (
+              {properties.length > 0 ? (
                 <select
                   value={propertyId}
                   onChange={(e) => setPropertyId(e.target.value)}

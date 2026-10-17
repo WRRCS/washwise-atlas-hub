@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Send runtime employee invitation emails synchronously through Lovable's managed email API; never enqueue them in the notifications table, because this project has no email dispatcher.
+- Store appointment location snapshots on jobs and copy them for recurrence/duplication; use job-location for display rather than client defaults, so unrelated client/property edits cannot redirect saved visits.
