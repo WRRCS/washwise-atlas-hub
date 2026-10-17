@@ -188,7 +188,11 @@ export const toggleSopItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string; completed: boolean }) => input)
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    // Employees may only toggle their OWN checklist copy; owners/managers may
+    // toggle any row. The RLS policies enforce this too — this just gives a
+    // clear error instead of a silent no-op.
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    let q = context.supabase
       .from("job_sop_items")
       .update({
         completed: data.completed,
@@ -196,7 +200,10 @@ export const toggleSopItem = createServerFn({ method: "POST" })
         completed_by: data.completed ? context.userId : null,
       })
       .eq("id", data.id);
+    if (!isMgr) q = q.eq("employee_id", context.userId);
+    const { data: updated, error } = await q.select("id");
     if (error) throw new Error(error.message);
+    if (!updated?.length) throw new Error("That checklist item isn't yours to change");
     return { ok: true };
   });
 
