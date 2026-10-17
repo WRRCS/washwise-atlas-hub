@@ -17,6 +17,7 @@ import { PushToggle } from "@/components/push-toggle";
 import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/my-jobs")({
+  head: () => ({ meta: [{ title: "My appointments | WRRCS" }, { name: "description", content: "View your assigned cleaning locations and workday." }, { property: "og:title", content: "My appointments | WRRCS" }, { property: "og:description", content: "View your assigned cleaning locations and workday." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MyJobsPage,
 });
 

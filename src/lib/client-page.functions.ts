@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { jobLocation } from "@/lib/job-location";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -25,7 +26,7 @@ export const listClientJobs = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase
       .from("jobs")
       .select(
-        "id, status, scheduled_start, scheduled_end, actual_start, actual_end, price_cents, notes, property:client_properties(id,label,address), service:service_types(id,name,kind)",
+        "id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, actual_start, actual_end, price_cents, notes, property:client_properties(id,label,address), service:service_types(id,name,kind)",
       )
       .eq("client_id", data.client_id)
       .order("scheduled_start", { ascending: false })
@@ -45,7 +46,7 @@ export const listClientJobs = createServerFn({ method: "POST" })
         map.set(l.job_id, arr);
       }
     }
-    return jobs.map((j) => ({ ...j, assignees: map.get(j.id) ?? [] })) as ClientJobRow[];
+    return jobs.map((j) => ({ ...j, property: j.property ? { ...j.property, label: jobLocation(j).label ?? j.property.label, address: jobLocation(j).address ?? "Location needs review" } : null, assignees: map.get(j.id) ?? [] })) as ClientJobRow[];
   });
 
 export type ClientSummary = {

@@ -10,6 +10,7 @@ import { format, startOfDay, endOfDay, addDays, startOfWeek, isSameDay } from "d
 import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/jobs/")({
+  head: () => ({ meta: [{ title: "Appointments | WRRCS" }, { name: "description", content: "Review scheduled cleanings and appointment locations." }, { property: "og:title", content: "Appointments | WRRCS" }, { property: "og:description", content: "Review scheduled cleanings and appointment locations." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: JobsPage,
   errorComponent: ({ error }) => (
     <AppShell><div className="p-8 text-sm text-destructive">Failed to load jobs: {(error as Error).message}</div></AppShell>

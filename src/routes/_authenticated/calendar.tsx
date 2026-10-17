@@ -29,6 +29,7 @@ import { JobDetailView } from "./jobs.$jobId";
 
 
 export const Route = createFileRoute("/_authenticated/calendar")({
+  head: () => ({ meta: [{ title: "Schedule | WRRCS" }, { name: "description", content: "View appointments and their selected service locations." }, { property: "og:title", content: "Schedule | WRRCS" }, { property: "og:description", content: "View appointments and their selected service locations." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: SchedulePage,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
