@@ -272,8 +272,63 @@ export const getJob = createServerFn({ method: "POST" })
     ]);
     const assignees: JobAssignee[] = (links ?? []).map((l: any) => l.profile).filter(Boolean);
     const canViewPricing = await resolveCanViewPricing(context);
+
+    // Per-cleaner checklists: rows with employee_id set belong to that cleaner;
+    // rows with employee_id NULL are the shared template / legacy records.
+    type SopItem = {
+      id: string; position: number; label: string; label_uk?: string | null;
+      completed: boolean; completed_at: string | null; completed_by: string | null;
+      employee_id: string | null;
+    };
+    let sopRows = ((job as { sop?: SopItem[] }).sop ?? []) as SopItem[];
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    let sopByEmployee: { employee_id: string; name: string; items: SopItem[] }[] | null = null;
+
+    if (isMgr) {
+      // Admin view: template rows stay as "shared", plus each cleaner's own copy.
+      const byEmp = new Map<string, SopItem[]>();
+      for (const r of sopRows) {
+        if (!r.employee_id) continue;
+        if (!byEmp.has(r.employee_id)) byEmp.set(r.employee_id, []);
+        byEmp.get(r.employee_id)!.push(r);
+      }
+      if (byEmp.size) {
+        const { data: profs } = await context.supabase
+          .from("profiles").select("id, full_name").in("id", [...byEmp.keys()]);
+        const names = new Map((profs ?? []).map((p) => [p.id, p.full_name ?? "Cleaner"]));
+        sopByEmployee = [...byEmp.entries()].map(([employee_id, items]) => ({
+          employee_id,
+          name: names.get(employee_id) ?? "Cleaner",
+          items,
+        }));
+      }
+      sopRows = sopRows.filter((r) => !r.employee_id);
+    } else {
+      // Cleaner view: provision their own copy from the template on first open,
+      // then show only their rows.
+      let mine = sopRows.filter((r) => r.employee_id === context.userId);
+      const template = sopRows.filter((r) => !r.employee_id);
+      if (!mine.length && template.length) {
+        const { data: inserted } = await context.supabase
+          .from("job_sop_items")
+          .insert(template.map((t) => ({
+            tenant_id: (job as { tenant_id: string }).tenant_id,
+            job_id: (job as { id: string }).id,
+            position: t.position,
+            label: t.label,
+            label_uk: t.label_uk ?? null,
+            employee_id: context.userId,
+          })) as never)
+          .select("id, position, label, label_uk, completed, completed_at, completed_by, employee_id");
+        mine = (inserted ?? []) as SopItem[];
+      }
+      sopRows = mine;
+    }
+
     return {
       ...job,
+      sop: sopRows,
+      sopByEmployee,
       client: jobClient,
       price_cents: canViewPricing ? job.price_cents : null,
       assignees,
