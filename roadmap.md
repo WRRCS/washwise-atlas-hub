@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Open saved SOP content directly inside appointments, with inline documents and phone-friendly controls.
-- [ ] Verify one-tap SOP viewing with an existing cleaner's assigned appointment.
+- [x] Open saved SOP content directly inside appointments, with inline documents and phone-friendly controls.
+- [x] Verify one-tap SOP viewing signed in as Barbra on her Fern appointment: actual four-page saved PDF renders on phone, zoom works, Close returns to the same appointment; seven unit tests pass.
 
 - [x] Preserve appointment-selected addresses across saving, recurring visits, cleaner views and notifications; address tests pass.
 - [ ] Verify scheduling-to-cleaner workflow signed in — blocked: requesting user has no matching account/session; preview sign-in required.
