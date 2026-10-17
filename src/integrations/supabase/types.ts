@@ -1451,6 +1451,7 @@ export type Database = {
           completed: boolean
           completed_at: string | null
           completed_by: string | null
+          employee_id: string | null
           id: string
           job_id: string
           label: string
@@ -1462,6 +1463,7 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           completed_by?: string | null
+          employee_id?: string | null
           id?: string
           job_id: string
           label: string
@@ -1473,6 +1475,7 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           completed_by?: string | null
+          employee_id?: string | null
           id?: string
           job_id?: string
           label?: string

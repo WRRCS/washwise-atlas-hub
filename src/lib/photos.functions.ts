@@ -215,13 +215,21 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
 
 export const listJobPhotos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ job_id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) =>
+    z.object({ job_id: z.string().uuid(), employee_id: z.string().uuid().optional() }).parse(input),
+  )
   .handler(async ({ data, context }): Promise<JobPhotoRow[]> => {
-    const { data: rows, error } = await context.supabase
+    // Each cleaner sees only their own photos. Owners/managers see everyone's,
+    // and can ask for one cleaner's collection with employee_id.
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    let q = context.supabase
       .from("job_photos")
       .select("id, job_id, storage_path, caption, photo_type, taken_at, uploaded_at, uploaded_by")
       .eq("job_id", data.job_id)
       .order("uploaded_at", { ascending: true });
+    if (!isMgr) q = q.eq("uploaded_by", context.userId);
+    else if (data.employee_id) q = q.eq("uploaded_by", data.employee_id);
+    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
     const uploaderIds = Array.from(new Set((rows ?? []).map((r) => r.uploaded_by).filter((v): v is string => !!v)));
