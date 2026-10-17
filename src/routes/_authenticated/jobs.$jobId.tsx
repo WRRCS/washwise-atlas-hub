@@ -200,32 +200,100 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
               <TabsTrigger value="gps" className="rounded-lg border-2 border-warning/40 bg-warning/10 text-warning font-semibold px-3 py-2 data-[state=active]:bg-warning data-[state=active]:text-primary-foreground">Location</TabsTrigger>
             </TabsList>
             <TabsContent value="sop" className="mt-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-semibold">SOP Checklist</h3>
-                <span className="text-xs text-muted-foreground">{done} / {sop.length} complete</span>
-              </div>
-              {sop.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No checklist items for this service.</p>
+              {cleanerTabs ? (
+                <div className="space-y-5">
+                  {cleanerTabs.map((c) => {
+                    const items = c.items.slice().sort((a, b) => a.position - b.position);
+                    const cDone = items.filter((s) => s.completed).length;
+                    return (
+                      <section key={c.employee_id} className="rounded-lg ring-1 ring-border p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="text-sm font-semibold">{c.name}</h3>
+                          <span className="text-xs text-muted-foreground">
+                            {items.length ? `${cDone} / ${items.length} complete` : "Hasn't started the checklist"}
+                          </span>
+                        </div>
+                        {items.length > 0 && (
+                          <ul className="space-y-2.5">
+                            {items.map((s) => (
+                              <li key={s.id} className="flex items-start gap-3">
+                                <span
+                                  className={`size-4 mt-0.5 rounded border-2 shrink-0 grid place-items-center ${
+                                    s.completed ? "border-brand bg-brand" : "border-input"
+                                  }`}
+                                >
+                                  {s.completed && <Check className="size-3 text-brand-foreground" strokeWidth={3} />}
+                                </span>
+                                <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                                  {pick(s.label, (s as { label_uk?: string | null }).label_uk)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </section>
+                    );
+                  })}
+                  {sop.length > 0 && (
+                    <section className="rounded-lg ring-1 ring-dashed ring-border p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-semibold text-muted-foreground">Shared (older records)</h3>
+                        <span className="text-xs text-muted-foreground">{done} / {sop.length} complete</span>
+                      </div>
+                      <ul className="space-y-2.5">
+                        {sop.map((s) => (
+                          <li key={s.id} className="flex items-start gap-3">
+                            <span className={`size-4 mt-0.5 rounded border-2 shrink-0 grid place-items-center ${s.completed ? "border-brand bg-brand" : "border-input"}`}>
+                              {s.completed && <Check className="size-3 text-brand-foreground" strokeWidth={3} />}
+                            </span>
+                            <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>{pick(s.label, (s as { label_uk?: string | null }).label_uk)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                </div>
               ) : (
-                <ul className="space-y-3">
-                  {sop.map((s) => (
-                    <li key={s.id} className="flex items-start gap-3">
-                      <button
-                        onClick={() => onToggle(s.id, !s.completed)}
-                        className={`size-4 mt-0.5 rounded border-2 shrink-0 grid place-items-center transition-colors ${
-                          s.completed ? "border-brand bg-brand" : "border-input hover:border-brand/50"
-                        }`}
-                      >
-                        {s.completed && <Check className="size-3 text-brand-foreground" strokeWidth={3} />}
-                      </button>
-                      <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>{pick(s.label, (s as { label_uk?: string | null }).label_uk)}</span>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-semibold">SOP Checklist</h3>
+                    <span className="text-xs text-muted-foreground">{done} / {sop.length} complete</span>
+                  </div>
+                  {sop.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No checklist items for this service.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {sop.map((s) => (
+                        <li key={s.id} className="flex items-start gap-3">
+                          <button
+                            onClick={() => onToggle(s.id, !s.completed)}
+                            className={`size-4 mt-0.5 rounded border-2 shrink-0 grid place-items-center transition-colors ${
+                              s.completed ? "border-brand bg-brand" : "border-input hover:border-brand/50"
+                            }`}
+                          >
+                            {s.completed && <Check className="size-3 text-brand-foreground" strokeWidth={3} />}
+                          </button>
+                          <span className={`text-sm ${s.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>{pick(s.label, (s as { label_uk?: string | null }).label_uk)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </TabsContent>
             <TabsContent value="photos" className="mt-4">
-              <PhotosTab jobId={jobId} />
+              {cleanerTabs ? (
+                <div className="space-y-6">
+                  {cleanerTabs.map((c) => (
+                    <section key={c.employee_id}>
+                      <h3 className="text-sm font-semibold mb-3">{c.name}</h3>
+                      <PhotosTab jobId={jobId} employeeId={c.employee_id} readOnly />
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <PhotosTab jobId={jobId} />
+              )}
             </TabsContent>
             <TabsContent value="gps" className="mt-4">
               <GpsTab jobId={jobId} />
