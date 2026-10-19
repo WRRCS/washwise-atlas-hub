@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Improve schedule time/location readability and verify long addresses and multiple cleaners on desktop/mobile.
+
 - [x] Add individual, selected, cleaner-only and all-cleaner photo downloads with compatible image files and progress.
 - [x] Verify actual fixture image/ZIP downloads, exact selections, cleaner folders, JPEG conversion and phone-sized save controls; seven unit tests pass.
 - [ ] Verify downloads on an existing two-cleaner appointment and confirm originals unchanged — blocked: requesting user has no matching account/session; preview sign-in required.

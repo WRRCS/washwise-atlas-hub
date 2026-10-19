@@ -13,3 +13,4 @@
 - Store appointment location snapshots on jobs and copy them for recurrence/duplication; use job-location for display rather than client defaults, so unrelated client/property edits cannot redirect saved visits.
 - Use the shared SopViewer for cleaner SOP access and dynamically import PDF.js only in the browser; render private signed documents locally so mobile viewing needs no external viewer or download.
 - Use shared browser-only photo export helpers with permission-filtered signed URLs; ZIP entries retain uploader identity and no photo blobs are persisted, so downloads cannot bypass cleaner separation or alter originals.
+- Use ScheduleAppointmentDetails for schedule time/location text and snapshot-based labels, with natural height and contrast-selected semantic text colors on saved appointment backgrounds, so compact/list views remain consistent.

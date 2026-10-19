@@ -1,4 +1,5 @@
 import { jobLocation } from "@/lib/job-location";
+import { ScheduleAppointmentDetails, scheduleColorText } from "@/components/schedule-appointment-details";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -419,7 +420,7 @@ function SchedulePage() {
         <div className="w-full px-4 md:px-6 py-4">
           <ZoomPanSurface>
             {/* Header row */}
-            <div className="grid w-full" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(0, 1fr))` }}>
+            <div className="grid w-full min-w-[1480px]" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
               <div className="sticky left-0 z-20 px-2 py-2 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
                 <Users className="size-4" /> Team members ({cleaners.length})
@@ -436,7 +437,7 @@ function SchedulePage() {
             </div>
 
             {/* Open shifts row — jobs nobody is assigned to yet */}
-            <div className="grid w-full border-t border-border/60 bg-accent/10" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(0, 1fr))` }}>
+            <div className="grid w-full min-w-[1480px] border-t border-border/60 bg-accent/10" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
               <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                 <div className="size-9 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>
                 <div className="min-w-0">
@@ -454,10 +455,10 @@ function SchedulePage() {
                         key={j.id}
                         draggable={canManageSchedule}
                         onDragStart={(e) => e.dataTransfer.setData("application/x-atlas-shift", JSON.stringify({ id: j.id, srcDayKey: dayKey, open: true, startISO: j.scheduled_start, endISO: j.scheduled_end }))}
-                        className="rounded-md border border-dashed border-border bg-card px-1.5 py-1 text-[10px] leading-tight"
+                        className="rounded-md border border-dashed border-border bg-card text-card-foreground px-2 py-2 text-xs leading-snug"
                       >
-                        <p className="font-medium truncate">{j.property?.label || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Job"}</p>
-                        <p className="text-muted-foreground tabular-nums">{fmtTimeTZ(j.scheduled_start, tz)}–{fmtTimeTZ(j.scheduled_end, tz)}</p>
+                        <ScheduleAppointmentDetails job={j} tz={tz} compact />
+                        <p className="mt-1 text-xs text-muted-foreground break-words">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Job"}</p>
                         {!canManageSchedule ? (
                           <button
                             className="mt-1 w-full rounded bg-brand text-brand-foreground py-0.5 font-medium disabled:opacity-50"
@@ -535,10 +536,9 @@ function SchedulePage() {
                                 <div className="flex items-center gap-1 font-semibold">
                                   {j.status === "completed" && <CheckCircle2 aria-label="Completed" className="size-3.5 shrink-0" />}
                                   {conflict && <AlertTriangle className="size-3 shrink-0" />}
-                                  <span>{fmtTimeTZ(j.scheduled_start, tz)}-{fmtTimeTZ(j.scheduled_end, tz)}</span>
                                 </div>
-                                <p className="uppercase font-semibold truncate">{label}</p>
-                                <p className="truncate" title={jobLocation(j).display}>{jobLocation(j).address ?? "Location needs review"}</p>
+                                <ScheduleAppointmentDetails job={j} tz={tz} compact />
+                                {!jobLocation(j).label && <p className="mt-1 text-xs font-medium break-words">{label}</p>}
                               </>
                             );
                             if (!canManageSchedule) {
@@ -547,7 +547,7 @@ function SchedulePage() {
                                   key={j.id}
                                   type="button"
                                   onClick={() => setOpenJobId(j.id)}
-                                  className={`w-full text-left block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
+                                  className={`w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                   style={{ backgroundColor: c }}
                                   title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
                                 >
@@ -568,7 +568,7 @@ function SchedulePage() {
                                       );
                                       ev.dataTransfer.effectAllowed = "move";
                                     }}
-                                    className={`w-full text-left block rounded-md px-2 py-1 text-[10px] leading-tight text-white cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-white/60 opacity-90" : ""}`}
+                                    className={`w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                     style={{ backgroundColor: c }}
                                     title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
                                   >
@@ -576,8 +576,8 @@ function SchedulePage() {
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-3" align="start">
-                                  <p className="text-xs font-semibold mb-2 truncate">{label}</p>
-                                  <p className="text-sm whitespace-pre-wrap mb-3">{jobLocation(j).display}</p>
+                                  <div className="mb-3"><ScheduleAppointmentDetails job={j} tz={tz} /></div>
+                                  <p className="text-xs text-muted-foreground mb-2 break-words">{label}</p>
                                   {canManageSchedule && colorEditId === j.id && (
                                     <>
                                   <p className="text-[11px] text-muted-foreground mb-2">
@@ -752,17 +752,16 @@ function SchedulePage() {
           {jobs.length === 0 && <p className="text-sm text-muted-foreground">No jobs scheduled this week.</p>}
           {jobs.map((j: any) => (
             <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} className="block bg-card rounded-lg ring-1 ring-black/5 p-4 hover:ring-brand/30 transition">
-              <div className="flex items-center gap-4">
-                <div className="w-24 shrink-0">
+              <div className="flex flex-wrap items-start gap-3 sm:gap-4">
+                <div className="w-full sm:w-28 shrink-0">
                   <p className="text-xs text-muted-foreground">{fmtDateTZ(j.scheduled_start, tz)}</p>
-                  <p className="text-sm font-medium tabular-nums">{fmtTimeTZ(j.scheduled_start, tz)}</p>
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: (j.service?.color ?? "#eee") + "22", color: j.service?.color ?? "#333" }}>
                   {j.service?.name}
                 </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{j.property?.label || j.notes || [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{jobLocation(j).display}</p>
+                <div className="w-full sm:w-auto flex-1 min-w-0 text-card-foreground">
+                  <ScheduleAppointmentDetails job={j} tz={tz} />
+                  <p className="mt-1 text-xs text-muted-foreground break-words">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
                 </div>
                 <div className="flex -space-x-1">
                   {j.assignees.slice(0, 3).map((a: any) => (
