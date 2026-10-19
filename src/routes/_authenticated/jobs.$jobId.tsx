@@ -294,6 +294,10 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                       <PhotosTab jobId={jobId} employeeId={c.employee_id} readOnly />
                     </section>
                   ))}
+                  <section>
+                    <h3 className="text-sm font-semibold mb-3">All photos (add or remove)</h3>
+                    <PhotosTab jobId={jobId} />
+                  </section>
                 </div>
               ) : (
                 <PhotosTab jobId={jobId} />

@@ -252,6 +252,10 @@ export const Route = createFileRoute("/api/public/hooks/turno/$tenantId")({
             scheduled_end: end.toISOString(),
             status: "scheduled",
             price_cents: svc.default_price_cents ?? 0,
+            // Appointments require a saved location; flag for review when Turno omits the address.
+            service_address: reservation.property_address?.trim() || reservation.property_name?.trim() || "Turno property (address needed)",
+            service_location_label: reservation.property_name ?? null,
+            location_needs_review: !reservation.property_address?.trim(),
             external_source: "turno",
             external_id: reservation.reservation_id,
             external_metadata: {
