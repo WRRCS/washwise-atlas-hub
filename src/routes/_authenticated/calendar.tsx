@@ -482,7 +482,7 @@ function SchedulePage() {
             {cleaners.map((emp: any) => {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
               return (
-                <div key={emp.id} className="grid w-full border-t border-border/60" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(0, 1fr))` }}>
+                <div key={emp.id} className="grid w-full min-w-[1480px] border-t border-border/60" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
                   <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                     <div className="size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
                       {initials(emp.full_name)}
@@ -721,7 +721,7 @@ function SchedulePage() {
             })}
 
             {/* Wages / hours footer */}
-            <div className="grid w-full border-t-2 border-border" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(0, 1fr))` }}>
+            <div className="grid w-full min-w-[1480px] border-t-2 border-border" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
               <div className="sticky left-0 z-10 px-2 py-2 bg-clay-50 border-r border-border/60">
                 {canSeeWages && <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>}
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
