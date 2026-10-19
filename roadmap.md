@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Replace ZIP photo exports with individual JPEG/PNG downloads and verify selected/all photo files.
+- [x] Bulk photo download = one flat ZIP (all / this cleaner / selected) with progress and retry of missing photos.
+- [ ] Verify a real 40-photo appointment ZIP signed in — blocked: needs preview sign-in.
 
 - [x] Improve existing week-grid, schedule-list and day-queue readability with 15–16px wrapped times and snapshot locations; browser fixtures verify long addresses/unit numbers on desktop/mobile and location tests pass.
 - [ ] Verify actual signed-in schedule actions and multi-cleaner appointments — blocked: no active requesting-user session; preview sign-in required. No month schedule view currently exists.
