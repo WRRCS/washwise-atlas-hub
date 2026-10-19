@@ -27,6 +27,9 @@ import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X, Link2 } from "lucide-react";
 import { createPhotoShareLink } from "@/lib/photo-share.functions";
 import { PhotoShareDialog } from "@/components/photo-share-dialog";
+import { usePhotoDownloads } from "@/components/photo-download-controls";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { PhotoExportContext } from "@/lib/photo-downloads";
 import { toast } from "sonner";
 
 
@@ -291,16 +294,16 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                   {cleanerTabs.map((c) => (
                     <section key={c.employee_id}>
                       <h3 className="text-sm font-semibold mb-3">{c.name}</h3>
-                      <PhotosTab jobId={jobId} employeeId={c.employee_id} readOnly />
+                      <PhotosTab jobId={jobId} employeeId={c.employee_id} readOnly exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
                     </section>
                   ))}
                   <section>
                     <h3 className="text-sm font-semibold mb-3">All photos (add or remove)</h3>
-                    <PhotosTab jobId={jobId} />
+                    <PhotosTab jobId={jobId} allCleaners exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
                   </section>
                 </div>
               ) : (
-                <PhotosTab jobId={jobId} />
+                <PhotosTab jobId={jobId} allCleaners={isReviewer} exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
               )}
             </TabsContent>
             <TabsContent value="gps" className="mt-4">
@@ -510,7 +513,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   );
 }
 
-function PhotosTab({ jobId, employeeId, readOnly }: { jobId: string; employeeId?: string; readOnly?: boolean }) {
+function PhotosTab({ jobId, employeeId, readOnly, exportContext, allCleaners = false }: { jobId: string; employeeId?: string; readOnly?: boolean; exportContext: PhotoExportContext; allCleaners?: boolean }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listJobPhotos);
   const delFn = useServerFn(deleteJobPhoto);
@@ -564,6 +567,7 @@ function PhotosTab({ jobId, employeeId, readOnly }: { jobId: string; employeeId?
     queryKey: ["job-photos", jobId, employeeId ?? "all"],
     queryFn: () => listFn({ data: { job_id: jobId, employee_id: employeeId } }),
   });
+  const downloads = usePhotoDownloads(photos, exportContext, allCleaners);
 
   const onDelete = async (p: JobPhotoRow) => {
     if (!confirm("Delete this photo?")) return;
@@ -645,6 +649,7 @@ function PhotosTab({ jobId, employeeId, readOnly }: { jobId: string; employeeId?
     <>
       {!readOnly && uploader}
       <PhotoShareDialog link={shareLink} onClose={() => setShareLink(null)} />
+      {downloads.toolbar}
       {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
       {(["before", "after", "damage", "other"] as PhotoType[]).map((group) => {
         const groupPhotos = photos.filter((p) => p.photo_type === group);
@@ -677,6 +682,10 @@ function PhotosTab({ jobId, employeeId, readOnly }: { jobId: string; employeeId?
               )}
             </button>
             <div className="p-2 space-y-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-xs"><Checkbox aria-label={`Select photo ${p.id}`} checked={downloads.selected.has(p.id)} disabled={downloads.busy} onCheckedChange={() => downloads.toggle(p.id)} /> Select</label>
+                {downloads.singleButton(p)}
+              </div>
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${typeBadge[p.photo_type]}`}>
                   {p.photo_type}
@@ -711,21 +720,16 @@ function PhotosTab({ jobId, employeeId, readOnly }: { jobId: string; employeeId?
       </section>
         );
       })}
-      {lightbox && (
-        <div className="fixed inset-0 z-50 bg-black/80 grid place-items-center p-4" onClick={() => setLightbox(null)}>
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 text-white/80 hover:text-white"
-            aria-label="Close"
-          >
-            <X className="size-6" />
-          </button>
-          <div className="max-w-4xl max-h-full flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
-            {lightbox.url && <img src={lightbox.url} alt={lightbox.caption ?? ""} className="max-h-[80vh] rounded-lg" />}
-            {lightbox.caption && <p className="text-white text-sm text-center">{lightbox.caption}</p>}
-          </div>
-        </div>
-      )}
+      <Dialog open={!!lightbox} onOpenChange={open => { if (!open) setLightbox(null); }}>
+        <DialogContent className="max-w-4xl max-h-[92dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Job photo</DialogTitle></DialogHeader>
+          {lightbox?.url && <img src={lightbox.url} alt={lightbox.caption ?? "Job photo"} className="max-h-[65dvh] w-full object-contain" />}
+          {lightbox?.caption && <p className="text-sm">{lightbox.caption}</p>}
+          {lightbox && downloads.singleButton(lightbox)}
+          {downloads.toolbar}
+          <DialogClose asChild><Button variant="outline">Close photo</Button></DialogClose>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
