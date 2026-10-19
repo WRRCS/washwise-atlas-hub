@@ -294,11 +294,11 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                   {cleanerTabs.map((c) => (
                     <section key={c.employee_id}>
                       <h3 className="text-sm font-semibold mb-3">{c.name}</h3>
-                      <PhotosTab jobId={jobId} employeeId={c.employee_id} readOnly exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
+                      <PhotosTab jobId={jobId} employeeId={c.employee_id} cleanerName={c.name} readOnly exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
                     </section>
                   ))}
                   <section>
-                    <h3 className="text-sm font-semibold mb-3">All photos (add or remove)</h3>
+                    <h3 className="text-sm font-semibold mb-3">All cleaners’ photos (download, add or remove)</h3>
                     <PhotosTab jobId={jobId} allCleaners exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
                   </section>
                 </div>
@@ -513,7 +513,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   );
 }
 
-function PhotosTab({ jobId, employeeId, readOnly, exportContext, allCleaners = false }: { jobId: string; employeeId?: string; readOnly?: boolean; exportContext: PhotoExportContext; allCleaners?: boolean }) {
+function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, allCleaners = false }: { jobId: string; employeeId?: string; cleanerName?: string; readOnly?: boolean; exportContext: PhotoExportContext; allCleaners?: boolean }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listJobPhotos);
   const delFn = useServerFn(deleteJobPhoto);
@@ -567,7 +567,7 @@ function PhotosTab({ jobId, employeeId, readOnly, exportContext, allCleaners = f
     queryKey: ["job-photos", jobId, employeeId ?? "all"],
     queryFn: () => listFn({ data: { job_id: jobId, employee_id: employeeId } }),
   });
-  const downloads = usePhotoDownloads(photos, exportContext, allCleaners);
+  const downloads = usePhotoDownloads(photos, exportContext, { cleanerName, allCleaners });
 
   const onDelete = async (p: JobPhotoRow) => {
     if (!confirm("Delete this photo?")) return;
