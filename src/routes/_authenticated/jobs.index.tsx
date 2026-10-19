@@ -1,4 +1,6 @@
 import { jobLocation } from "@/lib/job-location";
+import { ScheduleAppointmentDetails } from "@/components/schedule-appointment-details";
+import { useBusinessTz } from "@/hooks/use-business-tz";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -34,6 +36,7 @@ function fmtCents(c: number | null) {
 }
 
 function JobsPage() {
+  const tz = useBusinessTz();
   const [selectedDay, setSelectedDay] = useState(() => startOfDay(new Date()));
   const fetchJobs = useServerFn(listJobs);
   const permsFn = useServerFn(myPermissions);
@@ -103,22 +106,20 @@ function JobsPage() {
                   params={{ jobId: job.id }}
                   className="block group bg-card p-5 rounded-xl ring-1 ring-black/5 hover:ring-brand/30 transition-all cursor-pointer"
                 >
-                  <div className="flex justify-between items-start mb-4 gap-4">
-                    <div className="min-w-0">
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
+                    <div className="min-w-0 flex-1 text-card-foreground">
                       <span className="inline-block px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[10px] font-medium uppercase tracking-wider mb-2">
                         {job.service?.name ?? "Service"}
                       </span>
-                      <h3 className="text-lg font-medium truncate">{jobLocation(job).display}</h3>
-                      <p className="text-sm text-muted-foreground truncate">
-                        Client: {fmtClient(job.client)} · {format(new Date(job.scheduled_start), "h:mm a")} — {format(new Date(job.scheduled_end), "h:mm a")}
-                      </p>
+                      <ScheduleAppointmentDetails job={job} tz={tz} />
+                      <p className="mt-2 text-sm text-muted-foreground break-words">Client: {fmtClient(job.client)}</p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-start gap-2 min-w-0 sm:max-w-[35%]">
                       <div className="text-right mr-2">
                         <p className="text-xs text-muted-foreground">Cleaner</p>
-                        <p className="text-sm font-medium">{job.assignees.length ? job.assignees.map((a) => a.full_name).join(", ") : "Unassigned"}</p>
+                        <p className="text-sm font-medium break-words">{job.assignees.length ? job.assignees.map((a) => a.full_name).join(", ") : "Unassigned"}</p>
                       </div>
-                      <div className="size-10 rounded-full bg-clay-200 grid place-items-center text-xs font-medium">
+                      <div className="size-10 shrink-0 rounded-full bg-clay-200 grid place-items-center text-xs font-medium">
                         {(job.assignees[0]?.full_name ?? "?").slice(0, 1).toUpperCase()}
                       </div>
                     </div>

@@ -42,12 +42,16 @@
   --color-clay-200: var(--clay-200);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-schedule-ink: var(--schedule-ink);
+  --color-schedule-paper: var(--schedule-paper);
 
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 :root {
+  --schedule-ink: #000000;
+  --schedule-paper: #ffffff;
   --radius: 0.75rem;
 
   /* clay/warm neutrals */

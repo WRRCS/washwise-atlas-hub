@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Improve existing week-grid, schedule-list and day-queue readability with 15–16px wrapped times and snapshot locations; browser fixtures verify long addresses/unit numbers on desktop/mobile and location tests pass.
+- [ ] Verify actual signed-in schedule actions and multi-cleaner appointments — blocked: no active requesting-user session; preview sign-in required. No month schedule view currently exists.
+
 - [x] Add individual, selected, cleaner-only and all-cleaner photo downloads with compatible image files and progress.
 - [x] Verify actual fixture image/ZIP downloads, exact selections, cleaner folders, JPEG conversion and phone-sized save controls; seven unit tests pass.
 - [ ] Verify downloads on an existing two-cleaner appointment and confirm originals unchanged — blocked: requesting user has no matching account/session; preview sign-in required.
