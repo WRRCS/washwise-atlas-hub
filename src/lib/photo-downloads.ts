@@ -1,5 +1,3 @@
-import JSZip from "jszip";
-
 export type DownloadPhoto = { id: string; storage_path: string; url: string | null; uploaded_by: string | null; uploader_name: string | null };
 export type PhotoExportContext = { date: string; property: string };
 export function safePhotoName(value: string) {
@@ -42,15 +40,14 @@ async function jpegForTurno(blob: Blob, extension: string) {
 }
 
 export async function preparePhotoExport(photos: DownloadPhoto[], context: PhotoExportContext, options: {
-  zip: boolean; groupByCleaner?: boolean; jpeg?: boolean;
+  jpeg?: boolean;
   onProgress?: (done: number, total: number) => void;
   fetchPhoto?: (photo: DownloadPhoto) => Promise<Blob>;
 }) {
   if (!photos.length) throw new Error("No photos selected");
-  const archive = new JSZip();
   const failures: string[] = [];
-  let cursor = 0, done = 0, included = 0;
-  let single: { blob: Blob; filename: string } | undefined;
+  let cursor = 0, done = 0;
+  const files: { blob: Blob; filename: string }[] = [];
   const fetchPhoto = options.fetchPhoto ?? (async (photo: DownloadPhoto) => {
     if (!photo.url) throw new Error("No image URL available");
     const response = await fetch(photo.url, { cache: "no-store" });
@@ -69,31 +66,31 @@ export async function preparePhotoExport(photos: DownloadPhoto[], context: Photo
           blob = await jpegForTurno(blob, extension); extension = "jpg";
         }
         const filename = photoFilename(p, context, extension);
-        const folder = `${safePhotoName(p.uploader_name ?? "Legacy-unattributed")}_${safePhotoName(p.uploaded_by ?? "unknown")}`;
-        if (options.zip) archive.file(options.groupByCleaner ? `${folder}/${filename}` : filename, await blob.arrayBuffer());
-        else single = { blob, filename };
-        included++;
+        files.push({ blob, filename });
       } catch (error) {
         failures.push(`${photoFilename(p, context, "image")}: ${error instanceof Error ? error.message : "Download failed"}`);
       } finally { options.onProgress?.(++done, photos.length); }
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   }));
-  if (!included) throw new Error(`No photos could be downloaded. ${failures.join("; ")}`);
-  if (!options.zip && single) return { ...single, failures, included };
-  if (failures.length) archive.file("INCOMPLETE-download.txt", `Missing photos (${failures.length}):\n${failures.join("\n")}`);
-  const blob = await archive.generateAsync({ type: "blob", compression: "STORE", streamFiles: true });
-  return { blob, filename: `${safePhotoName(context.date)}_${safePhotoName(context.property)}_${options.groupByCleaner ? "all-cleaners" : "photos"}${failures.length ? "_INCOMPLETE" : ""}.zip`, failures, included };
+  if (!files.length) throw new Error(`No photos could be downloaded. ${failures.join("; ")}`);
+  return { files, failures, included: files.length };
 }
 
 export async function deliverPhotoFile(blob: Blob, filename: string) {
-  const file = new File([blob], filename, { type: blob.type });
-  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: filename }); return; }
+  return deliverPhotoFiles([{ blob, filename }]);
+}
+
+export async function deliverPhotoFiles(items: { blob: Blob; filename: string }[]) {
+  const files = items.map(item => new File([item.blob], item.filename, { type: item.blob.type }));
+  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files })) {
+    try { await navigator.share({ files, title: "WRRCS photos" }); return; }
     catch (e) { if (e instanceof DOMException && e.name === "AbortError") return; }
   }
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  for (const item of items) {
+    const url = URL.createObjectURL(item.blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = item.filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
 }

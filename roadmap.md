@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Replace ZIP photo exports with individual JPEG/PNG downloads and verify selected/all photo files.
+
 - [x] Improve existing week-grid, schedule-list and day-queue readability with 15–16px wrapped times and snapshot locations; browser fixtures verify long addresses/unit numbers on desktop/mobile and location tests pass.
 - [ ] Verify actual signed-in schedule actions and multi-cleaner appointments — blocked: no active requesting-user session; preview sign-in required. No month schedule view currently exists.
 
