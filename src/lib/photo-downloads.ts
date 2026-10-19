@@ -1,10 +1,16 @@
 export type DownloadPhoto = { id: string; storage_path: string; url: string | null; uploaded_by: string | null; uploader_name: string | null };
 export type PhotoExportContext = { date: string; property: string };
+export type PreparedPhoto = { blob: Blob; filename: string; photoId: string };
 export function safePhotoName(value: string) {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "Unknown";
 }
 export function photoFilename(p: DownloadPhoto, context: PhotoExportContext, extension: string) {
   return `${safePhotoName(context.date)}_${safePhotoName(context.property)}_${safePhotoName(p.uploader_name ?? "Legacy-unattributed")}_${safePhotoName(p.id)}.${extension}`;
+}
+/** ZIP name uses the property and appointment date, e.g. "Fern-Rental_2026-10-19_photos.zip". */
+export function zipFilename(context: PhotoExportContext, cleanerName?: string) {
+  const cleaner = cleanerName ? `_${safePhotoName(cleanerName)}` : "";
+  return `${safePhotoName(context.property)}_${safePhotoName(context.date)}${cleaner}_photos.zip`;
 }
 export function imageFormat(bytes: Uint8Array): { extension: string; type: string } | null {
   if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return { extension: "jpg", type: "image/jpeg" };
@@ -22,7 +28,7 @@ export function imageFormat(bytes: Uint8Array): { extension: string; type: strin
 async function jpegForTurno(blob: Blob, extension: string) {
   if (extension === "heic") {
     const { default: convert } = await import("heic2any");
-    const result = await convert({ blob, toType: "image/jpeg", quality: 1 });
+    const result = await convert({ blob, toType: "image/jpeg", quality: 0.95 });
     const first = Array.isArray(result) ? result[0] : result;
     if (!first) throw new Error("Could not convert this image to JPEG");
     return first;
@@ -34,8 +40,9 @@ async function jpegForTurno(blob: Blob, extension: string) {
     canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Image conversion unavailable");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0);
-    return await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error("JPEG conversion failed")), "image/jpeg", 1));
+    return await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error("JPEG conversion failed")), "image/jpeg", 0.95));
   } finally { URL.revokeObjectURL(url); }
 }
 
@@ -46,15 +53,17 @@ export async function preparePhotoExport(photos: DownloadPhoto[], context: Photo
 }) {
   if (!photos.length) throw new Error("No photos selected");
   const failures: string[] = [];
+  const failedPhotos: DownloadPhoto[] = [];
   let cursor = 0, done = 0;
-  const files: { blob: Blob; filename: string }[] = [];
+  const files: PreparedPhoto[] = [];
   const fetchPhoto = options.fetchPhoto ?? (async (photo: DownloadPhoto) => {
     if (!photo.url) throw new Error("No image URL available");
     const response = await fetch(photo.url, { cache: "no-store" });
     if (!response.ok) throw new Error(`Image request failed (${response.status})`);
     return response.blob();
   });
-  await Promise.all(Array.from({ length: Math.min(3, photos.length) }, async () => {
+  options.onProgress?.(0, photos.length);
+  await Promise.all(Array.from({ length: Math.min(4, photos.length) }, async () => {
     while (cursor < photos.length) {
       const p = photos[cursor++];
       try {
@@ -65,32 +74,49 @@ export async function preparePhotoExport(photos: DownloadPhoto[], context: Photo
         if ((options.jpeg && extension !== "jpg") || !["jpg", "png"].includes(extension)) {
           blob = await jpegForTurno(blob, extension); extension = "jpg";
         }
-        const filename = photoFilename(p, context, extension);
-        files.push({ blob, filename });
+        files.push({ blob, filename: photoFilename(p, context, extension), photoId: p.id });
       } catch (error) {
+        failedPhotos.push(p);
         failures.push(`${photoFilename(p, context, "image")}: ${error instanceof Error ? error.message : "Download failed"}`);
       } finally { options.onProgress?.(++done, photos.length); }
       await new Promise(resolve => setTimeout(resolve, 0));
     }
   }));
+  // Keep the original photo order so filenames line up with the app.
+  const order = new Map(photos.map((p, i) => [p.id, i]));
+  files.sort((a, b) => (order.get(a.photoId) ?? 0) - (order.get(b.photoId) ?? 0));
   if (!files.length) throw new Error(`No photos could be downloaded. ${failures.join("; ")}`);
-  return { files, failures, included: files.length };
+  return { files, failures, failedPhotos, included: files.length };
+}
+
+/** One ZIP with every image at the top level (no subfolders) so they can be selected together. */
+export async function buildPhotoZip(files: { blob: Blob; filename: string }[]) {
+  const { default: JSZip } = await import("jszip");
+  const zip = new JSZip();
+  const used = new Set<string>();
+  for (const f of files) {
+    let name = f.filename, n = 2;
+    while (used.has(name)) name = f.filename.replace(/(\.[^.]+)$/, `-${n++}$1`);
+    used.add(name);
+    zip.file(name, f.blob, { binary: true });
+  }
+  const blob = await zip.generateAsync({ type: "blob", compression: "STORE", mimeType: "application/zip" });
+  return blob;
+}
+
+/** Triggers exactly one browser download for the given file. */
+export function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export async function deliverPhotoFile(blob: Blob, filename: string) {
-  return deliverPhotoFiles([{ blob, filename }]);
-}
-
-export async function deliverPhotoFiles(items: { blob: Blob; filename: string }[]) {
-  const files = items.map(item => new File([item.blob], item.filename, { type: item.blob.type }));
-  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files })) {
-    try { await navigator.share({ files, title: "WRRCS photos" }); return; }
+  const file = new File([blob], filename, { type: blob.type });
+  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: filename }); return; }
     catch (e) { if (e instanceof DOMException && e.name === "AbortError") return; }
   }
-  for (const item of items) {
-    const url = URL.createObjectURL(item.blob);
-    const anchor = document.createElement("a");
-    anchor.href = url; anchor.download = item.filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 30_000);
-  }
+  triggerDownload(blob, filename);
 }
