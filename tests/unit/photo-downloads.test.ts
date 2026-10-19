@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { imageFormat, photoFilename, preparePhotoExport, type DownloadPhoto } from "../../src/lib/photo-downloads";
+import JSZip from "jszip";
+import { buildPhotoZip, imageFormat, photoFilename, preparePhotoExport, zipFilename, type DownloadPhoto } from "../../src/lib/photo-downloads";
 
 const photos: DownloadPhoto[] = [
   { id: "photo-1", storage_path: "a/1", url: "signed-1", uploaded_by: "cleaner-a", uploader_name: "Cleaner A" },
@@ -26,7 +27,7 @@ describe("Turno photo exports", () => {
     expect(files).toHaveLength(2);
     expect(files.every(n => n.filename.includes("Cleaner-A"))).toBe(true);
   });
-  it("returns every cleaner's photos as separate PNG files, never an archive", async () => {
+  it("keeps every cleaner's photos as PNG files", async () => {
     const result = await preparePhotoExport(photos, context, { fetchPhoto });
     expect(result.files).toHaveLength(3);
     expect(result.files.every(f => f.filename.endsWith(".png") && f.blob.type === "image/png")).toBe(true);
@@ -42,6 +43,24 @@ describe("Turno photo exports", () => {
   it("rejects webpages masquerading as image files", async () => {
     expect(imageFormat(new TextEncoder().encode("<!DOCTYPE html>"))).toBeNull();
     await expect(preparePhotoExport([photos[0]], context, { fetchPhoto: async () => new Blob(["<html>sign in</html>"]) })).rejects.toThrow("No photos could be downloaded");
+  });
+  it("packages 40 photos into one flat ZIP of valid images with cleaner names", async () => {
+    const many: DownloadPhoto[] = Array.from({ length: 40 }, (_, i) => ({ id: `p${i}`, storage_path: `x/${i}`, url: "u", uploaded_by: i % 2 ? "b" : "a", uploader_name: i % 2 ? "Cleaner B" : "Cleaner A" }));
+    const { files, failures } = await preparePhotoExport(many, context, { fetchPhoto });
+    expect(failures).toHaveLength(0);
+    const zip = await JSZip.loadAsync(await (await buildPhotoZip(files)).arrayBuffer());
+    const names = Object.keys(zip.files);
+    expect(names).toHaveLength(40);
+    expect(names.every(n => !n.includes("/") && n.endsWith(".png") && /Cleaner-[AB]/.test(n))).toBe(true);
+    const first = await zip.file(names[0])!.async("uint8array");
+    expect(imageFormat(first)?.type).toBe("image/png");
+  });
+  it("names the ZIP after the property and appointment date", () => {
+    expect(zipFilename(context)).toBe("Fern-Rental_2026-10-19_photos.zip");
+  });
+  it("reports which photos are missing so they can be retried", async () => {
+    const result = await preparePhotoExport(photos, context, { fetchPhoto: async p => { if (p.id === "photo-3") throw new Error("expired"); return fetchPhoto(); } });
+    expect(result.failedPhotos.map(p => p.id)).toEqual(["photo-3"]);
   });
   it("sanitizes path characters without losing unique photo identity", () => {
     expect(photoFilename(photos[0], { date: "2026-10-19", property: "../../Fern\\Unit:2" }, "jpg")).toBe("2026-10-19_Fern-Unit-2_Cleaner-A_photo-1.jpg");
