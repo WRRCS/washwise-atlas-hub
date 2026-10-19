@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Add individual, selected, cleaner-only and all-cleaner photo downloads with compatible image files and progress.
-- [ ] Verify actual image/ZIP contents and originals remain unchanged using existing photos.
+- [x] Add individual, selected, cleaner-only and all-cleaner photo downloads with compatible image files and progress.
+- [x] Verify actual fixture image/ZIP downloads, exact selections, cleaner folders, JPEG conversion and phone-sized save controls; seven unit tests pass.
+- [ ] Verify downloads on an existing two-cleaner appointment and confirm originals unchanged — blocked: requesting user has no matching account/session; preview sign-in required.
 
 - [x] Open saved SOP content directly inside appointments, with inline documents and phone-friendly controls.
 - [x] Verify one-tap SOP viewing signed in as Barbra on her Fern appointment: actual four-page saved PDF renders on phone, zoom works, Close returns to the same appointment; seven unit tests pass.
