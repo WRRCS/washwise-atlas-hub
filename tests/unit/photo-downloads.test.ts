@@ -9,12 +9,12 @@ const photos: DownloadPhoto[] = [
 ];
 const context = { date: "2026-10-19", property: "Fern / Rental" };
 const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 42]);
-const fetchPhoto = async () => new Blob([bytes], { type: "application/octet-stream" });
+const fetchPhoto = async (p?: DownloadPhoto) => new Blob([bytes, new TextEncoder().encode(p?.id ?? "")], { type: "application/octet-stream" });
 describe("Turno photo exports", () => {
   it("keeps original image bytes and accurate content type for single downloads", async () => {
     const result = await preparePhotoExport([photos[0]], context, { fetchPhoto });
     expect(result.files[0].blob.type).toBe("image/png");
-    expect(new Uint8Array(await result.files[0].blob.arrayBuffer())).toEqual(bytes);
+    expect(new Uint8Array(await result.files[0].blob.arrayBuffer())).toEqual(new Uint8Array(await (await fetchPhoto(photos[0])).arrayBuffer()));
     expect(result.files[0].filename).toBe("2026-10-19_Fern-Rental_Cleaner-A_photo-1.png");
   });
   it("contains exactly the selected images", async () => {
@@ -35,7 +35,7 @@ describe("Turno photo exports", () => {
     expect(result.files.filter(f => f.filename.includes("Cleaner-B"))).toHaveLength(1);
   });
   it("identifies failed photos while keeping successful individual images", async () => {
-    const result = await preparePhotoExport(photos, context, { fetchPhoto: async p => { if (p.id === "photo-2") throw new Error("expired"); return fetchPhoto(); } });
+    const result = await preparePhotoExport(photos, context, { fetchPhoto: async p => { if (p.id === "photo-2") throw new Error("expired"); return fetchPhoto(p); } });
     expect(result.files).toHaveLength(2);
     expect(result.failures[0]).toContain("photo-2");
     expect(result.files.every(f => f.filename.endsWith(".png"))).toBe(true);
@@ -52,17 +52,33 @@ describe("Turno photo exports", () => {
     const names = Object.keys(zip.files);
     expect(names).toHaveLength(40);
     expect(names.every(n => !n.includes("/") && n.endsWith(".png") && /Cleaner-[AB]/.test(n))).toBe(true);
-    const first = await zip.file(names[0])!.async("uint8array");
+    const entry = zip.file(names[0]);
+    if (!entry) throw new Error("Missing ZIP entry");
+    const first = await entry.async("uint8array");
     expect(imageFormat(first)?.type).toBe("image/png");
   });
   it("names the ZIP after the property and appointment date", () => {
     expect(zipFilename(context)).toBe("Fern-Rental_2026-10-19_photos.zip");
   });
   it("reports which photos are missing so they can be retried", async () => {
-    const result = await preparePhotoExport(photos, context, { fetchPhoto: async p => { if (p.id === "photo-3") throw new Error("expired"); return fetchPhoto(); } });
+    const result = await preparePhotoExport(photos, context, { fetchPhoto: async p => { if (p.id === "photo-3") throw new Error("expired"); return fetchPhoto(p); } });
     expect(result.failedPhotos.map(p => p.id)).toEqual(["photo-3"]);
   });
   it("sanitizes path characters without losing unique photo identity", () => {
     expect(photoFilename(photos[0], { date: "2026-10-19", property: "../../Fern\\Unit:2" }, "jpg")).toBe("2026-10-19_Fern-Unit-2_Cleaner-A_photo-1.jpg");
+  });
+  it("exports duplicate IDs and storage references only once", async () => {
+    const result = await preparePhotoExport([photos[0], photos[0], { ...photos[0], id: "copy" }, photos[1]], context, { fetchPhoto });
+    expect(result.files.map(f => f.photoId)).toEqual(["photo-1", "photo-2"]);
+  });
+  it("removes byte-identical copies but keeps different images", async () => {
+    const result = await preparePhotoExport(photos, context, { fetchPhoto: p => fetchPhoto(p.id === "photo-2" ? photos[0] : p) });
+    expect(result.files.map(f => f.photoId)).toEqual(["photo-1", "photo-3"]);
+  });
+  it("deduplicates byte-identical ZIP entries without mutating prepared files", async () => {
+    const files = [{ blob: await fetchPhoto(photos[0]), filename: "a.png" }, { blob: await fetchPhoto(photos[0]), filename: "b.png" }];
+    const zip = await JSZip.loadAsync(await (await buildPhotoZip(files)).arrayBuffer());
+    expect(Object.keys(zip.files)).toEqual(["a.png"]);
+    expect(files).toHaveLength(2);
   });
 });

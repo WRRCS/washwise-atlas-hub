@@ -1391,6 +1391,7 @@ export type Database = {
       }
       job_photos: {
         Row: {
+          attribution_review_reason: string | null
           caption: string | null
           created_at: string
           id: string
@@ -1404,6 +1405,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          attribution_review_reason?: string | null
           caption?: string | null
           created_at?: string
           id?: string
@@ -1417,6 +1419,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          attribution_review_reason?: string | null
           caption?: string | null
           created_at?: string
           id?: string

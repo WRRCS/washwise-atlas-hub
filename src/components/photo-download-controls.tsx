@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Loader2, RotateCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { buildPhotoZip, deliverPhotoFile, preparePhotoExport, triggerDownload, uniquePhotoReferences, zipFilename, type DownloadPhoto, type PhotoExportContext, type PreparedPhoto } from "@/lib/photo-downloads";
 
 type ZipState = {
