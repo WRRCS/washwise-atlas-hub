@@ -234,6 +234,12 @@ export const getJob = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!job) return null;
+    const { data: ownConfirmation, error: confirmationError } = await context.supabase
+      .from("job_sop_confirmations").select("confirmed_at")
+      .eq("job_id", data.id).eq("employee_id", context.userId).maybeSingle();
+    if (confirmationError) throw new Error(confirmationError.message);
+    job.sop_confirmed_at = ownConfirmation?.confirmed_at ?? null;
+    job.sop_confirmed_by = ownConfirmation ? context.userId : null;
     const contact = job.client_id
       ? await clientContact(context.supabase, job.client_id)
       : null;
