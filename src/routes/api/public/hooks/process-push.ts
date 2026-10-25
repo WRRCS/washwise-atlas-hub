@@ -41,7 +41,7 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { sendWebPush } = await import("@/lib/push.server");
-        const { enqueueActionReminders, currentActionReminder } = await import("@/lib/cleaner-action-reminders.server");
+        const { enqueueActionReminders, currentActionReminder, claimPushDelivery } = await import("@/lib/cleaner-action-reminders.server");
         await enqueueActionReminders(supabaseAdmin);
 
         // Fetch batch of pending push notifications
@@ -67,10 +67,7 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
         for (const n of rows) {
           try {
             // At-most-once claim: do not retry uncertain deliveries after a process crash.
-            const {data: claimed,error: claimError} = await supabaseAdmin.from("notifications")
-              .update({delivery_claimed_at:new Date().toISOString()}).eq("id",n.id).eq("status","pending").is("delivery_claimed_at",null).select("id");
-            if(claimError)throw new Error(claimError.message);
-            if(!claimed?.length)continue;
+            if(!await claimPushDelivery(supabaseAdmin,n.id))continue;
             let action = n.action_reminder_key ? await currentActionReminder(supabaseAdmin,n) : null;
             if(n.action_reminder_key && !action) {
               await supabaseAdmin.from("notifications").update({recalled_at:new Date().toISOString(),error:"suppressed: action complete, lunch, disabled, expired or appointment changed"}).eq("id",n.id);

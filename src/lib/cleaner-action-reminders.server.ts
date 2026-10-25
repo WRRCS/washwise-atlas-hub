@@ -1,7 +1,7 @@
 import { actionReminder, type ActionReminderKind } from "@/lib/cleaner-action-reminders";
 type Db = any;
 export async function loadActionState(db:Db,jobId:string,userId:string) {
-  const [{data:job,error},{data:profile},{data:settings},{data:links},{data:clock},{data:other},{data:visits}] = await Promise.all([
+  const results = await Promise.all([
     db.from("jobs").select("id,tenant_id,scheduled_start,scheduled_end,status,assigned_to,service_location_label,service_address").eq("id",jobId).maybeSingle(),
     db.from("profiles").select("tenant_id,is_active").eq("id",userId).maybeSingle(),
     db.from("cleaner_action_reminder_settings").select("*").eq("user_id",userId).maybeSingle(),
@@ -10,7 +10,9 @@ export async function loadActionState(db:Db,jobId:string,userId:string) {
     db.from("work_clock_entries").select("kind").eq("user_id",userId).is("ended_at",null),
     db.from("job_visits").select("id").eq("job_id",jobId).eq("employee_id",userId).limit(1),
   ]);
-  if(error)throw new Error(error.message);
+  const failure=results.find(r=>r.error);
+  if(failure)throw new Error(failure.error.message);
+  const [{data:job},{data:profile},{data:settings},{data:links},{data:clock},{data:other},{data:visits}] = results;
   if(!job || !settings || profile?.tenant_id!==job.tenant_id || settings.tenant_id!==job.tenant_id)return null;
   return {job,settings,userId,assigned:job.assigned_to===userId || !!links?.length,active:!!profile.is_active,clockedIn:!!clock?.length || !!other?.some((r:any)=>r.kind==="work"),onLunch:!!other?.some((r:any)=>r.kind==="lunch"),arrived:!!visits?.length};
 }
@@ -31,6 +33,11 @@ export async function enqueueActionReminders(db:Db,now=Date.now()) {
     }
   }
   return queued;
+}
+export async function claimPushDelivery(db:Db,id:string) {
+  const {data,error}=await db.from("notifications").update({delivery_claimed_at:new Date().toISOString()}).eq("id",id).eq("status","pending").is("delivery_claimed_at",null).select("id");
+  if(error)throw new Error(error.message);
+  return !!data?.length;
 }
 export async function currentActionReminder(db:Db,n:{recipient_id:string;payload:Record<string,unknown>;action_reminder_key:string|null},now=Date.now()) {
   if(typeof n.payload.job_id!=="string" || !["clock_in","arrival"].includes(String(n.payload.action)))return null;

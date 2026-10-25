@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Add configurable assigned-cleaner clock-in and arrival reminders using configured delivery only.
-- [ ] Verify action suppression, changing assignments/schedules, lunch, timezone and duplicate prevention without staff sends.
+- [x] Added opt-in per-cleaner clock-in/arrival timing in Notifications, configured push only, direct existing-action links, live eligibility checks and unique/atomic delivery claims. Existing arrival also clocks in when needed; scheduled clock-in already records arrival. No workflow replaced.
+- [x] Verified settings save/reload as Barbra with sends disabled; simulated test accounts cover lunch, active work, saved arrival, cancellation, completion, reassignment, rescheduling, Pacific DST and concurrent duplicate prevention. No real notifications created or sent; actual new-reminder device receipt intentionally unverified.
 
 - [x] Add explicit unpaid lunch, described unscheduled work and exclusive active timers; database mutations restricted to authenticated atomic actions.
 - [x] Add admin lunch correction, same-record job association and separate daily/weekly paid/lunch totals; payroll and productivity include unassigned work.

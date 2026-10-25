@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from "vitest";
-import {enqueueActionReminders,currentActionReminder} from "../../src/lib/cleaner-action-reminders.server";
+import {enqueueActionReminders,currentActionReminder,claimPushDelivery} from "../../src/lib/cleaner-action-reminders.server";
 const now=Date.parse("2026-10-25T17:10:00Z");
 function fakeDb(){
   const records:Record<string,any[]>={
@@ -13,6 +13,11 @@ function fakeDb(){
   }};return{db,records};
 }
 describe("no-send test cleaner delivery",()=>{
+  it("concurrent dispatchers claim a pending reminder only once",async()=>{
+    let claimed=false;
+    const db={from:()=>{let patch:any;const q:any={update(p:any){patch=p;return q;},eq(){return q;},is(){return q;},select(){return q;},then(resolve:any){const data=claimed?[]:[{id:"test-reminder"}];if(!claimed)claimed=!!patch.delivery_claimed_at;return Promise.resolve({data,error:null}).then(resolve);}};return q;}};
+    expect(await Promise.all([claimPushDelivery(db,"test-reminder"),claimPushDelivery(db,"test-reminder")])).toEqual([true,false]);
+  });
   it("concurrent scheduling creates exactly one reminder per action with no network requests",async()=>{
     const network=vi.spyOn(globalThis,"fetch").mockRejectedValue(new Error("No real notification sends allowed"));
     try{const {db,records}=fakeDb();await Promise.all([enqueueActionReminders(db,now),enqueueActionReminders(db,now)]);
