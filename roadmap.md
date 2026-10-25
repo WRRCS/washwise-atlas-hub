@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Add grouped owner/admin photo-upload emails, recipient controls, snapshot attribution, duplicate protection and delivery history.
+- [ ] Verify grouped email delivery only to the explicitly authorized controlled mailbox info@washrinserepeatcleaning.com.
+
 - [x] Bind new uploads to their authenticated cleaner and occurrence; isolate account caches, flag 1,102 legacy records lacking independent uploader evidence, simplify controls, and deduplicate exports without changing originals. No reliably conflicting legacy storage owners found; no guessed reassignment.
 - [x] Verify existing Barbra/Dalton photo separation signed in as each: 48 Barbra images and 17 Dalton images; one valid unique ZIP each, exact two-image selections, individual image downloads, and duplicate-click protection. 17 unit tests pass; all 1,238 originals remain.
 - [ ] Verify new uploads from both cleaners end-to-end — blocked: live test uploads would trigger staff notifications; no test sends authorized. Ownership binding tested locally instead.
