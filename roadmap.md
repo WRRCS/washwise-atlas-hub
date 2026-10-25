@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Place unscheduled clock-in in the employee main clock area, keep admin review tools, and label entries Unscheduled work.
+- [ ] Verify as an employee with no appointments: described clock-in, lunch, resume, clock-out, duplicate prevention, and employee/admin totals.
+
 - [x] Fixed page-local employee-ID expansion: collapsed on entry/return, independent toggles, unmounted collapsed supplies and isolated controls. Verified signed in as Zoe on desktop/mobile: inspect, save unchanged supplies, refresh without reopening another employee, full collapse and return reset; no duplicate sections or page errors. Three tests pass.
 
 - [x] Removed verified text/source-PDF duplication without deleting files; preserve unknown or visual-only attachment instructions and deduplicate repeated attachment identities. Signed-in Fern displays the readable SOP and acknowledgment once on desktop/mobile; BBWSD document-only SOP renders one five-page preview on both. Per-cleaner/occurrence confirmations replace shared progress; save/reload and cleanup verified. Twelve tests pass.
