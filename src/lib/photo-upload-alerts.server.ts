@@ -56,9 +56,12 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
   if (batchReadError) throw new Error(batchReadError.message);
   const batches = (batchEvents ?? []).map(event => JSON.parse(event.description) as { photoIds:string[]; completed_at:string });
   const completedRows = batches.map(batch => ({ id:batch.photoIds.join(','),uploaded_at:batch.completed_at,uploaded_by:uploaderId,job_id:jobId,photoIds:batch.photoIds }));
+  const { data: delivered, error: deliveredError } = await supabaseAdmin.from('activity_log').select('description').eq('tenant_id',tenantId).eq('entity_id',jobId).eq('actor_id',uploaderId).in('action_type',['system:photo-upload-email-sent','system:photo-upload-email-suppressed']);
+  if (deliveredError) throw new Error(deliveredError.message);
+  const alreadyNotified = new Set((delivered ?? []).flatMap(event => (JSON.parse(event.description).photoIds ?? []) as string[]));
   const { sendTemplateEmail } = await import('./email-templates/send-email');
   for (const groupedBatches of groupPhotoUploads(completedRows)) {
-    const ids = [...new Set(groupedBatches.flatMap(batch => batch.photoIds))].filter(id => rows.some(row => row.id === id));
+    const ids = [...new Set(groupedBatches.flatMap(batch => batch.photoIds))].filter(id => !alreadyNotified.has(id) && rows.some(row => row.id === id));
     if (!ids.length) continue;
     const key = photoAlertKey(tenantId,jobId,uploaderId,ids);
     // Deterministic primary key prevents concurrent claims and refresh duplicates.
@@ -66,21 +69,21 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
     const { error: claim } = await supabaseAdmin.from('activity_log').insert({ id,tenant_id:tenantId,actor_id:uploaderId,entity_type:'job',entity_id:jobId,action_type:'system:photo-upload-email-sending',description:JSON.stringify({ status:'sending',photoCount:ids.length }) });
     if (claim?.code === '23505') {
       const { data: previous } = await supabaseAdmin.from('activity_log').select('action_type,created_at').eq('id',id).single();
-      if (!previous || previous.action_type === 'system:photo-upload-email-sent' || previous.action_type === 'system:photo-upload-email-suppressed' || (previous.action_type === 'system:photo-upload-email-sending' && Date.now() - Date.parse(previous.created_at) < 120_000)) continue;
+      if (!previous || previous.action_type === 'system:photo-upload-email-sent' || previous.action_type === 'system:photo-upload-email-suppressed' || Date.now() - Date.parse(previous.created_at) < 120_000) continue;
       const { data: reclaimed } = await supabaseAdmin.from('activity_log').update({ action_type:'system:photo-upload-email-sending',created_at:new Date().toISOString() }).eq('id',id).eq('action_type',previous.action_type).eq('created_at',previous.created_at).select('id').maybeSingle();
       if (!reclaimed) continue;
     } else if (claim) throw new Error(claim.message);
     const templateData = photoAlertData({ ...job, client:clientJob?.client },cleaner?.full_name || 'Cleaner',ids.length);
     let status = 'failed'; let failure:string|null = null;
     try {
-      const result = await sendTemplateEmail('photo-upload',recipient.email,{ templateData,idempotencyKey:key });
+      const result = await sendTemplateEmail('photo-upload',recipient.email,{ templateData,idempotencyKey:`photo-upload-${id}` });
       status = result.sent ? 'sent' : 'suppressed';
       if (!result.sent) failure = result.reason;
     } catch (error) {
       failure = error instanceof Error ? error.message : 'Email send failed';
     }
     const masked = recipient.email.replace(/^(.).+(@.*)$/,'$1***$2');
-    const { error } = await supabaseAdmin.from('activity_log').update({ action_type:`system:photo-upload-email-${status}`, description:JSON.stringify({ ...templateData,status,recipient:masked,error:failure }) }).eq('id',id);
+    const { error } = await supabaseAdmin.from('activity_log').update({ action_type:`system:photo-upload-email-${status}`, description:JSON.stringify({ ...templateData,status,photoIds:ids,recipient:masked,error:failure }) }).eq('id',id);
     if (error) console.error('Photo email delivery log failed',error.message);
   }
 }
