@@ -1,9 +1,10 @@
 # Roadmap
 
-- [ ] Explain the controlled sample email's nonexistent appointment link and verify real appointment photo-section links without another unsolicited send.
+- [x] Explained the sample's nonexistent appointment link; signed-in Zoe verification confirms a real appointment opens directly to Photos, and signed-out links preserve the destination through sign-in. No additional emails sent.
 
-- [ ] Add grouped owner/admin photo-upload emails, recipient controls, snapshot attribution, duplicate protection and delivery history.
-- [ ] Verify grouped email delivery only to the explicitly authorized controlled mailbox info@washrinserepeatcleaning.com.
+- [x] Added grouped owner/admin photo-upload emails, single server-validated recipient, protected settings and delivery history, selected property attribution, whole slow-batch grouping, stable provider keys and durable duplicate claims. Defaults off until an owner selects a recipient and enables.
+- [x] Controlled sample accepted twice with the same key produced one managed sent event; Leslie confirmed receipt at info@washrinserepeatcleaning.com. Local isolated delivery tests verify grouping, attribution, failures and concurrent duplicate prevention. Owner settings save/read verified signed in as Zoe without enabling sends.
+- [ ] Verify a new real cleaner upload through email delivery — blocked: real uploads also trigger staff push alerts, which Leslie prohibited during this test. Controlled email and isolated saved-batch tests verified instead.
 
 - [x] Bind new uploads to their authenticated cleaner and occurrence; isolate account caches, flag 1,102 legacy records lacking independent uploader evidence, simplify controls, and deduplicate exports without changing originals. No reliably conflicting legacy storage owners found; no guessed reassignment.
 - [x] Verify existing Barbra/Dalton photo separation signed in as each: 48 Barbra images and 17 Dalton images; one valid unique ZIP each, exact two-image selections, individual image downloads, and duplicate-click protection. 17 unit tests pass; all 1,238 originals remain.

@@ -52,6 +52,12 @@ describe('saved photo delivery',()=>{
   it('no saved photos means no notification',async()=>{
     await notifySavedPhotoBatch(db,'tenant','job','cleaner',['not-saved']);expect(state.sends).toHaveLength(0);
   });
+  it('groups separate completed single-photo events and counts each new image once',async()=>{
+    state.photos=[0,8,15].map((seconds,i)=>({id:`p${i}`,job_id:'job',uploaded_by:'cleaner',uploaded_at:new Date(Date.parse('2026-10-24T10:00:00Z')+seconds*1000).toISOString()}));
+    state.logs.push(...state.photos.slice(0,2).map(photo=>({id:`batch-${photo.id}`,tenant_id:'tenant',actor_id:'cleaner',entity_id:'job',action_type:'system:photo-upload-email-batch',created_at:'2026-10-24T10:00:00Z',description:JSON.stringify({photoIds:[photo.id],completed_at:photo.uploaded_at})})));
+    await notifySavedPhotoBatch(db,'tenant','job','cleaner',['p2']);
+    expect(state.sends).toHaveLength(1);expect(state.sends[0][2].templateData.photoCount).toBe(3);
+  });
   it('disabled preferences send nothing',async()=>{
     state.logs[0].description=JSON.stringify({enabled:false,recipient_id:'owner'});
     await notifySavedPhotoBatch(db,'tenant','job','cleaner',['p0']);expect(state.sends).toHaveLength(0);
