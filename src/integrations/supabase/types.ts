@@ -1438,6 +1438,7 @@ export type Database = {
         Row: {
           attribution_review_reason: string | null
           caption: string | null
+          cleaner_assignment_id: string | null
           created_at: string
           id: string
           job_id: string
@@ -1452,6 +1453,7 @@ export type Database = {
         Insert: {
           attribution_review_reason?: string | null
           caption?: string | null
+          cleaner_assignment_id?: string | null
           created_at?: string
           id?: string
           job_id: string
@@ -1466,6 +1468,7 @@ export type Database = {
         Update: {
           attribution_review_reason?: string | null
           caption?: string | null
+          cleaner_assignment_id?: string | null
           created_at?: string
           id?: string
           job_id?: string

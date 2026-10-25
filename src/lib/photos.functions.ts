@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ownsPhotoUpload, photoUploadPrefix } from "@/lib/photo-ownership";
+import { ownsPhotoUpload, photoUploadPrefix, photoReadScope } from "@/lib/photo-ownership";
 
 export type PhotoType = "before" | "after" | "other" | "damage";
 
@@ -251,19 +251,20 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
 export const listJobPhotos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ job_id: z.string().uuid(), employee_id: z.string().uuid().optional() }).parse(input),
+    z.object({ job_id: z.string().uuid(), employee_id: z.string().uuid().optional(), all_cleaners: z.boolean().default(false) }).parse(input),
   )
   .handler(async ({ data, context }): Promise<JobPhotoRow[]> => {
     // Each cleaner sees only their own photos. Owners/managers see everyone's,
     // and can ask for one cleaner's collection with employee_id.
-    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    const { data: isMgr, error: roleError } = await context.supabase.rpc("is_owner_or_manager" as never);
+    if (roleError) throw new Error(roleError.message);
+    const employeeId = photoReadScope(context.userId, !!isMgr, data.employee_id, data.all_cleaners);
     let q = context.supabase
       .from("job_photos")
       .select("id, job_id, storage_path, caption, photo_type, taken_at, uploaded_at, uploaded_by, attribution_review_reason")
       .eq("job_id", data.job_id)
       .order("uploaded_at", { ascending: true });
-    if (!isMgr) q = q.eq("uploaded_by", context.userId);
-    else if (data.employee_id) q = q.eq("uploaded_by", data.employee_id);
+    if (employeeId) q = q.eq("uploaded_by", employeeId);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
