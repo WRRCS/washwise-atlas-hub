@@ -140,9 +140,10 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   const sopByEmployee = (job as { sopByEmployee?: { employee_id: string; name: string; items: typeof sop }[] | null }).sopByEmployee ?? null;
   const isReviewer = canMessageClient; // owners/managers only
   const cleanerTabs = isReviewer && (sopByEmployee?.length || job.assignees?.length)
-    ? (sopByEmployee?.length
-        ? sopByEmployee
-        : (job.assignees ?? []).map((a) => ({ employee_id: a.id, name: a.full_name ?? "Cleaner", items: [] as typeof sop })))
+    ? Array.from(new Map([
+        ...(job.assignees ?? []).map(a => [a.id, { employee_id: a.id, name: a.full_name ?? "Cleaner", items: [] as typeof sop }] as const),
+        ...(sopByEmployee ?? []).map(c => [c.employee_id, c] as const),
+      ]).values())
     : null;
 
 
