@@ -46,7 +46,7 @@ export const savePhotoEmailSettings = createServerFn({ method:'POST' }).middlewa
   });
 
 /** Runs inside a live upload request, never a dispatcher or fire-and-forget task. */
-export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenantId:string, jobId:string, uploaderId:string) {
+export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenantId:string, jobId:string, uploaderId:string, batchPhotoIds:string[]) {
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
   const settings = await readSettings(supabaseAdmin,tenantId);
   if (!settings.enabled || !settings.recipient_id) return;
@@ -55,6 +55,14 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
   const { data: roles } = await supabaseAdmin.from('user_roles').select('id').eq('tenant_id',tenantId).eq('user_id',settings.recipient_id).in('role',['owner','manager']).limit(1).maybeSingle();
   const { data: recipient } = await supabaseAdmin.from('profiles').select('email').eq('tenant_id',tenantId).eq('id',settings.recipient_id).eq('is_active',true).maybeSingle();
   if (!roles || !recipient?.email) return;
+  const { data: savedBatch, error: batchError } = await db.from('job_photos').select('id,uploaded_at').eq('job_id',jobId).eq('uploaded_by',uploaderId).in('id',batchPhotoIds).gte('uploaded_at',settings.starts_at).order('uploaded_at');
+  if (batchError) throw new Error(batchError.message);
+  if (!savedBatch?.length) return;
+  const batchLast = savedBatch.at(-1);
+  if (!batchLast) return;
+  const batchEvent = await photoAlertClaimId(`batch:${photoAlertKey(tenantId,jobId,uploaderId,savedBatch.map(p => p.id))}`);
+  const { error: batchRecordError } = await supabaseAdmin.from('activity_log').insert({ id:batchEvent,tenant_id:tenantId,actor_id:uploaderId,entity_type:'job',entity_id:jobId,action_type:'photo-upload-email-batch',description:JSON.stringify({ photoIds:savedBatch.map(p => p.id),completed_at:batchLast.uploaded_at }) });
+  if (batchRecordError && batchRecordError.code !== '23505') throw new Error(batchRecordError.message);
   // Keep this authenticated request alive until the uploader has been quiet.
   // Concurrent requests re-read the same saved rows and use the same provider key.
   let rows: { id:string; uploaded_at:string; uploaded_by:string|null; job_id:string }[] = [];
@@ -74,15 +82,25 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
   const { data: clientJob } = await supabaseAdmin.from('jobs').select('client:clients(first_name,last_name)').eq('id',jobId).eq('tenant_id',tenantId).single();
   const { data: cleaner } = await db.from('profiles').select('full_name').eq('id',uploaderId).single();
   if (!job) return;
+  const { data: batchEvents, error: batchReadError } = await supabaseAdmin.from('activity_log').select('description').eq('tenant_id',tenantId).eq('entity_id',jobId).eq('actor_id',uploaderId).eq('action_type','photo-upload-email-batch').gte('created_at',settings.starts_at);
+  if (batchReadError) throw new Error(batchReadError.message);
+  const batches = (batchEvents ?? []).map(event => JSON.parse(event.description) as { photoIds:string[]; completed_at:string });
+  const completedRows = batches.map(batch => ({ id:batch.photoIds.join(','),uploaded_at:batch.completed_at,uploaded_by:uploaderId,job_id:jobId,photoIds:batch.photoIds }));
   const { sendTemplateEmail } = await import('./email-templates/send-email');
-  for (const group of groupPhotoUploads(rows)) {
-    const key = photoAlertKey(tenantId,jobId,uploaderId,group.map(p => p.id));
+  for (const groupedBatches of groupPhotoUploads(completedRows)) {
+    const ids = [...new Set(groupedBatches.flatMap(batch => batch.photoIds))].filter(id => rows.some(row => row.id === id));
+    if (!ids.length) continue;
+    const key = photoAlertKey(tenantId,jobId,uploaderId,ids);
     // Deterministic primary key prevents concurrent claims and refresh duplicates.
     const id = await photoAlertClaimId(key);
-    const { error: claim } = await supabaseAdmin.from('activity_log').insert({ id,tenant_id:tenantId,actor_id:uploaderId,entity_type:'job',entity_id:jobId,action_type:'photo-upload-email-sending',description:JSON.stringify({ status:'sending',photoCount:group.length }) });
-    if (claim?.code === '23505') continue;
-    if (claim) throw new Error(claim.message);
-    const templateData = photoAlertData({ ...job, client:clientJob?.client },cleaner?.full_name || 'Cleaner',group.length);
+    const { error: claim } = await supabaseAdmin.from('activity_log').insert({ id,tenant_id:tenantId,actor_id:uploaderId,entity_type:'job',entity_id:jobId,action_type:'photo-upload-email-sending',description:JSON.stringify({ status:'sending',photoCount:ids.length }) });
+    if (claim?.code === '23505') {
+      const { data: previous } = await supabaseAdmin.from('activity_log').select('action_type,created_at').eq('id',id).single();
+      if (!previous || previous.action_type === 'photo-upload-email-sent' || previous.action_type === 'photo-upload-email-suppressed' || (previous.action_type === 'photo-upload-email-sending' && Date.now() - Date.parse(previous.created_at) < 120_000)) continue;
+      const { data: reclaimed } = await supabaseAdmin.from('activity_log').update({ action_type:'photo-upload-email-sending',created_at:new Date().toISOString() }).eq('id',id).eq('action_type',previous.action_type).eq('created_at',previous.created_at).select('id').maybeSingle();
+      if (!reclaimed) continue;
+    } else if (claim) throw new Error(claim.message);
+    const templateData = photoAlertData({ ...job, client:clientJob?.client },cleaner?.full_name || 'Cleaner',ids.length);
     let status = 'failed'; let failure:string|null = null;
     try {
       const result = await sendTemplateEmail('photo-upload',recipient.email,{ templateData,idempotencyKey:key });
