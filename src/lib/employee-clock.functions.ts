@@ -15,7 +15,9 @@ export const updateClockRecord = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid(), started_at: z.string().datetime({ offset: true }), ended_at: z.string().datetime({ offset: true }).nullable(), job_id: z.string().uuid().nullable(), description: z.string().trim().min(3).max(300) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("correct_clock_record", { _id: data.id, _start: data.started_at, _end: data.ended_at, _job: data.job_id, _description: data.description });
+    // PostgREST's generated function args omit SQL nullability; these nullable parameters are intentional.
+    const args = { _id: data.id, _start: data.started_at, _end: data.ended_at, _job: data.job_id, _description: data.description };
+    const { error } = await (context.supabase as unknown as { rpc: (name: "correct_clock_record", args: typeof args) => Promise<{error: {message:string} | null}> }).rpc("correct_clock_record", args);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
