@@ -174,8 +174,17 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+    let previousUser: string | null | undefined;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const userId = session?.user.id ?? null;
+      if (event === "INITIAL_SESSION") { previousUser = userId; return; }
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (event === "SIGNED_OUT" || previousUser !== userId) {
+        void queryClient.cancelQueries();
+        queryClient.clear();
+        window.localStorage.removeItem("atlas-offline-cache");
+      }
+      previousUser = userId;
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
