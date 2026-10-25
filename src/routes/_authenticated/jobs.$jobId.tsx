@@ -32,6 +32,7 @@ import { usePhotoDownloads } from "@/components/photo-download-controls";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { PhotoExportContext } from "@/lib/photo-downloads";
 import { toast } from "sonner";
+import { photoQueryKey } from "@/lib/photo-ownership";
 
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
 
 function JobDetail() {
   const { jobId } = useParams({ from: "/_authenticated/jobs/$jobId" });
-  return <JobDetailView jobId={jobId} />;
+  return <JobDetailView key={jobId} jobId={jobId} />;
 }
 
 /** Clock in → Arrived → Leaving, plus a separate Clock out for the day. Leaving keeps the day clock running for drive time. */
@@ -104,7 +105,8 @@ function VisitButtons({ jobId }: { jobId: string }) {
 }
 
 /** Job detail body — also shown in a pop-up on the schedule. */
-export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () => void }) {
+export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; employeeId?: string; onBack?: () => void }) {
+  const [combinedPhotos, setCombinedPhotos] = useState(false);
   const qc = useQueryClient();
   const [sopOpen, setSopOpen] = useState(false);
   const [detailTab, setDetailTab] = useState("sop");
@@ -296,8 +298,17 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
               )}
             </TabsContent>
             <TabsContent value="photos" className="mt-4">
-              {cleanerTabs ? (
+              {isReviewer && employeeId && !combinedPhotos ? (
+                <section>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold">{job.assignees?.find(a => a.id === employeeId)?.full_name ?? "Cleaner"} · Photos</h3>
+                    <Button size="sm" variant="outline" onClick={() => setCombinedPhotos(true)}>View all appointment photos</Button>
+                  </div>
+                  <PhotosTab key={`${jobId}-${employeeId}`} jobId={jobId} employeeId={employeeId} cleanerName={job.assignees?.find(a => a.id === employeeId)?.full_name ?? "Cleaner"} readOnly exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
+                </section>
+              ) : cleanerTabs ? (
                 <div className="space-y-6">
+                  {employeeId && <Button size="sm" variant="outline" onClick={() => setCombinedPhotos(false)}>Back to this cleaner’s photos</Button>}
                   {cleanerTabs.map((c) => (
                     <section key={c.employee_id}>
                       <h3 className="text-sm font-semibold mb-3">{c.name}</h3>
@@ -306,11 +317,11 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                   ))}
                   <section>
                     <h3 className="text-sm font-semibold mb-3">All appointment photos</h3>
-                    <PhotosTab jobId={jobId} allCleaners exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
+                    <PhotosTab key={`${jobId}-combined`} jobId={jobId} allCleaners exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
                   </section>
                 </div>
               ) : (
-                <PhotosTab jobId={jobId} allCleaners={isReviewer} exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
+                <PhotosTab key={`${jobId}-combined`} jobId={jobId} allCleaners={isReviewer} exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
               )}
             </TabsContent>
             <TabsContent value="gps" className="mt-4">
@@ -520,7 +531,17 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   );
 }
 
-function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, allCleaners = false }: { jobId: string; employeeId?: string; cleanerName?: string; readOnly?: boolean; exportContext: PhotoExportContext; allCleaners?: boolean }) {
+function PhotosTab(props: { jobId: string; employeeId?: string; cleanerName?: string; readOnly?: boolean; exportContext: PhotoExportContext; allCleaners?: boolean }) {
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setViewerId(session?.user.id ?? null));
+    return () => data.subscription.unsubscribe();
+  }, []);
+  if (!viewerId) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  return <ScopedPhotosTab key={`${viewerId}-${props.jobId}-${props.employeeId ?? (props.allCleaners ? "combined" : "own")}`} {...props} viewerId={viewerId} />;
+}
+
+function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, exportContext, allCleaners = false }: { jobId: string; viewerId: string; employeeId?: string; cleanerName?: string; readOnly?: boolean; exportContext: PhotoExportContext; allCleaners?: boolean }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listJobPhotos);
   const delFn = useServerFn(deleteJobPhoto);
@@ -576,10 +597,21 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
   };
 
   const { data: photos = [], isLoading } = useQuery({
-    queryKey: ["job-photos", jobId, employeeId ?? "all"],
-    queryFn: () => listFn({ data: { job_id: jobId, employee_id: employeeId } }),
+    queryKey: photoQueryKey(jobId, viewerId, employeeId, allCleaners),
+    queryFn: () => listFn({ data: { job_id: jobId, employee_id: employeeId, all_cleaners: allCleaners } }),
+    refetchInterval: 15000,
   });
   const downloads = usePhotoDownloads(photos, exportContext, { cleanerName, allCleaners });
+  useEffect(() => {
+    const channel = supabase.channel(`photos-${jobId}-${viewerId}-${employeeId ?? "own"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "job_photos", filter: `job_id=eq.${jobId}` }, () => {
+        void qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
+      }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [qc, jobId, viewerId, employeeId]);
+  useEffect(() => {
+    if (lightbox && !photos.some(p => p.id === lightbox.id)) setLightbox(null);
+  }, [photos, lightbox]);
 
   const onDelete = async (p: JobPhotoRow) => {
     if (!confirm("Delete this photo?")) return;
@@ -711,7 +743,7 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
               <p className="text-[10px] text-muted-foreground">
                 {p.uploader_name ?? "—"} · {format(new Date(p.uploaded_at), "MMM d, h:mma")}
               </p>
-              {allCleaners && p.attribution_review_reason && <p className="text-xs text-destructive" title={p.attribution_review_reason}>Uploader needs admin review</p>}
+              {p.attribution_review_reason && <p className="text-xs text-destructive" title={p.attribution_review_reason}>Uploader needs admin review</p>}
             </div>
           </div>
         ))}

@@ -273,7 +273,7 @@ function SchedulePage() {
     .map((j: any) => j.id as string);
 
   const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string } | null>(null);
-  const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const [openJob, setOpenJob] = useState<{ jobId: string; employeeId?: string } | null>(null);
 
   const pasteShift = (employeeId: string, day: Date) => {
     if (!copiedShift || !canManageSchedule) return;
@@ -466,7 +466,7 @@ function SchedulePage() {
                             onClick={() => { if (confirm("Pick up this shift?")) claimMut.mutate({ job_id: j.id }); }}
                           >Pick up</button>
                         ) : (
-                          <button className="mt-1 text-brand underline" onClick={() => setOpenJobId(j.id)}>Open</button>
+                          <button className="mt-1 text-brand underline" onClick={() => setOpenJob({ jobId: j.id })}>Open</button>
                         )}
                       </div>
                     ))}
@@ -546,7 +546,7 @@ function SchedulePage() {
                                 <button
                                   key={j.id}
                                   type="button"
-                                  onClick={() => setOpenJobId(j.id)}
+                                  onClick={() => setOpenJob({ jobId: j.id, employeeId: emp.id })}
                                   className={`w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                   style={{ backgroundColor: c }}
                                   title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
@@ -628,7 +628,7 @@ function SchedulePage() {
                                         {colorEditId === j.id ? "Hide colors" : "Change color"}
                                       </button>
                                     ) : <span />}
-                                    <button type="button" onClick={() => setOpenJobId(j.id)} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
+                                    <button type="button" onClick={() => setOpenJob({ jobId: j.id, employeeId: emp.id })} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
                                       Open job <ExternalLink className="size-3" />
                                     </button>
                                   </div>
@@ -802,21 +802,23 @@ function SchedulePage() {
         </div>
       )}
       <Dialog
-        open={!!openJobId}
+        open={!!openJob}
         onOpenChange={(o) => {
           if (!o) {
-            setOpenJobId(null);
+            setOpenJob(null);
             qc.invalidateQueries();
           }
         }}
       >
         <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">
           <DialogHeader className="sr-only"><DialogTitle>Job details</DialogTitle></DialogHeader>
-          {openJobId && (
+          {openJob && (
             <JobDetailView
-              jobId={openJobId}
+              key={`${openJob.jobId}-${openJob.employeeId ?? "combined"}`}
+              jobId={openJob.jobId}
+              employeeId={openJob.employeeId}
               onBack={() => {
-                setOpenJobId(null);
+                setOpenJob(null);
                 qc.invalidateQueries();
               }}
             />
