@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffReminderPrefs } from "@/components/reminder-prefs-editor";
 import { BulkReminderPrefsEditor } from "@/components/bulk-reminder-prefs-editor";
 import { PhotoEmailSettings } from "@/components/photo-email-settings";
+import { CleanerActionReminderSettings } from "@/components/cleaner-action-reminder-settings";
 
 export const Route = createFileRoute("/_authenticated/settings/notifications")({
   head: () => ({ meta: [{ title: "Notification settings | WRRCS" }, { name: "description", content: "Manage WRRCS staff reminders, photo upload emails and delivery history." }, { property: "og:title", content: "Notification settings | WRRCS" }, { property: "og:description", content: "Manage WRRCS staff reminders, photo upload emails and delivery history." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -136,6 +137,7 @@ function NotificationsSettings() {
         subtitle="Templates and delivery rules for client + team messaging"
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
+        <CleanerActionReminderSettings />
         {canBulkEdit && <PhotoEmailSettings />}
         <div className="bg-card rounded-xl ring-1 ring-black/5 p-6">
           <h3 className="text-sm font-semibold mb-1">Default client reminder lead time</h3>

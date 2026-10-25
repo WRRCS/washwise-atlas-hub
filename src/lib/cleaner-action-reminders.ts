@@ -13,7 +13,7 @@ export function actionReminder(state: ActionReminderState, kind: ActionReminderK
   const property = job.service_location_label || job.service_address || "Location needs review";
   const time = new Date(start).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   return {
-    key: [job.tenant_id,job.id,state.userId,job.scheduled_start,settings.updated_at,kind].join(":"),
+    key: [job.tenant_id,job.id,state.userId,job.scheduled_start,kind].join(":"),
     title: kind === "clock_in" ? "Clock in for your appointment" : "Record your arrival",
     body: `${time} Pacific · ${property}. ${kind === "clock_in" ? "Clock in if you have not started work." : "Tap Arrived when you are at the property."}`,
     url: `/jobs/${job.id}#clock-actions`, due: new Date(due).toISOString(), kind,
