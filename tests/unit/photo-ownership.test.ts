@@ -17,6 +17,10 @@ describe("cleaner upload ownership", () => {
     expect(ownsPhotoUpload(`${path}/nested`, "tenant", "occurrence-1", "Barbra")).toBe(false);
     expect(ownsPhotoUpload(path, "other", "occurrence-1", "Barbra")).toBe(false);
   });
+  it("rejects missing ownership rather than guessing identifiers", () => {
+    expect(ownsPhotoUpload("///image.jpg", "", "", "")).toBe(false);
+    expect(ownsPhotoUpload(path, "tenant", "occurrence-1", "")).toBe(false);
+  });
 });
 
 describe("appointment cleaner photo scope", () => {
