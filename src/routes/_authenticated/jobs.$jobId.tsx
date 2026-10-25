@@ -189,7 +189,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                 <MessageSquare className="size-4" /> Message client
               </Link>
             )}
-            {job.status !== "canceled" && job.status !== "completed" && <div id="clock-actions"><VisitButtons jobId={jobId} /></div>}
+            {job.status !== "canceled" && job.status !== "completed" && <div id="clock-actions" ref={el=>{if(el && window.location.hash==="#clock-actions")el.scrollIntoView({block:"center"});}}><VisitButtons jobId={jobId} /></div>}
             {canMessageClient && job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={async () => {
                 if (!confirm("Mark this job complete? Its invoice is created, and anyone still clocked in on it is clocked out of the job.")) return;
