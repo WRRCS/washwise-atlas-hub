@@ -14,8 +14,8 @@ const local = (iso: string | null) => iso ? `${dayKeyTZ(iso, tz)}T${hourMinuteTZ
 const iso = (value: string) => { const [day, time] = value.split("T"); return zonedToUTCISO(day ?? "", time ?? "", tz); };
 export function ClockRecordEditor({ record: r }: { record: ClockRecord }) {
   const [editing, setEditing] = useState(false);
-  const [start, setStart] = useState(local(r.started_at));
-  const [end, setEnd] = useState(local(r.ended_at));
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
   const [jobId, setJobId] = useState(r.job_id ?? "");
   const [description, setDescription] = useState(r.description);
   const [busy, setBusy] = useState(false);
@@ -41,6 +41,6 @@ export function ClockRecordEditor({ record: r }: { record: ClockRecord }) {
       <label>Description<input required minLength={3} value={description} onChange={e => setDescription(e.target.value)} className="block border border-input bg-background rounded-md p-2" /></label>
       {r.kind === "work" && <label>Appointment<select aria-label="Associate appointment" value={jobId} onChange={e => setJobId(e.target.value)} className="block max-w-72 border border-input bg-background rounded-md p-2"><option value="">Unassigned work</option>{q.data?.map(j => <option key={j.id} value={j.id}>{dayKeyTZ(j.scheduled_start,tz)} · {j.service_location_label ?? j.service_address} · {j.client?.first_name} {j.client?.last_name}</option>)}</select></label>}
       <Button disabled={busy}>Save correction</Button><Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-    </form> : <><span className="tabular-nums">{time(r.started_at)} – {r.ended_at ? time(r.ended_at) : r.kind === "lunch" ? "lunch still open" : "still clocked in"}</span><Button variant="ghost" size="icon" aria-label={`Edit ${r.kind === "lunch" ? "unpaid lunch" : "unassigned work"}`} onClick={() => { setStart(local(r.started_at)); setEnd(local(r.ended_at)); setEditing(true); }}><Pencil className="size-4" /></Button></>}
+    </form> : <><span className="tabular-nums">{time(r.started_at)} – {r.ended_at ? time(r.ended_at) : r.kind === "lunch" ? "lunch still open" : "still clocked in"}</span><Button variant="ghost" size="icon" aria-label={`Edit ${r.kind === "lunch" ? "unpaid lunch" : "unassigned work"}`} onClick={() => { setStart(local(r.started_at)); setEnd(local(r.ended_at)); setJobId(r.job_id ?? ""); setDescription(r.description); setEditing(true); }}><Pencil className="size-4" /></Button></>}
   </div>;
 }
