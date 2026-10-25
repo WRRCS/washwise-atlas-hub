@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Repair cleaner photo attribution, review ambiguous older photos, simplify export controls, and deduplicate exports without changing originals.
+- [ ] Verify Barbra/Dalton photo separation and actual unique ZIP downloads.
+
 - [x] Bulk photo download = one flat ZIP (all / this cleaner / selected) with progress and retry of missing photos.
 - [ ] Verify a real 40-photo appointment ZIP signed in — blocked: needs preview sign-in.
 
