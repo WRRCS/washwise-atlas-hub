@@ -354,7 +354,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
               })()}
             </div>
           )}
-              <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} hasTextSop={!!job.client?.client_sop?.trim()} />
+              <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} hasTextSop={!!job.client?.client_sop?.trim()} readableText={job.client?.client_sop ?? ""} />
               <DialogClose asChild><Button variant="outline">Close SOP</Button></DialogClose>
             </DialogContent>
           </Dialog>
