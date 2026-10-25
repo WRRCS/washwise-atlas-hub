@@ -1,0 +1,1 @@
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='job_photos') THEN ALTER PUBLICATION supabase_realtime ADD TABLE public.job_photos; END IF; END $$;

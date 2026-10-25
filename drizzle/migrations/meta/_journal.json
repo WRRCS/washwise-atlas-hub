@@ -176,6 +176,13 @@
       "when": 1792901129320,
       "tag": "0024_record_photo_cleaner_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792901342382,
+      "tag": "0025_enable_scoped_job_photo_realtime",
+      "breakpoints": true
     }
   ]
 }
