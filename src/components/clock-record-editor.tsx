@@ -33,7 +33,7 @@ export function ClockRecordEditor({ record: r }: { record: ClockRecord }) {
     finally { setBusy(false); }
   };
   const time = (v: string) => new Date(v).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz });
-  return <div className="py-3 border-t border-border flex flex-wrap gap-3 items-center text-sm" aria-label={`${r.employee_name} ${r.kind === "lunch" ? "unpaid lunch" : "unassigned work"}`}>
+  return <div data-clock-id={r.id} className="py-3 border-t border-border flex flex-wrap gap-3 items-center text-sm" aria-label={`${r.employee_name} ${r.kind === "lunch" ? "unpaid lunch" : "unassigned work"}`}>
     <div className="min-w-40"><strong>{r.employee_name}</strong><div>{r.kind === "lunch" ? "Unpaid lunch" : r.job_id ? "Work · appointment associated" : "Unassigned work · review"}</div><div className="text-muted-foreground break-words">{r.description}</div></div>
     {editing ? <form onSubmit={e => { e.preventDefault(); void submit(); }} className="flex flex-wrap gap-2 items-end flex-1">
       <label>Start (Pacific)<input required type="datetime-local" value={start} onChange={e => setStart(e.target.value)} className="block border border-input bg-background rounded-md p-2" /></label>
