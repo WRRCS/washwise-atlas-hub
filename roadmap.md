@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Fix independent Caddy Supplies expansion and verify inspect/edit/collapse/other-employee flows on desktop and mobile.
+
 - [x] Removed verified text/source-PDF duplication without deleting files; preserve unknown or visual-only attachment instructions and deduplicate repeated attachment identities. Signed-in Fern displays the readable SOP and acknowledgment once on desktop/mobile; BBWSD document-only SOP renders one five-page preview on both. Per-cleaner/occurrence confirmations replace shared progress; save/reload and cleanup verified. Twelve tests pass.
 
 - [x] Added opt-in per-cleaner clock-in/arrival timing in Notifications, configured push only, direct existing-action links, live eligibility checks and unique/atomic delivery claims. Existing arrival also clocks in when needed; scheduled clock-in already records arrival. No workflow replaced.
