@@ -60,7 +60,7 @@ export function SopDocumentPreview({ url, filename, readableText = "", onCovered
             const [commands, coordinates] = operators.argsArray[index] as [number[], number[]];
             // Full-page background rectangles and horizontal underlines are typography,
             // not additional instructions. Keep every other vector drawing visible.
-            const background = commands.length === 1 && commands[0] === pdfjs.OPS.rectangle && coordinates[0] === 0 && coordinates[1] === 0 && Math.abs(coordinates[2] - page.view[2]) < 1 && Math.abs(coordinates[3] - page.view[3]) < 1;
+            const background = commands.length === 1 && commands[0] === pdfjs.OPS.rectangle && coordinates[0] === 0 && coordinates[1] === 0 && coordinates[2] >= page.view[2] && coordinates[3] >= page.view[3] && Math.abs(coordinates[2] / coordinates[3] - page.view[2] / page.view[3]) < 0.001;
             const underline = commands.length === 2 && commands[0] === pdfjs.OPS.moveTo && commands[1] === pdfjs.OPS.lineTo && coordinates[1] === coordinates[3];
             return !background && !underline;
           })) hasUnrepresentedVisuals = true;
