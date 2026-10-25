@@ -13,6 +13,11 @@ export function groupPhotoUploads<T extends { id: string; uploaded_at: string; u
 export function photoAlertKey(tenantId: string, jobId: string, uploaderId: string, photoIds: string[]) {
   return `photo-upload:${tenantId}:${jobId}:${uploaderId}:${[...new Set(photoIds)].sort().join(",")}`;
 }
+export async function photoAlertClaimId(key: string) {
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)));
+  const hex = Array.from(bytes.slice(0, 16), b => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20)}`;
+}
 export function photoAlertData(job: { id: string; service_address: string | null; service_location_label: string | null; scheduled_start: string | null; client?: { first_name?: string | null; last_name?: string | null } | null }, cleanerName: string, count: number) {
   return {
     cleanerName,

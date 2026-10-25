@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import { groupPhotoUploads, photoAlertData, photoAlertKey, PHOTO_UPLOAD_QUIET_MS } from './photo-upload-alerts';
+import { groupPhotoUploads, photoAlertData, photoAlertKey, photoAlertClaimId, PHOTO_UPLOAD_QUIET_MS } from './photo-upload-alerts';
 
 const SETTING = 'photo-upload-email-settings';
 type Settings = { enabled: boolean; recipient_id: string | null; starts_at: string };
@@ -25,7 +25,7 @@ export const getPhotoEmailSettings = createServerFn({ method:'GET' }).middleware
   const { data: roles } = await supabaseAdmin.from('user_roles').select('user_id').eq('tenant_id',tenantId).in('role',['owner','manager']);
   const ids = [...new Set((roles ?? []).map(r => r.user_id))];
   const { data: recipients } = ids.length ? await supabaseAdmin.from('profiles').select('id,full_name,email').eq('tenant_id',tenantId).eq('is_active',true).in('id',ids) : { data:[] };
-  const { data: logs } = await supabaseAdmin.from('activity_log').select('id,description,created_at').eq('tenant_id',tenantId).in('action_type',['photo-upload-email-sent','photo-upload-email-failed','photo-upload-email-suppressed']).order('created_at',{ ascending:false }).limit(30);
+  const { data: logs } = await supabaseAdmin.from('activity_log').select('id,description,created_at').eq('tenant_id',tenantId).in('action_type',['photo-upload-email-sending','photo-upload-email-sent','photo-upload-email-failed','photo-upload-email-suppressed']).order('created_at',{ ascending:false }).limit(30);
   return { settings:await readSettings(supabaseAdmin,tenantId), recipients:(recipients ?? []).filter(r => r.email), logs:logs ?? [] };
 });
 export const savePhotoEmailSettings = createServerFn({ method:'POST' }).middleware([requireSupabaseAuth])
@@ -78,9 +78,7 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
   for (const group of groupPhotoUploads(rows)) {
     const key = photoAlertKey(tenantId,jobId,uploaderId,group.map(p => p.id));
     // Deterministic primary key prevents concurrent claims and refresh duplicates.
-    const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(key)));
-    const hex = Array.from(bytes.slice(0,16),b => b.toString(16).padStart(2,'0')).join('');
-    const id = `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20)}`;
+    const id = await photoAlertClaimId(key);
     const { error: claim } = await supabaseAdmin.from('activity_log').insert({ id,tenant_id:tenantId,actor_id:uploaderId,entity_type:'job',entity_id:jobId,action_type:'photo-upload-email-sending',description:JSON.stringify({ status:'sending',photoCount:group.length }) });
     if (claim?.code === '23505') continue;
     if (claim) throw new Error(claim.message);

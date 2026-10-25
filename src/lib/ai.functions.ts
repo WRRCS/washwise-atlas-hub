@@ -33,7 +33,7 @@ async function buildContext(supabase: any, tenantId: string): Promise<string> {
     supabase.from("client_notes").select("note, created_at, client_id, clients(first_name,last_name)").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(20),
     supabase.from("sops").select("id, name, description").eq("tenant_id", tenantId).limit(20),
     supabase.from("inventory_items").select("name, quantity_on_hand, reorder_threshold, unit").eq("tenant_id", tenantId),
-    supabase.from("activity_log").select("action_type, description, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(15),
+    supabase.from("activity_log").select("action_type, description, created_at").eq("tenant_id", tenantId).not("action_type", "like", "photo-upload-email-%").order("created_at", { ascending: false }).limit(15),
   ]);
 
   const fmtClient = (c: any) => c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Unknown" : "Unknown";
