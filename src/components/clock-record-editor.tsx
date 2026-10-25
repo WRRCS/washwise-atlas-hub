@@ -10,7 +10,11 @@ import { zonedToUTCISO, dayKeyTZ, hourMinuteTZ } from "@/lib/tz";
 
 export type ClockRecord = { id: string; kind: "work" | "lunch"; employee_name: string; started_at: string; ended_at: string | null; description: string; job_id: string | null };
 const tz = "America/Los_Angeles";
-const local = (iso: string | null) => iso ? `${dayKeyTZ(iso, tz)}T${hourMinuteTZ(iso, tz)}` : "";
+const local = (iso: string | null) => {
+  if (!iso) return "";
+  const { hour, minute } = hourMinuteTZ(iso, tz);
+  return `${dayKeyTZ(iso, tz)}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;
+};
 const iso = (value: string) => { const [day, time] = value.split("T"); return zonedToUTCISO(day ?? "", time ?? "", tz); };
 export function ClockRecordEditor({ record: r }: { record: ClockRecord }) {
   const [editing, setEditing] = useState(false);
