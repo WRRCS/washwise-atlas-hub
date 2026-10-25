@@ -78,6 +78,7 @@ import { Route as ApiPublicHooksProcessPushRouteImport } from './routes/api/publ
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as ApiPublicHooksLeadTenantIdRouteImport } from './routes/api/public/hooks/lead.$tenantId'
 import { Route as ApiPublicHooksTurnoTenantIdRouteImport } from './routes/api/public/hooks/turno.$tenantId'
 import { Route as ApiPublicTwilioSmsTenantIdIncomingRouteImport } from './routes/api/public/twilio/sms.$tenantId.incoming'
@@ -461,6 +462,12 @@ const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
   path: '/lovable/email/auth/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksLeadTenantIdRoute =
   ApiPublicHooksLeadTenantIdRouteImport.update({
     id: '/api/public/hooks/lead/$tenantId',
@@ -573,6 +580,7 @@ export interface FileRoutesByFullPath {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
   '/api/public/twilio/sms/$tenantId/incoming': typeof ApiPublicTwilioSmsTenantIdIncomingRoute
@@ -648,6 +656,7 @@ export interface FileRoutesByTo {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
   '/api/public/twilio/sms/$tenantId/incoming': typeof ApiPublicTwilioSmsTenantIdIncomingRoute
@@ -727,6 +736,7 @@ export interface FileRoutesById {
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/hooks/lead/$tenantId': typeof ApiPublicHooksLeadTenantIdRoute
   '/api/public/hooks/turno/$tenantId': typeof ApiPublicHooksTurnoTenantIdRoute
   '/api/public/twilio/sms/$tenantId/incoming': typeof ApiPublicTwilioSmsTenantIdIncomingRoute
@@ -806,6 +816,7 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
     | '/api/public/twilio/sms/$tenantId/incoming'
@@ -881,6 +892,7 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
     | '/api/public/twilio/sms/$tenantId/incoming'
@@ -959,6 +971,7 @@ export interface FileRouteTypes {
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
     | '/api/public/hooks/lead/$tenantId'
     | '/api/public/hooks/turno/$tenantId'
     | '/api/public/twilio/sms/$tenantId/incoming'
@@ -986,6 +999,7 @@ export interface RootRouteChildren {
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   ApiPublicHooksLeadTenantIdRoute: typeof ApiPublicHooksLeadTenantIdRoute
   ApiPublicHooksTurnoTenantIdRoute: typeof ApiPublicHooksTurnoTenantIdRoute
   ApiPublicTwilioSmsTenantIdIncomingRoute: typeof ApiPublicTwilioSmsTenantIdIncomingRoute
@@ -1480,6 +1494,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/lead/$tenantId': {
       id: '/api/public/hooks/lead/$tenantId'
       path: '/api/public/hooks/lead/$tenantId'
@@ -1710,6 +1731,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   ApiPublicHooksLeadTenantIdRoute: ApiPublicHooksLeadTenantIdRoute,
   ApiPublicHooksTurnoTenantIdRoute: ApiPublicHooksTurnoTenantIdRoute,
   ApiPublicTwilioSmsTenantIdIncomingRoute:
