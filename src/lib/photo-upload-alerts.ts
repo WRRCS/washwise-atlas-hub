@@ -13,7 +13,7 @@ export function groupPhotoUploads<T extends { id: string; uploaded_at: string; u
 export function photoAlertKey(tenantId: string, jobId: string, uploaderId: string, photoIds: string[]) {
   return `photo-upload:${tenantId}:${jobId}:${uploaderId}:${[...new Set(photoIds)].sort().join(",")}`;
 }
-export function photoAlertData(job: { id: string; service_address: string | null; service_location_label: string | null; scheduled_start: string | null; client?: { first_name?: string; last_name?: string } | null }, cleanerName: string, count: number) {
+export function photoAlertData(job: { id: string; service_address: string | null; service_location_label: string | null; scheduled_start: string | null; client?: { first_name?: string | null; last_name?: string | null } | null }, cleanerName: string, count: number) {
   return {
     cleanerName,
     clientName: [job.client?.first_name, job.client?.last_name].filter(Boolean).join(" ") || "Client",

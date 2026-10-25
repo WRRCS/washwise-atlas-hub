@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
 import { listJobGps, getMyShift, clockInDay, endMyShift } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
@@ -104,6 +104,8 @@ function VisitButtons({ jobId }: { jobId: string }) {
 export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () => void }) {
   const qc = useQueryClient();
   const [sopOpen, setSopOpen] = useState(false);
+  const [detailTab, setDetailTab] = useState("sop");
+  useEffect(() => { if (window.location.hash === "#photos") setDetailTab("photos"); }, [jobId]);
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const confirmSop = useServerFn(confirmJobSop);
@@ -200,7 +202,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
 
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-8 grid md:grid-cols-3 gap-8">
         <section className="md:col-span-2 bg-card p-6 rounded-xl ring-1 ring-black/5">
-          <Tabs defaultValue={typeof window !== "undefined" && window.location.hash === "#photos" ? "photos" : "sop"}>
+          <Tabs value={detailTab} onValueChange={setDetailTab}>
             <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
               <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SOP Checklist</TabsTrigger>
               <Button variant="outline" type="button" onClick={() => setSopOpen(true)} className="h-auto rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 hover:bg-brand hover:text-brand-foreground">SOP</Button>
