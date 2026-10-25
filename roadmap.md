@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Add configurable assigned-cleaner clock-in and arrival reminders using configured delivery only.
+- [ ] Verify action suppression, changing assignments/schedules, lunch, timezone and duplicate prevention without staff sends.
+
 - [x] Add explicit unpaid lunch, described unscheduled work and exclusive active timers; database mutations restricted to authenticated atomic actions.
 - [x] Add admin lunch correction, same-record job association and separate daily/weekly paid/lunch totals; payroll and productivity include unassigned work.
 - [x] Verify full flow signed in as Barbra and Zoe, persisted lunch across refresh, duplicate-start prevention and cleaner correction denial. Admin correction verified 7h30 paid/30m lunch → 7h15 paid/45m lunch; job association preserved record IDs. Controlled rows removed, no notifications sent; five total tests pass.
