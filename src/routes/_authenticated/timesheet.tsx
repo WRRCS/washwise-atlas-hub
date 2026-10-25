@@ -112,7 +112,7 @@ function TimesheetPage() {
         action={<Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />Download</Button>}
       />
       <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 space-y-4">
-        <EmployeeClockControls />
+        {caps && !isMgr && <EmployeeClockControls />}
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, -1))}><ChevronLeft className="size-4 mr-1" />Prev</Button>
           <Button variant="outline" size="sm" disabled={isToday} onClick={() => setDay(startOfDay(new Date()))}>Today</Button>
@@ -179,7 +179,7 @@ function TimesheetPage() {
           </section>
         )}
 
-        {isMgr && (q.data?.clockRecords?.length ?? 0) > 0 && <section aria-label="Unpaid lunch and unassigned work"><h2 className="font-semibold">Unpaid lunch &amp; unassigned work</h2>{q.data?.clockRecords.map(r => <ClockRecordEditor key={r.id} record={r} />)}</section>}
+        {isMgr && (q.data?.clockRecords?.length ?? 0) > 0 && <section aria-label="Unpaid lunch and unscheduled work"><h2 className="font-semibold">Unpaid lunch &amp; unscheduled work</h2>{q.data?.clockRecords.map(r => <ClockRecordEditor key={r.id} record={r} />)}</section>}
 
         {isMgr && entries.filter(e=>!e.kind).length > 0 && (
           <section className="rounded-xl border border-border/60 bg-card">

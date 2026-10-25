@@ -22,7 +22,7 @@ export function EmployeeClockControls() {
     try {
       await action({ data: { action: value, description: value === "start_work" ? description : undefined } });
       setOpen(false);
-      ["my-shift", "my-jobs", "job-visit", "my-timesheet", "timesheet", "reports"].forEach(key => void qc.invalidateQueries({ queryKey: [key] }));
+      ["my-shift", "my-jobs", "job-visit", "my-timesheet", "timesheet", "reports", "report-timesheets", "report-payroll"].forEach(key => void qc.invalidateQueries({ queryKey: [key] }));
       toast.success(value === "start_lunch" ? "On unpaid lunch" : value === "clock_out" ? "Clocked out" : "Paid work tracking started");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Unable to update clock"); }
     finally { setBusy(false); }
@@ -30,12 +30,15 @@ export function EmployeeClockControls() {
   const shift = q.data;
   const time = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" });
   return (
-    <section aria-label="Employee clock" className="mb-4 border-y border-border py-4 flex flex-wrap items-center justify-between gap-3">
+    <section aria-label="Employee clock" className="mb-6 border-y border-border py-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="min-w-0">
+      <h2 className="mb-1 text-base font-semibold">My clock</h2>
       <div role="status" className="text-sm">
-        {q.isLoading ? "Loading clock…" : q.error ? "Clock unavailable" : shift ? <><strong>{shift.kind === "lunch" ? "On unpaid lunch" : shift.on_site_since ? "On site" : shift.kind === "work" ? "Unassigned work" : "Drive / other"}</strong><span className="text-muted-foreground"> · since {time(shift.kind === "lunch" ? shift.started_at : shift.on_site_since ?? shift.last_left_at ?? shift.started_at)}</span>{shift.kind === "work" && <div className="text-muted-foreground break-words">{shift.description}</div>}</> : "Clocked out"}
+        {q.isLoading ? "Loading clock…" : q.error ? "Clock unavailable" : shift ? <><strong>{shift.kind === "lunch" ? "On unpaid lunch" : shift.on_site_since ? "On site" : shift.kind === "work" ? "Unscheduled work" : "Drive / other"}</strong><span className="text-muted-foreground"> · since {time(shift.kind === "lunch" ? shift.started_at : shift.on_site_since ?? shift.last_left_at ?? shift.started_at)}</span>{shift.kind === "work" && <div className="text-muted-foreground break-words">{shift.description}</div>}</> : "Clocked out"}
       </div>
-      <div className="flex flex-wrap gap-2">
-        {!shift ? <Button variant="outline" disabled={q.isLoading || !!q.error || busy} onClick={() => setOpen(true)}><Clock className="size-4" />Clock in without a scheduled job</Button> : shift.kind === "lunch" ? <Button disabled={busy} onClick={() => run("end_lunch")}><Play className="size-4" />End lunch / Resume work</Button> : <><Button variant="outline" disabled={busy} onClick={() => run("start_lunch")}><Coffee className="size-4" />Start unpaid lunch</Button><Button variant="outline" disabled={busy} onClick={() => run("clock_out")}><Square className="size-4" />Clock out for the day</Button></>}
+      </div>
+      <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+        {!shift ? <Button className="h-auto min-h-11 max-w-full whitespace-normal text-left" disabled={q.isLoading || !!q.error || busy} onClick={() => { setDescription(""); setOpen(true); }}><Clock className="size-4 shrink-0" />Clock in without a scheduled job</Button> : shift.kind === "lunch" ? <Button className="h-auto min-h-11 whitespace-normal" disabled={busy} onClick={() => run("end_lunch")}><Play className="size-4" />End lunch / Resume work</Button> : <><Button variant="outline" disabled={busy} onClick={() => run("start_lunch")}><Coffee className="size-4" />Start unpaid lunch</Button><Button variant="outline" disabled={busy} onClick={() => run("clock_out")}><Square className="size-4" />Clock out for the day</Button></>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent><DialogHeader><DialogTitle>Clock in without a scheduled job</DialogTitle></DialogHeader>

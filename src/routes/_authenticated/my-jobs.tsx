@@ -272,10 +272,10 @@ function MyJobsPage() {
     <AppShell>
       <PageHeader title={t("My jobs")} subtitle={t("Your assigned work and time tracking")} />
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 pt-4">
+        <EmployeeClockControls />
         <PushToggle mode="app" />
       </div>
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
-        <EmployeeClockControls />
         <div className="flex gap-1 mb-6 bg-clay-100 p-1 rounded-lg w-fit">
           {(["today", "schedule", "timesheet"] as Tab[]).map((tb) => (
             <button
@@ -1027,7 +1027,7 @@ function TimesheetView() {
                 <tr key={e.id} className="border-t border-border/60">
                   <td className="px-4 py-2">{fmtDate(e.started_at)}</td>
                   <td className="px-4 py-2">
-                    {e.kind === "lunch" ? "Unpaid lunch" : e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : `Unassigned work · ${e.notes ?? ""}`}
+                    {e.kind === "lunch" ? "Unpaid lunch" : e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : `Unscheduled work · ${e.notes ?? ""}`}
                   </td>
                   <td className="px-4 py-2">
                     {fmtTime(e.started_at)}
