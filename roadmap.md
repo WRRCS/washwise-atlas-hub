@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Trace and fix Dalton/ Romeo photo ownership across uploads, schedule cleaner context, backend reads, counts, previews, state and downloads; investigate BBWSD records without guessing ownership.
+- [ ] Verify two-account same-occurrence upload/read/download separation, account/cleaner switching and a fresh occurrence without sending staff/client notifications; report any blocked checks explicitly.
+
 - [x] Prominent My clock above employee appointment content, independent of empty schedules; admin timesheet self-clock removed while review/correction/association tools remain. Entries labeled Unscheduled work.
 - [x] Verified as Leslie Walker (employee, no appointments today): described clock-in, duplicate rejection, explicit lunch persisted across reload, resume, clock-out, employee/admin read-back. Admin corrected the same three records; both views show 7.50 paid hours and 0.50 unpaid lunch. Desktop/mobile checked; six total tests pass; no notifications sent.
 
