@@ -1,6 +1,14 @@
 export type DownloadPhoto = { id: string; storage_path: string; url: string | null; uploaded_by: string | null; uploader_name: string | null };
 export type PhotoExportContext = { date: string; property: string };
 export type PreparedPhoto = { blob: Blob; filename: string; photoId: string };
+export function uniquePhotoReferences(photos: DownloadPhoto[]) {
+  const ids = new Set<string>(), paths = new Set<string>();
+  return photos.filter(p => {
+    if (ids.has(p.id) || (p.storage_path && paths.has(p.storage_path))) return false;
+    ids.add(p.id); if (p.storage_path) paths.add(p.storage_path);
+    return true;
+  });
+}
 export function safePhotoName(value: string) {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "Unknown";
 }
@@ -52,10 +60,12 @@ export async function preparePhotoExport(photos: DownloadPhoto[], context: Photo
   fetchPhoto?: (photo: DownloadPhoto) => Promise<Blob>;
 }) {
   if (!photos.length) throw new Error("No photos selected");
+  photos = uniquePhotoReferences(photos);
   const failures: string[] = [];
   const failedPhotos: DownloadPhoto[] = [];
   let cursor = 0, done = 0;
   const files: PreparedPhoto[] = [];
+  const fingerprints = new Map<string, string>();
   const fetchPhoto = options.fetchPhoto ?? (async (photo: DownloadPhoto) => {
     if (!photo.url) throw new Error("No image URL available");
     const response = await fetch(photo.url, { cache: "no-store" });
@@ -68,6 +78,8 @@ export async function preparePhotoExport(photos: DownloadPhoto[], context: Photo
       const p = photos[cursor++];
       try {
         const raw = await fetchPhoto(p);
+        const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await raw.arrayBuffer())), b => b.toString(16).padStart(2, "0")).join("");
+        fingerprints.set(p.id, hash);
         const format = imageFormat(new Uint8Array(await raw.slice(0, 32).arrayBuffer()));
         if (!format) throw new Error("Stored file is not a supported image");
         let blob = raw.slice(0, raw.size, format.type), extension = format.extension;
@@ -86,7 +98,13 @@ export async function preparePhotoExport(photos: DownloadPhoto[], context: Photo
   const order = new Map(photos.map((p, i) => [p.id, i]));
   files.sort((a, b) => (order.get(a.photoId) ?? 0) - (order.get(b.photoId) ?? 0));
   if (!files.length) throw new Error(`No photos could be downloaded. ${failures.join("; ")}`);
-  return { files, failures, failedPhotos, included: files.length };
+  const hashes = new Set<string>();
+  const unique = files.filter(f => {
+    const hash = fingerprints.get(f.photoId);
+    if (!hash || hashes.has(hash)) return false;
+    hashes.add(hash); return true;
+  });
+  return { files: unique, failures, failedPhotos, included: unique.length };
 }
 
 /** One ZIP with every image at the top level (no subfolders) so they can be selected together. */
@@ -94,7 +112,11 @@ export async function buildPhotoZip(files: { blob: Blob; filename: string }[]) {
   const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   const used = new Set<string>();
+  const hashes = new Set<string>();
   for (const f of files) {
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await f.blob.arrayBuffer())), b => b.toString(16).padStart(2, "0")).join("");
+    if (hashes.has(hash)) continue;
+    hashes.add(hash);
     let name = f.filename, n = 2;
     while (used.has(name)) name = f.filename.replace(/(\.[^.]+)$/, `-${n++}$1`);
     used.add(name);
