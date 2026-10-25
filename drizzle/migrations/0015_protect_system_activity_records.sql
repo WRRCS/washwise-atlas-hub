@@ -1,0 +1,2 @@
+ALTER POLICY "tenant members can insert activity" ON public.activity_log WITH CHECK (tenant_id = public.current_tenant_id() AND action_type NOT LIKE 'system:%');
+ALTER POLICY "tenant members can read activity" ON public.activity_log USING (tenant_id = public.current_tenant_id() AND (action_type NOT LIKE 'system:%' OR public.is_owner_or_manager()));

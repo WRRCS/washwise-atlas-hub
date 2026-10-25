@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Explain the controlled sample email's nonexistent appointment link and verify real appointment photo-section links without another unsolicited send.
+
 - [ ] Add grouped owner/admin photo-upload emails, recipient controls, snapshot attribution, duplicate protection and delivery history.
 - [ ] Verify grouped email delivery only to the explicitly authorized controlled mailbox info@washrinserepeatcleaning.com.
 
