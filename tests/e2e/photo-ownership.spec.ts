@@ -9,6 +9,7 @@ const users = [
 ];
 
 test.describe('permanent photo ownership', () => {
+  test.use({ viewport: { width: 1280, height: 1800 } });
   test.skip(!job || !nextJob || users.some(u => !u.email || !u.password), 'Requires isolated two-cleaner photo fixtures');
   for (const [index, user] of users.entries()) {
     test(`cleaner ${index + 1} sees only their images after refresh and occurrence switching`, async ({ page }) => {
@@ -17,8 +18,10 @@ test.describe('permanent photo ownership', () => {
       await page.getByLabel('Email', { exact: true }).fill(user.email);
       await page.locator('input[type="password"]').fill(user.password);
       await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-      await page.waitForURL(/\/(my-jobs|dashboard|calendar)/);
+      await page.waitForURL(/\/(my-jobs|dashboard|calendar|jobs)/);
       await page.goto(`/jobs/${job}`);
+      const language = page.getByRole('button', { name: /English/ });
+      if (await language.count()) await language.click();
       await page.getByRole('tab', { name: 'Photos', exact: true }).click();
       await expect(page.getByRole('button', { name: `Download all (${user.count})`, exact: true })).toBeVisible();
       await expect(page.locator('button.aspect-square img')).toHaveCount(user.count);
