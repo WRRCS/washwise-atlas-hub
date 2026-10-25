@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Add explicit unpaid lunch, unscheduled work and exclusive active timers.
+- [ ] Add admin lunch correction, job association and accurate separate totals.
+- [ ] Verify unscheduled clock-in → lunch → resume → clock-out and admin edits.
+
 - [x] Explained the sample's nonexistent appointment link; signed-in Zoe verification confirms a real appointment opens directly to Photos, and signed-out links preserve the destination through sign-in. No additional emails sent.
 
 - [x] Added grouped owner/admin photo-upload emails, single server-validated recipient, protected settings and delivery history, selected property attribution, whole slow-batch grouping, stable provider keys and durable duplicate claims. Defaults off until an owner selects a recipient and enables.

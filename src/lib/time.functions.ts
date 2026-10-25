@@ -39,7 +39,8 @@ export type MyJobRow = {
 
 export type TimeEntryRow = {
   id: string;
-  job_id: string;
+  job_id: string | null;
+  kind?: "work" | "lunch";
   started_at: string;
   ended_at: string | null;
   notes: string | null;
@@ -72,7 +73,7 @@ function getClientIp(): string | null {
     const req = getRequest();
     if (!req) return null;
     const fwd = req.headers.get("x-forwarded-for");
-    if (fwd) return fwd.split(",")[0]!.trim();
+    if (fwd) return fwd.split(",")[0]?.trim() ?? null;
     return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ?? null;
   } catch {
     return null;
@@ -180,7 +181,7 @@ export const listMyJobs = createServerFn({ method: "POST" })
     })) as MyJobRow[];
   });
 
-export type MyShift = { entry_id: string; started_at: string; on_site_since: string | null; last_left_at: string | null } | null;
+export type MyShift = { kind: "scheduled" | "work" | "lunch"; description: string | null; entry_id: string; started_at: string; on_site_since: string | null; last_left_at: string | null } | null;
 
 /** The cleaner's running clock (if any), and whether they're at a job or between jobs (driving). */
 export const getMyShift = createServerFn({ method: "POST" })
@@ -189,14 +190,19 @@ export const getMyShift = createServerFn({ method: "POST" })
     const { data: rows } = await context.supabase.from("time_entries").select("id, started_at")
       .eq("user_id", context.userId).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
     const e = rows?.[0];
-    if (!e) return null;
+    const { data: records, error: clockError } = await context.supabase.from("work_clock_entries").select("id,kind,description,started_at").eq("user_id",context.userId).is("ended_at",null).limit(1);
+    if (clockError) throw new Error(clockError.message);
+    const record = records?.[0];
+    if (record?.kind === "lunch") return { kind: "lunch", description: record.description, entry_id: record.id, started_at: record.started_at, on_site_since: null, last_left_at: null };
+    const active = e ?? record;
+    if (!active) return null;
     const sb = context.supabase as any;
     const { data: open } = await sb.from("job_visits").select("arrived_at")
       .eq("employee_id", context.userId).is("left_at", null).order("arrived_at", { ascending: false }).limit(1);
     const { data: last } = await sb.from("job_visits").select("left_at")
-      .eq("employee_id", context.userId).not("left_at", "is", null).gte("left_at", e.started_at)
+      .eq("employee_id", context.userId).not("left_at", "is", null).gte("left_at", active.started_at)
       .order("left_at", { ascending: false }).limit(1);
-    return { entry_id: e.id, started_at: e.started_at, on_site_since: open?.[0]?.arrived_at ?? null, last_left_at: last?.[0]?.left_at ?? null };
+    return { kind: e ? "scheduled" : "work", description: record?.description ?? null, entry_id: active.id, started_at: active.started_at, on_site_since: open?.[0]?.arrived_at ?? null, last_left_at: last?.[0]?.left_at ?? null };
   });
 
 /** Start of day: start the clock only. Time at a job starts when they tap Arrived. */
@@ -209,9 +215,12 @@ export const clockInDay = createServerFn({ method: "POST" })
     const { data: open } = await context.supabase.from("time_entries").select("id, started_at")
       .eq("user_id", context.userId).is("ended_at", null).limit(1);
     if (open?.[0]) return open[0];
+    await assertJobClockAllowed(context, data.job_id);
+    const { data: other } = await context.supabase.from("work_clock_entries").select("id,started_at,kind").eq("user_id",context.userId).is("ended_at",null).limit(1);
+    if (other?.[0]?.kind === "lunch") throw new Error("End unpaid lunch / Resume work before arriving");
     const gps = data.gps ?? null;
     const now = new Date().toISOString();
-    const { data: entry, error } = await context.supabase.from("time_entries").insert({
+    const { data: entry, error } = other?.[0] ? {data: other[0], error: null} : await context.supabase.from("time_entries").insert({
       job_id: data.job_id,
       user_id: context.userId,
       tenant_id: (prof as any).tenant_id,
@@ -238,14 +247,9 @@ export const endMyShift = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const now = new Date().toISOString();
     const gps = data.gps ?? null;
-    const { error } = await context.supabase.from("time_entries").update({
-      ended_at: now,
-      clock_out_latitude: gps?.latitude ?? null,
-      clock_out_longitude: gps?.longitude ?? null,
-      clock_out_accuracy_meters: gps?.accuracy_meters ?? null,
-    }).eq("user_id", context.userId).is("ended_at", null);
+    const { data: id, error } = await context.supabase.rpc("employee_clock_action", { _action: "clock_out" });
     if (error) throw new Error(error.message);
-    await (context.supabase as any).from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
+    if (id && gps) await context.supabase.from("time_entries").update({ clock_out_latitude: gps.latitude, clock_out_longitude: gps.longitude, clock_out_accuracy_meters: gps.accuracy_meters ?? null }).eq("id",id).eq("user_id",context.userId);
     return { ok: true };
   });
 
@@ -353,6 +357,9 @@ export const clockIn = createServerFn({ method: "POST" })
       .eq("id", context.userId)
       .maybeSingle();
     if (!prof) throw new Error("Profile not found");
+    await assertJobClockAllowed(context, data.job_id);
+    const { data: other } = await context.supabase.from("work_clock_entries").select("id,started_at,kind").eq("user_id",context.userId).is("ended_at",null).limit(1);
+    if (other?.[0]?.kind === "lunch") throw new Error("End unpaid lunch / Resume work before arriving");
     const gps = data.gps ?? null;
     const now = new Date().toISOString();
     // Already clocked in (e.g. driving from the last job)? Keep that clock running.
@@ -360,7 +367,7 @@ export const clockIn = createServerFn({ method: "POST" })
       .from("time_entries")
       .select("id, started_at, clock_in_latitude, clock_in_longitude, clock_in_accuracy_meters")
       .eq("user_id", context.userId).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
-    const existing = openRows?.[0] ?? null;
+    const existing = openRows?.[0] ?? other?.[0] ?? null;
     const { data: entry, error } = existing ? { data: existing, error: null } : await context.supabase
       .from("time_entries")
       .insert({
@@ -401,6 +408,8 @@ export const clockOut = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { data: lunch } = await context.supabase.from("work_clock_entries").select("id").eq("user_id",context.userId).eq("kind","lunch").is("ended_at",null).limit(1);
+    if (lunch?.length) throw new Error("End lunch explicitly before clocking out");
     const endedAt = new Date().toISOString();
     const gps = data.gps ?? null;
     const { data: entry, error } = await context.supabase
@@ -417,6 +426,7 @@ export const clockOut = createServerFn({ method: "POST" })
       .select("id, started_at, ended_at, job_id, notes, clock_out_latitude, clock_out_longitude")
       .single();
     if (error) throw new Error(error.message);
+    await context.supabase.from("job_visits").update({left_at: endedAt}).eq("employee_id",context.userId).is("left_at",null);
     return entry;
   });
 
@@ -432,7 +442,9 @@ export const listMyTimeEntries = createServerFn({ method: "POST" })
       .lt("started_at", data.to)
       .order("started_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return (rows ?? []) as any;
+    const { data: clockRows, error: ce } = await context.supabase.from("work_clock_entries").select("id,job_id,kind,started_at,ended_at,description,job:jobs(id,client:clients(first_name,last_name))").eq("user_id",context.userId).gte("started_at",data.from).lt("started_at",data.to);
+    if (ce) throw new Error(ce.message);
+    return [...(rows ?? []), ...(clockRows ?? []).map(r => ({...r, notes: r.description, clock_in_latitude: null,clock_in_longitude:null,clock_in_accuracy_meters:null,clock_out_latitude:null,clock_out_longitude:null,clock_out_accuracy_meters:null,consent_given_at:null}))].sort((a,b)=>b.started_at.localeCompare(a.started_at)) as TimeEntryRow[];
   });
 
 export type JobGpsEntry = {
@@ -483,3 +495,13 @@ export const listJobGps = createServerFn({ method: "POST" })
       clock_out_accuracy_meters: r.clock_out_accuracy_meters,
     }));
   });
+
+async function assertJobClockAllowed(context: {supabase: any; userId: string}, jobId: string) {
+  const {data: prof} = await context.supabase.from("profiles").select("is_active,tenant_id").eq("id",context.userId).maybeSingle();
+  if (!prof?.is_active) throw new Error("You are not authorized to clock in");
+  const {data: manager} = await context.supabase.rpc("is_owner_or_manager");
+  const {data: job} = await context.supabase.from("jobs").select("tenant_id,assigned_to,status").eq("id",jobId).maybeSingle();
+  if (!job || job.tenant_id !== prof.tenant_id || job.status === "canceled") throw new Error("Appointment unavailable");
+  const {count} = await context.supabase.from("job_employees").select("id",{count:"exact",head:true}).eq("job_id",jobId).eq("employee_id",context.userId);
+  if (!manager && job.assigned_to !== context.userId && !count) throw new Error("You are not assigned to this appointment");
+}

@@ -3594,6 +3594,81 @@ export type Database = {
           },
         ]
       }
+      work_clock_entries: {
+        Row: {
+          description: string
+          ended_at: string | null
+          id: string
+          job_id: string | null
+          kind: string
+          resume_job_id: string | null
+          resume_visit_job_id: string | null
+          started_at: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          description: string
+          ended_at?: string | null
+          id?: string
+          job_id?: string | null
+          kind: string
+          resume_job_id?: string | null
+          resume_visit_job_id?: string | null
+          started_at?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          description?: string
+          ended_at?: string | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          resume_job_id?: string | null
+          resume_visit_job_id?: string | null
+          started_at?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_clock_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_clock_entries_resume_job_id_fkey"
+            columns: ["resume_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_clock_entries_resume_visit_job_id_fkey"
+            columns: ["resume_visit_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_clock_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_clock_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -3645,8 +3720,22 @@ export type Database = {
         Args: { _confirmed: boolean; _job: string }
         Returns: undefined
       }
+      correct_clock_record: {
+        Args: {
+          _description: string
+          _end: string
+          _id: string
+          _job: string
+          _start: string
+        }
+        Returns: undefined
+      }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_onboarding_completed: { Args: never; Returns: boolean }
+      employee_clock_action: {
+        Args: { _action: string; _description?: string }
+        Returns: string
+      }
       enqueue_notification: {
         Args: {
           _channel: Database["public"]["Enums"]["notification_channel"]

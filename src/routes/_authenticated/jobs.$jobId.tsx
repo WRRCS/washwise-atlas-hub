@@ -1,3 +1,4 @@
+import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { closeJobs } from "@/lib/jobs.functions";
 import { jobLocation } from "@/lib/job-location";
 import { JobLocationEditor } from "@/components/job-location-editor";
@@ -71,6 +72,7 @@ function VisitButtons({ jobId }: { jobId: string }) {
   };
   const t = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const onSite = visit && !visit.left_at;
+  if (shift?.kind === "lunch") return <EmployeeClockControls />;
   if (!shift) {
     return (
       <button disabled={busy} onClick={() => run(() => dayInFn({ data: { job_id: jobId, gps: null } }), "Clocked in")}
@@ -81,6 +83,7 @@ function VisitButtons({ jobId }: { jobId: string }) {
   }
   return (
     <div className="flex flex-wrap gap-2">
+      <EmployeeClockControls />
       {onSite ? (
         <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit!.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); }, "Left job — drive time is counting")}
           className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">

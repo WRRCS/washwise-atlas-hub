@@ -1,3 +1,5 @@
+import { EmployeeClockControls } from "@/components/employee-clock-controls";
+import { clockTotals } from "@/lib/clock-totals";
 import { jobLocation } from "@/lib/job-location";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -263,29 +265,6 @@ export function useClockOutDay(trackGps: boolean) {
   return { clockOut, busy };
 }
 
-/** Day clock: shows drive time between jobs and the end-of-day Clock out. */
-function ShiftBar({ trackGps }: { trackGps: boolean }) {
-  const t = useT();
-  const getFn = useServerFn(getMyShift);
-  const { clockOut, busy } = useClockOutDay(trackGps);
-  const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => getFn(), refetchInterval: 60000 });
-  if (!shift) return null;
-  const driving = !shift.on_site_since;
-  const since = driving ? shift.last_left_at ?? shift.started_at : shift.on_site_since!;
-  const mins = Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60000));
-  return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-clay-100/70 px-4 py-3 text-sm">
-      <span>
-        {driving ? <><strong>{t("Drive time")}</strong> · {mins} min {t("since")} {fmtTime(since)}</> : <><strong>{t("On site")}</strong> · {t("since")} {fmtTime(since)}</>}
-        <span className="text-muted-foreground"> · {t("Clocked in at")} {fmtTime(shift.started_at)}</span>
-      </span>
-      <button disabled={busy} onClick={clockOut} className="rounded-lg border border-border px-3 py-1.5 font-medium hover:bg-clay-50 disabled:opacity-50">
-        {t("Clock out for the day")}
-      </button>
-    </div>
-  );
-}
-
 function MyJobsPage() {
   const [tab, setTab] = useState<Tab>("today");
   const t = useT();
@@ -296,6 +275,7 @@ function MyJobsPage() {
         <PushToggle mode="app" />
       </div>
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
+        <EmployeeClockControls />
         <div className="flex gap-1 mb-6 bg-clay-100 p-1 rounded-lg w-fit">
           {(["today", "schedule", "timesheet"] as Tab[]).map((tb) => (
             <button
@@ -355,6 +335,7 @@ function TodayView() {
   const { clockOut: clockOutDay } = useClockOutDay(trackGps);
 
   const handleClockIn = async (job_id: string, dayOnly = false) => {
+    if (shiftQ.data?.kind === "lunch") { toast.error("End unpaid lunch / Resume work before arriving"); return; }
     let gps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
     if (trackGps) {
       const res = await captureGps();
@@ -411,7 +392,7 @@ function TodayView() {
 
   return (
     <>
-      <ShiftBar trackGps={trackGps} />
+
       {upNext && (
         <UpNextHero
           job={upNext}
@@ -989,7 +970,8 @@ function TimesheetView() {
   });
 
   const entries = q.data ?? [];
-  const totalHours = entries.reduce((sum, e) => (e.ended_at ? sum + hoursBetween(e.started_at, e.ended_at) : sum), 0);
+  const totals = clockTotals(entries.filter(e=>!!e.ended_at));
+  const totalHours = totals.paid / 60;
 
   return (
     <div>
@@ -1021,7 +1003,7 @@ function TimesheetView() {
         </div>
         <div className="text-sm">
           <span className="text-muted-foreground">Total: </span>
-          <strong>{totalHours.toFixed(2)} hrs</strong>
+          <strong>{totalHours.toFixed(2)} paid hrs</strong><span className="block text-muted-foreground">Unpaid lunch: {(totals.unpaid / 60).toFixed(2)} hrs</span>
         </div>
       </div>
       {q.isLoading ? (
@@ -1045,7 +1027,7 @@ function TimesheetView() {
                 <tr key={e.id} className="border-t border-border/60">
                   <td className="px-4 py-2">{fmtDate(e.started_at)}</td>
                   <td className="px-4 py-2">
-                    {e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : "—"}
+                    {e.kind === "lunch" ? "Unpaid lunch" : e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : `Unassigned work · ${e.notes ?? ""}`}
                   </td>
                   <td className="px-4 py-2">
                     {fmtTime(e.started_at)}

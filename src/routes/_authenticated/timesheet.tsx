@@ -1,3 +1,6 @@
+import { ClockRecordEditor } from "@/components/clock-record-editor";
+import { EmployeeClockControls } from "@/components/employee-clock-controls";
+import { intervalMinutes } from "@/lib/clock-totals";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -78,6 +81,9 @@ function TimesheetPage() {
         shortDur(r.drive_min), issueOf(r) ?? "",
       ].map((v) => `"${v}"`).join(","));
     }
+    lines.push("", "Employee,Record,Start,End,Paid minutes,Unpaid lunch minutes,Description");
+    for (const e of entries) lines.push([e.employee_name,"Paid work",e.started_at,e.ended_at ?? "",mins(e.started_at,e.ended_at),0,""].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
+    for (const e of q.data?.clockRecords ?? []) if(e.kind === "lunch") lines.push([e.employee_name,"Unpaid lunch",e.started_at,e.ended_at ?? "",0,intervalMinutes(e),e.description].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
     a.download = `timesheet-${format(day, "yyyy-MM-dd")}.csv`;
@@ -105,6 +111,7 @@ function TimesheetPage() {
         action={<Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />Download</Button>}
       />
       <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 space-y-4">
+        <EmployeeClockControls />
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, -1))}><ChevronLeft className="size-4 mr-1" />Prev</Button>
           <Button variant="outline" size="sm" disabled={isToday} onClick={() => setDay(startOfDay(new Date()))}>Today</Button>
@@ -153,7 +160,8 @@ function TimesheetPage() {
                 <th className="text-left px-4 py-2 font-medium">Team member</th>
                 <th className="text-right px-4 py-2 font-medium">On site</th>
                 <th className="text-right px-4 py-2 font-medium">Drive / other</th>
-                <th className="text-right px-4 py-2 font-medium">Total</th>
+                <th className="text-right px-4 py-2 font-medium">Unpaid lunch</th>
+                <th className="text-right px-4 py-2 font-medium">Paid total</th>
               </tr></thead>
               <tbody>
                 {dayTotals.map((t) => (
@@ -161,6 +169,7 @@ function TimesheetPage() {
                     <td className="px-4 py-2">{t.name}</td>
                     <td className="px-4 py-2 text-right">{shortDur(t.onSite)}</td>
                     <td className="px-4 py-2 text-right">{shortDur(t.drive)}</td>
+                    <td className="px-4 py-2 text-right">{shortDur(t.unpaid)}</td>
                     <td className="px-4 py-2 text-right font-semibold">{shortDur(t.total)}</td>
                   </tr>
                 ))}
@@ -169,14 +178,16 @@ function TimesheetPage() {
           </section>
         )}
 
-        {isMgr && entries.length > 0 && (
+        {isMgr && (q.data?.clockRecords?.length ?? 0) > 0 && <section aria-label="Unpaid lunch and unassigned work"><h2 className="font-semibold">Unpaid lunch &amp; unassigned work</h2>{q.data?.clockRecords.map(r => <ClockRecordEditor key={r.id} record={r} />)}</section>}
+
+        {isMgr && entries.filter(e=>!e.kind).length > 0 && (
           <section className="rounded-xl border border-border/60 bg-card">
             <div className="px-4 py-3 border-b border-border/60">
               <h2 className="font-semibold text-sm">Day clock (clock in / clock out)</h2>
               <p className="text-xs text-muted-foreground">Fix a forgotten clock out or wrong time here.</p>
             </div>
             <div className="divide-y divide-border/40">
-              {entries.map((en) => (
+              {entries.filter(e=>!e.kind).map((en) => (
                 <div key={en.id} className="px-4 py-2 flex flex-wrap items-center gap-3 text-sm">
                   <span className="font-medium w-40 truncate">{en.employee_name}</span>
                   <div className="flex-1"><EntryEditor entry={en} time={time} /></div>
@@ -338,19 +349,20 @@ function EntryEditor({ entry, time }: { entry: { id: string; started_at: string;
 }
 
 /** Paid total = clock in → clock out (open entry counts to now); falls back to on-site + drive when no clock entry exists. */
-function computeTotals(data: { rows: any[]; entries: { employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[] } | undefined) {
-  const m = new Map<string, { id: string; name: string; onSite: number; clocked: number; legacy: number }>();
-  const get = (id: string, name: string) => { const t = m.get(id) ?? { id, name, onSite: 0, clocked: 0, legacy: 0 }; m.set(id, t); return t; };
+function computeTotals(data: { rows: any[]; entries: { employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[]; clockRecords?: {employee_id:string;employee_name:string;kind:string;started_at:string;ended_at:string|null}[] } | undefined) {
+  const m = new Map<string, { id: string; name: string; onSite: number; clocked: number; unpaid: number; hasClock: boolean; legacy: number }>();
+  const get = (id: string, name: string) => { const t = m.get(id) ?? { id, name, onSite: 0, clocked: 0, unpaid: 0, hasClock: false, legacy: 0 }; m.set(id, t); return t; };
   for (const r of data?.rows ?? []) {
     const t = get(r.employee_id, r.employee_name);
     const on = r.arrived_at ? mins(r.arrived_at, r.left_at) : 0;
     t.onSite += on;
     t.legacy += on + (r.drive_min ?? 0);
   }
-  for (const e of data?.entries ?? []) get(e.employee_id, e.employee_name).clocked += mins(e.started_at, e.ended_at);
+  for (const e of data?.entries ?? []) { const t=get(e.employee_id,e.employee_name); t.clocked += mins(e.started_at,e.ended_at); t.hasClock=true; }
+  for (const e of data?.clockRecords ?? []) if(e.kind === "lunch") { const t=get(e.employee_id,e.employee_name); t.unpaid += intervalMinutes(e); t.hasClock=true; }
   return Array.from(m.values())
-    .map((t) => { const total = t.clocked > 0 ? t.clocked : t.legacy; return { ...t, total, drive: Math.max(0, total - t.onSite) }; })
-    .filter((t) => t.total > 0)
+    .map((t) => { const total = t.hasClock ? t.clocked : t.legacy; return { ...t, total, drive: Math.max(0, total - t.onSite) }; })
+    .filter((t) => t.total > 0 || t.unpaid > 0)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
