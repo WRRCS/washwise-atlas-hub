@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
 import { listJobGps, getMyShift, clockInDay, endMyShift } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
-import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
+import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, finishPhotoUploadBatch, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { myPermissions } from "@/lib/team.functions";
 import { myCapabilities } from "@/lib/entities.functions";
@@ -200,7 +200,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
 
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-8 grid md:grid-cols-3 gap-8">
         <section className="md:col-span-2 bg-card p-6 rounded-xl ring-1 ring-black/5">
-          <Tabs defaultValue="sop">
+          <Tabs defaultValue={typeof window !== "undefined" && window.location.hash === "#photos" ? "photos" : "sop"}>
             <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
               <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SOP Checklist</TabsTrigger>
               <Button variant="outline" type="button" onClick={() => setSopOpen(true)} className="h-auto rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 hover:bg-brand hover:text-brand-foreground">SOP</Button>
@@ -520,6 +520,7 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
   const delFn = useServerFn(deleteJobPhoto);
   const uploadUrlFn = useServerFn(createJobPhotoUploadUrl);
   const registerFn = useServerFn(registerJobPhoto);
+  const finishBatchFn = useServerFn(finishPhotoUploadBatch);
   const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
   const [shareLink, setShareLink] = useState<{ url: string; title: string } | null>(null);
   const shareFn = useServerFn(createPhotoShareLink);
@@ -539,6 +540,7 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
   const addFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     setSaving(true);
+    const savedIds: string[] = [];
     try {
       for (const file of Array.from(files)) {
         const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: file.name } });
@@ -546,7 +548,7 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
           contentType: file.type,
         });
         if (error) throw new Error(error.message);
-        await registerFn({
+        const saved = await registerFn({
           data: {
             job_id: jobId,
             storage_path: path,
@@ -554,6 +556,7 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
             taken_at: new Date().toISOString(),
           },
         });
+        savedIds.push(saved.id);
       }
       qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
       toast.success("Photo saved");
@@ -561,6 +564,8 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
       toast.error(e instanceof Error ? e.message : "Failed to save photo");
     } finally {
       setSaving(false);
+      qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
+      if (savedIds.length) void finishBatchFn({ data: { job_id: jobId, photo_ids: savedIds } }).catch(() => toast.error("Photos saved, but the owner email could not be prepared."));
     }
   };
 
