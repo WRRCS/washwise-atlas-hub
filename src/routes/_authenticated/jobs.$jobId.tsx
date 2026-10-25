@@ -294,11 +294,11 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                   {cleanerTabs.map((c) => (
                     <section key={c.employee_id}>
                       <h3 className="text-sm font-semibold mb-3">{c.name}</h3>
-                      <PhotosTab jobId={jobId} employeeId={c.employee_id} cleanerName={c.name} readOnly exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
+                      <PhotosTab key={`${jobId}-${c.employee_id}`} jobId={jobId} employeeId={c.employee_id} cleanerName={c.name} readOnly exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
                     </section>
                   ))}
                   <section>
-                    <h3 className="text-sm font-semibold mb-3">All cleaners’ photos (download, add or remove)</h3>
+                    <h3 className="text-sm font-semibold mb-3">All appointment photos</h3>
                     <PhotosTab jobId={jobId} allCleaners exportContext={{ date: dayKeyTZ(job.scheduled_start, "America/Los_Angeles"), property: jobLocation(job).label ?? jobLocation(job).address ?? "Location-needs-review" }} />
                   </section>
                 </div>
@@ -660,12 +660,6 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {group === "before" ? "Before" : group === "after" ? "After" : group === "damage" ? "Damage" : "Other"} · {groupPhotos.length}
         </h3>
-        <button
-          onClick={() => makeLink(group)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          <Link2 className="size-3.5" /> Link to all {group}
-        </button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {groupPhotos.map((p) => (
@@ -684,20 +678,12 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
             <div className="p-2 space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="flex items-center gap-2 text-xs"><Checkbox aria-label={`Select photo ${p.id}`} checked={downloads.selected.has(p.id)} disabled={downloads.busy} onCheckedChange={() => downloads.toggle(p.id)} /> Select</label>
-                {downloads.singleButton(p)}
               </div>
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${typeBadge[p.photo_type]}`}>
                   {p.photo_type}
                 </span>
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => makeLink(p.photo_type, p.id)}
-                    className="p-1 text-muted-foreground hover:text-foreground"
-                    aria-label="Copy photo link"
-                  >
-                    <Link2 className="size-3.5" />
-                  </button>
                   {!readOnly && (
                     <button
                       onClick={() => onDelete(p)}
@@ -713,6 +699,7 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
               <p className="text-[10px] text-muted-foreground">
                 {p.uploader_name ?? "—"} · {format(new Date(p.uploaded_at), "MMM d, h:mma")}
               </p>
+              {p.attribution_review_reason && <p className="text-xs text-destructive" title={p.attribution_review_reason}>Uploader needs admin review</p>}
             </div>
           </div>
         ))}
@@ -726,7 +713,6 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
           {lightbox?.url && <img src={lightbox.url} alt={lightbox.caption ?? "Job photo"} className="max-h-[65dvh] w-full object-contain" />}
           {lightbox?.caption && <p className="text-sm">{lightbox.caption}</p>}
           {lightbox && downloads.singleButton(lightbox)}
-          {downloads.toolbar}
           <DialogClose asChild><Button variant="outline">Close photo</Button></DialogClose>
         </DialogContent>
       </Dialog>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download, Loader2, RotateCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { buildPhotoZip, deliverPhotoFile, preparePhotoExport, triggerDownload, zipFilename, type DownloadPhoto, type PhotoExportContext, type PreparedPhoto } from "@/lib/photo-downloads";
+import { buildPhotoZip, deliverPhotoFile, preparePhotoExport, triggerDownload, uniquePhotoReferences, zipFilename, type DownloadPhoto, type PhotoExportContext, type PreparedPhoto } from "@/lib/photo-downloads";
 
 type ZipState = {
   requested: DownloadPhoto[];
@@ -19,12 +19,12 @@ type ZipState = {
  * (flat, no folders) and exactly one browser download is triggered.
  */
 export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportContext, options: { cleanerName?: string; allCleaners?: boolean } = {}) {
+  photos = uniquePhotoReferences(photos);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
-  const [jpeg, setJpeg] = useState(false);
   const [zipState, setZipState] = useState<ZipState | null>(null);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -41,7 +41,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
 
   const downloadOne = (photo: DownloadPhoto) => run(async () => {
     setProgress("Preparing photo…");
-    const result = await preparePhotoExport([photo], context, { jpeg });
+    const result = await preparePhotoExport([photo], context, {});
     await deliverPhotoFile(result.files[0].blob, result.files[0].filename);
   });
 
@@ -61,10 +61,9 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
   };
 
   const downloadZip = (items: DownloadPhoto[]) => {
-    if (items.length === 1) return downloadOne(items[0]);
     return run(async () => {
       setZipState(null);
-      const result = await preparePhotoExport(items, context, { jpeg, onProgress: progressFor });
+      const result = await preparePhotoExport(items, context, { onProgress: progressFor });
       if (!mounted.current) return;
       await finishZip(items, result.files, result.failures, result.failedPhotos);
     });
@@ -75,7 +74,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
     if (!state?.failedPhotos.length) return;
     return run(async () => {
       let retried: Awaited<ReturnType<typeof preparePhotoExport>> | null = null;
-      try { retried = await preparePhotoExport(state.failedPhotos, context, { jpeg, onProgress: progressFor }); }
+      try { retried = await preparePhotoExport(state.failedPhotos, context, { onProgress: progressFor }); }
       catch { retried = null; }
       if (!mounted.current) return;
       const files = [...state.files, ...(retried?.files ?? [])];
@@ -101,28 +100,25 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
   };
 
   const saveZip = async () => {
-    if (!zipState?.zip) return;
+    if (!zipState?.zip || locked.current) return;
+    locked.current = true; setBusy(true);
     try { await deliverPhotoFile(zipState.zip, zipState.filename); setZipState({ ...zipState, started: true }); }
     catch { setError("Could not start the ZIP download — please try again"); }
+    finally { setTimeout(() => { locked.current = false; if (mounted.current) setBusy(false); }, 500); }
   };
 
   const toggle = (id: string) => setSelected(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const singleButton = (photo: DownloadPhoto) => <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadOne(photo)}><Download className="size-4" /> Download</Button>;
   const selectedPhotos = photos.filter(p => selected.has(p.id));
-  const allLabel = options.cleanerName ? "Download this cleaner’s photos" : "Download all photos";
+  const allLabel = "Download all";
   const total = zipState ? zipState.requested.length : 0;
 
   const toolbar = photos.length > 0 && <div className="space-y-3 mb-4">
     <div className="flex flex-wrap gap-2 items-center">
       <Button size="sm" disabled={busy} onClick={() => downloadZip(photos)}><Download className="size-4" /> {allLabel} ({photos.length})</Button>
-      <Button variant="outline" size="sm" disabled={busy} onClick={() => setSelected(selected.size === photos.length ? new Set() : new Set(photos.map(p => p.id)))}>{selected.size === photos.length ? "Clear selection" : "Select all"}</Button>
-      <Button variant="outline" size="sm" disabled={busy || !selectedPhotos.length} onClick={() => downloadZip(selectedPhotos)}><Download className="size-4" /> Download selected ({selectedPhotos.length})</Button>
-      <label className="flex items-center gap-2 text-sm"><Checkbox checked={jpeg} disabled={busy} onCheckedChange={v => setJpeg(v === true)} /> Convert all to JPEG</label>
+      <Button variant="ghost" size="sm" disabled={busy} onClick={() => setSelected(selectedPhotos.length === photos.length ? new Set() : new Set(photos.map(p => p.id)))}>{selectedPhotos.length === photos.length ? "Clear selection" : "Select all"}</Button>
+      {selectedPhotos.length > 0 && <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadZip(selectedPhotos)}><Download className="size-4" /> Download selected ({selectedPhotos.length})</Button>}
     </div>
-    <p className="text-xs text-muted-foreground">
-      {options.allCleaners && !options.cleanerName ? "Includes every cleaner’s photos for this appointment. " : ""}
-      Several photos download as one ZIP file. Extract it, then select all the images inside and drag them into Turno. After uploading to Turno, you can delete the downloaded files. Your originals remain in WRRCS.
-    </p>
     {busy && <p role="status" className="flex gap-2 items-center text-sm"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{progress}</p>}
     {error && <p role="alert" className="text-sm text-destructive break-words">{error}</p>}
     {zipState && !busy && <div className="rounded-lg border border-border/60 p-3 space-y-2">
