@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 
-const SETTING = 'photo-upload-email-settings';
+const SETTING = 'system:photo-upload-email-settings';
 export const getPhotoEmailSettings = createServerFn({ method:'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const { manager, readSettings } = await import('./photo-upload-alerts.server');
   const tenantId = await manager(context);
@@ -10,7 +10,7 @@ export const getPhotoEmailSettings = createServerFn({ method:'GET' }).middleware
   const { data: roles } = await supabaseAdmin.from('user_roles').select('user_id').eq('tenant_id',tenantId).in('role',['owner','manager']);
   const ids = [...new Set((roles ?? []).map(r => r.user_id))];
   const { data: recipients } = ids.length ? await supabaseAdmin.from('profiles').select('id,full_name,email').eq('tenant_id',tenantId).eq('is_active',true).in('id',ids) : { data:[] };
-  const { data: logs } = await supabaseAdmin.from('activity_log').select('id,description,created_at').eq('tenant_id',tenantId).in('action_type',['photo-upload-email-sending','photo-upload-email-sent','photo-upload-email-failed','photo-upload-email-suppressed']).order('created_at',{ ascending:false }).limit(30);
+  const { data: logs } = await supabaseAdmin.from('activity_log').select('id,description,created_at').eq('tenant_id',tenantId).in('action_type',['system:photo-upload-email-sending','system:photo-upload-email-sent','system:photo-upload-email-failed','system:photo-upload-email-suppressed']).order('created_at',{ ascending:false }).limit(30);
   return { settings:await readSettings(supabaseAdmin,tenantId), recipients:(recipients ?? []).filter(r => r.email), logs:logs ?? [] };
 });
 export const savePhotoEmailSettings = createServerFn({ method:'POST' }).middleware([requireSupabaseAuth])
