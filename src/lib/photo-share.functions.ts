@@ -10,6 +10,7 @@ export const createPhotoShareLink = createServerFn({ method: "POST" })
       job_id: z.string().uuid(),
       photo_type: z.enum(["before", "after", "damage", "other"]).nullable().optional(),
       photo_id: z.string().uuid().optional(),
+      employee_id: z.string().uuid().optional(),
       origin: z.string().url(),
     }).parse(input),
   )
@@ -17,13 +18,21 @@ export const createPhotoShareLink = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     const { data: job } = await sb.from("jobs").select("id, tenant_id").eq("id", data.job_id).maybeSingle();
     if (!job) throw new Error("Job not found");
+    const { data: reviewer, error: roleError } = await context.supabase.rpc('is_owner_or_manager');
+    if (roleError || !reviewer) throw new Error('Only owners and managers can create photo links');
+    let choices = context.supabase.from('job_photos').select('id').eq('tenant_id', job.tenant_id).eq('job_id', job.id);
+    if (data.employee_id) choices = choices.eq('uploaded_by', data.employee_id);
+    if (data.photo_id) choices = choices.eq('id', data.photo_id);
+    if (data.photo_type) choices = choices.eq('photo_type', data.photo_type);
+    const { data: eligible, error: photoError } = await choices;
+    if (photoError || !eligible?.length) throw new Error('No matching photos belong to this appointment and cleaner');
     const { data: row, error } = await sb
       .from("photo_share_links")
       .insert({
         tenant_id: job.tenant_id,
         job_id: data.job_id,
         photo_type: data.photo_type ?? null,
-        photo_ids: data.photo_id ? [data.photo_id] : null,
+        photo_ids: eligible.map(p => p.id),
         created_by: context.userId,
       })
       .select("id")
@@ -47,12 +56,12 @@ export const getSharedPhotos = createServerFn({ method: "GET" })
     const sb = supabaseAdmin as any;
     const { data: link } = await sb.from("photo_share_links").select("*").eq("id", data.id).maybeSingle();
     if (!link || new Date(link.expires_at) < new Date()) return null;
-    let q = sb.from("job_photos").select("id, storage_path, caption, photo_type").eq("job_id", link.job_id);
+    let q = sb.from("job_photos").select("id, storage_path, caption, photo_type").eq("tenant_id", link.tenant_id).eq("job_id", link.job_id);
     if (link.photo_ids?.length) q = q.in("id", link.photo_ids);
     else if (link.photo_type) q = q.eq("photo_type", link.photo_type);
     const [{ data: photos }, { data: job }, { data: tenant }] = await Promise.all([
       q.order("uploaded_at", { ascending: true }),
-      sb.from("jobs").select("scheduled_start, client:clients(name)").eq("id", link.job_id).maybeSingle(),
+      sb.from("jobs").select("scheduled_start, service_location_label, client:clients(first_name,last_name)").eq("tenant_id", link.tenant_id).eq("id", link.job_id).maybeSingle(),
       sb.from("tenants").select("name").eq("id", link.tenant_id).maybeSingle(),
     ]);
     const signed = await Promise.all(
@@ -66,7 +75,7 @@ export const getSharedPhotos = createServerFn({ method: "GET" })
       ? new Date(job.scheduled_start).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" })
       : "";
     return {
-      title: [label, job?.client?.name, date].filter(Boolean).join(" · "),
+      title: [label, job?.service_location_label, date].filter(Boolean).join(" · "),
       business: tenant?.name ?? null,
       expires_at: link.expires_at,
       photos: signed.filter(Boolean) as SharedPhotos["photos"],
