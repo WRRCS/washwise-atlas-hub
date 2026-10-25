@@ -47,14 +47,14 @@ export const createJobPhotoUploadUrl = createServerFn({ method: "POST" })
     // Verify the caller may add photos to this job (assigned, or owner/manager).
     const [{ data: job }, { data: assigned }, { data: isMgr }] = await Promise.all([
       context.supabase.from("jobs").select("id, tenant_id").eq("id", data.job_id).maybeSingle(),
-      context.supabase.from("job_employees").select("job_id")
+      context.supabase.from("job_employees").select("id")
         .eq("job_id", data.job_id).eq("employee_id", context.userId).maybeSingle(),
       context.supabase.rpc("is_owner_or_manager"),
     ]);
     if (!job || job.tenant_id !== prof.tenant_id) throw new Error("Job not found");
     if (!assigned && !isMgr) throw new Error("You're not assigned to this job");
     const safe = data.file_name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${photoUploadPrefix(prof.tenant_id, data.job_id, context.userId)}${crypto.randomUUID()}-${safe}`;
+    const path = `${photoUploadPrefix(prof.tenant_id, data.job_id, context.userId)}${assigned?.id ?? "staff"}-${crypto.randomUUID()}-${safe}`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: signed, error } = await supabaseAdmin.storage
       .from("job-photos")
@@ -79,6 +79,9 @@ export const registerJobPhoto = createServerFn({ method: "POST" })
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
     if (!ownsPhotoUpload(data.storage_path, prof.tenant_id, data.job_id, context.userId)) throw new Error("Photo belongs to a different login or appointment. Please upload again.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requireStoredPhoto } = await import("./photo-upload-validation.server");
+    await requireStoredPhoto(supabaseAdmin, data.storage_path);
     const { data: existing } = await context.supabase.from("job_photos").select("id").eq("storage_path", data.storage_path).eq("uploaded_by", context.userId).maybeSingle();
     if (existing) return existing;
     const { data: row, error } = await context.supabase
@@ -127,8 +130,11 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
     const endedAt = new Date().toISOString();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { requireStoredPhoto } = await import("./photo-upload-validation.server");
     for (const photo of data.photos) {
       if (!ownsPhotoUpload(photo.storage_path, prof.tenant_id, data.job_id, context.userId)) throw new Error("Photo belongs to a different login or appointment. Please upload again.");
+      await requireStoredPhoto(supabaseAdmin, photo.storage_path);
     }
 
     const photoIds: string[] = [];

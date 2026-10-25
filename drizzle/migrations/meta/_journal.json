@@ -183,6 +183,13 @@
       "when": 1792901342382,
       "tag": "0025_enable_scoped_job_photo_realtime",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792901958574,
+      "tag": "0026_reject_inconsistent_photo_assignment",
+      "breakpoints": true
     }
   ]
 }

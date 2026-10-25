@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Harden permanent upload relationship validation and regression coverage; preserve assignment evidence through reassignment.
+- [ ] Verify new two-cleaner photo uploads and fresh-property occurrence using isolated records without notifications or changes to real photos.
+- [ ] Deploy requested ownership fix after security check and repeat ownership checks on published app; report exact outcomes and blockers.
+
 - [x] Identified lost schedule cleaner context: Romeo's row opened shared galleries. Preserve clicked cleaner, explicit combined review, authenticated viewer/occurrence/cleaner cache and mounted state, immutable upload assignment identity, capture login checks, realtime publication plus refresh fallback. BBWSD's 44 photos are recorded under Dalton; no independent legacy storage owner exists, so retain review flags and do not reassign originals.
 - [x] Verified signed in as Zoe: Romeo BBWSD row shows zero images, Dalton row shows 44, actual ZIP contains 44 valid Dalton-only images. Signed in as Dalton: same 44 after reload on desktop and phone. Twenty unit tests pass; source photo count unchanged.
 - [ ] Two-account new-upload/live-update/account-switch acceptance test — blocked: Romeo has no auth account; live uploads also notify real staff without authorization. Fresh-occurrence isolation is covered by scope tests, not a newly created real appointment.
