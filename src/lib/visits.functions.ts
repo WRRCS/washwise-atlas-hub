@@ -1,3 +1,5 @@
+import { intervalMinutes } from "@/lib/clock-totals";
+import type { ClockRecord } from "@/components/clock-record-editor";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -60,19 +62,22 @@ export const arriveAtJob = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const tenantId = await tenantOf(context);
     const sb = context.supabase as any;
-    // Close any visit left open at another appointment.
-    await sb.from("job_visits").update({ left_at: new Date().toISOString() })
-      .eq("employee_id", context.userId).is("left_at", null);
-    const { data: row, error } = await sb.from("job_visits")
-      .insert({ tenant_id: tenantId, job_id: data.job_id, employee_id: context.userId })
-      .select("id, arrived_at, left_at").single();
-    if (error) throw new Error(error.message);
-    // Arrived also clocks in, unless the clock is already running (e.g. driving from the last job).
-    const { count } = await context.supabase.from("time_entries").select("id", { count: "exact", head: true })
-      .eq("user_id", context.userId).is("ended_at", null);
-    if (!count) {
-      await context.supabase.from("time_entries").insert({ tenant_id: tenantId, job_id: data.job_id, user_id: context.userId, started_at: row.arrived_at });
+    const {data: lunch} = await context.supabase.from("work_clock_entries").select("id,kind").eq("user_id",context.userId).is("ended_at",null).limit(1);
+    if (lunch?.[0]?.kind === "lunch") throw new Error("End unpaid lunch / Resume work before arriving");
+    const {data: prof} = await context.supabase.from("profiles").select("is_active").eq("id",context.userId).maybeSingle();
+    const {data: mgr} = await context.supabase.rpc("is_owner_or_manager");
+    const {data: job} = await context.supabase.from("jobs").select("assigned_to,tenant_id,status").eq("id",data.job_id).maybeSingle();
+    const {count: assigned} = await context.supabase.from("job_employees").select("id",{count:"exact",head:true}).eq("job_id",data.job_id).eq("employee_id",context.userId);
+    if (!prof?.is_active || !job || job.tenant_id !== tenantId || job.status === "canceled" || (!mgr && !assigned && job.assigned_to !== context.userId)) throw new Error("You are not authorized for this appointment");
+    const { count } = await context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("user_id", context.userId).is("ended_at", null);
+    const stamp = new Date().toISOString();
+    if (!count && !lunch?.length) {
+      const {error} = await context.supabase.from("time_entries").insert({tenant_id:tenantId,job_id:data.job_id,user_id:context.userId,started_at:stamp});
+      if (error) throw new Error(error.message);
     }
+    await sb.from("job_visits").update({left_at:stamp}).eq("employee_id",context.userId).is("left_at",null);
+    const {data: row,error} = await sb.from("job_visits").insert({tenant_id:tenantId,job_id:data.job_id,employee_id:context.userId,arrived_at:stamp}).select("id,arrived_at,left_at").single();
+    if (error) throw new Error(error.message);
     await context.supabase.from("jobs").update({ status: "in_progress", actual_start: row.arrived_at })
       .eq("id", data.job_id).eq("status", "scheduled");
     return row as JobVisit;
@@ -117,8 +122,9 @@ export const listTimesheet = createServerFn({ method: "POST" })
       .gte("arrived_at", data.from).lt("arrived_at", data.to);
     if (!isMgr) { te = te.eq("user_id", context.userId); jv = jv.eq("employee_id", context.userId); }
     const [{ data: entries }, { data: visits }, { data: profs }] = await Promise.all([
-      te, jv, context.supabase.rpc("staff_directory"),
+      te, jv, context.supabase.rpc("staff_directory"), cr,
     ]);
+    if (teError || crError) throw new Error(teError?.message ?? crError?.message);
     const names = new Map<string, string>((profs ?? []).map((p: any) => [p.id, p.full_name ?? "Unknown"]));
     const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: data.tz, year: "numeric", month: "2-digit", day: "2-digit" });
     const map = new Map<string, TimesheetDay>();
@@ -205,7 +211,8 @@ export type DailyRow = {
 
 export type DailyTimesheet = {
   rows: DailyRow[];
-  entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[];
+  entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null; kind?: string }[];
+  clockRecords: (ClockRecord & {employee_id: string})[];
 };
 
 /** One row per cleaner per job for a single day: scheduled vs. actual arrive/leave, plus drive time between jobs. */
@@ -215,11 +222,12 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<DailyTimesheet> => {
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
     const sb = context.supabase as any;
-    const jobSel = "id, scheduled_start, scheduled_end, status, assigned_to, client:clients(first_name,last_name), property:client_properties(label,address), job_employees(employee_id)";
-    let te = sb.from("time_entries").select("id, user_id, started_at, ended_at").gte("started_at", data.from).lt("started_at", data.to);
+    const jobSel = "id, service_location_label,service_address, scheduled_start, scheduled_end, status, assigned_to, client:clients(first_name,last_name), property:client_properties(label,address), job_employees(employee_id)";
+    let te = sb.from("time_entries").select("id, user_id, started_at, ended_at").lt("started_at", data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
+    let cr = sb.from("work_clock_entries").select("id,user_id,kind,description,job_id,started_at,ended_at").lt("started_at",data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
     let jv = sb.from("job_visits").select("id, job_id, employee_id, arrived_at, left_at").gte("arrived_at", data.from).lt("arrived_at", data.to);
-    if (!isMgr) { te = te.eq("user_id", context.userId); jv = jv.eq("employee_id", context.userId); }
-    const [{ data: entries }, { data: visits }, { data: jobs }, { data: profs }] = await Promise.all([
+    if (!isMgr) { te = te.eq("user_id", context.userId); cr = cr.eq("user_id",context.userId); jv = jv.eq("employee_id", context.userId); }
+    const [{ data: entries, error: teError }, { data: visits }, { data: jobs }, { data: profs }, {data: clockRows,error: crError}] = await Promise.all([
       te, jv,
       sb.from("jobs").select(jobSel).gte("scheduled_start", data.from).lt("scheduled_start", data.to).neq("status", "canceled"),
       context.supabase.rpc("staff_directory"),
@@ -236,7 +244,7 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
       const c = j?.client;
       return [c?.first_name, c?.last_name].filter(Boolean).join(" ") || "Appointment";
     };
-    const prop = (j: any) => j?.property ? (j.property.label || j.property.address || null) : null;
+    const prop = (j: any) => j?.service_location_label || j?.service_address || null;
     const rows: DailyRow[] = [];
     const seen = new Set<string>();
     for (const v of (visits ?? []) as any[]) {
@@ -263,8 +271,9 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
       }
     }
     // Drive/other time = gap since the cleaner clocked in or left their previous job.
-    const entryList = ((entries ?? []) as any[]).map((e) => ({
-      id: e.id, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at, ended_at: e.ended_at,
+    const paidRows = [...(entries ?? []), ...(clockRows ?? []).filter((r:any)=>r.kind === "work")];
+    const entryList = (paidRows as any[]).map((e) => ({
+      id: e.id, kind: e.kind, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at < data.from ? data.from : e.started_at, ended_at: e.ended_at && e.ended_at < data.to ? e.ended_at : data.to < new Date().toISOString() ? data.to : e.ended_at,
     }));
     const byEmp = new Map<string, DailyRow[]>();
     for (const r of rows) if (r.arrived_at) byEmp.set(r.employee_id, [...(byEmp.get(r.employee_id) ?? []), r]);
@@ -273,14 +282,15 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
       const clockIn = entryList.filter((e) => e.employee_id === emp).map((e) => e.started_at).sort()[0] ?? null;
       let prev: string | null = clockIn;
       for (const r of list) {
-        if (prev && prev < r.arrived_at!) r.drive_min = (new Date(r.arrived_at!).getTime() - new Date(prev).getTime()) / 60000;
+        if (prev && r.arrived_at && prev < r.arrived_at) r.drive_min = entryList.filter(e=>e.employee_id===emp).reduce((sum,e)=>sum+intervalMinutes(e,Date.now(),Date.parse(prev ?? data.from),Date.parse(r.arrived_at ?? data.to)),0);
         prev = r.left_at;
       }
     }
     rows.sort((a, b) => a.employee_name.localeCompare(b.employee_name) ||
       (a.arrived_at ?? a.scheduled_start ?? "").localeCompare(b.arrived_at ?? b.scheduled_start ?? ""));
     entryList.sort((a, b) => a.employee_name.localeCompare(b.employee_name) || a.started_at.localeCompare(b.started_at));
-    return { rows, entries: entryList };
+    const clockRecords = (clockRows ?? []).map((r:any)=>({...r,employee_id:r.user_id,employee_name:names.get(r.user_id) ?? "Unknown"}));
+    return { rows, entries: entryList, clockRecords };
   });
 
 async function assertManagerVisit(context: { supabase: any; userId: string }, visitId: string) {
