@@ -570,6 +570,8 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
     const savedIds: string[] = [];
     try {
       for (const file of Array.from(files)) {
+        const { data: identity } = await supabase.auth.getUser();
+        if (identity.user?.id !== viewerId) throw new Error("Your login changed. Please reopen the appointment and upload again.");
         const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: file.name } });
         const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, {
           contentType: file.type,
