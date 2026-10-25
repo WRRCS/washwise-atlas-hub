@@ -1,6 +1,7 @@
 import { ClockRecordEditor } from "@/components/clock-record-editor";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { intervalMinutes } from "@/lib/clock-totals";
+import { zonedToUTCISO } from "@/lib/tz";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -51,8 +52,8 @@ function TimesheetPage() {
   const tz = useBusinessTz();
   const [day, setDay] = useState(() => startOfDay(new Date()));
   const [view, setView] = useState<"day" | "week">("day");
-  const from = day.toISOString();
-  const to = addDays(day, 1).toISOString();
+  const from = zonedToUTCISO(format(day, "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
+  const to = zonedToUTCISO(format(addDays(day, 1), "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const fn = useServerFn(listDailyTimesheet);
   const q = useQuery({ queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to } }) });
   const capsFn = useServerFn(myCapabilities);
@@ -372,8 +373,8 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   const fn = useServerFn(listDailyTimesheet);
   const results = useQueries({
     queries: days.map((d) => {
-      const from = d.toISOString();
-      return { queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to: addDays(d, 1).toISOString() } }) };
+      const from = zonedToUTCISO(format(d,"yyyy-MM-dd"), "00:00", "America/Los_Angeles");
+      return { queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to: zonedToUTCISO(format(addDays(d,1),"yyyy-MM-dd"),"00:00","America/Los_Angeles") } }) };
     }),
   });
   const loading = results.some((r) => r.isLoading);
