@@ -442,7 +442,7 @@ export const listMyTimeEntries = createServerFn({ method: "POST" })
       .lt("started_at", data.to)
       .order("started_at", { ascending: false });
     if (error) throw new Error(error.message);
-    const { data: clockRows, error: ce } = await context.supabase.from("work_clock_entries").select("id,job_id,kind,started_at,ended_at,description,job:jobs(id,client:clients(first_name,last_name))").eq("user_id",context.userId).gte("started_at",data.from).lt("started_at",data.to);
+    const { data: clockRows, error: ce } = await context.supabase.from("work_clock_entries").select("id,job_id,kind,started_at,ended_at,description,job:jobs!work_clock_entries_job_id_fkey(id,client:clients(first_name,last_name))").eq("user_id",context.userId).gte("started_at",data.from).lt("started_at",data.to);
     if (ce) throw new Error(ce.message);
     return [...(rows ?? []), ...(clockRows ?? []).map(r => ({...r, notes: r.description, clock_in_latitude: null,clock_in_longitude:null,clock_in_accuracy_meters:null,clock_out_latitude:null,clock_out_longitude:null,clock_out_accuracy_meters:null,consent_given_at:null}))].sort((a,b)=>b.started_at.localeCompare(a.started_at)) as TimeEntryRow[];
   });

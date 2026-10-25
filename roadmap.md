@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Add explicit unpaid lunch, unscheduled work and exclusive active timers.
-- [ ] Add admin lunch correction, job association and accurate separate totals.
-- [ ] Verify unscheduled clock-in → lunch → resume → clock-out and admin edits.
+- [x] Add explicit unpaid lunch, described unscheduled work and exclusive active timers; database mutations restricted to authenticated atomic actions.
+- [x] Add admin lunch correction, same-record job association and separate daily/weekly paid/lunch totals; payroll and productivity include unassigned work.
+- [x] Verify full flow signed in as Barbra and Zoe, persisted lunch across refresh, duplicate-start prevention and cleaner correction denial. Admin correction verified 7h30 paid/30m lunch → 7h15 paid/45m lunch; job association preserved record IDs. Controlled rows removed, no notifications sent; five total tests pass.
 
 - [x] Explained the sample's nonexistent appointment link; signed-in Zoe verification confirms a real appointment opens directly to Photos, and signed-out links preserve the destination through sign-in. No additional emails sent.
 
