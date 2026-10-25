@@ -122,9 +122,8 @@ export const listTimesheet = createServerFn({ method: "POST" })
       .gte("arrived_at", data.from).lt("arrived_at", data.to);
     if (!isMgr) { te = te.eq("user_id", context.userId); jv = jv.eq("employee_id", context.userId); }
     const [{ data: entries }, { data: visits }, { data: profs }] = await Promise.all([
-      te, jv, context.supabase.rpc("staff_directory"), cr,
+      te, jv, context.supabase.rpc("staff_directory"),
     ]);
-    if (teError || crError) throw new Error(teError?.message ?? crError?.message);
     const names = new Map<string, string>((profs ?? []).map((p: any) => [p.id, p.full_name ?? "Unknown"]));
     const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: data.tz, year: "numeric", month: "2-digit", day: "2-digit" });
     const map = new Map<string, TimesheetDay>();
@@ -230,8 +229,9 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
     const [{ data: entries, error: teError }, { data: visits }, { data: jobs }, { data: profs }, {data: clockRows,error: crError}] = await Promise.all([
       te, jv,
       sb.from("jobs").select(jobSel).gte("scheduled_start", data.from).lt("scheduled_start", data.to).neq("status", "canceled"),
-      context.supabase.rpc("staff_directory"),
+      context.supabase.rpc("staff_directory"), cr,
     ]);
+    if (teError || crError) throw new Error(teError?.message ?? crError?.message);
     const names = new Map<string, string>((profs ?? []).map((p: any) => [p.id, p.full_name ?? "Unknown"]));
     const jobMap = new Map<string, any>((jobs ?? []).map((j: any) => [j.id, j]));
     // Visits on jobs scheduled another day still need their job details.

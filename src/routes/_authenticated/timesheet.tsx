@@ -1,6 +1,7 @@
 import { ClockRecordEditor } from "@/components/clock-record-editor";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { intervalMinutes } from "@/lib/clock-totals";
+import { zonedToUTCISO } from "@/lib/tz";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -51,8 +52,8 @@ function TimesheetPage() {
   const tz = useBusinessTz();
   const [day, setDay] = useState(() => startOfDay(new Date()));
   const [view, setView] = useState<"day" | "week">("day");
-  const from = day.toISOString();
-  const to = addDays(day, 1).toISOString();
+  const from = zonedToUTCISO(format(day, "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
+  const to = zonedToUTCISO(format(addDays(day, 1), "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const fn = useServerFn(listDailyTimesheet);
   const q = useQuery({ queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to } }) });
   const capsFn = useServerFn(myCapabilities);
@@ -372,25 +373,26 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   const fn = useServerFn(listDailyTimesheet);
   const results = useQueries({
     queries: days.map((d) => {
-      const from = d.toISOString();
-      return { queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to: addDays(d, 1).toISOString() } }) };
+      const from = zonedToUTCISO(format(d,"yyyy-MM-dd"), "00:00", "America/Los_Angeles");
+      return { queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to: zonedToUTCISO(format(addDays(d,1),"yyyy-MM-dd"),"00:00","America/Los_Angeles") } }) };
     }),
   });
   const loading = results.some((r) => r.isLoading);
-  const people = new Map<string, { name: string; perDay: number[] }>();
+  const people = new Map<string, { name: string; perDay: number[]; unpaid: number }>();
   results.forEach((res, i) => {
     for (const t of computeTotals(res.data)) {
-      const p = people.get(t.id) ?? { name: t.name, perDay: Array(7).fill(0) };
+      const p = people.get(t.id) ?? { name: t.name, perDay: Array(7).fill(0), unpaid: 0 };
       p.perDay[i] += t.total;
+      p.unpaid += t.unpaid;
       people.set(t.id, p);
     }
   });
-  const list = Array.from(people.values()).filter((p) => p.perDay.some((v) => v > 0)).sort((a, b) => a.name.localeCompare(b.name));
+  const list = Array.from(people.values()).filter((p) => p.unpaid > 0 || p.perDay.some((v) => v > 0)).sort((a, b) => a.name.localeCompare(b.name));
   const hrs = (m: number) => (m ? (m / 60).toFixed(2) : "—");
 
   const download = () => {
-    const lines = [["Employee", ...days.map((d) => format(d, "EEE MM/dd")), "Total hours"].join(",")];
-    for (const p of list) lines.push([p.name, ...p.perDay.map((v) => (v / 60).toFixed(2)), (p.perDay.reduce((a, b) => a + b, 0) / 60).toFixed(2)].map((v) => `"${v}"`).join(","));
+    const lines = [["Employee", ...days.map((d) => format(d, "EEE MM/dd")), "Unpaid lunch hours", "Paid total hours"].join(",")];
+    for (const p of list) lines.push([p.name, ...p.perDay.map((v) => (v / 60).toFixed(2)),(p.unpaid/60).toFixed(2), (p.perDay.reduce((a, b) => a + b, 0) / 60).toFixed(2)].map((v) => `"${v}"`).join(","));
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
     a.download = `timesheet-week-${format(start, "yyyy-MM-dd")}.csv`;
@@ -419,7 +421,8 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
                   <button className="hover:underline" onClick={() => onPickDay(d)}>{format(d, "EEE M/d")}</button>
                 </th>
               ))}
-              <th className="text-right px-4 py-3 font-medium">Total hrs</th>
+              <th className="text-right px-4 py-3 font-medium">Unpaid lunch</th>
+              <th className="text-right px-4 py-3 font-medium">Paid total hrs</th>
             </tr>
           </thead>
           <tbody>
@@ -429,6 +432,7 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
               <tr key={p.name} className="border-b border-border/40 last:border-0 tabular-nums">
                 <td className="px-4 py-3 font-medium">{p.name}</td>
                 {p.perDay.map((v, i) => <td key={i} className="px-3 py-3 text-right">{hrs(v)}</td>)}
+                <td className="px-4 py-3 text-right">{hrs(p.unpaid)}</td>
                 <td className="px-4 py-3 text-right font-semibold">{hrs(p.perDay.reduce((a, b) => a + b, 0))}</td>
               </tr>
             ))}
