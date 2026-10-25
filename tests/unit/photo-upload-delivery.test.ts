@@ -30,8 +30,9 @@ function query(table:string) {
   }
   return q;
 }
-import { notifySavedPhotoBatch } from '../../src/lib/photo-upload-alerts.server';
+import { notifySavedPhotoBatch as notify } from '../../src/lib/photo-upload-alerts.server';
 const db:any={from:query};
+const notifySavedPhotoBatch = (...args: [any,string,string,string,string[]]) => notify(...args,{ admin:db, send:async (...sent:any[]) => { if (state.fail) throw new Error('Controlled failure');state.sends.push(sent);return {sent:true}; } });
 beforeEach(()=>{
   state.logs=[{id:'settings',tenant_id:'tenant',action_type:'system:photo-upload-email-settings',description:JSON.stringify({enabled:true,recipient_id:'owner',starts_at:'2026-10-20T00:00:00Z'})}];state.sends=[];state.fail=false;
   // A slow 3-photo upload spanning minutes is still one explicitly completed batch.

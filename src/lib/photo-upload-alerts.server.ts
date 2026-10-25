@@ -16,8 +16,8 @@ export async function readSettings(db: SupabaseClient<Database>, tenantId: strin
   return data ? JSON.parse(data.description) : { enabled: false, recipient_id: null, starts_at: new Date().toISOString() };
 }
 /** Runs inside a live upload request, never a dispatcher or fire-and-forget task. */
-export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenantId:string, jobId:string, uploaderId:string, batchPhotoIds:string[]) {
-  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenantId:string, jobId:string, uploaderId:string, batchPhotoIds:string[], dependencies?: { admin: SupabaseClient<Database>; send: typeof import('./email-templates/send-email').sendTemplateEmail }) {
+  const supabaseAdmin = dependencies?.admin ?? (await import('@/integrations/supabase/client.server')).supabaseAdmin;
   const settings = await readSettings(supabaseAdmin,tenantId);
   if (!settings.enabled || !settings.recipient_id) return;
   const { data: cleanerRole } = await supabaseAdmin.from('user_roles').select('id').eq('tenant_id',tenantId).eq('user_id',uploaderId).in('role',['owner','manager']).limit(1).maybeSingle();
@@ -59,7 +59,7 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
   const { data: delivered, error: deliveredError } = await supabaseAdmin.from('activity_log').select('description').eq('tenant_id',tenantId).eq('entity_id',jobId).eq('actor_id',uploaderId).in('action_type',['system:photo-upload-email-sent','system:photo-upload-email-suppressed']);
   if (deliveredError) throw new Error(deliveredError.message);
   const alreadyNotified = new Set((delivered ?? []).flatMap(event => (JSON.parse(event.description).photoIds ?? []) as string[]));
-  const { sendTemplateEmail } = await import('./email-templates/send-email');
+  const sendTemplateEmail = dependencies?.send ?? (await import('./email-templates/send-email')).sendTemplateEmail;
   for (const groupedBatches of groupPhotoUploads(completedRows)) {
     const ids = [...new Set(groupedBatches.flatMap(batch => batch.photoIds))].filter(id => !alreadyNotified.has(id) && rows.some(row => row.id === id));
     if (!ids.length) continue;
