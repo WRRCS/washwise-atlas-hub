@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Remove proven duplicate appointment SOP rendering while retaining the first readable instructions, acknowledgment and all unique documents; verify desktop and mobile.
+- [x] Removed verified text/source-PDF duplication without deleting files; preserve unknown or visual-only attachment instructions and deduplicate repeated attachment identities. Signed-in Fern displays the readable SOP and acknowledgment once on desktop/mobile; BBWSD document-only SOP renders one five-page preview on both. Per-cleaner/occurrence confirmations replace shared progress; save/reload and cleanup verified. Twelve tests pass.
 
 - [x] Added opt-in per-cleaner clock-in/arrival timing in Notifications, configured push only, direct existing-action links, live eligibility checks and unique/atomic delivery claims. Existing arrival also clocks in when needed; scheduled clock-in already records arrival. No workflow replaced.
 - [x] Verified settings save/reload as Barbra with sends disabled; simulated test accounts cover lunch, active work, saved arrival, cancellation, completion, reassignment, rescheduling, Pacific DST and concurrent duplicate prevention. No real notifications created or sent; actual new-reminder device receipt intentionally unverified.
