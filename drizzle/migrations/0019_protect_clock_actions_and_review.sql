@@ -1,0 +1,2 @@
+REVOKE INSERT,UPDATE,DELETE ON public.work_clock_entries FROM authenticated;
+COMMENT ON TABLE public.work_clock_entries IS 'Explicit lunch and unassigned work. Authenticated clients read through RLS; all mutations use authenticated atomic employee_clock_action or manager-only correct_clock_record. Paid intervals are split so lunch is never deducted again.';

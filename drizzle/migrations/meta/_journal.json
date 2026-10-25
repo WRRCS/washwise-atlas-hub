@@ -134,6 +134,13 @@
       "when": 1792896633660,
       "tag": "0018_include_unassigned_work_productivity",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792897297005,
+      "tag": "0019_protect_clock_actions_and_review",
+      "breakpoints": true
     }
   ]
 }
