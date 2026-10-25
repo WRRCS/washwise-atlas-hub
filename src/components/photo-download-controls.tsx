@@ -41,6 +41,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
   const downloadOne = (photo: DownloadPhoto) => run(async () => {
     setProgress("Preparing photo…");
     const result = await preparePhotoExport([photo], context, {});
+    if (!mounted.current) return;
     await deliverPhotoFile(result.files[0].blob, result.files[0].filename);
   });
 
@@ -109,7 +110,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
   const toggle = (id: string) => setSelected(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const singleButton = (photo: DownloadPhoto) => <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadOne(photo)}><Download className="size-4" /> Download</Button>;
   const selectedPhotos = photos.filter(p => selected.has(p.id));
-  const allLabel = "Download all";
+  const allLabel = options.allCleaners ? "Download all cleaners’ photos" : "Download all";
   const total = zipState ? zipState.requested.length : 0;
 
   const toolbar = photos.length > 0 && <div className="space-y-3 mb-4">
