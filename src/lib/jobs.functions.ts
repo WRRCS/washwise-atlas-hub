@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCanViewPricing } from "@/lib/team.functions";
 import { clientContact } from "@/lib/privacy";
 import { DEFAULT_TZ } from "@/lib/tz";
+import { ownSopConfirmation } from "@/lib/sop-confirmation";
 import {
   addMonthsISO,
   generateOccurrences,
@@ -235,10 +236,10 @@ export const getJob = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!job) return null;
     const { data: ownConfirmation, error: confirmationError } = await context.supabase
-      .from("job_sop_confirmations").select("confirmed_at")
+      .from("job_sop_confirmations").select("job_id, employee_id, confirmed_at")
       .eq("job_id", data.id).eq("employee_id", context.userId).maybeSingle();
     if (confirmationError) throw new Error(confirmationError.message);
-    job.sop_confirmed_at = ownConfirmation?.confirmed_at ?? null;
+    job.sop_confirmed_at = ownSopConfirmation(ownConfirmation ? [ownConfirmation] : [], data.id, context.userId);
     job.sop_confirmed_by = ownConfirmation ? context.userId : null;
     const contact = job.client_id
       ? await clientContact(context.supabase, job.client_id)
