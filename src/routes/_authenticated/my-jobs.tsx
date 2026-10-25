@@ -1006,7 +1006,7 @@ function TimesheetView() {
           <strong>{totalHours.toFixed(2)} paid hrs</strong><span className="block text-muted-foreground">Unpaid lunch: {(totals.unpaid / 60).toFixed(2)} hrs</span>
         </div>
       </div>
-      {q.isLoading ? (
+      {q.error ? <p className="text-sm text-destructive">{q.error instanceof Error ? q.error.message : "Unable to load timesheet"}</p> : q.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : !entries.length ? (
         <p className="text-sm text-muted-foreground">No time entries this week.</p>
