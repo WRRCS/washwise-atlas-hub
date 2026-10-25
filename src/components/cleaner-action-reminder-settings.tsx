@@ -28,13 +28,13 @@ export function CleanerActionReminderSettings() {
       </div>
       <fieldset className="space-y-1 text-sm"><legend className="font-medium">Delivery channels</legend>
         <label className="flex items-center gap-2"><input type="checkbox" checked={!!q.data?.pushConfigured} disabled/>Push · {q.data?.pushConfigured?"configured":"setup needed"}</label>
-        <label className="flex items-center gap-2 text-muted-foreground"><input type="checkbox" disabled/>Email · reminder delivery not connected</label>
+        <label className="flex items-center gap-2 text-muted-foreground"><input type="checkbox" disabled/>Email · action reminders not enabled</label>
         <label className="flex items-center gap-2 text-muted-foreground"><input type="checkbox" disabled/>Text message · sending service not connected</label>
       </fieldset>
       <div className="text-sm text-muted-foreground space-y-1">
         <p>{person?.deviceCount ? `${person.deviceCount} registered push device${person.deviceCount===1?"":"s"}.` : "No push device registered for this cleaner. Enable notifications on their device."}</p>
         <p>Push can arrive with the app closed. Browser/device notification permission is required; iPhone and iPad require the home-screen app.</p>
-        <p>The email sender is verified, but these reminders use push only. Email reminders need a separate delivery connection; no emails or texts are enabled here.</p>
+        <p>The email sender is verified, but these reminders use push only. Scheduled email delivery must be added before email can be selected; no emails or texts are enabled here.</p>
       </div>
       <Button onClick={submit} disabled={busy || !person || before<0 || before>120 || after<0 || after>120}><Save className="size-4"/>Save action reminders</Button>
     </>}

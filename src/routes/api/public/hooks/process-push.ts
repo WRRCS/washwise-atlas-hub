@@ -115,7 +115,7 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
             }
 
             if (subs.length === 0) {
-              // Nothing to deliver; mark sent so it doesn't loop
+              // No registered device is a failure, not a successful delivery.
               await supabaseAdmin
                 .from("notifications")
                 .update({ status: "failed", sent_at: null, error: "no registered push devices" })
