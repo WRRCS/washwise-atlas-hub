@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Place unscheduled clock-in in the employee main clock area, keep admin review tools, and label entries Unscheduled work.
-- [ ] Verify as an employee with no appointments: described clock-in, lunch, resume, clock-out, duplicate prevention, and employee/admin totals.
+- [x] Prominent My clock above employee appointment content, independent of empty schedules; admin timesheet self-clock removed while review/correction/association tools remain. Entries labeled Unscheduled work.
+- [x] Verified as Leslie Walker (employee, no appointments today): described clock-in, duplicate rejection, explicit lunch persisted across reload, resume, clock-out, employee/admin read-back. Admin corrected the same three records; both views show 7.50 paid hours and 0.50 unpaid lunch. Desktop/mobile checked; six total tests pass; no notifications sent.
 
 - [x] Fixed page-local employee-ID expansion: collapsed on entry/return, independent toggles, unmounted collapsed supplies and isolated controls. Verified signed in as Zoe on desktop/mobile: inspect, save unchanged supplies, refresh without reopening another employee, full collapse and return reset; no duplicate sections or page errors. Three tests pass.
 
