@@ -593,15 +593,17 @@ function CompleteJobDialog({
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const captureIdentity = useRef<string | null | undefined>(undefined);
+  const closeCapture = useRef(onClose);
+  closeCapture.current = onClose;
   useEffect(() => {
-    let identity: string | null | undefined;
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       const next = session?.user.id ?? null;
-      if (identity !== undefined && identity !== next) onClose();
-      identity = next;
+      if (captureIdentity.current !== undefined && captureIdentity.current !== next) closeCapture.current();
+      else captureIdentity.current = next;
     });
     return () => data.subscription.unsubscribe();
-  }, [onClose]);
+  }, []);
   const pendingItems = useRef(items);
   pendingItems.current = items;
   useEffect(() => () => { pendingItems.current.forEach(item => URL.revokeObjectURL(item.previewUrl)); }, []);
@@ -663,6 +665,8 @@ function CompleteJobDialog({
       }
       const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
       for (const it of items) {
+        const { data: identity } = await supabase.auth.getUser();
+        if (!identity.user || identity.user.id !== captureIdentity.current) throw new Error("Your login changed. Please reopen this appointment and capture the photos again.");
         const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });
         const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, it.file, {
           contentType: it.file.type,
