@@ -699,7 +699,7 @@ function PhotosTab({ jobId, employeeId, cleanerName, readOnly, exportContext, al
               <p className="text-[10px] text-muted-foreground">
                 {p.uploader_name ?? "—"} · {format(new Date(p.uploaded_at), "MMM d, h:mma")}
               </p>
-              {p.attribution_review_reason && <p className="text-xs text-destructive" title={p.attribution_review_reason}>Uploader needs admin review</p>}
+              {allCleaners && p.attribution_review_reason && <p className="text-xs text-destructive" title={p.attribution_review_reason}>Uploader needs admin review</p>}
             </div>
           </div>
         ))}

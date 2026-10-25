@@ -68,7 +68,7 @@ export async function preparePhotoExport(photos: DownloadPhoto[], context: Photo
   const fingerprints = new Map<string, string>();
   const fetchPhoto = options.fetchPhoto ?? (async (photo: DownloadPhoto) => {
     if (!photo.url) throw new Error("No image URL available");
-    const response = await fetch(photo.url, { cache: "no-store" });
+    const response = await fetch(photo.url, { cache: "no-store", signal: AbortSignal.timeout(30_000) });
     if (!response.ok) throw new Error(`Image request failed (${response.status})`);
     return response.blob();
   });
