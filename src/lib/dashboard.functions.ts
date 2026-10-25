@@ -141,6 +141,7 @@ export const getRecentActivity = createServerFn({ method: "GET" })
     const { data } = await supabase
       .from("activity_log")
       .select("id, action_type, entity_type, entity_id, description, created_at")
+      .not("action_type", "like", "photo-upload-email-%")
       .order("created_at", { ascending: false })
       .limit(10);
     return (data ?? []) as ActivityRow[];

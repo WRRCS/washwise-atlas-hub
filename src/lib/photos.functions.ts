@@ -5,6 +5,19 @@ import { ownsPhotoUpload, photoUploadPrefix } from "@/lib/photo-ownership";
 
 export type PhotoType = "before" | "after" | "other" | "damage";
 
+export const finishPhotoUploadBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ job_id: z.string().uuid(), photo_ids: z.array(z.string().uuid()).min(1).max(2000) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: profile } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).single();
+    const { data: rows, error } = await context.supabase.from("job_photos").select("id").eq("job_id", data.job_id).eq("uploaded_by", context.userId).in("id", data.photo_ids);
+    if (error) throw new Error(error.message);
+    if (!profile || rows?.length !== new Set(data.photo_ids).size) throw new Error("Photo batch has not been saved by this cleaner");
+    const { notifySavedPhotoBatch } = await import("./photo-upload-alerts.functions");
+    await notifySavedPhotoBatch(context.supabase, profile.tenant_id, data.job_id, context.userId, data.photo_ids);
+    return { ok: true };
+  });
+
 export type JobPhotoRow = {
   id: string;
   job_id: string;
@@ -119,6 +132,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
     }
 
     const photoIds: string[] = [];
+    const newlySavedPhotoIds: string[] = [];
     if (data.photos.length) {
       const { data: existingPhotos, error: existingError } = await context.supabase.from("job_photos").select("id, storage_path").eq("job_id", data.job_id).eq("uploaded_by", context.userId).in("storage_path", data.photos.map(p => p.storage_path));
       if (existingError) throw new Error(existingError.message);
@@ -137,7 +151,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       }));
       const { data: inserted, error: pe } = rows.length ? await context.supabase.from("job_photos").insert(rows).select("id") : { data: [], error: null };
       if (pe) throw new Error(pe.message);
-      for (const r of inserted ?? []) photoIds.push(r.id as string);
+      for (const r of inserted ?? []) { photoIds.push(r.id as string); newlySavedPhotoIds.push(r.id as string); }
     }
 
     if (data.entry_id && data.end_shift) {
@@ -224,6 +238,12 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       /* a draft failure must never block finishing the job */
     }
 
+    if (newlySavedPhotoIds.length) {
+      try {
+        const { notifySavedPhotoBatch } = await import("./photo-upload-alerts.functions");
+        await notifySavedPhotoBatch(context.supabase, prof.tenant_id, data.job_id, context.userId, newlySavedPhotoIds);
+      } catch (error) { console.error("Photo email preparation failed", error instanceof Error ? error.message : "Unknown error"); }
+    }
     return { ok: true };
   });
 
