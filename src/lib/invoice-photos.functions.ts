@@ -22,21 +22,21 @@ export const listInvoicePhotoChoices = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<InvoicePhotoChoice[]> => {
     const sb = context.supabase as any;
     const { data: inv, error } = await sb
-      .from("invoices").select("client_id, job_id, photo_ids").eq("id", data.invoice_id).maybeSingle();
+      .from("invoices").select("client_id, tenant_id, job_id, photo_ids").eq("id", data.invoice_id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!inv) return [];
     const attached = new Set<string>(inv.photo_ids ?? []);
     const { data: jobs } = await sb
       .from("jobs")
       .select("id, scheduled_start, property:client_properties!jobs_property_id_fkey(label)")
-      .eq("client_id", inv.client_id)
+      .eq("client_id", inv.client_id).eq("tenant_id", inv.tenant_id)
       .order("scheduled_start", { ascending: false })
       .limit(60);
     const jobMap = new Map<string, any>((jobs ?? []).map((j: any) => [j.id, j]));
     if (!jobMap.size) return [];
     const { data: photos } = await sb
       .from("job_photos")
-      .select("id, job_id, photo_type, caption, storage_path, uploaded_at")
+      .select("id, job_id, photo_type, caption, storage_path, uploaded_at, job:jobs!inner(client_id)").eq("tenant_id", inv.tenant_id).eq("job.client_id", inv.client_id)
       .in("job_id", Array.from(jobMap.keys()))
       .order("uploaded_at", { ascending: false })
       .limit(300);
@@ -47,7 +47,7 @@ export const listInvoicePhotoChoices = createServerFn({ method: "POST" })
     if (missing.length) {
       const { data: extra } = await sb
         .from("job_photos")
-        .select("id, job_id, photo_type, caption, storage_path, uploaded_at")
+        .select("id, job_id, photo_type, caption, storage_path, uploaded_at, job:jobs!inner(client_id)").eq("tenant_id", inv.tenant_id).eq("job.client_id", inv.client_id)
         .in("id", missing);
       rows.push(...(extra ?? []));
       const extraJobIds = Array.from(new Set((extra ?? []).map((p: any) => p.job_id).filter((id: string) => !jobMap.has(id))));
@@ -55,7 +55,7 @@ export const listInvoicePhotoChoices = createServerFn({ method: "POST" })
         const { data: extraJobs } = await sb
           .from("jobs")
           .select("id, scheduled_start, property:client_properties!jobs_property_id_fkey(label)")
-          .in("id", extraJobIds);
+          .in("id", extraJobIds).eq("tenant_id", inv.tenant_id).eq("client_id", inv.client_id);
         for (const j of extraJobs ?? []) jobMap.set(j.id, j);
       }
     }
@@ -83,6 +83,12 @@ export const setInvoicePhotos = createServerFn({ method: "POST" })
     z.object({ invoice_id: z.string().uuid(), photo_ids: z.array(z.string().uuid()).max(200) }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { data: inv } = await context.supabase.from("invoices").select("tenant_id,client_id").eq("id",data.invoice_id).single();
+    if (!inv) throw new Error("Invoice not found");
+    if (data.photo_ids.length) {
+      const { data: eligible, error: photoError } = await context.supabase.from("job_photos").select("id,job:jobs!inner(client_id)").eq("tenant_id",inv.tenant_id).eq("job.client_id",inv.client_id).in("id",data.photo_ids);
+      if (photoError || eligible?.length !== new Set(data.photo_ids).size) throw new Error("Photos must belong to this invoice's client and appointments");
+    }
     const { error } = await (context.supabase as any)
       .from("invoices").update({ photo_ids: data.photo_ids }).eq("id", data.invoice_id);
     if (error) throw new Error(error.message);
