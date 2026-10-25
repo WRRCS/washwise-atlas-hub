@@ -515,6 +515,7 @@ function TodayView() {
       </div>
       {completeFor && (
         <CompleteJobDialog
+          key={completeFor.jobId}
           jobId={completeFor.jobId}
           entryId={completeFor.entryId}
           startedAt={completeFor.startedAt}
@@ -592,6 +593,18 @@ function CompleteJobDialog({
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let identity: string | null | undefined;
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const next = session?.user.id ?? null;
+      if (identity !== undefined && identity !== next) onClose();
+      identity = next;
+    });
+    return () => data.subscription.unsubscribe();
+  }, [onClose]);
+  const pendingItems = useRef(items);
+  pendingItems.current = items;
+  useEffect(() => () => { pendingItems.current.forEach(item => URL.revokeObjectURL(item.previewUrl)); }, []);
   const hours = startedAt ? hoursBetween(startedAt, new Date().toISOString()) : null;
 
   // Pre-fill supplies from the recipe once loaded
