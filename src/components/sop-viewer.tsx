@@ -25,9 +25,9 @@ export function SopViewer({ serviceTypeId, jobId, allowMarkReviewed = false, has
   const fetchJob = useServerFn(getJob);
   const [selected, setSelected] = useState<string | null>(null);
   const [covered, setCovered] = useState<Set<string>>(() => new Set());
-  const coverActive = useCallback(() => {
-    if (selected) setCovered((previous) => new Set([...previous, selected]));
-  }, [selected]);
+  const coverAttachment = useCallback((identity: string) => {
+    setCovered((previous) => new Set([...previous, identity]));
+  }, []);
   const t = useT();
   const pick = usePick();
   const sopQ = useQuery({
@@ -70,11 +70,8 @@ export function SopViewer({ serviceTypeId, jobId, allowMarkReviewed = false, has
   const libraryText = [sop.description && !sop.description.startsWith("Imported from ") ? sop.description : "", ...steps.flatMap((step) => [pick(step.title, step.title_uk), pick(step.description, step.description_uk)])].filter(Boolean).join("\n");
   const hasInstructions = !!libraryText.trim() && !(sopContentIsCovered(libraryText, readableText) && !steps.some((step) => step.reference_photo_url));
   const attachments = distinctSopAttachments(sop.attachments).filter((a) => !covered.has(`${jobId}:${a.id}`));
-  const active = selected && attachments.some((a) => `${jobId}:${a.id}` === selected) ? selected : (hasInstructions ? "instructions" : attachments[0] ? `${jobId}:${attachments[0].id}` : undefined);
+  const active = selected === "instructions" && hasInstructions ? "instructions" : selected && attachments.some((a) => `${jobId}:${a.id}` === selected) ? selected : (hasInstructions ? "instructions" : attachments[0] ? `${jobId}:${attachments[0].id}` : undefined);
   const attachment = attachments.find((a) => `${jobId}:${a.id}` === active);
-  const onCovered = () => {
-    if (active) setCovered((previous) => new Set([...previous, active]));
-  };
   const reviewedAt = reviewQ.data?.reviewed_at;
   const onMarkReviewed = async () => {
     try {
@@ -106,10 +103,15 @@ export function SopViewer({ serviceTypeId, jobId, allowMarkReviewed = false, has
           </ol>
         </div>
       )}
-      {attachment && <SopDocumentPreview key={attachment.id} url={attachment.url} filename={attachment.original_filename} readableText={[readableText, hasInstructions ? libraryText : ""].join("\n")} onCovered={onCovered} />}
+      {attachment && <ComparedSopDocument key={`${jobId}:${attachment.id}`} identity={`${jobId}:${attachment.id}`} url={attachment.url} filename={attachment.original_filename} readableText={[readableText, hasInstructions ? libraryText : ""].join("\n")} onCovered={coverAttachment} />}
       {!hasInstructions && !sop.attachments.length && !readableText.trim() && <p className="text-sm text-muted-foreground">This SOP has no saved instructions or document yet. Please contact the office.</p>}
       {attachment?.url && <Button asChild variant="outline" size="sm"><a href={attachment.url} download={attachment.original_filename} target="_blank" rel="noreferrer"><Download />Download</a></Button>}
       {allowMarkReviewed && <div className="border-t border-border pt-4"><Button onClick={onMarkReviewed}><Check />{t("Mark SOP reviewed")}</Button>{reviewedAt && <p className="mt-2 text-xs text-muted-foreground">Last reviewed {format(new Date(reviewedAt), "MMM d, h:mma")}</p>}</div>}
     </div>
   );
+}
+
+function ComparedSopDocument({ identity, onCovered, ...props }: { identity: string; onCovered: (identity: string) => void; url: string | null; filename: string; readableText: string }) {
+  const covered = useCallback(() => onCovered(identity), [identity, onCovered]);
+  return <SopDocumentPreview {...props} onCovered={covered} />;
 }
