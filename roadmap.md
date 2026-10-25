@@ -1,17 +1,18 @@
 # Roadmap
 
-- [ ] Repair cleaner photo attribution, review ambiguous older photos, simplify export controls, and deduplicate exports without changing originals.
-- [ ] Verify Barbra/Dalton photo separation and actual unique ZIP downloads.
+- [x] Bind new uploads to their authenticated cleaner and occurrence; isolate account caches, flag 1,102 legacy records lacking independent uploader evidence, simplify controls, and deduplicate exports without changing originals. No reliably conflicting legacy storage owners found; no guessed reassignment.
+- [x] Verify existing Barbra/Dalton photo separation signed in as each: 48 Barbra images and 17 Dalton images; one valid unique ZIP each, exact two-image selections, individual image downloads, and duplicate-click protection. 17 unit tests pass; all 1,238 originals remain.
+- [ ] Verify new uploads from both cleaners end-to-end — blocked: live test uploads would trigger staff notifications; no test sends authorized. Ownership binding tested locally instead.
 
 - [x] Bulk photo download = one flat ZIP (all / this cleaner / selected) with progress and retry of missing photos.
-- [ ] Verify a real 40-photo appointment ZIP signed in — blocked: needs preview sign-in.
+- [x] Verify a real 48-photo appointment ZIP signed in as Barbra.
 
 - [x] Improve existing week-grid, schedule-list and day-queue readability with 15–16px wrapped times and snapshot locations; browser fixtures verify long addresses/unit numbers on desktop/mobile and location tests pass.
 - [ ] Verify actual signed-in schedule actions and multi-cleaner appointments — blocked: no active requesting-user session; preview sign-in required. No month schedule view currently exists.
 
 - [x] Add individual, selected, cleaner-only and all-cleaner photo downloads with compatible image files and progress.
 - [x] Verify actual fixture image/ZIP downloads, exact selections, cleaner folders, JPEG conversion and phone-sized save controls; seven unit tests pass.
-- [ ] Verify downloads on an existing two-cleaner appointment and confirm originals unchanged — blocked: requesting user has no matching account/session; preview sign-in required.
+- [x] Verify downloads on an existing two-cleaner appointment; stored photo counts unchanged (Barbra 585, Dalton 653).
 
 - [x] Open saved SOP content directly inside appointments, with inline documents and phone-friendly controls.
 - [x] Verify one-tap SOP viewing signed in as Barbra on her Fern appointment: actual four-page saved PDF renders on phone, zoom works, Close returns to the same appointment; seven unit tests pass.
