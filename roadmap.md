@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Remove proven duplicate appointment SOP rendering while retaining the first readable instructions, acknowledgment and all unique documents; verify desktop and mobile.
+
 - [x] Added opt-in per-cleaner clock-in/arrival timing in Notifications, configured push only, direct existing-action links, live eligibility checks and unique/atomic delivery claims. Existing arrival also clocks in when needed; scheduled clock-in already records arrival. No workflow replaced.
 - [x] Verified settings save/reload as Barbra with sends disabled; simulated test accounts cover lunch, active work, saved arrival, cancellation, completion, reassignment, rescheduling, Pacific DST and concurrent duplicate prevention. No real notifications created or sent; actual new-reminder device receipt intentionally unverified.
 
