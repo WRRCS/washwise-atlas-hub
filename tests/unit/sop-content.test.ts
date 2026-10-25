@@ -5,6 +5,9 @@ describe("distinct appointment SOP content", () => {
   it("recognizes the source text despite PDF line wrapping", () => {
     expect(sopContentIsCovered("Clean the kitchen.\nCheck the oven.", "Clean the kitchen. Check the oven.")).toBe(true);
   });
+  it("ignores PDF bullet glyphs and invisible layout characters", () => {
+    expect(sopContentIsCovered("●\u200bClean the kitchen.\n●\u200bCheck the oven.", "Clean the kitchen. Check the oven.")).toBe(true);
+  });
   it("retains attachment-only instructions even when readable text exists", () => {
     expect(sopContentIsCovered("Clean the kitchen. Check the garage.", "Clean the kitchen.")).toBe(false);
   });

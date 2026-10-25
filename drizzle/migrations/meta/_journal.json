@@ -162,6 +162,13 @@
       "when": 1792897579327,
       "tag": "0022_validate_cleaner_reminder_setting_tenant",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792898080195,
+      "tag": "0023_independent_appointment_sop_confirmations",
+      "breakpoints": true
     }
   ]
 }

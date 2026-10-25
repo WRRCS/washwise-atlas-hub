@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sopDocumentKind } from "@/lib/sop-document";
+import { sopContentIsCovered } from "@/lib/sop-content";
 
-export function SopDocumentPreview({ url, filename }: { url: string | null; filename: string }) {
+export function SopDocumentPreview({ url, filename, readableText = "", onCovered }: { url: string | null; filename: string; readableText?: string; onCovered?: () => void }) {
   const pages = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(100);
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,10 @@ export function SopDocumentPreview({ url, filename }: { url: string | null; file
       if (!response.ok) throw new Error("The SOP could not load. Close and reopen it to try again, or contact the office.");
       if (kind === "text") {
         const value = await response.text();
+        if (sopContentIsCovered(value, readableText)) {
+          if (!disposed) onCovered?.();
+          return;
+        }
         if (!disposed) setText(value);
         return;
       }
@@ -40,6 +45,32 @@ export function SopDocumentPreview({ url, filename }: { url: string | null; file
       const task = pdfjs.getDocument({ data: new Uint8Array(await response.arrayBuffer()) });
       destroy = () => { void task.destroy(); };
       const pdf = await task.promise;
+      if (readableText.trim()) {
+        const text: string[] = [];
+        let hasUnrepresentedVisuals = false;
+        for (let n = 1; n <= pdf.numPages; n++) {
+          if (disposed) return;
+          const page = await pdf.getPage(n);
+          const [content, operators] = await Promise.all([page.getTextContent(), page.getOperatorList()]);
+          const pageText = content.items.flatMap((item) => "str" in item ? [item.str] : []).join(" ");
+          // A scanned page or diagram may contain unique instructions not in extracted text.
+          if (!pageText.trim() || operators.fnArray.some((op, index) => {
+            if ([pdfjs.OPS.paintImageXObject, pdfjs.OPS.paintInlineImageXObject].includes(op)) return true;
+            if (op !== pdfjs.OPS.constructPath) return false;
+            const [commands, coordinates] = operators.argsArray[index] as [number[], number[]];
+            // Full-page background rectangles and horizontal underlines are typography,
+            // not additional instructions. Keep every other vector drawing visible.
+            const background = commands.length === 1 && commands[0] === pdfjs.OPS.rectangle && coordinates[0] === 0 && coordinates[1] === 0 && coordinates[2] >= page.view[2] && coordinates[3] >= page.view[3] && Math.abs(coordinates[2] / coordinates[3] - page.view[2] / page.view[3]) < 0.001;
+            const underline = commands.length === 2 && commands[0] === pdfjs.OPS.moveTo && commands[1] === pdfjs.OPS.lineTo && coordinates[1] === coordinates[3];
+            return !background && !underline;
+          })) hasUnrepresentedVisuals = true;
+          text.push(pageText);
+        }
+        if (!hasUnrepresentedVisuals && sopContentIsCovered(text.join(" "), readableText)) {
+          if (!disposed) onCovered?.();
+          return;
+        }
+      }
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
         if (disposed || !container) return;
         const page = await pdf.getPage(pageNumber);
@@ -65,7 +96,7 @@ export function SopDocumentPreview({ url, filename }: { url: string | null; file
       }
     });
     return () => { disposed = true; abort.abort(); destroy?.(); container?.replaceChildren(); };
-  }, [url, kind, filename]);
+  }, [url, kind, filename, readableText, onCovered]);
 
   return (
     <section aria-label={`Preview of ${filename}`} className="min-w-0 space-y-3">
