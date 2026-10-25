@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ownsPhotoUpload, photoUploadPrefix } from "@/lib/photo-ownership";
 
 export type PhotoType = "before" | "after" | "other" | "damage";
 
@@ -15,6 +16,7 @@ export type JobPhotoRow = {
   uploaded_by: string | null;
   url: string | null;
   uploader_name: string | null;
+  attribution_review_reason: string | null;
 };
 
 export const createJobPhotoUploadUrl = createServerFn({ method: "POST" })
@@ -39,7 +41,7 @@ export const createJobPhotoUploadUrl = createServerFn({ method: "POST" })
     if (!job || job.tenant_id !== prof.tenant_id) throw new Error("Job not found");
     if (!assigned && !isMgr) throw new Error("You're not assigned to this job");
     const safe = data.file_name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${prof.tenant_id}/${data.job_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+    const path = `${photoUploadPrefix(prof.tenant_id, data.job_id, context.userId)}${crypto.randomUUID()}-${safe}`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: signed, error } = await supabaseAdmin.storage
       .from("job-photos")
@@ -63,6 +65,9 @@ export const registerJobPhoto = createServerFn({ method: "POST" })
     const { data: prof } = await context.supabase
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
+    if (!ownsPhotoUpload(data.storage_path, prof.tenant_id, data.job_id, context.userId)) throw new Error("Photo belongs to a different login or appointment. Please upload again.");
+    const { data: existing } = await context.supabase.from("job_photos").select("id").eq("storage_path", data.storage_path).eq("uploaded_by", context.userId).maybeSingle();
+    if (existing) return existing;
     const { data: row, error } = await context.supabase
       .from("job_photos")
       .insert({
@@ -109,10 +114,20 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
     const endedAt = new Date().toISOString();
+    for (const photo of data.photos) {
+      if (!ownsPhotoUpload(photo.storage_path, prof.tenant_id, data.job_id, context.userId)) throw new Error("Photo belongs to a different login or appointment. Please upload again.");
+    }
 
     const photoIds: string[] = [];
     if (data.photos.length) {
-      const rows = data.photos.map((p) => ({
+      const { data: existingPhotos, error: existingError } = await context.supabase.from("job_photos").select("id, storage_path").eq("job_id", data.job_id).eq("uploaded_by", context.userId).in("storage_path", data.photos.map(p => p.storage_path));
+      if (existingError) throw new Error(existingError.message);
+      const registered = new Set((existingPhotos ?? []).map(p => p.storage_path));
+      for (const p of existingPhotos ?? []) photoIds.push(p.id);
+      const rows = data.photos.filter(p => {
+        if (registered.has(p.storage_path)) return false;
+        registered.add(p.storage_path); return true;
+      }).map((p) => ({
         tenant_id: prof.tenant_id,
         job_id: data.job_id,
         storage_path: p.storage_path,
@@ -120,7 +135,7 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
         photo_type: p.photo_type,
         uploaded_by: context.userId,
       }));
-      const { data: inserted, error: pe } = await context.supabase.from("job_photos").insert(rows).select("id");
+      const { data: inserted, error: pe } = rows.length ? await context.supabase.from("job_photos").insert(rows).select("id") : { data: [], error: null };
       if (pe) throw new Error(pe.message);
       for (const r of inserted ?? []) photoIds.push(r.id as string);
     }
@@ -224,7 +239,7 @@ export const listJobPhotos = createServerFn({ method: "POST" })
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
     let q = context.supabase
       .from("job_photos")
-      .select("id, job_id, storage_path, caption, photo_type, taken_at, uploaded_at, uploaded_by")
+      .select("id, job_id, storage_path, caption, photo_type, taken_at, uploaded_at, uploaded_by, attribution_review_reason")
       .eq("job_id", data.job_id)
       .order("uploaded_at", { ascending: true });
     if (!isMgr) q = q.eq("uploaded_by", context.userId);
@@ -256,7 +271,10 @@ export const deleteJobPhoto = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: photo } = await context.supabase
-      .from("job_photos").select("storage_path").eq("id", data.id).maybeSingle();
+      .from("job_photos").select("storage_path, uploaded_by").eq("id", data.id).maybeSingle();
+    if (!photo) throw new Error("Photo not found");
+    const { data: isManager } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isManager && photo.uploaded_by !== context.userId) throw new Error("You can only delete your own photos");
     if (photo?.storage_path) {
       await context.supabase.storage.from("job-photos").remove([photo.storage_path]);
     }

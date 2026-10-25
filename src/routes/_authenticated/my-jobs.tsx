@@ -547,6 +547,7 @@ function TodayView() {
             qc.invalidateQueries({ queryKey: ["timesheet"] });
             qc.invalidateQueries({ queryKey: ["jobs"] });
             qc.invalidateQueries({ queryKey: ["job", completeFor.jobId] });
+            qc.invalidateQueries({ queryKey: ["job-photos", completeFor.jobId] });
             setCompleteFor(null);
           }}
         />
