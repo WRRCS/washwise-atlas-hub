@@ -11,6 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Minus, Plus, Trash2, PackagePlus, Pencil, ChevronDown, ChevronRight } from "lucide-react";
+import { toggleCaddyEmployee, uniqueCaddyEmployees } from "@/lib/caddy-expansion";
 import {
   getCaddyOverview, saveCaddyItem, setCaddyLevel, deleteCaddyItem,
   stockCaddyFromTemplate, saveCaddyTemplateItem, deleteCaddyTemplateItem,
@@ -57,7 +58,7 @@ function CaddiesPage() {
   const [addFor, setAddFor] = useState<CaddyEmployee | null>(null);
   const [editItem, setEditItem] = useState<CaddyItem | null>(null);
   const [showTemplate, setShowTemplate] = useState(false);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [seen, setSeen] = useState<Record<string, string>>({});
   useEffect(() => {
     try { setSeen(JSON.parse(localStorage.getItem(`caddy-seen-${data.myId}`) || "{}")); } catch { /* ignore */ }
@@ -124,24 +125,28 @@ function CaddiesPage() {
         {data.employees.length === 0 && (
           <div className="text-muted-foreground">No team members yet.</div>
         )}
-        {data.employees.map((emp) => (
-          <div key={emp.id} className={`bg-white rounded-xl overflow-hidden ${isNew(emp) ? "ring-2 ring-amber-400" : "ring-1 ring-black/5"}`}>
+        {uniqueCaddyEmployees(data.employees).map((emp) => (
+          <div key={emp.id} data-employee-id={emp.id} className={`bg-white rounded-xl overflow-hidden ${isNew(emp) ? "ring-2 ring-amber-400" : "ring-1 ring-black/5"}`}>
             <div className={`px-4 py-3 border-b border-border/60 flex flex-wrap items-center justify-between gap-3 ${isNew(emp) ? "bg-amber-50" : ""}`}>
-              <button
+              <Button
                 type="button"
-                className="flex items-center gap-2 font-medium text-left"
-                aria-expanded={!collapsed[emp.id]}
-                onClick={() => setCollapsed((c) => ({ ...c, [emp.id]: !c[emp.id] }))}
+                variant="ghost"
+                className="h-auto min-h-11 w-full justify-start flex-wrap whitespace-normal gap-2 font-medium text-left"
+                aria-expanded={expanded.has(emp.id)}
+                aria-controls={`caddy-supplies-${emp.id}`}
+                onClick={() => setExpanded((current) => toggleCaddyEmployee(current, emp.id))}
               >
-                {collapsed[emp.id] ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+                {expanded.has(emp.id) ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 {emp.full_name}{emp.id === data.myId ? " (you)" : ""}
                 {isNew(emp) && (
                   <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full bg-amber-400 text-amber-950 px-2 py-0.5">
                     Updated {new Date(lastUpdate(emp)).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                   </span>
                 )}
-              </button>
-              <div className="flex items-center gap-2">
+              </Button>
+            </div>
+            {expanded.has(emp.id) && <div id={`caddy-supplies-${emp.id}`}>
+              <div className="px-4 py-3 flex flex-wrap items-center gap-2">
                 {isNew(emp) && (
                   <Button variant="ghost" size="sm" onClick={() => markSeen(emp)}>Mark seen</Button>
                 )}
@@ -152,8 +157,7 @@ function CaddiesPage() {
                   <Plus className="size-4 mr-1.5" />Add item
                 </Button>
               </div>
-            </div>
-            {collapsed[emp.id] ? null : emp.items.length === 0 ? (
+            {emp.items.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground text-sm">
                 Caddy is empty — tap “Stock standard” to fill it with the standard list.
               </div>
@@ -203,6 +207,7 @@ function CaddiesPage() {
                 ))}
               </ul>
             )}
+            </div>}
           </div>
         ))}
       </div>
@@ -210,7 +215,7 @@ function CaddiesPage() {
       {(addFor || editItem) && (
         <ItemDialog
           item={editItem}
-          employeeId={editItem ? editItem.employee_id : addFor!.id}
+          employeeId={editItem?.employee_id ?? addFor?.id ?? ""}
           onClose={() => { setAddFor(null); setEditItem(null); }}
           onSaved={() => { setAddFor(null); setEditItem(null); refresh(); }}
           save={saveItem}
