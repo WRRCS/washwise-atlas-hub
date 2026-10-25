@@ -1494,6 +1494,49 @@ export type Database = {
           },
         ]
       }
+      job_sop_confirmations: {
+        Row: {
+          confirmed_at: string
+          employee_id: string
+          job_id: string
+          tenant_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          employee_id: string
+          job_id: string
+          tenant_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          employee_id?: string
+          job_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_sop_confirmations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_sop_confirmations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_sop_confirmations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_sop_items: {
         Row: {
           completed: boolean
