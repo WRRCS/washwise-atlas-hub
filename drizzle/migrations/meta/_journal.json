@@ -127,6 +127,13 @@
       "when": 1792896429016,
       "tag": "0017_clock_admin_corrections_and_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792896633660,
+      "tag": "0018_include_unassigned_work_productivity",
+      "breakpoints": true
     }
   ]
 }

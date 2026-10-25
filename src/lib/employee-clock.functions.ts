@@ -17,7 +17,7 @@ export const updateClockRecord = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // PostgREST's generated function args omit SQL nullability; these nullable parameters are intentional.
     const args = { _id: data.id, _start: data.started_at, _end: data.ended_at, _job: data.job_id, _description: data.description };
-    const { error } = await (context.supabase as unknown as { rpc: (name: "correct_clock_record", args: typeof args) => Promise<{error: {message:string} | null}> }).rpc("correct_clock_record", args);
+    const { error } = await (context.supabase as unknown as { rpc: (name: "correct_clock_record", parameters: typeof args) => Promise<{error: {message:string} | null}> }).rpc("correct_clock_record", args);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
