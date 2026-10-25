@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
 
 // Cron endpoint: processes pending push-channel notifications and sends them
-// out via Web Push. Called by pg_cron every minute. Auth via Supabase anon
-// `apikey` header (bypasses site auth under /api/public/*).
+// out via Web Push. Called by pg_cron every minute with a private scheduler secret.
 
 type NotificationRow = {
   id: string;
@@ -12,6 +11,7 @@ type NotificationRow = {
   recipient_id: string;
   template_name: string;
   payload: Record<string, unknown>;
+  action_reminder_key: string | null;
 };
 
 type TemplateRow = { subject: string | null; body: string };
@@ -41,14 +41,17 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { sendWebPush } = await import("@/lib/push.server");
+        const { enqueueActionReminders, currentActionReminder, claimPushDelivery } = await import("@/lib/cleaner-action-reminders.server");
+        await enqueueActionReminders(supabaseAdmin);
 
         // Fetch batch of pending push notifications
         const { data: pending, error } = await supabaseAdmin
           .from("notifications")
-          .select("id,tenant_id,recipient_type,recipient_id,template_name,payload")
+          .select("id,tenant_id,recipient_type,recipient_id,template_name,payload,action_reminder_key")
           .eq("channel", "push")
           .eq("status", "pending")
           .is("recalled_at", null)
+          .is("delivery_claimed_at", null)
           .lte("scheduled_for", new Date().toISOString())
           .order("scheduled_for", { ascending: true })
           .limit(50);
@@ -63,6 +66,20 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
 
         for (const n of rows) {
           try {
+            // At-most-once claim: do not retry uncertain deliveries after a process crash.
+            if(!await claimPushDelivery(supabaseAdmin,n.id))continue;
+            let action = n.action_reminder_key ? await currentActionReminder(supabaseAdmin,n) : null;
+            if(n.action_reminder_key && !action) {
+              await supabaseAdmin.from("notifications").update({recalled_at:new Date().toISOString(),error:"suppressed: action complete, lunch, disabled, expired or appointment changed"}).eq("id",n.id);
+              processed++;continue;
+            }
+            // Existing appointment reminders must not survive cancellation, completion or reassignment.
+            if(n.template_name==="appointment_reminder_employee" && typeof n.payload.job_id==="string") {
+              const {data: job}=await supabaseAdmin.from("jobs").select("status,scheduled_start,assigned_to").eq("id",n.payload.job_id).eq("tenant_id",n.tenant_id).maybeSingle();
+              const {data: links}=await supabaseAdmin.from("job_employees").select("id").eq("job_id",n.payload.job_id).eq("employee_id",n.recipient_id);
+              const stale=!job || ["canceled","completed"].includes(job.status) || (!links?.length && job.assigned_to!==n.recipient_id) || (typeof n.payload.scheduled_start==="string" && Date.parse(n.payload.scheduled_start)!==Date.parse(job.scheduled_start));
+              if(stale) {await supabaseAdmin.from("notifications").update({recalled_at:new Date().toISOString(),error:"suppressed: appointment changed"}).eq("id",n.id);processed++;continue;}
+            }
             // Template
             const { data: tpl } = await supabaseAdmin
               .from("notification_templates")
@@ -72,9 +89,9 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
               .eq("name", n.template_name)
               .maybeSingle();
             const t = (tpl as TemplateRow | null) ?? { subject: "WRRCS.com", body: "" };
-            const title = render(t.subject ?? "WRRCS.com", n.payload);
-            const body = render(t.body ?? "", n.payload);
-            const url = pickUrl(n);
+            const title = action?.title ?? render(t.subject ?? "WRRCS.com", n.payload);
+            const body = action?.body ?? render(t.body ?? "", n.payload);
+            const url = action?.url ?? pickUrl(n);
 
             // Resolve subscriptions for recipient
             let subs: SubRow[] = [];
@@ -82,30 +99,37 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
               const { data } = await supabaseAdmin
                 .from("push_subscriptions")
                 .select("endpoint,p256dh,auth")
+                .eq("tenant_id",n.tenant_id)
                 .eq("user_id", n.recipient_id);
               subs = (data ?? []) as SubRow[];
             } else {
               const { data } = await supabaseAdmin
                 .from("push_subscriptions")
                 .select("endpoint,p256dh,auth")
+                .eq("tenant_id",n.tenant_id)
                 .eq("client_id", n.recipient_id);
               subs = (data ?? []) as SubRow[];
             }
 
             if (subs.length === 0) {
-              // Nothing to deliver; mark sent so it doesn't loop
+              // No registered device is a failure, not a successful delivery.
               await supabaseAdmin
                 .from("notifications")
-                .update({ status: "sent", sent_at: new Date().toISOString(), error: "no devices" })
+                .update({ status: "failed", sent_at: null, error: "no registered push devices" })
                 .eq("id", n.id);
               processed += 1;
               continue;
             }
 
             let anySent = false;
+            let lastError: string | null = null;
             for (const s of subs) {
               try {
-                const r = await sendWebPush(s, { title, body, url, tag: n.template_name });
+                if(n.action_reminder_key) {
+                  action=await currentActionReminder(supabaseAdmin,n);
+                  if(!action){lastError="suppressed before delivery: action or appointment changed";break;}
+                }
+                const r = await sendWebPush(s, { title:action?.title ?? title, body:action?.body ?? body, url:action?.url ?? url, tag: n.action_reminder_key ?? n.template_name });
                 if (r === "sent") {
                   anySent = true;
                   deliveries += 1;
@@ -113,7 +137,7 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
                   goneEndpoints.push(s.endpoint);
                 }
               } catch (e) {
-                // continue
+                lastError=e instanceof Error?e.message:"Push delivery failed";
               }
             }
             await supabaseAdmin
@@ -121,7 +145,7 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
               .update({
                 status: anySent ? "sent" : "failed",
                 sent_at: anySent ? new Date().toISOString() : null,
-                error: anySent ? null : "delivery failed",
+                error: anySent ? null : lastError ?? "delivery failed or subscription expired",
               })
               .eq("id", n.id);
             processed += 1;

@@ -215,6 +215,51 @@ export type Database = {
           },
         ]
       }
+      cleaner_action_reminder_settings: {
+        Row: {
+          arrival_minutes_after: number
+          channels: string[]
+          clock_in_minutes_before: number
+          enabled: boolean
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arrival_minutes_after?: number
+          channels?: string[]
+          clock_in_minutes_before?: number
+          enabled?: boolean
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arrival_minutes_after?: number
+          channels?: string[]
+          clock_in_minutes_before?: number
+          enabled?: boolean
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaner_action_reminder_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaner_action_reminder_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_message_drafts: {
         Row: {
           body: string
@@ -1802,8 +1847,10 @@ export type Database = {
       }
       notifications: {
         Row: {
+          action_reminder_key: string | null
           channel: Database["public"]["Enums"]["notification_channel"]
           created_at: string
+          delivery_claimed_at: string | null
           error: string | null
           id: string
           payload: Json
@@ -1819,8 +1866,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          action_reminder_key?: string | null
           channel: Database["public"]["Enums"]["notification_channel"]
           created_at?: string
+          delivery_claimed_at?: string | null
           error?: string | null
           id?: string
           payload?: Json
@@ -1836,8 +1885,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          action_reminder_key?: string | null
           channel?: Database["public"]["Enums"]["notification_channel"]
           created_at?: string
+          delivery_claimed_at?: string | null
           error?: string | null
           id?: string
           payload?: Json

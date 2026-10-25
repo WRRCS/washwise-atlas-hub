@@ -109,6 +109,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
   const [sopOpen, setSopOpen] = useState(false);
   const [detailTab, setDetailTab] = useState("sop");
   useEffect(() => { if (window.location.hash === "#photos") setDetailTab("photos"); }, [jobId]);
+  useEffect(() => { if(window.location.hash === "#clock-actions") requestAnimationFrame(()=>document.getElementById("clock-actions")?.scrollIntoView({block:"center"})); }, [jobId]);
   const fetchJob = useServerFn(getJob);
   const toggle = useServerFn(toggleSopItem);
   const confirmSop = useServerFn(confirmJobSop);
@@ -188,7 +189,7 @@ export function JobDetailView({ jobId, onBack }: { jobId: string; onBack?: () =>
                 <MessageSquare className="size-4" /> Message client
               </Link>
             )}
-            {job.status !== "canceled" && job.status !== "completed" && <VisitButtons jobId={jobId} />}
+            {job.status !== "canceled" && job.status !== "completed" && <div id="clock-actions" ref={el=>{if(el && window.location.hash==="#clock-actions")el.scrollIntoView({block:"center"});}}><VisitButtons jobId={jobId} /></div>}
             {canMessageClient && job.status !== "completed" && job.status !== "canceled" && (
               <button onClick={async () => {
                 if (!confirm("Mark this job complete? Its invoice is created, and anyone still clocked in on it is clocked out of the job.")) return;
