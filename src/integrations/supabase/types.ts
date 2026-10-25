@@ -3720,6 +3720,16 @@ export type Database = {
         Args: { _confirmed: boolean; _job: string }
         Returns: undefined
       }
+      correct_clock_record: {
+        Args: {
+          _description: string
+          _end: string
+          _id: string
+          _job: string
+          _start: string
+        }
+        Returns: undefined
+      }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_onboarding_completed: { Args: never; Returns: boolean }
       employee_clock_action: {
