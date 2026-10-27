@@ -420,7 +420,7 @@ function SchedulePage() {
         <div className="w-full px-4 md:px-6 py-4">
           <ZoomPanSurface>
             {/* Header row */}
-            <div className="grid w-full min-w-[1480px]" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+            <div className="schedule-row grid w-full min-w-[1480px]" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
               <div className="sticky left-0 z-20 px-2 py-2 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
                 <Users className="size-4" /> Team members ({cleaners.length})
@@ -437,11 +437,11 @@ function SchedulePage() {
             </div>
 
             {/* Open shifts row — jobs nobody is assigned to yet */}
-            <div className="grid w-full min-w-[1480px] border-t border-border/60 bg-accent/10" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+            <div className="schedule-row grid w-full min-w-[1480px] border-t border-border/60 bg-accent/10" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
               <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                 <div className="size-9 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>
                 <div className="min-w-0">
-                  <p className="text-base font-medium truncate">Open shifts</p>
+                  <p className="schedule-employee text-base font-medium truncate">Open shifts</p>
                   <p className="text-xs text-muted-foreground truncate">{canManageSchedule ? "Drag onto a person" : "Tap to pick up"}</p>
                 </div>
               </div>
@@ -482,13 +482,13 @@ function SchedulePage() {
             {cleaners.map((emp: any) => {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
               return (
-                <div key={emp.id} className="grid w-full min-w-[1480px] border-t border-border/60" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+                <div key={emp.id} className="schedule-row grid w-full min-w-[1480px] border-t border-border/60" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
                   <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                     <div className="size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
                       {initials(emp.full_name)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-base font-medium truncate">{emp.full_name ?? emp.email}</p>
+                      <p className="schedule-employee text-base font-medium truncate">{emp.full_name ?? emp.email}</p>
                       <p className="text-xs text-muted-foreground tabular-nums truncate">
                         {totals.hours.toFixed(2)} hrs{canSeeWages ? ` / $${totals.wages.toFixed(2)}` : ""}
                       </p>
@@ -504,7 +504,7 @@ function SchedulePage() {
                         key={dayKey}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => onDropOnCell(e, emp.id, d)}
-                        className={`min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[100px] ${today ? "bg-brand/[0.02]" : ""}`}
+                        className={`schedule-cell min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[100px] ${today ? "bg-brand/[0.02]" : ""}`}
                       >
                         {unavs.map((u: any) => (
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
@@ -547,7 +547,7 @@ function SchedulePage() {
                                   key={j.id}
                                   type="button"
                                   onClick={() => setOpenJob({ jobId: j.id, employeeId: emp.id })}
-                                  className={`w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
+                                  className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                   style={{ backgroundColor: c }}
                                   title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
                                 >
@@ -568,7 +568,7 @@ function SchedulePage() {
                                       );
                                       ev.dataTransfer.effectAllowed = "move";
                                     }}
-                                    className={`w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
+                                    className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                     style={{ backgroundColor: c }}
                                     title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
                                   >
@@ -706,7 +706,7 @@ function SchedulePage() {
                             title={`Add a shift for ${emp.full_name ?? "this team member"}`}
                             className={
                               shifts.length === 0 && unavs.length === 0
-                                ? "w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
+                                ? "schedule-add-empty w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
                                 : "w-full rounded-md border border-dashed border-border/70 text-muted-foreground text-[10px] py-1 opacity-60 hover:opacity-100 hover:border-brand hover:text-brand transition"
                             }
                           >
@@ -721,7 +721,7 @@ function SchedulePage() {
             })}
 
             {/* Wages / hours footer */}
-            <div className="grid w-full min-w-[1480px] border-t-2 border-border" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+            <div className="schedule-row grid w-full min-w-[1480px] border-t-2 border-border" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
               <div className="sticky left-0 z-10 px-2 py-2 bg-clay-50 border-r border-border/60">
                 {canSeeWages && <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>}
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>

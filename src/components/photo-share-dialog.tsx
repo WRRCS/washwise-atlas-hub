@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Copy, Mail, ExternalLink, Link2, Ban, RotateCcw, Loader2 } from "lucide-react";
 import {
   createPhotoShareLink,
@@ -53,9 +53,10 @@ export function PhotoShareDialog({
   const groups = useMemo(() => {
     const map = new Map<string, ShareablePhoto[]>();
     for (const p of photos) {
-      const name = p.uploader_name ?? "Team member";
-      if (!map.has(name)) map.set(name, []);
-      map.get(name)!.push(p);
+      const key = p.uploaded_by ?? "legacy-unattributed";
+      const group = map.get(key) ?? [];
+      group.push(p);
+      map.set(key, group);
     }
     return [...map.entries()];
   }, [photos]);
@@ -101,73 +102,22 @@ export function PhotoShareDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Share photo gallery</DialogTitle>
+      <DialogContent className="gallery-dialog max-w-2xl h-[min(48rem,calc(100dvh-2rem))] flex flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-4 py-4 pr-12 text-left">
+          <DialogTitle>Share Photo Gallery</DialogTitle>
           <DialogDescription>
-            Pick the photos to include. The link stays active until you revoke it — no login needed to view it.
+            {selected.size} of {photos.length} photos selected
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">{selected.size} of {photos.length} selected</p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setSelected(new Set(photos.map((p) => p.id)))}>
-              Select all
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>
-              Clear
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {groups.map(([name, list]) => (
-            <div key={name}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{name}</p>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {list.map((p) => {
-                  const on = selected.has(p.id);
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => toggle(p.id)}
-                      className={`relative rounded-lg overflow-hidden border-2 ${on ? "border-brand" : "border-transparent opacity-50"}`}
-                      aria-pressed={on}
-                    >
-                      {p.url && <img src={p.url} alt="" className="aspect-square w-full object-cover" />}
-                      <span
-                        className={`absolute top-1 right-1 size-5 rounded-full text-[11px] grid place-items-center ${
-                          on ? "bg-brand text-brand-foreground" : "bg-background/80 text-muted-foreground"
-                        }`}
-                      >
-                        {on ? "✓" : ""}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <Button
-          onClick={generate}
-          disabled={busy || !selected.size}
-          className="bg-brand text-brand-foreground hover:opacity-90"
-        >
-          {busy ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Link2 className="size-4 mr-1" />}
-          Generate gallery link ({selected.size})
-        </Button>
-
         {createdUrl && (
-          <div className="space-y-2 rounded-lg border border-border/60 p-3">
+          <div className="shrink-0 space-y-2 border-b border-border/60 p-3">
             <input
               readOnly
               value={createdUrl}
+              aria-label="Gallery link"
               onFocus={(e) => e.currentTarget.select()}
-              className="w-full rounded-md border bg-muted px-3 py-2 text-sm"
+              className="w-full min-w-0 rounded-md border bg-muted px-3 py-2 text-sm"
             />
             <div className="flex flex-wrap gap-2">
               <Button
@@ -183,11 +133,65 @@ export function PhotoShareDialog({
                 <a href={mailto}><Mail className="size-4 mr-1" /> Email Gallery</a>
               </Button>
               <Button asChild variant="ghost">
-                <a href={createdUrl} target="_blank" rel="noreferrer"><ExternalLink className="size-4 mr-1" /> Open</a>
+                <a href={createdUrl} target="_blank" rel="noreferrer"><ExternalLink className="size-4 mr-1" /> Open Gallery</a>
               </Button>
             </div>
           </div>
         )}
+
+        <div className="gallery-body min-h-0 flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">{selected.size} of {photos.length} selected</p>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setSelected(new Set(photos.map((p) => p.id)))}>
+              Select all
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>
+              Clear
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {groups.map(([employeeId, list]) => (
+            <div key={employeeId}>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-sm font-semibold">{list[0]?.uploader_name ?? "Legacy / unattributed"}</p>
+                <Button size="sm" variant="ghost" onClick={() => setSelected(prev => {
+                  const next = new Set(prev);
+                  const all = list.every(photo => next.has(photo.id));
+                  for (const photo of list) { if (all) next.delete(photo.id); else next.add(photo.id); }
+                  return next;
+                })}>{list.every(photo => selected.has(photo.id)) ? "Clear employee" : "Select employee"}</Button>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {list.map((p) => {
+                  const on = selected.has(p.id);
+                  return (
+                    <Button
+                      variant="ghost"
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggle(p.id)}
+                      aria-label={`Select photo ${p.id} by ${p.uploader_name ?? "Legacy / unattributed"}`}
+                      className={`relative h-auto p-0 rounded-lg overflow-hidden border-2 ${on ? "border-brand" : "border-transparent opacity-50"}`}
+                      aria-pressed={on}
+                    >
+                      {p.url && <img src={p.url} alt="" className="aspect-square w-full object-cover" />}
+                      <span
+                        className={`absolute top-1 right-1 size-5 rounded-full text-[11px] grid place-items-center ${
+                          on ? "bg-brand text-brand-foreground" : "bg-background/80 text-muted-foreground"
+                        }`}
+                      >
+                        {on ? "✓" : ""}
+                      </span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
 
         {links.length > 0 && (
           <div className="space-y-2">
@@ -216,6 +220,14 @@ export function PhotoShareDialog({
             ))}
           </div>
         )}
+        </div>
+        <DialogFooter className="shrink-0 border-t bg-background px-4 py-3 flex-row flex-wrap items-center justify-end">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={generate} disabled={busy || !selected.size} className="bg-brand text-brand-foreground hover:opacity-90">
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+            {busy ? "Creating…" : "Create Share Link"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

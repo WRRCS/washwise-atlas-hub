@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Keep gallery header/actions visible with independently scrolling previews and generated-link actions.
+- [ ] Compact admin desktop navigation and weekly schedule using shared layout standards; preserve employee mobile and all actions.
+- [ ] Verify 19/40+ photo sharing, downloads/revocation, laptop/125%/mobile layouts and schedule interactions. Signed-in testing requires an authorized app account.
+
 - [x] Restored one-image selected/all downloads and per-card Download; verified actual PNG and multi-photo flat ZIP downloads with isolated browser samples. Bulk ZIP finding contradicts the later preference and is false positive.
 - [x] Preserved original overnight clock timestamps and null open ends; daily/weekly paid/lunch totals and daily export durations use separate day bounds. All 26 focused tests pass; preview build OK.
 - [ ] Signed-in real-appointment and overnight timesheet checks for this monitoring fix — blocked: no requesting-user login session or matching account; no real records modified. Changes are not published in this turn.
