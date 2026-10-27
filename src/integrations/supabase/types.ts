@@ -2046,6 +2046,7 @@ export type Database = {
           job_id: string
           photo_ids: string[] | null
           photo_type: string | null
+          revoked_at: string | null
           tenant_id: string
         }
         Insert: {
@@ -2056,6 +2057,7 @@ export type Database = {
           job_id: string
           photo_ids?: string[] | null
           photo_type?: string | null
+          revoked_at?: string | null
           tenant_id: string
         }
         Update: {
@@ -2066,6 +2068,7 @@ export type Database = {
           job_id?: string
           photo_ids?: string[] | null
           photo_type?: string | null
+          revoked_at?: string | null
           tenant_id?: string
         }
         Relationships: []

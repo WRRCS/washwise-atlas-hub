@@ -190,6 +190,13 @@
       "when": 1792901958574,
       "tag": "0026_reject_inconsistent_photo_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793076670574,
+      "tag": "0027_photo_share_links_revocable_no_expiry",
+      "breakpoints": true
     }
   ]
 }

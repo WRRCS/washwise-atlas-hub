@@ -26,7 +26,6 @@ import { format } from "date-fns";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X, Link2 } from "lucide-react";
-import { createPhotoShareLink } from "@/lib/photo-share.functions";
 import { PhotoShareDialog } from "@/components/photo-share-dialog";
 import { usePhotoDownloads } from "@/components/photo-download-controls";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -549,15 +548,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
   const registerFn = useServerFn(registerJobPhoto);
   const finishBatchFn = useServerFn(finishPhotoUploadBatch);
   const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
-  const [shareLink, setShareLink] = useState<{ url: string; title: string } | null>(null);
-  const shareFn = useServerFn(createPhotoShareLink);
-  const makeLink = async (group: PhotoType, photoId?: string) => {
-    try {
-      const { url } = await shareFn({ data: { job_id: jobId, photo_type: group, photo_id: photoId, origin: window.location.origin } });
-      const name = group[0].toUpperCase() + group.slice(1);
-      setShareLink({ url, title: photoId ? `${name} photo` : `All ${name.toLowerCase()} photos` });
-    } catch (e) { toast.error((e as Error).message); }
-  };
+  const [shareOpen, setShareOpen] = useState(false);
   const [photoType, setPhotoType] = useState<PhotoType>("other");
   const [saving, setSaving] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -694,7 +685,14 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
   return (
     <>
       {!readOnly && uploader}
-      <PhotoShareDialog link={shareLink} onClose={() => setShareLink(null)} />
+      {readOnly && photos.length > 0 && (
+        <div className="mb-3">
+          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+            <Link2 className="size-4 mr-1" /> Share Gallery
+          </Button>
+        </div>
+      )}
+      <PhotoShareDialog jobId={jobId} photos={photos} open={shareOpen} onClose={() => setShareOpen(false)} />
       {downloads.toolbar}
       {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
       {(["before", "after", "damage", "other"] as PhotoType[]).map((group) => {
