@@ -54,12 +54,13 @@
   --admin-nav-height: 2rem;
   --admin-sidebar-collapsed-width: 3.75rem;
   --admin-card-padding: .375rem;
+  --admin-card-padding-x: .25rem;
   --admin-card-radius: .4375rem;
   --admin-time-size: .875rem;
   --admin-name-size: .8125rem;
   --admin-address-size: .75rem;
-  /* Week grid: one source of truth. Employee column 140–160px, days share the rest and never force overflow;
-     below the minimum the grid scrolls inside its own box instead of pushing Sat/Sun off-screen. */
+  /* Week grid: one source of truth. Narrow screens retain readable scrollable tracks;
+     desktop admin tracks remove day minimums and divide the actual container width. */
   --week-columns: minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr));
   --week-min-width: 1480px;
   --admin-week-columns: minmax(140px, 160px) repeat(7, minmax(100px, 1fr));
@@ -158,6 +159,12 @@
 .schedule-row { grid-template-columns: var(--week-columns); min-width: var(--week-min-width); }
 .schedule-row > * { min-width: 0; }
 .schedule-card { max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+.schedule-scroll-controls { display: none; }
+.schedule-scroll { min-width: 0; max-width: 100%; }
+
+@media (max-width: 1279px) {
+  .admin-layout .schedule-scroll-controls { display: flex; }
+}
 
 @media (min-width: 768px) {
   .app-sidebar { transition: width .15s ease; }
@@ -187,7 +194,13 @@
   .admin-layout .schedule-address { font-size: var(--admin-address-size); }
   .admin-layout .schedule-employee { font-size: var(--admin-name-size); white-space: normal; overflow-wrap: anywhere; }
   .admin-layout .schedule-details { line-height: 1.25; }
-  .admin-layout .schedule-card { padding: var(--admin-card-padding); border-radius: var(--admin-card-radius); line-height: 1.25; }
+  .admin-layout .schedule-card { padding: var(--admin-card-padding) var(--admin-card-padding-x); border-radius: var(--admin-card-radius); line-height: 1.25; }
+}
+@media (min-width: 1280px) {
+  .admin-layout {
+    --admin-week-columns: 160px repeat(7, minmax(0, 1fr));
+    --admin-week-min-width: 0px;
+  }
 }
 /* Always-visible scrollbars on the week grid (macOS hides overlay scrollbars otherwise). */
 .schedule-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
