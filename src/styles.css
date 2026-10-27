@@ -52,11 +52,18 @@
 :root {
   --admin-sidebar-width: 13rem;
   --admin-nav-height: 2rem;
-  --admin-card-padding: .5rem;
-  --admin-time-size: .9375rem;
-  --admin-name-size: .875rem;
-  --admin-address-size: .8125rem;
-  --admin-week-columns: minmax(130px, 1.15fr) repeat(7, minmax(0, 1fr));
+  --admin-sidebar-collapsed-width: 3.75rem;
+  --admin-card-padding: .375rem;
+  --admin-card-radius: .4375rem;
+  --admin-time-size: .875rem;
+  --admin-name-size: .8125rem;
+  --admin-address-size: .75rem;
+  /* Week grid: one source of truth. Employee column 140–160px, days share the rest and never force overflow;
+     below the minimum the grid scrolls inside its own box instead of pushing Sat/Sun off-screen. */
+  --week-columns: minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr));
+  --week-min-width: 1480px;
+  --admin-week-columns: minmax(140px, 160px) repeat(7, minmax(100px, 1fr));
+  --admin-week-min-width: 860px;
   --schedule-ink: #000000;
   --schedule-paper: #ffffff;
   --radius: 0.75rem;
@@ -147,15 +154,30 @@
 .gallery-dialog > button { z-index: 3; background: var(--background); color: var(--foreground); }
 .gallery-body { overscroll-behavior: contain; }
 
+/* Weekly schedule grid (all users). Every row shares these columns so headers stay aligned. */
+.schedule-row { grid-template-columns: var(--week-columns); min-width: var(--week-min-width); }
+.schedule-row > * { min-width: 0; }
+.schedule-card { max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+
 @media (min-width: 768px) {
+  .app-sidebar { transition: width .15s ease; }
   .admin-layout .app-sidebar { width: var(--admin-sidebar-width); position: sticky; top: 0; height: 100dvh; }
+  .app-sidebar[data-collapsed="true"],
+  .admin-layout .app-sidebar[data-collapsed="true"] { width: var(--admin-sidebar-collapsed-width); position: sticky; top: 0; height: 100dvh; }
+  .app-sidebar[data-collapsed="true"] .sidebar-brand { padding: .75rem .5rem; }
+  .app-sidebar[data-collapsed="true"] .sidebar-nav { padding-inline: .375rem; overflow-y: auto; min-height: 0; }
+  .app-sidebar[data-collapsed="true"] .sidebar-link { justify-content: center; padding: .5rem 0; gap: 0; }
   .admin-layout .sidebar-brand { padding: 1rem; }
   .admin-layout .sidebar-nav { overflow-y: auto; min-height: 0; padding-inline: .5rem; }
   .admin-layout .sidebar-nav > * + * { margin-top: .125rem; }
   .admin-layout .sidebar-link { min-height: var(--admin-nav-height); padding: .375rem .625rem; gap: .625rem; }
   .admin-layout header > .max-w-6xl { padding: .875rem 1.5rem; }
   .admin-layout header h1 { font-size: 1.25rem; }
-  .admin-layout .schedule-row { min-width: 0; grid-template-columns: var(--admin-week-columns) !important; }
+  .admin-layout .schedule-row { grid-template-columns: var(--admin-week-columns); min-width: var(--admin-week-min-width); }
+  /* Both scrollbars stay on screen, so Saturday/Sunday are always reachable when the window is narrow. */
+  .admin-layout .schedule-scroll { max-height: max(420px, calc(100dvh - 9.5rem)); }
+  .admin-layout .schedule-head { position: sticky; top: 0; z-index: 30; }
+  .admin-layout .schedule-head > :first-child { z-index: 31; }
   .admin-layout .schedule-cell { min-height: 64px; }
   .admin-layout .schedule-add-empty { min-height: 64px; }
   .admin-layout .schedule-details { line-height: 1.3; }
@@ -164,8 +186,6 @@
   .admin-layout .schedule-location { font-size: var(--admin-name-size); }
   .admin-layout .schedule-address { font-size: var(--admin-address-size); }
   .admin-layout .schedule-employee { font-size: var(--admin-name-size); white-space: normal; overflow-wrap: anywhere; }
-  .admin-layout .schedule-card { padding: var(--admin-card-padding); }
-}
-@media (min-width: 768px) and (max-width: 1100px) {
-  .admin-layout .schedule-row { min-width: 930px; }
+  .admin-layout .schedule-details { line-height: 1.25; }
+  .admin-layout .schedule-card { padding: var(--admin-card-padding); border-radius: var(--admin-card-radius); line-height: 1.25; }
 }

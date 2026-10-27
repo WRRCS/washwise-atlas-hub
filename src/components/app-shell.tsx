@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, PackageOpen, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe, Timer, ArrowLeft, HandCoins,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, PackageOpen, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe, Timer, ArrowLeft, HandCoins, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { AiChat } from "@/components/ai-chat";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,8 @@ import { getUnreadCount } from "@/lib/sms.functions";
 import { amIClientChatCapable, getClientChatUnread } from "@/lib/client-chat.functions";
 import { useT } from "@/lib/i18n";
 import { LanguageSetupDialog } from "@/components/language-setup-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { setSidebarCollapsed, useSidebarCollapsed } from "@/lib/sidebar-preference";
 import wrrcLogo from "@/assets/wrrc-logo.png.asset.json";
 
 const OWNER_NAV = [
@@ -76,6 +78,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string | null; role: string; isSuperAdmin: boolean } | null>(null);
+  const collapsed = useSidebarCollapsed();
 
   useEffect(() => {
     (async () => {
@@ -148,56 +151,119 @@ function AppShellInner({ children }: { children: ReactNode }) {
     <>
       <div className={`${profile && profile.role !== "employee" ? "admin-layout" : ""} min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand`}>
       <div className="flex min-h-screen">
-        <aside className="app-sidebar hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
-          <div className="sidebar-brand p-6">
-            <div className="px-2">
-              <img src={wrrcLogo.url} alt="Wash Rinse Repeat Cleaning Services" className="w-full h-auto object-contain" />
-            </div>
+        <TooltipProvider delayDuration={150}>
+        <aside
+          className="app-sidebar hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0"
+          data-collapsed={collapsed ? "true" : "false"}
+          aria-label="Main navigation"
+        >
+          <div className={`sidebar-brand p-6 flex items-center gap-2 ${collapsed ? "justify-center" : ""}`}>
+            {!collapsed && (
+              <div className="px-2 min-w-0 flex-1">
+                <img src={wrrcLogo.url} alt="Wash Rinse Repeat Cleaning Services" className="w-full h-auto object-contain" />
+              </div>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(!collapsed)}
+                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-expanded={!collapsed}
+                  aria-controls="app-sidebar-nav"
+                  className="sidebar-toggle shrink-0 grid place-items-center size-9 rounded-lg border border-border bg-background text-foreground hover:bg-clay-200/60 transition-colors"
+                >
+                  {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">{collapsed ? "Expand sidebar" : "Collapse sidebar"}</TooltipContent>
+            </Tooltip>
           </div>
 
-
-          <nav className="sidebar-nav flex-1 px-4 space-y-1">
+          <nav id="app-sidebar-nav" className="sidebar-nav flex-1 px-4 space-y-1">
             {primaryNav.map((item) => {
               const active = pathname.startsWith(item.to);
               const Icon = item.icon;
-              return (
+              const badge = item.to === "/messages" ? unreadCount : item.to === "/client-chat" ? clientChatUnreadCount : 0;
+              const label = t(item.label);
+              const link = (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  aria-label={collapsed ? label : undefined}
+                  className={`sidebar-link relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                     active ? "bg-brand/5 text-brand font-medium" : "text-muted-foreground hover:bg-clay-200/50"
                   }`}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {t(item.label)}
-                  {item.to === "/messages" && unreadCount > 0 && (
+                  {!collapsed && <span className="min-w-0 truncate">{label}</span>}
+                  {badge > 0 && (collapsed ? (
+                    <span className="absolute top-1 right-1 size-2 rounded-full bg-brand" aria-label={`${badge} unread`} />
+                  ) : (
                     <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                      {unreadCount > 99 ? "99+" : unreadCount}
+                      {badge > 99 ? "99+" : badge}
                     </span>
-                  )}
-                  {item.to === "/client-chat" && clientChatUnreadCount > 0 && (
-                    <span className="ml-auto bg-brand text-brand-foreground text-[10px] font-medium rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                      {clientChatUnreadCount > 99 ? "99+" : clientChatUnreadCount}
-                    </span>
-                  )}
+                  ))}
                 </Link>
               );
+              if (!collapsed) return link;
+              return (
+                <Tooltip key={item.to}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right">{label}{badge > 0 ? ` (${badge > 99 ? "99+" : badge})` : ""}</TooltipContent>
+                </Tooltip>
+              );
             })}
-            {profile?.isSuperAdmin && (
-              <Link
-                to={SUPER_ADMIN_NAV_ITEM.to}
-                className={`mt-4 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors border-t border-border/60 pt-4 ${
-                  pathname.startsWith(SUPER_ADMIN_NAV_ITEM.to)
-                    ? "text-brand font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Shield className="size-4 shrink-0" />
-                {SUPER_ADMIN_NAV_ITEM.label}
-              </Link>
-            )}
+            {profile?.isSuperAdmin && (() => {
+              const link = (
+                <Link
+                  to={SUPER_ADMIN_NAV_ITEM.to}
+                  aria-label={collapsed ? SUPER_ADMIN_NAV_ITEM.label : undefined}
+                  className={`sidebar-link mt-4 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors border-t border-border/60 pt-4 ${
+                    pathname.startsWith(SUPER_ADMIN_NAV_ITEM.to)
+                      ? "text-brand font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Shield className="size-4 shrink-0" />
+                  {!collapsed && SUPER_ADMIN_NAV_ITEM.label}
+                </Link>
+              );
+              if (!collapsed) return link;
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right">{SUPER_ADMIN_NAV_ITEM.label}</TooltipContent>
+                </Tooltip>
+              );
+            })()}
           </nav>
 
+          {collapsed ? (
+            <div className="sidebar-footer p-2 border-t border-border/60 flex flex-col items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="size-8 rounded-full bg-clay-200 grid place-items-center text-xs font-medium" aria-label={profile?.full_name ?? "Account"}>
+                    {(profile?.full_name ?? profile?.email ?? "?").slice(0, 1).toUpperCase()}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">{profile?.full_name ?? profile?.email ?? "Account"}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    aria-label={t("Sign out")}
+                    className="size-8 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-clay-200/50 transition-colors"
+                  >
+                    <LogOut className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{t("Sign out")}</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
           <div className="p-4 border-t border-border/60">
             <div className="bg-clay-200/50 rounded-lg p-3 ring-1 ring-black/5">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
@@ -220,7 +286,9 @@ function AppShellInner({ children }: { children: ReactNode }) {
               </button>
             </div>
           </div>
+          )}
         </aside>
+        </TooltipProvider>
 
         {/* mobile top bar */}
         <div className="md:hidden fixed top-0 inset-x-0 z-20 bg-clay-100 border-b border-border/60 px-4 py-3 flex items-center justify-between">

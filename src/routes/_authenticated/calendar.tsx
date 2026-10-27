@@ -418,9 +418,9 @@ function SchedulePage() {
 
       {view === "grid" ? (
         <div className="w-full px-4 md:px-6 py-4">
-          <ZoomPanSurface>
+          <ZoomPanSurface scrollClassName="schedule-scroll">
             {/* Header row */}
-            <div className="schedule-row grid w-full min-w-[1480px]" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+            <div className="schedule-row schedule-head grid w-full">
               <div className="sticky left-0 z-20 px-2 py-2 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
                 <Users className="size-4" /> Team members ({cleaners.length})
@@ -437,7 +437,7 @@ function SchedulePage() {
             </div>
 
             {/* Open shifts row — jobs nobody is assigned to yet */}
-            <div className="schedule-row grid w-full min-w-[1480px] border-t border-border/60 bg-accent/10" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+            <div className="schedule-row grid w-full border-t border-border/60 bg-accent/10">
               <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                 <div className="size-9 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>
                 <div className="min-w-0">
@@ -482,7 +482,7 @@ function SchedulePage() {
             {cleaners.map((emp: any) => {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
               return (
-                <div key={emp.id} className="schedule-row grid w-full min-w-[1480px] border-t border-border/60" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+                <div key={emp.id} className="schedule-row grid w-full border-t border-border/60">
                   <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                     <div className="size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
                       {initials(emp.full_name)}
@@ -549,7 +549,7 @@ function SchedulePage() {
                                   onClick={() => setOpenJob({ jobId: j.id, employeeId: emp.id })}
                                   className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                   style={{ backgroundColor: c }}
-                                  title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
+                                  title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? " (draft)" : ""}`}
                                 >
                                   {cardBody}
                                 </button>
@@ -570,7 +570,7 @@ function SchedulePage() {
                                     }}
                                     className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                     style={{ backgroundColor: c }}
-                                    title={`${label} — ${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)}${draft ? " (draft)" : ""}`}
+                                    title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? " (draft)" : ""}`}
                                   >
                                     {cardBody}
                                   </button>
@@ -721,7 +721,7 @@ function SchedulePage() {
             })}
 
             {/* Wages / hours footer */}
-            <div className="schedule-row grid w-full min-w-[1480px] border-t-2 border-border" style={{ gridTemplateColumns: `minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr))` }}>
+            <div className="schedule-row grid w-full border-t-2 border-border">
               <div className="sticky left-0 z-10 px-2 py-2 bg-clay-50 border-r border-border/60">
                 {canSeeWages && <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>}
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
