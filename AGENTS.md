@@ -25,3 +25,6 @@
 - Daily timesheets return original clock timestamps and null open ends; clip only duration calculations to the returned day window, so overnight edits cannot overwrite real times and weekly totals cannot double-count intervals.
 - EmployeeClockControls belongs above employee appointment content independent of appointment queries; admin timesheets expose record management rather than self-clock controls, so an empty schedule never blocks employee clock-in.
 - Cleaner action reminders reuse the private-secret push scheduler and existing arrival handlers; opt-in employee settings, unique occurrence/action keys, at-most-once delivery claims and fresh pre-send attendance/assignment checks prevent stale or duplicate alerts. Client channels remain separate.
+- Admin desktop density is scoped through admin-layout and shared CSS sizing tokens; keep mobile employee typography unchanged and preserve schedule drag/drop handlers.
+- PhotoShareDialog uses a bounded flex layout with fixed header/link actions/footer and one scrolling photo body; employee groups are keyed by uploader ID, not display name.
+- Shared DialogContent bounds viewport height and provides sticky direct headers/footers so long forms retain accessible actions.
