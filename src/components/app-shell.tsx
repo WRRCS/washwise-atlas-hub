@@ -146,17 +146,17 @@ function AppShellInner({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div className="min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand">
+      <div className={`${profile && profile.role !== "employee" ? "admin-layout" : ""} min-h-screen bg-clay-50 text-foreground selection:bg-brand/10 selection:text-brand`}>
       <div className="flex min-h-screen">
-        <aside className="hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
-          <div className="p-6">
+        <aside className="app-sidebar hidden md:flex w-64 border-r border-border/60 flex-col bg-clay-100 shrink-0">
+          <div className="sidebar-brand p-6">
             <div className="px-2">
               <img src={wrrcLogo.url} alt="Wash Rinse Repeat Cleaning Services" className="w-full h-auto object-contain" />
             </div>
           </div>
 
 
-          <nav className="flex-1 px-4 space-y-1">
+          <nav className="sidebar-nav flex-1 px-4 space-y-1">
             {primaryNav.map((item) => {
               const active = pathname.startsWith(item.to);
               const Icon = item.icon;
@@ -164,7 +164,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                     active ? "bg-brand/5 text-brand font-medium" : "text-muted-foreground hover:bg-clay-200/50"
                   }`}
                 >

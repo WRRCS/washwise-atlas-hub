@@ -50,6 +50,13 @@
 }
 
 :root {
+  --admin-sidebar-width: 13rem;
+  --admin-nav-height: 2rem;
+  --admin-card-padding: .5rem;
+  --admin-time-size: .9375rem;
+  --admin-name-size: .875rem;
+  --admin-address-size: .8125rem;
+  --admin-week-columns: minmax(130px, 1.15fr) repeat(7, minmax(0, 1fr));
   --schedule-ink: #000000;
   --schedule-paper: #ffffff;
   --radius: 0.75rem;
@@ -117,12 +124,47 @@
 }
 
 @layer base {
-  /* Larger text on the admin (tablet/desktop) layout */
-  @media (min-width: 768px) { html { font-size: 112.5%; } }
+  html { font-size: 100%; letter-spacing: 0; }
   * { border-color: var(--color-border); }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
+}
+
+/* Bounded dialogs share sticky actions; the gallery uses a separate body scroll. */
+.viewport-dialog > .dialog-header:not(.sr-only) {
+  position: sticky; top: -1.25rem; z-index: 2;
+  background: var(--background); padding-block: .5rem;
+}
+.viewport-dialog > .dialog-footer {
+  position: sticky; bottom: -1.25rem; z-index: 2;
+  background: var(--background); padding-block: .75rem;
+  border-top: 1px solid var(--border);
+}
+.gallery-dialog > .dialog-header { position: static; }
+.gallery-body { overscroll-behavior: contain; }
+
+@media (min-width: 768px) {
+  .admin-layout .app-sidebar { width: var(--admin-sidebar-width); position: sticky; top: 0; height: 100dvh; }
+  .admin-layout .sidebar-brand { padding: 1rem; }
+  .admin-layout .sidebar-nav { overflow-y: auto; min-height: 0; padding-inline: .5rem; }
+  .admin-layout .sidebar-nav > * + * { margin-top: .125rem; }
+  .admin-layout .sidebar-link { min-height: var(--admin-nav-height); padding: .375rem .625rem; gap: .625rem; }
+  .admin-layout header > .max-w-6xl { padding: .875rem 1.5rem; }
+  .admin-layout header h1 { font-size: 1.25rem; }
+  .admin-layout .schedule-row { min-width: 0; grid-template-columns: var(--admin-week-columns) !important; }
+  .admin-layout .schedule-cell { min-height: 64px; }
+  .admin-layout .schedule-add-empty { min-height: 64px; }
+  .admin-layout .schedule-details { line-height: 1.3; }
+  .admin-layout .schedule-details > * + * { margin-top: .125rem; }
+  .admin-layout .schedule-time { font-size: var(--admin-time-size); }
+  .admin-layout .schedule-location { font-size: var(--admin-name-size); }
+  .admin-layout .schedule-address { font-size: var(--admin-address-size); }
+  .admin-layout .schedule-employee { font-size: var(--admin-name-size); white-space: normal; overflow-wrap: anywhere; }
+  .admin-layout .schedule-card { padding: var(--admin-card-padding); }
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+  .admin-layout .schedule-row { min-width: 930px; }
 }
