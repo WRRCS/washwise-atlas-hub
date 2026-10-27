@@ -26,7 +26,6 @@ import { format } from "date-fns";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X, Link2 } from "lucide-react";
-import { createPhotoShareLink } from "@/lib/photo-share.functions";
 import { PhotoShareDialog } from "@/components/photo-share-dialog";
 import { usePhotoDownloads } from "@/components/photo-download-controls";
 import { Checkbox } from "@/components/ui/checkbox";
