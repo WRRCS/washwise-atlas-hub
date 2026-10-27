@@ -1,8 +1,9 @@
 # Roadmap
 
-- [ ] Keep gallery header/actions visible with independently scrolling previews and generated-link actions.
-- [ ] Compact admin desktop navigation and weekly schedule using shared layout standards; preserve employee mobile and all actions.
-- [ ] Verify 19/40+ photo sharing, downloads/revocation, laptop/125%/mobile layouts and schedule interactions. Signed-in testing requires an authorized app account.
+- [x] Keep gallery header/actions visible with independently scrolling previews and generated-link actions; group by uploader ID and preserve share/download services.
+- [x] Compact admin desktop navigation and weekly schedule using shared layout standards; root font restored to 16px, admin sidebar 208px, times 15px, names 14px, addresses 13px. Employee mobile unchanged; shared dialogs have bounded scrolling/sticky actions.
+- [x] Signed-in Zoe: 19-photo create/copy/email draft/incognito individual image/19-image ZIP/revoke passed. Large gallery (66 selected): footer visible at laptop/125%-equivalent/mobile; link/copy/email draft/public download/55 valid-image ZIP/revoke passed. Nineteen unit tests pass, preview build OK. Email draft only, no emails sent. Native same-cell drag/drop exercised without mutating schedule; new-job footer visible at all sizes.
+- [ ] Full large-gallery completeness verification — blocked: existing photos intermittently fail to load/sign; public gallery omits unavailable images (55 of 66 during final test). No original photo data/storage altered. Actual cross-date/reassignment drag not performed on live records; true browser 125% tested via equivalent CSS viewport, not browser zoom. Not published.
 
 - [x] Restored one-image selected/all downloads and per-card Download; verified actual PNG and multi-photo flat ZIP downloads with isolated browser samples. Bulk ZIP finding contradicts the later preference and is false positive.
 - [x] Preserved original overnight clock timestamps and null open ends; daily/weekly paid/lunch totals and daily export durations use separate day bounds. All 26 focused tests pass; preview build OK.
