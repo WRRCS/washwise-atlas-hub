@@ -102,7 +102,7 @@ export function PhotoShareDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="gallery-dialog max-w-2xl h-[min(48rem,calc(100dvh-2rem))] flex flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="gallery-dialog max-w-2xl h-[min(48rem,calc(100dvh-2rem))] flex flex-col gap-0 overflow-hidden p-0 sm:p-0">
         <DialogHeader className="shrink-0 border-b px-4 py-4 pr-12 text-left">
           <DialogTitle>Share Photo Gallery</DialogTitle>
           <DialogDescription>
@@ -197,7 +197,7 @@ export function PhotoShareDialog({
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Existing gallery links</p>
             {links.map((l) => (
-              <div key={l.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2 text-sm">
+              <div key={l.id} data-gallery-link-id={l.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2 text-sm">
                 <div>
                   <p className="font-medium">
                     {l.photo_count} photo{l.photo_count === 1 ? "" : "s"} ·{" "}
