@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] Restored one-image selected/all downloads and per-card Download; verified actual PNG and multi-photo flat ZIP downloads with isolated browser samples. Bulk ZIP finding contradicts the later preference and is false positive.
+- [x] Preserved original overnight clock timestamps and null open ends; daily/weekly paid/lunch totals and daily export durations use separate day bounds. All 26 focused tests pass; preview build OK.
+- [ ] Signed-in real-appointment and overnight timesheet checks for this monitoring fix — blocked: no requesting-user login session or matching account; no real records modified. Changes are not published in this turn.
+
 - [x] Hardened all database inserts against missing/mismatched tenant, occurrence, uploader and assignment; capture-time assignment is encoded in storage paths and stale reassignment uploads rejected. Registration checks successful stored images. Immutable identity survives reassignment; photo shares/invoice reads enforce related jobs/clients.
 - [x] Isolated two-employee tenant: NEW uploads A=2/B=0 then B=1/A=2, refresh, previews, unique correct ZIP contents and empty next occurrence passed. Backend tests rejected missing uploader, other occurrence/cleaner/assignment, ownership transfer and stale assignment; old ownership remained unchanged. Twenty-five unit tests plus two persistent browser regression tests passed (sandbox browser executable fallback).
 - [x] Requested deployment and verified wrrcs.com with both synthetic employee logins: counts, loaded previews, refresh, actual ZIP images and initially empty next occurrence. Repeated NEW uploads on published app A=2/B=0 then B=1/A=2. Isolated test-only queued alerts had no real recipients or devices; no real staff/client messages sent.

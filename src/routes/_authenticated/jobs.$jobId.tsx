@@ -724,6 +724,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
             <div className="p-2 space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="flex items-center gap-2 text-xs"><Checkbox aria-label={`Select photo ${p.id}`} checked={downloads.selected.has(p.id)} disabled={downloads.busy} onCheckedChange={() => downloads.toggle(p.id)} /> Select</label>
+                {downloads.singleButton(p)}
               </div>
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${typeBadge[p.photo_type]}`}>
