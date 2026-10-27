@@ -73,3 +73,4 @@
 - [x] Timesheet: owners/managers edit, delete, or clock out time entries
 - [x] Team tab shows no wages for anyone (roster column, export and messages view)
 - [x] Admin app: Pay rate column on the Employees roster (owners + wage permission only)
+- [x] Weekly calendar layout fix + collapsible sidebar (expanded 208px / collapsed 60px, remembered per device, icon tooltips). All 7 days fit at 1280/1366/1440/1920 at 100% zoom, both sidebar states; 125%-zoom equivalent and tablet scroll inside the grid to Sat/Sun. Not published.
