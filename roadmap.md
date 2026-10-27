@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Targeted final calendar width correction: fit all seven days at 1280/1366/1440 with both sidebar states, preserve font sizes/data/drag-and-drop, provide narrow-screen scroll controls, and measure Sunday's rendered edge on populated eight-employee schedule.
+
 - [x] Keep gallery header/actions visible with independently scrolling previews and generated-link actions; group by uploader ID and preserve share/download services.
 - [x] Compact admin desktop navigation and weekly schedule using shared layout standards; root font restored to 16px, admin sidebar 208px, times 15px, names 14px, addresses 13px. Employee mobile unchanged; shared dialogs have bounded scrolling/sticky actions.
 - [x] Signed-in Zoe: 19-photo create/copy/email draft/incognito individual image/19-image ZIP/revoke passed. Large gallery (66 selected): footer visible at laptop/125%-equivalent/mobile; link/copy/email draft/public download/55 valid-image ZIP/revoke passed. Nineteen unit tests pass, preview build OK. Email draft only, no emails sent. Native same-cell drag/drop exercised without mutating schedule; new-job footer visible at all sizes.
