@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { clockTotals, intervalMinutes } from "../../src/lib/clock-totals";
+import { clockTotals, dailyIntervalMinutes, intervalMinutes } from "../../src/lib/clock-totals";
 const at = (h: string) => `2026-10-25T${h}:00Z`;
 describe("explicit clock intervals", () => {
+  it("splits overnight paid work between days without changing its real timestamps", () => {
+    const entry = { started_at: "2026-10-26T06:00:00Z", ended_at: "2026-10-26T09:00:00Z" };
+    expect(dailyIntervalMinutes(entry, { from: "2026-10-25T07:00:00Z", to: "2026-10-26T07:00:00Z" })).toBe(60);
+    expect(dailyIntervalMinutes(entry, { from: "2026-10-26T07:00:00Z", to: "2026-10-27T07:00:00Z" })).toBe(120);
+    expect(entry).toEqual({ started_at: "2026-10-26T06:00:00Z", ended_at: "2026-10-26T09:00:00Z" });
+  });
+  it("bounds forgotten clock-outs and unpaid lunches without inventing an end", () => {
+    const entry = { started_at: "2026-10-26T06:00:00Z", ended_at: null, kind: "lunch" };
+    expect(dailyIntervalMinutes(entry, { from: "2026-10-25T07:00:00Z", to: "2026-10-26T07:00:00Z" }, Date.parse("2026-10-27T10:00:00Z"))).toBe(60);
+    expect(entry.ended_at).toBeNull();
+  });
   it("counts unscheduled work before and after lunch with lunch excluded exactly once", () => {
     expect(clockTotals([
       { started_at: at("09:00"), ended_at: at("12:00"), kind: "work" },
