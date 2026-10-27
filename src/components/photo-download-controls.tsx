@@ -61,6 +61,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
   };
 
   const downloadZip = (items: DownloadPhoto[]) => {
+    if (items.length === 1) return downloadOne(items[0]);
     return run(async () => {
       setZipState(null);
       const result = await preparePhotoExport(items, context, { onProgress: progressFor });

@@ -209,6 +209,8 @@ export type DailyRow = {
 };
 
 export type DailyTimesheet = {
+  from: string;
+  to: string;
   rows: DailyRow[];
   entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null; kind?: string }[];
   clockRecords: (ClockRecord & {employee_id: string})[];
@@ -273,13 +275,13 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
     // Drive/other time = gap since the cleaner clocked in or left their previous job.
     const paidRows = [...(entries ?? []), ...(clockRows ?? []).filter((r:any)=>r.kind === "work")];
     const entryList = (paidRows as any[]).map((e) => ({
-      id: e.id, kind: e.kind, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at < data.from ? data.from : e.started_at, ended_at: e.ended_at && e.ended_at < data.to ? e.ended_at : data.to < new Date().toISOString() ? data.to : e.ended_at,
+      id: e.id, kind: e.kind, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at, ended_at: e.ended_at,
     }));
     const byEmp = new Map<string, DailyRow[]>();
     for (const r of rows) if (r.arrived_at) byEmp.set(r.employee_id, [...(byEmp.get(r.employee_id) ?? []), r]);
     for (const [emp, list] of byEmp) {
       list.sort((a, b) => a.arrived_at!.localeCompare(b.arrived_at!));
-      const clockIn = entryList.filter((e) => e.employee_id === emp).map((e) => e.started_at).sort()[0] ?? null;
+      const clockIn = entryList.filter((e) => e.employee_id === emp).map((e) => e.started_at < data.from ? data.from : e.started_at).sort()[0] ?? null;
       let prev: string | null = clockIn;
       for (const r of list) {
         if (prev && r.arrived_at && prev < r.arrived_at) r.drive_min = entryList.filter(e=>e.employee_id===emp).reduce((sum,e)=>sum+intervalMinutes(e,Date.now(),Date.parse(prev ?? data.from),Date.parse(r.arrived_at ?? data.to)),0);
@@ -290,7 +292,7 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
       (a.arrived_at ?? a.scheduled_start ?? "").localeCompare(b.arrived_at ?? b.scheduled_start ?? ""));
     entryList.sort((a, b) => a.employee_name.localeCompare(b.employee_name) || a.started_at.localeCompare(b.started_at));
     const clockRecords = (clockRows ?? []).map((r:any)=>({...r,employee_id:r.user_id,employee_name:names.get(r.user_id) ?? "Unknown"}));
-    return { rows, entries: entryList, clockRecords };
+    return { from: data.from, to: data.to, rows, entries: entryList, clockRecords };
   });
 
 async function assertManagerVisit(context: { supabase: any; userId: string }, visitId: string) {

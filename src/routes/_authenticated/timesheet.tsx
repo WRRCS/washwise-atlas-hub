@@ -1,6 +1,6 @@
 import { ClockRecordEditor } from "@/components/clock-record-editor";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
-import { intervalMinutes } from "@/lib/clock-totals";
+import { dailyIntervalMinutes } from "@/lib/clock-totals";
 import { zonedToUTCISO } from "@/lib/tz";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
@@ -83,8 +83,8 @@ function TimesheetPage() {
       ].map((v) => `"${v}"`).join(","));
     }
     lines.push("", "Employee,Record,Start,End,Paid minutes,Unpaid lunch minutes,Description");
-    for (const e of entries) lines.push([e.employee_name,"Paid work",e.started_at,e.ended_at ?? "",mins(e.started_at,e.ended_at),0,""].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
-    for (const e of q.data?.clockRecords ?? []) if(e.kind === "lunch") lines.push([e.employee_name,"Unpaid lunch",e.started_at,e.ended_at ?? "",0,intervalMinutes(e),e.description].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
+    for (const e of entries) lines.push([e.employee_name,"Paid work",e.started_at,e.ended_at ?? "",dailyIntervalMinutes(e, { from, to }),0,""].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
+    for (const e of q.data?.clockRecords ?? []) if(e.kind === "lunch") lines.push([e.employee_name,"Unpaid lunch",e.started_at,e.ended_at ?? "",0,dailyIntervalMinutes(e, { from, to }),e.description].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
     a.download = `timesheet-${format(day, "yyyy-MM-dd")}.csv`;
@@ -339,7 +339,7 @@ function EntryEditor({ entry, time }: { entry: { id: string; started_at: string;
             <LogOut className="size-3.5 mr-1" />Clock out now
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={() => setEditing(true)} aria-label="Edit times"><Pencil className="size-3.5" /></Button>
+        <Button size="sm" variant="ghost" onClick={() => { setStart(toLocalInput(entry.started_at)); setEnd(toLocalInput(entry.ended_at)); setEditing(true); }} aria-label="Edit times"><Pencil className="size-3.5" /></Button>
         <Button size="sm" variant="ghost" disabled={busy} aria-label="Delete entry"
           onClick={() => { if (confirm("Delete this clock in/out entry?")) run(() => delFn({ data: { id: entry.id } }), "Entry deleted"); }}>
           <Trash2 className="size-3.5" />
@@ -350,17 +350,19 @@ function EntryEditor({ entry, time }: { entry: { id: string; started_at: string;
 }
 
 /** Paid total = clock in → clock out (open entry counts to now); falls back to on-site + drive when no clock entry exists. */
-function computeTotals(data: { rows: any[]; entries: { employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[]; clockRecords?: {employee_id:string;employee_name:string;kind:string;started_at:string;ended_at:string|null}[] } | undefined) {
+function computeTotals(data: { from: string; to: string; rows: any[]; entries: { employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[]; clockRecords?: {employee_id:string;employee_name:string;kind:string;started_at:string;ended_at:string|null}[] } | undefined) {
   const m = new Map<string, { id: string; name: string; onSite: number; clocked: number; unpaid: number; hasClock: boolean; legacy: number }>();
   const get = (id: string, name: string) => { const t = m.get(id) ?? { id, name, onSite: 0, clocked: 0, unpaid: 0, hasClock: false, legacy: 0 }; m.set(id, t); return t; };
   for (const r of data?.rows ?? []) {
     const t = get(r.employee_id, r.employee_name);
-    const on = r.arrived_at ? mins(r.arrived_at, r.left_at) : 0;
+    const on = r.arrived_at && data ? dailyIntervalMinutes({ started_at: r.arrived_at, ended_at: r.left_at }, data) : 0;
     t.onSite += on;
     t.legacy += on + (r.drive_min ?? 0);
   }
-  for (const e of data?.entries ?? []) { const t=get(e.employee_id,e.employee_name); t.clocked += mins(e.started_at,e.ended_at); t.hasClock=true; }
-  for (const e of data?.clockRecords ?? []) if(e.kind === "lunch") { const t=get(e.employee_id,e.employee_name); t.unpaid += intervalMinutes(e); t.hasClock=true; }
+  if (data) {
+    for (const e of data.entries) { const t=get(e.employee_id,e.employee_name); t.clocked += dailyIntervalMinutes(e, data); t.hasClock=true; }
+    for (const e of data.clockRecords ?? []) if(e.kind === "lunch") { const t=get(e.employee_id,e.employee_name); t.unpaid += dailyIntervalMinutes(e, data); t.hasClock=true; }
+  }
   return Array.from(m.values())
     .map((t) => { const total = t.hasClock ? t.clocked : t.legacy; return { ...t, total, drive: Math.max(0, total - t.onSite) }; })
     .filter((t) => t.total > 0 || t.unpaid > 0)
