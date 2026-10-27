@@ -7,9 +7,11 @@ import { useEffect, useRef } from "react";
 export function ZoomPanSurface({
   children,
   className = "",
+  scrollClassName = "",
 }: {
   children: React.ReactNode;
   className?: string;
+  scrollClassName?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -25,7 +27,7 @@ export function ZoomPanSurface({
     <div className={`relative ${className}`}>
       <div
         ref={containerRef}
-        className="overflow-auto overscroll-x-contain rounded-xl ring-1 ring-black/10 bg-card"
+        className={`overflow-auto overscroll-x-contain rounded-xl ring-1 ring-black/10 bg-card ${scrollClassName}`}
         style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x pan-y" }}
       >
         <div className="w-full min-w-0">{children}</div>
