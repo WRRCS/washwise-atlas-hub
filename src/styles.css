@@ -189,3 +189,7 @@
   .admin-layout .schedule-details { line-height: 1.25; }
   .admin-layout .schedule-card { padding: var(--admin-card-padding); border-radius: var(--admin-card-radius); line-height: 1.25; }
 }
+/* Always-visible scrollbars on the week grid (macOS hides overlay scrollbars otherwise). */
+.schedule-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.schedule-scroll::-webkit-scrollbar-track { background: var(--clay-100); }
+.schedule-scroll::-webkit-scrollbar-thumb { background: var(--muted-foreground); border-radius: 999px; border: 2px solid var(--clay-100); }
