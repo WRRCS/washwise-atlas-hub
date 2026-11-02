@@ -218,6 +218,13 @@
       "when": 1793592878412,
       "tag": "0030_timesheet_report_interval_clipping",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793593164086,
+      "tag": "0031_harden_timesheet_interval_validation",
+      "breakpoints": true
     }
   ]
 }
