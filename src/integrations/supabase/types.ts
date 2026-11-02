@@ -168,6 +168,58 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_corrections: {
+        Row: {
+          employee_id: string
+          id: string
+          job_id: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          employee_id: string
+          id?: string
+          job_id: string
+          status: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          employee_id?: string
+          id?: string
+          job_id?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_corrections_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_corrections_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_corrections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caddy_template_items: {
         Row: {
           created_at: string
@@ -3389,6 +3441,64 @@ export type Database = {
           },
         ]
       }
+      timesheet_correction_history: {
+        Row: {
+          corrected_at: string
+          corrected_values: Json
+          editor_id: string
+          employee_id: string
+          id: string
+          job_id: string | null
+          original_values: Json
+          reason: string
+          tenant_id: string
+        }
+        Insert: {
+          corrected_at?: string
+          corrected_values: Json
+          editor_id: string
+          employee_id: string
+          id?: string
+          job_id?: string | null
+          original_values: Json
+          reason: string
+          tenant_id: string
+        }
+        Update: {
+          corrected_at?: string
+          corrected_values?: Json
+          editor_id?: string
+          employee_id?: string
+          id?: string
+          job_id?: string | null
+          original_values?: Json
+          reason?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheet_correction_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_correction_history_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_correction_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tips: {
         Row: {
           amount_cents: number
@@ -3699,6 +3809,7 @@ export type Database = {
       }
       work_clock_entries: {
         Row: {
+          activity_type: string
           description: string
           ended_at: string | null
           id: string
@@ -3711,6 +3822,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          activity_type?: string
           description: string
           ended_at?: string | null
           id?: string
@@ -3723,6 +3835,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          activity_type?: string
           description?: string
           ended_at?: string | null
           id?: string
@@ -3780,6 +3893,20 @@ export type Database = {
       _client_name: { Args: { _client_id: string }; Returns: string }
       _reports_can_cpni: { Args: never; Returns: boolean }
       _reports_guard: { Args: never; Returns: undefined }
+      admin_correct_timesheet: {
+        Args: {
+          _employee: string
+          _from: string
+          _job: string
+          _original: Json
+          _reason: string
+          _records: Json
+          _status: string
+          _to: string
+          _visits: Json
+        }
+        Returns: string
+      }
       admin_get_tenant: { Args: { _tenant: string }; Returns: Json }
       admin_list_tenants: {
         Args: never
