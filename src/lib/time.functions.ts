@@ -237,6 +237,10 @@ export const clockInDay = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     await sb.from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
     await sb.from("job_visits").insert({ tenant_id: (prof as any).tenant_id, job_id: data.job_id, employee_id: context.userId, arrived_at: now });
+    if (!other?.length && entry) {
+      const { notifySavedClock } = await import('./clock-email-alerts.server');
+      await notifySavedClock(context, entry.id, 'clock_in');
+    }
     return entry;
   });
 
@@ -250,6 +254,8 @@ export const endMyShift = createServerFn({ method: "POST" })
     const { data: id, error } = await context.supabase.rpc("employee_clock_action", { _action: "clock_out" });
     if (error) throw new Error(error.message);
     if (id && gps) await context.supabase.from("time_entries").update({ clock_out_latitude: gps.latitude, clock_out_longitude: gps.longitude, clock_out_accuracy_meters: gps.accuracy_meters ?? null }).eq("id",id).eq("user_id",context.userId);
+    const { notifySavedClock } = await import('./clock-email-alerts.server');
+    await notifySavedClock(context, id, 'clock_out');
     return { ok: true };
   });
 
@@ -393,6 +399,10 @@ export const clockIn = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     await sb.from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
     await sb.from("job_visits").insert({ tenant_id: (prof as any).tenant_id, job_id: data.job_id, employee_id: context.userId, arrived_at: now });
+    if (!existing && entry) {
+      const { notifySavedClock } = await import('./clock-email-alerts.server');
+      await notifySavedClock(context, entry.id, 'clock_in');
+    }
     return entry;
   });
 
@@ -423,10 +433,13 @@ export const clockOut = createServerFn({ method: "POST" })
       })
       .eq("id", data.entry_id)
       .eq("user_id", context.userId)
+      .is("ended_at", null)
       .select("id, started_at, ended_at, job_id, notes, clock_out_latitude, clock_out_longitude")
       .single();
     if (error) throw new Error(error.message);
     await context.supabase.from("job_visits").update({left_at: endedAt}).eq("employee_id",context.userId).is("left_at",null);
+    const { notifySavedClock } = await import('./clock-email-alerts.server');
+    await notifySavedClock(context, entry.id, 'clock_out');
     return entry;
   });
 

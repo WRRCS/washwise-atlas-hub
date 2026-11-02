@@ -8,6 +8,10 @@ export const employeeClockAction = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: id, error } = await context.supabase.rpc("employee_clock_action", { _action: data.action, _description: data.description });
     if (error) throw new Error(error.message);
+    if (data.action === 'start_work' || data.action === 'clock_out') {
+      const { notifySavedClock } = await import('./clock-email-alerts.server');
+      await notifySavedClock(context, id, data.action === 'start_work' ? 'clock_in' : 'clock_out');
+    }
     return { id };
   });
 
