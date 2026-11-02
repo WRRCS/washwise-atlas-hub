@@ -35,7 +35,7 @@ import { photoQueryKey } from "@/lib/photo-ownership";
 
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
-  validateSearch: (search:Record<string,unknown>) => ({ cleaner: typeof search.cleaner==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(search.cleaner) ? search.cleaner : undefined }),
+  validateSearch: (search:Record<string,unknown>): {cleaner?:string} => ({ cleaner: typeof search.cleaner==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(search.cleaner) ? search.cleaner : undefined }),
   head: () => ({ meta: [{ title: "Appointment details | WRRCS" }, { name: "description", content: "Review appointment location, cleaner checklists and photos." }, { property: "og:title", content: "Appointment details | WRRCS" }, { property: "og:description", content: "Review appointment location, cleaner checklists and photos." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: JobDetail,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
