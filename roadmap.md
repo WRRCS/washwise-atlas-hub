@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Persist and reuse property-specific types across scheduling and recurrence; preserve historical appointments and property editing.
-- [ ] Verify refreshed scheduling and two distinct property types with isolated test records.
+- [x] Persist property-specific types in existing property records; shared atomic insert trigger snapshots all new appointments including copies/extensions. Both scheduling forms reuse saved types, prompt for missing types and discard stale property drafts. Existing property editor retained; no historical backfill or cascade.
+- [x] Signed-in Zoe: created temporary Home=Residence / Office=Office appointments, refreshed and switched properties with correct defaults, changed Office to Commercial without rewriting saved Office appointment, verified calendar defaults and 31 recurring Commercial snapshots. Seven focused tests pass; build OK. Removed temporary client/properties/appointments/queued test-only alerts. No emails or staff messages sent. App changes are not published.
 
 - [x] Final targeted width correction: desktop admin tracks now 160px employee + seven minmax(0,1fr) days, no row minimum at >=1280; horizontal card padding 6px→4px, unchanged 14/13/12px fonts. Overflow-aware arrow controls below 1280; sidebar/navigation/DnD/data unchanged.
 - [x] Signed-in Zoe, eight employees/49 appointment cards at 100% zoom: 1280/1366/1440, expanded/collapsed, no horizontal overflow or card-driven expansion, aligned rows. Sunday right edges 1256/1342/1416 match visible container edges in both states. Native same-cell drag/drop payload passed without data mutation; 820px arrows reach Sunday and return. Five relevant unit tests passed; build OK and no runtime errors. Published baseline at wrrcs.com also fits 1280 expanded (1024px container, Sunday edge 1256); new correction not published. Cross-date/reassignment not performed on real appointments.
