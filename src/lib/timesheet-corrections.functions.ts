@@ -42,6 +42,6 @@ export const saveTimesheetCorrection=createServerFn({method:"POST"})
   .handler(async({data,context})=>{
     validateCorrectionIntervals(data.records,data.visits,data.status,data.job_id);
     const args={_employee:data.employee_id,_job:data.job_id,_from:data.from,_to:data.to,_original:data.original as Json,_records:data.records,_visits:data.visits,_status:data.status,_reason:data.reason};
-    const {data:id,error}=await (context.supabase as unknown as {rpc:(name:"admin_correct_timesheet",args:typeof args)=>Promise<{data:string|null;error:{message:string}|null}>}).rpc("admin_correct_timesheet",args);
+    const {data:id,error}=await (context.supabase as unknown as {rpc:(name:"admin_correct_timesheet",parameters:typeof args)=>Promise<{data:string|null;error:{message:string}|null}>}).rpc("admin_correct_timesheet",args);
     if(error)throw new Error(error.message);return {id};
   });
