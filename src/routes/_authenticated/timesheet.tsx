@@ -1,19 +1,19 @@
-import { ClockRecordEditor } from "@/components/clock-record-editor";
+import { TimesheetCorrectionDialog } from "@/components/timesheet-correction-dialog";
+import { attendanceIssue } from "@/lib/timesheet-corrections";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { dailyIntervalMinutes } from "@/lib/clock-totals";
 import { zonedToUTCISO } from "@/lib/tz";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { myCapabilities } from "@/lib/entities.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { addDays, format, startOfDay, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, Download, Pencil, Trash2, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Pencil, Plus } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
-  listDailyTimesheet, updateTimeEntry, deleteTimeEntry, updateJobVisit, deleteJobVisit, type DailyRow,
+  listDailyTimesheet, type DailyRow,
 } from "@/lib/visits.functions";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 
@@ -46,12 +46,13 @@ const shortDur = (m: number) => {
   return r < 60 ? `${r} min` : `${Math.floor(r / 60)}h ${String(r % 60).padStart(2, "0")}m`;
 };
 
-type Issue = "No-Show" | "Late" | "Clocked in" | null;
+type Issue = "No-Show" | "Missing punch" | "Late" | "Clocked in" | null;
 
 function TimesheetPage() {
   const tz = useBusinessTz();
   const [day, setDay] = useState(() => startOfDay(new Date()));
   const [view, setView] = useState<"day" | "week">("day");
+  const [correction,setCorrection]=useState<{employeeId?:string;jobId?:string|null}|null>(null);
   const from = zonedToUTCISO(format(day, "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const to = zonedToUTCISO(format(addDays(day, 1), "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const fn = useServerFn(listDailyTimesheet);
@@ -67,9 +68,9 @@ function TimesheetPage() {
   const entries = q.data?.entries ?? [];
   const now = Date.now();
   const issueOf = (r: DailyRow): Issue => {
-    if (r.arrived_at && !r.left_at) return "Clocked in";
-    if (!r.arrived_at) return r.scheduled_end && new Date(r.scheduled_end).getTime() < now ? "No-Show" : null;
-    if (r.scheduled_start && mins(r.scheduled_start, r.arrived_at) > LATE_GRACE && r.arrived_at > r.scheduled_start) return "Late";
+    const attendance=attendanceIssue(r,now);
+    if(attendance)return attendance;
+    if (r.arrived_at && r.scheduled_start && mins(r.scheduled_start, r.arrived_at) > LATE_GRACE && r.arrived_at > r.scheduled_start) return "Late";
     return null;
   };
 
@@ -118,6 +119,7 @@ function TimesheetPage() {
           <Button variant="outline" size="sm" disabled={isToday} onClick={() => setDay(startOfDay(new Date()))}>Today</Button>
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, 1))}>Next<ChevronRight className="size-4 ml-1" /></Button>
           <Button variant="secondary" size="sm" onClick={() => setView("week")}>Pay period (week)</Button>
+          {isMgr&&<Button variant="outline" size="sm" onClick={()=>setCorrection({})}><Plus className="size-4 mr-1"/>Add / correct time</Button>}
           <input
             type="date"
             className="ml-auto h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -144,7 +146,7 @@ function TimesheetPage() {
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No jobs or time recorded this day.</td></tr>
               )}
               {rows.map((r) => (
-                <TimesheetRow key={r.key} row={r} issue={issueOf(r)} time={time} isMgr={isMgr} />
+                <TimesheetRow key={r.key} row={r} issue={issueOf(r)} time={time} isMgr={isMgr} from={from} to={to} onEdit={()=>setCorrection({employeeId:r.employee_id,jobId:r.job_id})} />
               ))}
             </tbody>
           </table>
@@ -159,8 +161,8 @@ function TimesheetPage() {
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground"><tr>
                 <th className="text-left px-4 py-2 font-medium">Team member</th>
-                <th className="text-right px-4 py-2 font-medium">On site</th>
-                <th className="text-right px-4 py-2 font-medium">Drive / other</th>
+                <th className="text-right px-4 py-2 font-medium">Paid work</th>
+                <th className="text-right px-4 py-2 font-medium">Drive</th>
                 <th className="text-right px-4 py-2 font-medium">Unpaid lunch</th>
                 <th className="text-right px-4 py-2 font-medium">Paid total</th>
               </tr></thead>
@@ -168,7 +170,7 @@ function TimesheetPage() {
                 {dayTotals.map((t) => (
                   <tr key={t.name} className="border-t border-border/40 tabular-nums">
                     <td className="px-4 py-2">{t.name}</td>
-                    <td className="px-4 py-2 text-right">{shortDur(t.onSite)}</td>
+                    <td className="px-4 py-2 text-right">{shortDur(t.total-t.drive)}</td>
                     <td className="px-4 py-2 text-right">{shortDur(t.drive)}</td>
                     <td className="px-4 py-2 text-right">{shortDur(t.unpaid)}</td>
                     <td className="px-4 py-2 text-right font-semibold">{shortDur(t.total)}</td>
@@ -179,25 +181,25 @@ function TimesheetPage() {
           </section>
         )}
 
-        {isMgr && (q.data?.clockRecords?.length ?? 0) > 0 && <section aria-label="Unpaid lunch and unscheduled work"><h2 className="font-semibold">Unpaid lunch &amp; unscheduled work</h2>{q.data?.clockRecords.map(r => <ClockRecordEditor key={r.id} record={r} />)}</section>}
-
-        {isMgr && entries.filter(e=>!e.kind).length > 0 && (
+        {isMgr && (entries.length>0 || (q.data?.clockRecords.length??0)>0) && (
           <section className="rounded-xl border border-border/60 bg-card">
             <div className="px-4 py-3 border-b border-border/60">
-              <h2 className="font-semibold text-sm">Day clock (clock in / clock out)</h2>
-              <p className="text-xs text-muted-foreground">Fix a forgotten clock out or wrong time here.</p>
+              <h2 className="font-semibold text-sm">Work, drive &amp; unpaid lunch</h2>
             </div>
             <div className="divide-y divide-border/40">
-              {entries.filter(e=>!e.kind).map((en) => (
+              {[...entries,...(q.data?.clockRecords??[]).filter(e=>e.kind==="lunch")].map((en) => (
                 <div key={en.id} className="px-4 py-2 flex flex-wrap items-center gap-3 text-sm">
                   <span className="font-medium w-40 truncate">{en.employee_name}</span>
-                  <div className="flex-1"><EntryEditor entry={en} time={time} /></div>
+                  <span>{en.kind==="lunch"?"Unpaid lunch": "activity_type" in en&&en.activity_type==="drive"?"Drive":en.job_id?"Paid work":"Unscheduled work"}</span>
+                  <span>{time(en.started_at)} – {en.ended_at?time(en.ended_at):"Missing clock-out"}</span>
+                  <Button size="icon" variant="ghost" aria-label="Edit time record" onClick={()=>setCorrection({employeeId:en.employee_id,jobId:en.job_id})}><Pencil className="size-4"/></Button>
                 </div>
               ))}
             </div>
           </section>
         )}
       </div>
+      {correction&&<TimesheetCorrectionDialog {...correction} from={from} to={to} onClose={()=>setCorrection(null)}/>}
     </>
   );
 }
@@ -208,28 +210,15 @@ function initials(name: string) {
 
 const ISSUE_STYLE: Record<Exclude<Issue, null>, string> = {
   "No-Show": "bg-red-100 text-red-700",
+  "Missing punch": "bg-warning/15 text-foreground",
   "Late": "bg-amber-100 text-amber-800",
   "Clocked in": "bg-green-100 text-green-700",
 };
 
-function TimesheetRow({ row: r, issue, time, isMgr }: {
-  row: DailyRow; issue: Issue; time: (iso: string | null) => string; isMgr: boolean;
+function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
+  row: DailyRow; issue: Issue; time: (iso: string | null) => string; isMgr: boolean;from:string;to:string;onEdit:()=>void;
 }) {
-  const qc = useQueryClient();
-  const updFn = useServerFn(updateJobVisit);
-  const delFn = useServerFn(deleteJobVisit);
-  const [editing, setEditing] = useState(false);
-  const [start, setStart] = useState(toLocalInput(r.arrived_at));
-  const [end, setEnd] = useState(toLocalInput(r.left_at));
-  const [busy, setBusy] = useState(false);
-  const run = async (f: () => Promise<unknown>, msg: string) => {
-    setBusy(true);
-    try { await f(); toast.success(msg); setEditing(false); qc.invalidateQueries({ queryKey: ["timesheet"] }); }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Something went wrong"); }
-    finally { setBusy(false); }
-  };
-
-  const onSite = r.arrived_at ? mins(r.arrived_at, r.left_at) : 0;
+  const onSite = r.arrived_at ? dailyIntervalMinutes({started_at:r.arrived_at,ended_at:r.left_at},{from,to}) : 0;
   const sched = r.scheduled_start && r.scheduled_end ? mins(r.scheduled_start, r.scheduled_end) : null;
   const diff = useMemo(() => (r.arrived_at && r.left_at && sched != null ? onSite - sched : null), [r, onSite, sched]);
   const lateBy = issue === "Late" && r.scheduled_start && r.arrived_at ? mins(r.scheduled_start, r.arrived_at) : 0;
@@ -248,14 +237,7 @@ function TimesheetRow({ row: r, issue, time, isMgr }: {
         </div>
       </td>
       <td className="px-4 py-4">
-        {editing ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs text-muted-foreground">Arrived <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="ml-1 rounded border border-input bg-background px-2 py-1 text-sm" /></label>
-            <label className="text-xs text-muted-foreground">Left <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="ml-1 rounded border border-input bg-background px-2 py-1 text-sm" /></label>
-            <Button size="sm" disabled={busy || !start} onClick={() => run(() => updFn({ data: { id: r.visit_id!, arrived_at: new Date(start).toISOString(), left_at: end ? new Date(end).toISOString() : null } }), "Times updated")}>Save</Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-          </div>
-        ) : r.arrived_at ? (
+        {r.arrived_at ? (
           <>
             <div className="text-[15px] tabular-nums">{time(r.arrived_at)} – {r.left_at ? time(r.left_at) : "now"}</div>
             <div className="text-xs text-muted-foreground">
@@ -284,15 +266,7 @@ function TimesheetRow({ row: r, issue, time, isMgr }: {
       </td>
       {isMgr && (
         <td className="px-4 py-4 text-right whitespace-nowrap">
-          {r.visit_id && !editing && (
-            <>
-              <Button size="sm" variant="ghost" aria-label="Edit times" onClick={() => setEditing(true)}><Pencil className="size-3.5" /></Button>
-              <Button size="sm" variant="ghost" disabled={busy} aria-label="Delete job time"
-                onClick={() => { if (confirm("Delete this arrive/leave record?")) run(() => delFn({ data: { id: r.visit_id! } }), "Deleted"); }}>
-                <Trash2 className="size-3.5" />
-              </Button>
-            </>
-          )}
+          <Button size="sm" variant="ghost" aria-label="Edit times" onClick={onEdit}><Pencil className="size-3.5" /></Button>
         </td>
       )}
     </tr>
