@@ -3,6 +3,7 @@ import type { ClockRecord } from "@/components/clock-record-editor";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { AttendanceStatus } from "@/lib/timesheet-corrections";
 
 async function tenantOf(context: { supabase: any; userId: string }) {
   const { data } = await context.supabase.rpc("current_tenant_id");
@@ -206,13 +207,14 @@ export type DailyRow = {
   arrived_at: string | null;
   left_at: string | null;
   drive_min: number;
+  attendance_status?: AttendanceStatus | null;
 };
 
 export type DailyTimesheet = {
   from: string;
   to: string;
   rows: DailyRow[];
-  entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null; kind?: string }[];
+  entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null; kind?: string; job_id?:string|null; activity_type?:string }[];
   clockRecords: (ClockRecord & {employee_id: string})[];
 };
 
@@ -224,16 +226,17 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
     const sb = context.supabase as any;
     const jobSel = "id, service_location_label,service_address, scheduled_start, scheduled_end, status, assigned_to, client:clients(first_name,last_name), property:client_properties(label,address), job_employees(employee_id)";
-    let te = sb.from("time_entries").select("id, user_id, started_at, ended_at").lt("started_at", data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
-    let cr = sb.from("work_clock_entries").select("id,user_id,kind,description,job_id,started_at,ended_at").lt("started_at",data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
-    let jv = sb.from("job_visits").select("id, job_id, employee_id, arrived_at, left_at").gte("arrived_at", data.from).lt("arrived_at", data.to);
+    let te = sb.from("time_entries").select("id, user_id, job_id, started_at, ended_at").lt("started_at", data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
+    let cr = sb.from("work_clock_entries").select("id,user_id,kind,activity_type,description,job_id,started_at,ended_at").lt("started_at",data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
+    let jv = sb.from("job_visits").select("id, job_id, employee_id, arrived_at, left_at").lt("arrived_at",data.to).or(`left_at.is.null,left_at.gt.${data.from}`);
     if (!isMgr) { te = te.eq("user_id", context.userId); cr = cr.eq("user_id",context.userId); jv = jv.eq("employee_id", context.userId); }
-    const [{ data: entries, error: teError }, { data: visits }, { data: jobs }, { data: profs }, {data: clockRows,error: crError}] = await Promise.all([
+    const [{ data: entries, error: teError }, { data: visits }, { data: jobs }, { data: profs }, {data: clockRows,error: crError}, {data: attendance,error:attendanceError}] = await Promise.all([
       te, jv,
       sb.from("jobs").select(jobSel).gte("scheduled_start", data.from).lt("scheduled_start", data.to).neq("status", "canceled"),
-      context.supabase.rpc("staff_directory"), cr,
+      context.supabase.rpc("staff_directory"), cr, sb.from("attendance_corrections").select("job_id,employee_id,status"),
     ]);
-    if (teError || crError) throw new Error(teError?.message ?? crError?.message);
+    if (teError || crError || attendanceError) throw new Error(teError?.message ?? crError?.message ?? attendanceError?.message);
+    const attendanceMap=new Map<string,AttendanceStatus>((attendance??[]).map((a:any)=>[`${a.employee_id}|${a.job_id}`,a.status]));
     const names = new Map<string, string>((profs ?? []).map((p: any) => [p.id, p.full_name ?? "Unknown"]));
     const jobMap = new Map<string, any>((jobs ?? []).map((j: any) => [j.id, j]));
     // Visits on jobs scheduled another day still need their job details.
@@ -275,17 +278,24 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
     // Drive/other time = gap since the cleaner clocked in or left their previous job.
     const paidRows = [...(entries ?? []), ...(clockRows ?? []).filter((r:any)=>r.kind === "work")];
     const entryList = (paidRows as any[]).map((e) => ({
-      id: e.id, kind: e.kind, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at, ended_at: e.ended_at,
+      id: e.id, kind: e.kind, activity_type:e.activity_type, job_id:e.job_id, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at, ended_at: e.ended_at,
     }));
     const byEmp = new Map<string, DailyRow[]>();
     for (const r of rows) if (r.arrived_at) byEmp.set(r.employee_id, [...(byEmp.get(r.employee_id) ?? []), r]);
     for (const [emp, list] of byEmp) {
-      list.sort((a, b) => a.arrived_at!.localeCompare(b.arrived_at!));
+      list.sort((a, b) => (a.arrived_at??"").localeCompare(b.arrived_at??""));
       const clockIn = entryList.filter((e) => e.employee_id === emp).map((e) => e.started_at < data.from ? data.from : e.started_at).sort()[0] ?? null;
       let prev: string | null = clockIn;
       for (const r of list) {
         if (prev && r.arrived_at && prev < r.arrived_at) r.drive_min = entryList.filter(e=>e.employee_id===emp).reduce((sum,e)=>sum+intervalMinutes(e,Date.now(),Date.parse(prev ?? data.from),Date.parse(r.arrived_at ?? data.to)),0);
         prev = r.left_at;
+      }
+    }
+    for(const r of rows) {
+      r.attendance_status=attendanceMap.get(`${r.employee_id}|${r.job_id}`)??null;
+      if(r.attendance_status) {
+        const first=rows.find(x=>x.employee_id===r.employee_id&&x.job_id===r.job_id);
+        r.drive_min=first===r ? entryList.filter(e=>e.employee_id===r.employee_id&&e.job_id===r.job_id&&e.activity_type==="drive").reduce((sum,e)=>sum+intervalMinutes(e,Date.now(),Date.parse(data.from),Date.parse(data.to)),0) : 0;
       }
     }
     rows.sort((a, b) => a.employee_name.localeCompare(b.employee_name) ||

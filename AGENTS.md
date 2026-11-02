@@ -31,3 +31,4 @@
 - PhotoShareDialog uses a bounded flex layout with fixed header/link actions/footer and one scrolling photo body; employee groups are keyed by uploader ID, not display name.
 - Shared DialogContent bounds viewport height and provides sticky direct headers/footers so long forms retain accessible actions.
 - Property type uses client_properties as the source of truth and an insert/property-change trigger to save missing types atomically and snapshot each new job; property edits never cascade into saved jobs. Scheduling drafts are keyed to client/property and service type stays independent.
+- Admin timesheet corrections use one employee-locked atomic RPC with optimistic original-value checking, append-only audit history and occurrence/employee attendance overrides; work/drive remain paid clock intervals and explicit lunch splits paid work/arrival without altering shared job status.
