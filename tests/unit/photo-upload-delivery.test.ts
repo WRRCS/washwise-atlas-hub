@@ -42,7 +42,7 @@ describe('saved photo delivery',()=>{
   it('sends one email for a slow completed batch with correct cleaner and selected property',async()=>{
     await notifySavedPhotoBatch(db,'tenant','job','cleaner',['p0','p1','p2']);
     expect(state.sends).toHaveLength(1);
-    expect(state.sends[0][2].templateData).toMatchObject({cleanerName:'Actual Cleaner',propertyName:'Selected unit 2',photoCount:3,appointmentUrl:'https://wrrcs.com/jobs/job#photos'});
+    expect(state.sends[0][2].templateData).toMatchObject({cleanerName:'Actual Cleaner',propertyName:'Selected unit 2',photoCount:3,appointmentUrl:'https://wrrcs.com/jobs/job?cleaner=cleaner#photos'});
   });
   it('concurrent retries and reordered duplicate events cannot send twice',async()=>{
     await Promise.all([notifySavedPhotoBatch(db,'tenant','job','cleaner',['p0','p1','p2']),notifySavedPhotoBatch(db,'tenant','job','cleaner',['p2','p1','p0'])]);

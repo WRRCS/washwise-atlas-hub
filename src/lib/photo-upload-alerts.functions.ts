@@ -10,11 +10,11 @@ export const getPhotoEmailSettings = createServerFn({ method:'GET' }).middleware
   const { data: roles } = await supabaseAdmin.from('user_roles').select('user_id').eq('tenant_id',tenantId).in('role',['owner','manager']);
   const ids = [...new Set((roles ?? []).map(r => r.user_id))];
   const { data: recipients } = ids.length ? await supabaseAdmin.from('profiles').select('id,full_name,email').eq('tenant_id',tenantId).eq('is_active',true).in('id',ids) : { data:[] };
-  const { data: logs } = await supabaseAdmin.from('activity_log').select('id,description,created_at').eq('tenant_id',tenantId).in('action_type',['system:photo-upload-email-sending','system:photo-upload-email-sent','system:photo-upload-email-failed','system:photo-upload-email-suppressed']).order('created_at',{ ascending:false }).limit(30);
+  const { data: logs } = await supabaseAdmin.from('activity_log').select('id,description,created_at').eq('tenant_id',tenantId).in('action_type',['system:photo-upload-email-sending','system:photo-upload-email-sent','system:photo-upload-email-accepted','system:photo-upload-email-failed','system:photo-upload-email-suppressed']).order('created_at',{ ascending:false }).limit(30);
   return { settings:await readSettings(supabaseAdmin,tenantId), recipients:(recipients ?? []).filter(r => r.email), logs:logs ?? [] };
 });
 export const savePhotoEmailSettings = createServerFn({ method:'POST' }).middleware([requireSupabaseAuth])
-  .inputValidator((input:unknown) => z.object({ enabled:z.boolean(), recipient_id:z.string().uuid().nullable() }).parse(input))
+  .inputValidator((input:unknown) => z.object({ enabled:z.boolean(), recipient_id:z.string().uuid().nullable(), provider:z.enum(['managed','outlook']).optional(), confirmed:z.boolean().optional() }).parse(input))
   .handler(async ({ data,context }) => {
     const { manager, readSettings } = await import('./photo-upload-alerts.server');
   const tenantId = await manager(context);
@@ -25,7 +25,8 @@ export const savePhotoEmailSettings = createServerFn({ method:'POST' }).middlewa
       if (!role || !profile?.email) throw new Error('Choose an active owner or manager with an email address');
     } else if (data.enabled) throw new Error('Choose a recipient first');
     const previous = await readSettings(supabaseAdmin,tenantId);
-    const settings = { ...data, starts_at: previous.enabled && data.enabled ? previous.starts_at : new Date().toISOString() };
+    if(data.enabled && data.provider === 'outlook' && !data.confirmed) throw new Error('Confirm the Outlook sender and recipient before enabling');
+    const settings = { ...data, starts_at: previous.enabled && data.enabled && previous.recipient_id===data.recipient_id && previous.provider===data.provider ? previous.starts_at : new Date().toISOString() };
     const { error } = await supabaseAdmin.from('activity_log').insert({ tenant_id:tenantId, actor_id:context.userId, action_type:SETTING, entity_type:'tenant', entity_id:tenantId, description:JSON.stringify(settings) });
     if (error) throw new Error(error.message);
     return { ok:true };

@@ -72,15 +72,21 @@ export const arriveAtJob = createServerFn({ method: "POST" })
     if (!prof?.is_active || !job || job.tenant_id !== tenantId || job.status === "canceled" || (!mgr && !assigned && job.assigned_to !== context.userId)) throw new Error("You are not authorized for this appointment");
     const { count } = await context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("user_id", context.userId).is("ended_at", null);
     const stamp = new Date().toISOString();
+    let newClockId: string | null = null;
     if (!count && !lunch?.length) {
-      const {error} = await context.supabase.from("time_entries").insert({tenant_id:tenantId,job_id:data.job_id,user_id:context.userId,started_at:stamp});
+      const {data:entry,error} = await context.supabase.from("time_entries").insert({tenant_id:tenantId,job_id:data.job_id,user_id:context.userId,started_at:stamp}).select('id').single();
       if (error) throw new Error(error.message);
+      newClockId = entry?.id ?? null;
     }
     await sb.from("job_visits").update({left_at:stamp}).eq("employee_id",context.userId).is("left_at",null);
     const {data: row,error} = await sb.from("job_visits").insert({tenant_id:tenantId,job_id:data.job_id,employee_id:context.userId,arrived_at:stamp}).select("id,arrived_at,left_at").single();
     if (error) throw new Error(error.message);
     await context.supabase.from("jobs").update({ status: "in_progress", actual_start: row.arrived_at })
       .eq("id", data.job_id).eq("status", "scheduled");
+    if (newClockId) {
+      const { notifySavedClock } = await import('./clock-email-alerts.server');
+      await notifySavedClock(context, newClockId, 'clock_in');
+    }
     return row as JobVisit;
   });
 
