@@ -18,13 +18,13 @@ export async function photoAlertClaimId(key: string) {
   const hex = Array.from(bytes.slice(0, 16), b => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20)}`;
 }
-export function photoAlertData(job: { id: string; service_address: string | null; service_location_label: string | null; scheduled_start: string | null; client?: { first_name?: string | null; last_name?: string | null } | null }, cleanerName: string, count: number) {
+export function photoAlertData(job: { id: string; service_address: string | null; service_location_label: string | null; scheduled_start: string | null; client?: { first_name?: string | null; last_name?: string | null } | null }, cleanerName: string, count: number, uploaderId?: string) {
   return {
     cleanerName,
     clientName: [job.client?.first_name, job.client?.last_name].filter(Boolean).join(" ") || "Client",
     propertyName: job.service_location_label?.trim() || job.service_address?.trim() || "Location needs review",
     appointmentDate: job.scheduled_start ? new Date(job.scheduled_start).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "long", day: "numeric", year: "numeric" }) : "Date needs review",
     photoCount: count,
-    appointmentUrl: `https://wrrcs.com/jobs/${job.id}#photos`,
+    appointmentUrl: `https://wrrcs.com/jobs/${job.id}${uploaderId ? `?cleaner=${encodeURIComponent(uploaderId)}` : ''}#photos`,
   };
 }

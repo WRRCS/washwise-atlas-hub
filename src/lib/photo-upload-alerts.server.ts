@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { groupPhotoUploads, photoAlertData, photoAlertKey, photoAlertClaimId, PHOTO_UPLOAD_QUIET_MS } from './photo-upload-alerts';
 const SETTING = 'system:photo-upload-email-settings';
-type Settings = { enabled: boolean; recipient_id: string | null; starts_at: string };
+type Settings = { enabled: boolean; recipient_id: string | null; starts_at: string; provider?: 'managed'|'outlook'; confirmed?: boolean };
 export async function manager(context: { supabase: SupabaseClient<Database>; userId: string }) {
   const { data: allowed } = await context.supabase.rpc('is_owner_or_manager');
   if (!allowed) throw new Error('Owner or manager access required');
@@ -19,7 +19,7 @@ export async function readSettings(db: SupabaseClient<Database>, tenantId: strin
 export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenantId:string, jobId:string, uploaderId:string, batchPhotoIds:string[], dependencies?: { admin: SupabaseClient<Database>; send: typeof import('./email-templates/send-email').sendTemplateEmail }) {
   const supabaseAdmin = dependencies?.admin ?? (await import('@/integrations/supabase/client.server')).supabaseAdmin;
   const settings = await readSettings(supabaseAdmin,tenantId);
-  if (!settings.enabled || !settings.recipient_id) return;
+  if (!settings.enabled || !settings.recipient_id || (settings.provider === 'outlook' && !settings.confirmed)) return;
   const { data: cleanerRole } = await supabaseAdmin.from('user_roles').select('id').eq('tenant_id',tenantId).eq('user_id',uploaderId).in('role',['owner','manager']).limit(1).maybeSingle();
   if (cleanerRole) return; // Cleaner uploads only, not owner uploads.
   const { data: roles } = await supabaseAdmin.from('user_roles').select('id').eq('tenant_id',tenantId).eq('user_id',settings.recipient_id).in('role',['owner','manager']).limit(1).maybeSingle();
@@ -47,7 +47,7 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
     await new Promise(resolve => setTimeout(resolve, Math.min(remaining + 100, PHOTO_UPLOAD_QUIET_MS)));
   }
   const current = await readSettings(supabaseAdmin,tenantId);
-  if (!current.enabled || current.recipient_id !== settings.recipient_id) return;
+  if (!current.enabled || current.recipient_id !== settings.recipient_id || current.provider !== settings.provider || current.starts_at !== settings.starts_at || (current.provider === 'outlook' && !current.confirmed)) return;
   const { data: job } = await db.from('jobs').select('id,service_address,service_location_label,scheduled_start').eq('id',jobId).eq('tenant_id',tenantId).single();
   const { data: clientJob } = await supabaseAdmin.from('jobs').select('client:clients(first_name,last_name)').eq('id',jobId).eq('tenant_id',tenantId).single();
   const { data: cleaner } = await db.from('profiles').select('full_name').eq('id',uploaderId).single();
@@ -56,7 +56,7 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
   if (batchReadError) throw new Error(batchReadError.message);
   const batches = (batchEvents ?? []).map(event => JSON.parse(event.description) as { photoIds:string[]; completed_at:string });
   const completedRows = batches.map(batch => ({ id:batch.photoIds.join(','),uploaded_at:batch.completed_at,uploaded_by:uploaderId,job_id:jobId,photoIds:batch.photoIds }));
-  const { data: delivered, error: deliveredError } = await supabaseAdmin.from('activity_log').select('description').eq('tenant_id',tenantId).eq('entity_id',jobId).eq('actor_id',uploaderId).in('action_type',['system:photo-upload-email-sent','system:photo-upload-email-suppressed']);
+  const { data: delivered, error: deliveredError } = await supabaseAdmin.from('activity_log').select('description').eq('tenant_id',tenantId).eq('entity_id',jobId).eq('actor_id',uploaderId).in('action_type',['system:photo-upload-email-sent','system:photo-upload-email-accepted','system:photo-upload-email-suppressed']);
   if (deliveredError) throw new Error(deliveredError.message);
   const alreadyNotified = new Set((delivered ?? []).flatMap(event => (JSON.parse(event.description).photoIds ?? []) as string[]));
   const sendTemplateEmail = dependencies?.send ?? (await import('./email-templates/send-email')).sendTemplateEmail;
@@ -68,22 +68,30 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
     const id = await photoAlertClaimId(key);
     const { error: claim } = await supabaseAdmin.from('activity_log').insert({ id,tenant_id:tenantId,actor_id:uploaderId,entity_type:'job',entity_id:jobId,action_type:'system:photo-upload-email-sending',description:JSON.stringify({ status:'sending',photoCount:ids.length }) });
     if (claim?.code === '23505') {
+      // Outlook has no sendMail idempotency contract. Never replay an ambiguous send.
+      if (settings.provider === 'outlook') continue;
       const { data: previous } = await supabaseAdmin.from('activity_log').select('action_type,created_at').eq('id',id).single();
       if (!previous || previous.action_type === 'system:photo-upload-email-sent' || previous.action_type === 'system:photo-upload-email-suppressed' || Date.now() - Date.parse(previous.created_at) < 120_000) continue;
       const { data: reclaimed } = await supabaseAdmin.from('activity_log').update({ action_type:'system:photo-upload-email-sending',created_at:new Date().toISOString() }).eq('id',id).eq('action_type',previous.action_type).eq('created_at',previous.created_at).select('id').maybeSingle();
       if (!reclaimed) continue;
     } else if (claim) throw new Error(claim.message);
-    const templateData = photoAlertData({ ...job, client:clientJob?.client },cleaner?.full_name || 'Cleaner',ids.length);
+    const templateData = photoAlertData({ ...job, client:clientJob?.client },cleaner?.full_name || 'Cleaner',ids.length,uploaderId);
     let status = 'failed'; let failure:string|null = null;
     try {
-      const result = await sendTemplateEmail('photo-upload',recipient.email,{ templateData,idempotencyKey:`photo-upload-${id}` });
-      status = result.sent ? 'sent' : 'suppressed';
-      if (!result.sent) failure = result.reason;
+      if (settings.provider === 'outlook') {
+        const { sendOutlookAlert } = await import('./outlook-email.server');
+        await sendOutlookAlert(recipient.email,`${templateData.cleanerName} uploaded ${ids.length} appointment photos — WRRCS`,`${templateData.cleanerName} successfully saved ${ids.length} new photos.\nClient: ${templateData.clientName}\nProperty: ${templateData.propertyName}\nAppointment: ${templateData.appointmentDate}\n${templateData.appointmentUrl}`);
+        status = 'accepted';
+      } else {
+        const result = await sendTemplateEmail('photo-upload',recipient.email,{ templateData,idempotencyKey:`photo-upload-${id}` });
+        status = result.sent ? 'sent' : 'suppressed';
+        if (!result.sent) failure = result.reason;
+      }
     } catch (error) {
       failure = error instanceof Error ? error.message : 'Email send failed';
     }
     const masked = recipient.email.replace(/^(.).+(@.*)$/,'$1***$2');
-    const { error } = await supabaseAdmin.from('activity_log').update({ action_type:`system:photo-upload-email-${status}`, description:JSON.stringify({ ...templateData,status,photoIds:ids,recipient:masked,error:failure }) }).eq('id',id);
+    const { error } = await supabaseAdmin.from('activity_log').update({ action_type:`system:photo-upload-email-${status}`, description:JSON.stringify({ ...templateData,status,photoIds:ids,recipient:masked,error:failure,provider:settings.provider ?? 'managed',deliveryConfirmed:false }) }).eq('id',id);
     if (error) console.error('Photo email delivery log failed',error.message);
   }
 }
