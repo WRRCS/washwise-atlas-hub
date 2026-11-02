@@ -273,72 +273,22 @@ function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
   );
 }
 
-const toLocalInput = (iso: string | null) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
-function EntryEditor({ entry, time }: { entry: { id: string; started_at: string; ended_at: string | null }; time: (iso: string | null) => string }) {
-  const qc = useQueryClient();
-  const updFn = useServerFn(updateTimeEntry);
-  const delFn = useServerFn(deleteTimeEntry);
-  const [editing, setEditing] = useState(false);
-  const [start, setStart] = useState(toLocalInput(entry.started_at));
-  const [end, setEnd] = useState(toLocalInput(entry.ended_at));
-  const [busy, setBusy] = useState(false);
-  const run = async (f: () => Promise<unknown>, msg: string) => {
-    setBusy(true);
-    try { await f(); toast.success(msg); setEditing(false); qc.invalidateQueries({ queryKey: ["timesheet"] }); }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Something went wrong"); }
-    finally { setBusy(false); }
-  };
-  if (editing) {
-    return (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 p-2">
-        <label className="text-xs text-muted-foreground">In <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="ml-1 rounded border border-input bg-background px-2 py-1 text-sm" /></label>
-        <label className="text-xs text-muted-foreground">Out <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="ml-1 rounded border border-input bg-background px-2 py-1 text-sm" /></label>
-        <Button size="sm" disabled={busy || !start} onClick={() => run(() => updFn({ data: { id: entry.id, started_at: new Date(start).toISOString(), ended_at: end ? new Date(end).toISOString() : null } }), "Times updated")}>Save</Button>
-        <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-      <span className="tabular-nums">{time(entry.started_at)} – {entry.ended_at ? time(entry.ended_at) : "still clocked in"}</span>
-      <span className="flex gap-1">
-        {!entry.ended_at && (
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => updFn({ data: { id: entry.id, clock_out_now: true } }), "Clocked out")}>
-            <LogOut className="size-3.5 mr-1" />Clock out now
-          </Button>
-        )}
-        <Button size="sm" variant="ghost" onClick={() => { setStart(toLocalInput(entry.started_at)); setEnd(toLocalInput(entry.ended_at)); setEditing(true); }} aria-label="Edit times"><Pencil className="size-3.5" /></Button>
-        <Button size="sm" variant="ghost" disabled={busy} aria-label="Delete entry"
-          onClick={() => { if (confirm("Delete this clock in/out entry?")) run(() => delFn({ data: { id: entry.id } }), "Entry deleted"); }}>
-          <Trash2 className="size-3.5" />
-        </Button>
-      </span>
-    </div>
-  );
-}
-
 /** Paid total = clock in → clock out (open entry counts to now); falls back to on-site + drive when no clock entry exists. */
 function computeTotals(data: { from: string; to: string; rows: any[]; entries: { employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[]; clockRecords?: {employee_id:string;employee_name:string;kind:string;started_at:string;ended_at:string|null}[] } | undefined) {
-  const m = new Map<string, { id: string; name: string; onSite: number; clocked: number; unpaid: number; hasClock: boolean; legacy: number }>();
-  const get = (id: string, name: string) => { const t = m.get(id) ?? { id, name, onSite: 0, clocked: 0, unpaid: 0, hasClock: false, legacy: 0 }; m.set(id, t); return t; };
+  const m = new Map<string, { id: string; name: string; onSite: number; clocked: number; unpaid: number; hasClock: boolean; legacy: number; explicitDrive:number; corrected:boolean }>();
+  const get = (id: string, name: string) => { const t = m.get(id) ?? { id, name, onSite: 0, clocked: 0, unpaid: 0, hasClock: false, legacy: 0, explicitDrive:0, corrected:false }; m.set(id, t); return t; };
   for (const r of data?.rows ?? []) {
     const t = get(r.employee_id, r.employee_name);
     const on = r.arrived_at && data ? dailyIntervalMinutes({ started_at: r.arrived_at, ended_at: r.left_at }, data) : 0;
-    t.onSite += on;
+    t.onSite += on; if(r.attendance_status) t.corrected=true;
     t.legacy += on + (r.drive_min ?? 0);
   }
   if (data) {
-    for (const e of data.entries) { const t=get(e.employee_id,e.employee_name); t.clocked += dailyIntervalMinutes(e, data); t.hasClock=true; }
+    for (const e of data.entries) { const t=get(e.employee_id,e.employee_name); t.clocked += dailyIntervalMinutes(e, data); if("activity_type" in e && e.activity_type==="drive") t.explicitDrive += dailyIntervalMinutes(e,data); t.hasClock=true; }
     for (const e of data.clockRecords ?? []) if(e.kind === "lunch") { const t=get(e.employee_id,e.employee_name); t.unpaid += dailyIntervalMinutes(e, data); t.hasClock=true; }
   }
   return Array.from(m.values())
-    .map((t) => { const total = t.hasClock ? t.clocked : t.legacy; return { ...t, total, drive: Math.max(0, total - t.onSite) }; })
+    .map((t) => { const total = t.hasClock ? t.clocked : t.legacy; return { ...t, total, drive: t.corrected || t.explicitDrive>0 ? t.explicitDrive : Math.max(0, total - t.onSite) }; })
     .filter((t) => t.total > 0 || t.unpaid > 0)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
