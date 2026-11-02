@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Prepare Outlook owner/admin photo-batch and work-session clock alerts, separate recipient/enable controls, confirmation gate, saved-event deduplication and honest provider-status logs. Preserve existing email routing and client hold.
+- [ ] Confirm sender/test recipient, verify deployed delivery, then activate only explicitly confirmed notification types — awaiting Leslie's confirmation and publication.
+
 - [x] Unified admin timesheet correction dialog edits every attendance row (including no visit), missing work/drive/lunch/arrival intervals and same-record association; explicit employee/occurrence attendance overrides and append-only original/corrected values, editor/time/reason. Atomic employee lock, stale-original rejection, overlap/coverage validation, tenant/manager enforcement; no shared job status or clock notification actions. Overnight visits and pay reports clip duration only.
 - [x] Signed-in Zoe with temporary 2020 appointment: confirmed no-show with no hours, corrected to worked with punches, added 30m lunch and drive (8h paid), changed lunch to45m/drive zero (7h15 paid), removed lunch (8h paid), saved missing-out status then corrected punches, added unscheduled 1h work and associated same ID. Refresh persisted values; report 8h matched before extra unscheduled work; six appointment audits and unchanged scheduled status verified. Twenty-one unit tests pass, build OK. Test-only records/alerts/history removed; no emails or staff messages sent. Preview app changes not published. Live employee denial, concurrent submissions and overnight browser correction not exercised; permissions/overnight regression tests passed.
 
