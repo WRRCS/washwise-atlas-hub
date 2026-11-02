@@ -1658,6 +1658,7 @@ export type Database = {
           notes: string | null
           price_cents: number
           property_id: string | null
+          property_type: string | null
           published_at: string | null
           recurrence_end: string | null
           recurrence_group_id: string | null
@@ -1688,6 +1689,7 @@ export type Database = {
           notes?: string | null
           price_cents?: number
           property_id?: string | null
+          property_type?: string | null
           published_at?: string | null
           recurrence_end?: string | null
           recurrence_group_id?: string | null
@@ -1718,6 +1720,7 @@ export type Database = {
           notes?: string | null
           price_cents?: number
           property_id?: string | null
+          property_type?: string | null
           published_at?: string | null
           recurrence_end?: string | null
           recurrence_group_id?: string | null

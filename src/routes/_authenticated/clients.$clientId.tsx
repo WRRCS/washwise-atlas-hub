@@ -28,6 +28,7 @@ import { RECURRENCE_LABELS, type RecurrenceRule } from "@/lib/recurrence";
 import { ArrowLeft, ChevronDown, ChevronRight, FileText, Lock, Mail, MapPin, MessageSquare, Plus, Star, Trash2, Upload } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
+  head: () => ({ meta: [{ title: "Client properties | WRRCS" }, { name: "description", content: "Manage client properties, saved property types and cleaning records." }, { property: "og:title", content: "Client properties | WRRCS" }, { property: "og:description", content: "Manage client properties, saved property types and cleaning records." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ClientDetail,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });

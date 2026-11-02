@@ -30,3 +30,4 @@
 - Sidebar collapse is a per-device browser preference read through a useSyncExternalStore module store (server snapshot expanded), because AppShell remounts per page and must not flash or re-expand on navigation.
 - PhotoShareDialog uses a bounded flex layout with fixed header/link actions/footer and one scrolling photo body; employee groups are keyed by uploader ID, not display name.
 - Shared DialogContent bounds viewport height and provides sticky direct headers/footers so long forms retain accessible actions.
+- Property type uses client_properties as the source of truth and an insert/property-change trigger to save missing types atomically and snapshot each new job; property edits never cascade into saved jobs. Scheduling drafts are keyed to client/property and service type stays independent.

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
+import { PropertyTypeField } from "@/components/property-type-field";
+import { selectedPropertyType, type PropertyTypeDraft } from "@/lib/property-type";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
@@ -21,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/jobs/new")({
 });
 
 function NewJob() {
+  const qc = useQueryClient();
   const navigate = useNavigate();
   const clientsFn = useServerFn(listClients);
   const svcFn = useServerFn(listServiceTypes);
@@ -33,6 +36,7 @@ function NewJob() {
 
   const [clientId, setClientId] = useState("");
   const [propertyId, setPropertyId] = useState("");
+  const [typeDraft, setTypeDraft] = useState<PropertyTypeDraft>({ key: "", value: "" });
   const [serviceId, setServiceId] = useState("");
   const [assignee, setAssignee] = useState("");
   const [start, setStart] = useState(() => {
@@ -61,6 +65,8 @@ function NewJob() {
 
   const selectedClient = clients.find((c) => c.id === clientId) ?? null;
   const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
+  const typeKey = `${clientId}:${propertyId}`;
+  const propertyType = selectedPropertyType(typeKey, selectedProperty?.property_type, typeDraft);
 
   // Auto-select primary/only property when client changes
   useEffect(() => {
@@ -75,6 +81,7 @@ function NewJob() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId || !serviceId || !start) return;
+    if (!propertyType.trim()) { toast.error("Enter the property type before saving"); return; }
     if (!selectedProperty?.address && !selectedClient?.service_address) { toast.error("Select a service location before saving"); return; }
     setSaving(true);
     try {
@@ -88,6 +95,7 @@ function NewJob() {
         data: {
           client_id: clientId,
           property_id: propertyId || null,
+          property_type: propertyType,
            service_address: selectedProperty?.address ?? selectedClient?.service_address ?? undefined,
           service_type_id: serviceId,
           scheduled_start: startDate2.toISOString(),
@@ -100,6 +108,7 @@ function NewJob() {
         },
       });
       toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
+      await qc.invalidateQueries({ queryKey: ["client-properties", clientId] });
       navigate({ to: "/jobs" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -120,7 +129,7 @@ function NewJob() {
         <form onSubmit={onSubmit} className="space-y-5 bg-card p-6 rounded-xl ring-1 ring-black/5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Client">
-              <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+              <select value={clientId} onChange={(e) => { setClientId(e.target.value); setPropertyId(""); setTypeDraft({ key: "", value: "" }); }} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
                 <option value="">Select…</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}
               </select>
@@ -129,7 +138,7 @@ function NewJob() {
               {properties.length > 0 ? (
                 <select
                   value={propertyId}
-                  onChange={(e) => setPropertyId(e.target.value)}
+                  onChange={(e) => { setPropertyId(e.target.value); setTypeDraft({ key: "", value: "" }); }}
                   className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
                 >
                   {properties.map((p) => (
@@ -145,6 +154,10 @@ function NewJob() {
                   placeholder={clientId ? "Add a location on the client page" : "Select a client first"}
                 />
               )}
+            </Field>
+            <Field label="Property type">
+              <PropertyTypeField value={propertyType} saved={!!selectedProperty?.property_type?.trim()} disabled={!clientId}
+                onChange={(value) => setTypeDraft({ key: typeKey, value })} />
             </Field>
             <Field label="Service">
               <select value={serviceId} onChange={(e) => {

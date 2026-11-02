@@ -26,6 +26,8 @@ import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/l
 import { ZoomPanSurface } from "@/components/zoom-pan-surface";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 import { JobDetailView } from "./jobs.$jobId";
+import { PropertyTypeField } from "@/components/property-type-field";
+import { selectedPropertyType, type PropertyTypeDraft } from "@/lib/property-type";
 
 
 
@@ -862,9 +864,12 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
   const [conflicts, setConflicts] = useState<{ employee_id: string }[] | null>(null);
 
   const [propertyId, setPropertyId] = useState("");
+  const [typeDraft, setTypeDraft] = useState<PropertyTypeDraft>({ key: "", value: "" });
   const propsFn = useServerFn(listClientProperties);
   const { data: properties = [], isSuccess: propsLoaded } = useQuery({ queryKey: ["client-properties", clientId], queryFn: () => propsFn({ data: { client_id: clientId } }), enabled: !!clientId });
   const selectedProperty = properties.find((p) => p.id === propertyId) ?? null;
+  const typeKey = `${clientId}:${propertyId}`;
+  const propertyType = selectedPropertyType(typeKey, selectedProperty?.property_type, typeDraft);
   const selectedClient = clients.find((c: any) => c.id === clientId);
   const mainAddress: string = (selectedClient?.service_address ?? "").trim();
   const showMainOption = !!mainAddress && !properties.some((p) => p.address.trim() === mainAddress);
@@ -930,6 +935,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   const doSave = async (force = false, addAnother = false) => {
     if (!clientId || !serviceId) { toast.error("Client and service required"); return; }
+    if (!propertyType.trim()) { toast.error("Enter the property type before saving"); return; }
     if (!propsLoaded || addingProp || (!selectedProperty && !mainAddress)) { toast.error("Select a service location before saving"); return; }
     setSaving(true);
     try {
@@ -945,6 +951,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
         data: {
           client_id: clientId,
           property_id: selectedProperty?.id ?? null,
+          property_type: propertyType,
           service_address: selectedProperty?.address ?? mainAddress,
           service_type_id: serviceId,
           scheduled_start: startISO,
@@ -959,10 +966,12 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
       });
       toast.success(recur.mode === "recurring" ? "Recurring visits created" : "Job created");
       qc.invalidateQueries({ queryKey: ["jobs"] });
+      await qc.invalidateQueries({ queryKey: ["client-properties", clientId] });
       if (addAnother) {
         // Keep date + assigned team members; clear the rest for the next shift.
         setConflicts(null);
         setClientId("");
+        setPropertyId(""); setTypeDraft({ key: "", value: "" });
         setServiceId("");
         setNotes("");
         setPriceStr("");
@@ -995,7 +1004,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Client">
-            <select value={clientId} onChange={(e) => { setClientId(e.target.value); setPropertyId(""); setAddingProp(false); }} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <select value={clientId} onChange={(e) => { setClientId(e.target.value); setPropertyId(""); setTypeDraft({ key: "", value: "" }); setAddingProp(false); }} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
               <option value="">Select…</option>
               {clients.map((c: any) => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}
             </select>
@@ -1021,7 +1030,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
             ) : (
               <select
                 value={propertyId}
-                onChange={(e) => { if (e.target.value === "__new") setAddingProp(true); else setPropertyId(e.target.value); }}
+                onChange={(e) => { setTypeDraft({ key: "", value: "" }); if (e.target.value === "__new") setAddingProp(true); else setPropertyId(e.target.value); }}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
               >
                 {showMainOption && <option value="__main">Main address — {mainAddress}</option>}
@@ -1030,6 +1039,10 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
                 <option value="__new">+ Add another property…</option>
               </select>
             )}
+          </Field>
+          <Field label="Property type">
+            <PropertyTypeField value={propertyType} saved={!!selectedProperty?.property_type?.trim()} disabled={!clientId || addingProp || !propsLoaded}
+              onChange={(value) => setTypeDraft({ key: typeKey, value })} />
           </Field>
           <Field label="Date">
             <Input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />

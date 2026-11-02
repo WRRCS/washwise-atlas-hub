@@ -5,6 +5,7 @@ import { resolveCanViewPricing } from "@/lib/team.functions";
 import { clientContact } from "@/lib/privacy";
 import { DEFAULT_TZ } from "@/lib/tz";
 import { ownSopConfirmation } from "@/lib/sop-confirmation";
+import { requirePropertyType } from "@/lib/property-type";
 import {
   addMonthsISO,
   generateOccurrences,
@@ -77,6 +78,7 @@ export const listJobs = createServerFn({ method: "POST" })
 const createJobSchema = z.object({
   client_id: z.string().uuid(),
   property_id: z.string().uuid().nullable().optional(),
+  property_type: z.string().trim().max(60).optional(),
   service_address: z.string().trim().max(400).optional(),
   service_type_id: z.string().uuid(),
   scheduled_start: z.string(),
@@ -124,10 +126,28 @@ export const createJob = createServerFn({ method: "POST" })
     ]);
     let address = data.service_address?.trim() || null;
     let locationLabel: string | null = null;
-    if (data.property_id) {
-      const { data: property, error } = await context.supabase.from("client_properties").select("address, label").eq("id", data.property_id).eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id).single();
+    let propertyId = data.property_id ?? null;
+    let propertyType: string;
+    if (propertyId) {
+      const { data: property, error } = await context.supabase.from("client_properties").select("address, label, property_type").eq("id", propertyId).eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id).single();
       if (error || !property) throw new Error("Select a property belonging to this client");
       address = property.address.trim(); locationLabel = property.label;
+      propertyType = requirePropertyType(property.property_type, data.property_type);
+    } else {
+      if (!address) throw new Error("Select a service location before saving this appointment");
+      const { data: existing, error: lookupError } = await context.supabase.from("client_properties")
+        .select("id, label, property_type").eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id)
+        .eq("address", address).eq("is_active", true).limit(1).maybeSingle();
+      if (lookupError) throw new Error(lookupError.message);
+      propertyType = requirePropertyType(existing?.property_type, data.property_type);
+      if (existing) { propertyId = existing.id; locationLabel = existing.label; }
+      else {
+        const { data: added, error: addError } = await context.supabase.from("client_properties")
+          .insert({ tenant_id: prof.tenant_id, client_id: data.client_id, label: "Main address", address, property_type: propertyType })
+          .select("id, label").single();
+        if (addError) throw new Error(addError.message);
+        propertyId = added.id; locationLabel = added.label;
+      }
     }
     if (!address) throw new Error("Select a service location before saving this appointment");
     const tz = (tenant as any)?.timezone || DEFAULT_TZ;
@@ -166,7 +186,8 @@ export const createJob = createServerFn({ method: "POST" })
         .insert({
           tenant_id: prof.tenant_id,
           client_id: data.client_id,
-          property_id: data.property_id ?? null,
+          property_id: propertyId,
+          property_type: propertyType,
           service_address: address,
           service_location_label: locationLabel,
           service_type_id: data.service_type_id,
