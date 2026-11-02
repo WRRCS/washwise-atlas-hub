@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Complete admin timesheet attendance, missing-punch, work/drive/lunch and association corrections with backend authorization and audit history.
+- [ ] Verify no-show-to-worked, missing punches, lunch/drive changes and zero drive via real admin screen; refresh and regression tests.
+
 - [x] Persist property-specific types in existing property records; shared atomic insert trigger snapshots all new appointments including copies/extensions. Both scheduling forms reuse saved types, prompt for missing types and discard stale property drafts. Existing property editor retained; no historical backfill or cascade.
 - [x] Signed-in Zoe: created temporary Home=Residence / Office=Office appointments, refreshed and switched properties with correct defaults, changed Office to Commercial without rewriting saved Office appointment, verified calendar defaults and 31 recurring Commercial snapshots. Seven focused tests pass; build OK. Removed temporary client/properties/appointments/queued test-only alerts. No emails or staff messages sent. App changes are not published.
 
