@@ -293,7 +293,10 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
     }
     for(const r of rows) {
       r.attendance_status=attendanceMap.get(`${r.employee_id}|${r.job_id}`)??null;
-      if(r.attendance_status) r.drive_min=entryList.filter(e=>e.employee_id===r.employee_id&&e.job_id===r.job_id&&e.activity_type==="drive").reduce((sum,e)=>sum+intervalMinutes(e,Date.now(),Date.parse(data.from),Date.parse(data.to)),0);
+      if(r.attendance_status) {
+        const first=rows.find(x=>x.employee_id===r.employee_id&&x.job_id===r.job_id);
+        r.drive_min=first===r ? entryList.filter(e=>e.employee_id===r.employee_id&&e.job_id===r.job_id&&e.activity_type==="drive").reduce((sum,e)=>sum+intervalMinutes(e,Date.now(),Date.parse(data.from),Date.parse(data.to)),0) : 0;
+      }
     }
     rows.sort((a, b) => a.employee_name.localeCompare(b.employee_name) ||
       (a.arrived_at ?? a.scheduled_start ?? "").localeCompare(b.arrived_at ?? b.scheduled_start ?? ""));

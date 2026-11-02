@@ -70,6 +70,7 @@ function TimesheetPage() {
   const issueOf = (r: DailyRow): Issue => {
     const attendance=attendanceIssue(r,now);
     if(attendance)return attendance;
+    if(r.attendance_status==="worked" && rows.some(other=>other.employee_id===r.employee_id&&other.job_id===r.job_id&&other.arrived_at&&r.arrived_at&&other.arrived_at<r.arrived_at))return null;
     if (r.arrived_at && r.scheduled_start && mins(r.scheduled_start, r.arrived_at) > LATE_GRACE && r.arrived_at > r.scheduled_start) return "Late";
     return null;
   };
