@@ -33,17 +33,18 @@ export function validateCorrectionIntervals(records: CorrectionInterval[], visit
 /** Lunch cuts paid work and arrival intervals; the original IDs stay on the first segment. */
 export function insertLunch(records: CorrectionInterval[], visits: CorrectionVisit[], lunch: CorrectionInterval, newId: () => string) {
   if (!lunch.ended_at) throw new Error("Enter lunch start and end before splitting work");
+  const lunchEnd=lunch.ended_at;
   const start=Date.parse(lunch.started_at), end=Date.parse(lunch.ended_at);
   if (end<=start) throw new Error("Lunch end must be after start");
   const paid=records.flatMap(r => {
     const rs=Date.parse(r.started_at), re=r.ended_at ? Date.parse(r.ended_at) : Infinity;
     if (r.kind==="lunch" || re<=start || rs>=end) return [r];
-    return [...(rs<start ? [{...r, ended_at:lunch.started_at}] : []), ...(re>end ? [{...r,id:rs<start ? newId() : r.id,started_at:lunch.ended_at}] : [])];
+    return [...(rs<start ? [{...r, ended_at:lunch.started_at}] : []), ...(re>end ? [{...r,id:rs<start ? newId() : r.id,started_at:lunchEnd}] : [])];
   });
   const splitVisits=visits.flatMap(v => {
     const vs=Date.parse(v.arrived_at), ve=v.left_at ? Date.parse(v.left_at) : Infinity;
     if (ve<=start || vs>=end) return [v];
-    return [...(vs<start ? [{...v,left_at:lunch.started_at}] : []), ...(ve>end ? [{...v,id:vs<start ? newId() : v.id,arrived_at:lunch.ended_at}] : [])];
+    return [...(vs<start ? [{...v,left_at:lunch.started_at}] : []), ...(ve>end ? [{...v,id:vs<start ? newId() : v.id,arrived_at:lunchEnd}] : [])];
   });
   return { records:[...paid,lunch], visits:splitVisits };
 }

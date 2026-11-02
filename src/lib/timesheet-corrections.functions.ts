@@ -2,12 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { validateCorrectionIntervals, type CorrectionInterval, type CorrectionVisit, type AttendanceStatus } from "@/lib/timesheet-corrections";
+import type { Json } from "@/integrations/supabase/types";
 
 const reviewSchema=z.object({employee_id:z.string().uuid(),job_id:z.string().uuid().nullable(),from:z.string().datetime({offset:true}),to:z.string().datetime({offset:true})});
 export type CorrectionReview = {
-  original: {records: Record<string,unknown>[];visits: Record<string,unknown>[];attendance: Record<string,unknown>|null};
+  original: Json;
   records:CorrectionInterval[];visits:CorrectionVisit[];status:AttendanceStatus;
-  history:{id:string;reason:string;corrected_at:string;editor_id:string;original_values:unknown;corrected_values:unknown}[];
+  history:{id:string;reason:string;corrected_at:string;editor_id:string;original_values:Json;corrected_values:Json}[];
 };
 export const getTimesheetCorrection = createServerFn({method:"POST"})
   .middleware([requireSupabaseAuth]).inputValidator((input:unknown)=>reviewSchema.parse(input))
