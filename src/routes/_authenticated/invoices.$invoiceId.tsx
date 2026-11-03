@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { InvoicePhotosCard } from "@/components/invoice-photos-card";
+import { InvoiceEditor } from "@/components/invoice-editor";
 import { format } from "date-fns";
 import {
   getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, deleteInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours,
@@ -16,11 +17,14 @@ import {
 import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
 import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functions";
-import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2, Trash2, Pencil } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
+  validateSearch: (search: Record<string, unknown>): { send?: boolean } => ({
+    send: search.send === 1 || search.send === "1" ? true : undefined,
+  }),
   component: InvoiceDetailPage,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
@@ -44,6 +48,7 @@ function fullName(c: { first_name: string | null; last_name: string | null } | n
 
 function InvoiceDetailPage() {
   const { invoiceId } = Route.useParams();
+  const { send: sendParam } = Route.useSearch();
   const qc = useQueryClient();
   const getFn = useServerFn(getInvoice);
   const sendFn = useServerFn(sendInvoice);
@@ -55,6 +60,7 @@ function InvoiceDetailPage() {
   const [sendOpen, setSendOpen] = useState(false);
   const [sendTo, setSendTo] = useState("");
   const [sending, setSending] = useState(false);
+  const [editing, setEditing] = useState(false);
   const toggleFn = useServerFn(setCardSurcharge);
   const payOptsFn = useServerFn(setInvoicePaymentOptions);
   const termsFn = useServerFn(setInvoiceTerms);
@@ -63,6 +69,14 @@ function InvoiceDetailPage() {
     queryKey: ["invoice", invoiceId],
     queryFn: () => getFn({ data: { id: invoiceId } }),
   });
+
+  // "Save & send" from the editor lands here with ?send=1.
+  useEffect(() => {
+    if (sendParam && inv?.status === "draft") {
+      setSendTo(inv.client?.email ?? "");
+      setSendOpen(true);
+    }
+  }, [sendParam, inv?.id, inv?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
@@ -73,6 +87,51 @@ function InvoiceDetailPage() {
   if (!inv) return <div className="p-8 text-sm text-muted-foreground">Invoice not found.</div>;
 
   const canEdit = inv.status === "draft";
+  const hasJobLines = inv.line_items.some((li: any) => li.job_id);
+
+  if (editing && canEdit && !hasJobLines) {
+    return (
+      <>
+        <PageHeader
+          title={`Edit invoice ${inv.number}`}
+          subtitle={fullName(inv.client)}
+          action={
+            <button onClick={() => setEditing(false)} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <ArrowLeft className="size-4" /> Back
+            </button>
+          }
+        />
+        <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6">
+          <InvoiceEditor
+            initial={{
+              id: inv.id,
+              number: inv.number,
+              client_id: inv.client_id ?? "",
+              property_id: (inv as any).property_id ?? null,
+              subject: (inv as any).subject ?? "For Services Rendered",
+              issue_date: (inv.issue_date ?? "").slice(0, 10),
+              payment_terms_days: inv.payment_terms_days ?? 14,
+              discount_cents: (inv as any).discount_cents ?? 0,
+              tax_rate_bp: (inv as any).tax_rate_bp ?? 0,
+              client_message: (inv as any).client_message ?? "",
+              terms_text: (inv as any).terms_text ?? "",
+              allow_card: (inv as any).allow_card !== false,
+              allow_venmo: (inv as any).allow_venmo !== false,
+              card_surcharge: inv.card_surcharge,
+              line_items: inv.line_items.map((li: any) => ({
+                description: li.description,
+                details: li.details ?? "",
+                quantity: li.quantity,
+                unitPriceStr: (li.unit_price_cents / 100).toFixed(2),
+                service_date: li.service_date ?? "",
+              })),
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -86,11 +145,17 @@ function InvoiceDetailPage() {
         }
       />
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-6">
+        {(inv as any).subject && (
+          <p className="text-lg font-medium">{(inv as any).subject}</p>
+        )}
         {/* Header card */}
         <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 grid gap-6 md:grid-cols-3">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Bill to</p>
             <p className="font-medium">{fullName(inv.client)}</p>
+            {(inv as any).property && (
+              <p className="text-sm text-muted-foreground">Service at: {(inv as any).property.label} — {(inv as any).property.address}</p>
+            )}
             {inv.client?.email && <p className="text-sm text-muted-foreground">{inv.client.email}</p>}
             {inv.client?.phone && <p className="text-sm text-muted-foreground">{inv.client.phone}</p>}
             {inv.client?.billing_address && (
@@ -153,7 +218,11 @@ function InvoiceDetailPage() {
             <tbody>
               {inv.line_items.map((li) => (
                 <tr key={li.id} className="border-t border-border/40">
-                  <td className="px-4 py-3">{li.description}</td>
+                  <td className="px-4 py-3">
+                    <p>{li.description}</p>
+                    {(li as any).details && <p className="text-xs text-muted-foreground">{(li as any).details}</p>}
+                    {li.service_date && <p className="text-xs text-muted-foreground">Service date: {li.service_date}</p>}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {(li as any).hours != null ? (
                       <HoursCell line={li as any} editable={inv.status === "draft"} invoiceId={inv.id} />
@@ -169,6 +238,18 @@ function InvoiceDetailPage() {
                 <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Subtotal</td>
                 <td className="px-4 py-2 text-right tabular-nums">{money(inv.subtotal_cents)}</td>
               </tr>
+              {(inv as any).discount_cents > 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Discount</td>
+                  <td className="px-4 py-2 text-right tabular-nums">−{money((inv as any).discount_cents)}</td>
+                </tr>
+              )}
+              {(inv as any).tax_cents > 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Tax ({((inv as any).tax_rate_bp / 100).toString()}%)</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{money((inv as any).tax_cents)}</td>
+                </tr>
+              )}
               {inv.surcharge_cents > 0 && (
                 <tr>
                   <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Card surcharge (3% + $0.30)</td>
@@ -226,6 +307,11 @@ function InvoiceDetailPage() {
             ))}
           </div>
           <div className="flex gap-2">
+            {inv.status === "draft" && !hasJobLines && (
+              <Button variant="outline" onClick={() => setEditing(true)}>
+                <Pencil className="size-4 mr-1.5" /> Edit
+              </Button>
+            )}
             {inv.status === "draft" && (
               <Button
                 onClick={() => { setSendTo(inv.client?.email ?? ""); setSendOpen(true); }}
@@ -287,6 +373,23 @@ function InvoiceDetailPage() {
         </div>
 
 
+
+        {((inv as any).client_message || (inv as any).terms_text) && (
+          <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 space-y-3">
+            {(inv as any).client_message && (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Client message</p>
+                <p className="text-sm whitespace-pre-wrap">{(inv as any).client_message}</p>
+              </div>
+            )}
+            {(inv as any).terms_text && (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Contract / Disclaimer</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{(inv as any).terms_text}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <InvoicePhotosCard invoiceId={inv.id} />
       <Dialog open={sendOpen} onOpenChange={setSendOpen}>

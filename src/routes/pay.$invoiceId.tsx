@@ -63,8 +63,35 @@ function PayInvoicePage() {
           <div className="text-center mb-6">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Wash Rinse Repeat Cleaning</p>
             <h1 className="text-2xl font-medium mt-2">Invoice {inv.number}</h1>
+            {inv.subject && <p className="text-sm mt-1">{inv.subject}</p>}
             <p className="text-sm text-muted-foreground mt-1">Billed to {inv.client_name}</p>
+            {inv.property_address && <p className="text-xs text-muted-foreground">Service at {inv.property_address}</p>}
           </div>
+
+          {inv.line_items?.length > 0 && (
+            <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 mb-6">
+              <table className="w-full text-sm">
+                <tbody>
+                  {inv.line_items.map((li, i) => (
+                    <tr key={i} className="border-t border-border/40 first:border-0 align-top">
+                      <td className="py-2">
+                        <p>{li.description}</p>
+                        {li.details && <p className="text-xs text-muted-foreground">{li.details}</p>}
+                        {li.service_date && <p className="text-xs text-muted-foreground">Service date: {li.service_date}</p>}
+                      </td>
+                      <td className="py-2 text-right tabular-nums text-muted-foreground">{li.quantity} × {money(li.unit_price_cents, inv.currency)}</td>
+                      <td className="py-2 text-right tabular-nums font-medium">{money(li.line_total_cents, inv.currency)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-3 pt-3 border-t border-border/40 space-y-1 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{money(inv.subtotal_cents, inv.currency)}</span></div>
+                {inv.discount_cents > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Discount</span><span className="tabular-nums">−{money(inv.discount_cents, inv.currency)}</span></div>}
+                {inv.tax_cents > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span className="tabular-nums">{money(inv.tax_cents, inv.currency)}</span></div>}
+              </div>
+            </div>
+          )}
 
           <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 mb-6">
             <div className="flex items-baseline justify-between">
@@ -77,6 +104,10 @@ function PayInvoicePage() {
               </p>
             )}
           </div>
+
+          {inv.client_message && (
+            <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 mb-6 text-sm whitespace-pre-wrap">{inv.client_message}</div>
+          )}
 
           {inv.photos?.length > 0 && (
             <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 mb-6">
@@ -137,6 +168,10 @@ function PayInvoicePage() {
                 <EmbeddedCheckout />
               </EmbeddedCheckoutProvider>
             </div>
+          )}
+
+          {inv.terms_text && (
+            <div className="mt-6 text-xs text-muted-foreground whitespace-pre-wrap border-t border-border/40 pt-4">{inv.terms_text}</div>
           )}
         </div>
       </div>

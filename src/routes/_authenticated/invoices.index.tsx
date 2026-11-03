@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { listInvoices, createMonthlyBundle, previewMonthlyBundle } from "@/lib/invoices.functions";
 import { listClients } from "@/lib/entities.functions";
-import { Layers, Filter } from "lucide-react";
+import { Layers, Filter, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/")({
   component: InvoicesPage,
@@ -73,9 +73,16 @@ function InvoicesPage() {
         title="Invoices"
         subtitle={`${invoices.length} shown`}
         action={
-          <Button onClick={() => setBundleOpen(true)} className="bg-brand text-brand-foreground hover:opacity-90">
-            <Layers className="size-4 mr-1.5" /> Create monthly bundle
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBundleOpen(true)}>
+              <Layers className="size-4 mr-1.5" /> Create monthly bundle
+            </Button>
+            <Link to="/invoices/new">
+              <Button className="bg-brand text-brand-foreground hover:opacity-90">
+                <Plus className="size-4 mr-1.5" /> New invoice
+              </Button>
+            </Link>
+          </div>
         }
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-6 space-y-4">

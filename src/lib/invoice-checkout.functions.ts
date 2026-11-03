@@ -7,14 +7,22 @@ type InvoiceSummary = {
   id: string;
   number: string;
   status: string;
+  subject: string | null;
   total_cents: number;
   subtotal_cents: number;
+  discount_cents: number;
+  tax_cents: number;
   surcharge_cents: number;
   card_surcharge: boolean;
   currency: string;
+  issue_date: string | null;
   due_date: string | null;
   client_name: string;
   client_email: string | null;
+  property_address: string | null;
+  client_message: string | null;
+  terms_text: string | null;
+  line_items: { description: string; details: string | null; quantity: number; unit_price_cents: number; line_total_cents: number; service_date: string | null }[];
   photos: { url: string; caption: string | null; photo_type: string }[];
   allow_card: boolean;
   venmo_link: string | null;
@@ -27,12 +35,18 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invoices")
-      .select("id, tenant_id, client_id, number, status, total_cents, subtotal_cents, surcharge_cents, card_surcharge, allow_card, allow_venmo, currency, due_date, photo_ids, client:clients(first_name, last_name, email)")
+      .select("id, tenant_id, client_id, number, status, subject, total_cents, subtotal_cents, discount_cents, tax_cents, surcharge_cents, card_surcharge, allow_card, allow_venmo, currency, issue_date, due_date, photo_ids, client_message, terms_text, client:clients(first_name, last_name, email), property:client_properties(label, address)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) return { error: error.message };
     if (!inv) return { error: "Invoice not found" };
     if (inv.status === "draft") return { error: "This invoice is not available for payment." };
+    const { data: lineRows } = await supabaseAdmin
+      .from("invoice_line_items")
+      .select("description, details, quantity, unit_price_cents, line_total_cents, service_date")
+      .eq("invoice_id", inv.id)
+      .order("sort_order")
+      .order("service_date");
     const client = inv.client as { first_name: string | null; last_name: string | null; email: string | null } | null;
     const ids: string[] = ((inv as any).photo_ids ?? []) as string[];
     let photos: { url: string; caption: string | null; photo_type: string }[] = [];
@@ -61,6 +75,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
         venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
       }
     }
+    const prop = (inv as any).property as { label?: string; address?: string } | null;
     return {
       photos,
       allow_card: allowCard,
@@ -68,14 +83,22 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       id: inv.id,
       number: inv.number,
       status: inv.status,
+      subject: (inv as any).subject ?? null,
       total_cents: inv.total_cents ?? 0,
       subtotal_cents: inv.subtotal_cents ?? 0,
+      discount_cents: (inv as any).discount_cents ?? 0,
+      tax_cents: (inv as any).tax_cents ?? 0,
       surcharge_cents: inv.surcharge_cents ?? 0,
       card_surcharge: inv.card_surcharge ?? false,
       currency: inv.currency ?? "usd",
+      issue_date: (inv as any).issue_date ?? null,
       due_date: inv.due_date,
       client_name: [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "Customer",
       client_email: client?.email ?? null,
+      property_address: prop ? `${prop.label ?? ""} — ${prop.address ?? ""}`.replace(/^— | —$/g, "").trim() : null,
+      client_message: (inv as any).client_message ?? null,
+      terms_text: (inv as any).terms_text ?? null,
+      line_items: (lineRows ?? []) as { description: string; details: string | null; quantity: number; unit_price_cents: number; line_total_cents: number; service_date: string | null }[],
     };
   });
 

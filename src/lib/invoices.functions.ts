@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderEmailForClientContext } from "@/lib/templates.functions";
 import { clientContact } from "@/lib/privacy";
 import { dueDateFrom } from "@/lib/payment-terms";
+import { computeInvoiceTotals, calcCardSurcharge } from "@/lib/invoice-totals";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
@@ -52,12 +53,12 @@ export const getInvoice = createServerFn({ method: "POST" })
     const [{ data: inv, error }, { data: items, error: ie }] = await Promise.all([
       context.supabase
         .from("invoices")
-        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, allow_card, allow_venmo, cleanings_count, payment_terms_days, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, service_address)")
+        .select("id, number, status, subject, subtotal_cents, discount_cents, tax_rate_bp, tax_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, allow_card, allow_venmo, cleanings_count, payment_terms_days, bundle_month, job_id, client_id, property_id, client_message, terms_text, client:clients(id, first_name, last_name, service_address), property:client_properties(id, label, address)")
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
         .from("invoice_line_items")
-        .select("id, description, quantity, unit_price_cents, line_total_cents, service_date, sort_order, hours, hours_manual, job_id")
+        .select("id, description, details, quantity, unit_price_cents, line_total_cents, service_date, sort_order, hours, hours_manual, job_id")
         .eq("invoice_id", data.id)
         .order("sort_order")
         .order("service_date"),
@@ -85,13 +86,15 @@ export const setCardSurcharge = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: inv, error: ge } = await context.supabase
       .from("invoices")
-      .select("subtotal_cents")
+      .select("subtotal_cents, discount_cents, tax_rate_bp")
       .eq("id", data.id)
       .maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!inv) throw new Error("Invoice not found");
+    const taxable = Math.max(inv.subtotal_cents - (inv.discount_cents ?? 0), 0);
+    const tax = Math.round((taxable * (inv.tax_rate_bp ?? 0)) / 10000);
     const surcharge = data.enabled ? calcSurcharge(inv.subtotal_cents) : 0;
-    const total = inv.subtotal_cents + surcharge;
+    const total = taxable + tax + surcharge;
     const { error } = await context.supabase
       .from("invoices")
       .update({
@@ -525,11 +528,234 @@ export const setLineItemHours = createServerFn({ method: "POST" })
     if (ue) throw new Error(ue.message);
     const { data: lines } = await sb.from("invoice_line_items").select("line_total_cents").eq("invoice_id", li.invoice_id);
     const subtotal = (lines ?? []).reduce((s: number, l: any) => s + (l.line_total_cents ?? 0), 0);
+    const { data: invRow } = await sb.from("invoices").select("discount_cents, tax_rate_bp").eq("id", li.invoice_id).maybeSingle();
+    const taxable = Math.max(subtotal - (invRow?.discount_cents ?? 0), 0);
+    const tax = Math.round((taxable * (invRow?.tax_rate_bp ?? 0)) / 10000);
     const surcharge = li.invoice?.card_surcharge ? calcSurcharge(subtotal) : 0;
-    const total = subtotal + surcharge;
+    const total = taxable + tax + surcharge;
     const { error: ie } = await sb.from("invoices")
-      .update({ subtotal_cents: subtotal, surcharge_cents: surcharge, total_cents: total, amount_cents: total })
+      .update({ subtotal_cents: subtotal, tax_cents: tax, surcharge_cents: surcharge, total_cents: total, amount_cents: total })
       .eq("id", li.invoice_id);
     if (ie) throw new Error(ie.message);
     return { ok: true, hours };
+  });
+
+// ============= Invoice editor (create / edit drafts) =============
+
+const editorLineSchema = z.object({
+  description: z.string().trim().min(1, "Each line needs a name").max(200),
+  details: z.string().trim().max(1000).optional(),
+  quantity: z.number().int().min(1).max(10000),
+  unit_price_cents: z.number().int().min(0).max(100_000_000),
+  service_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+});
+
+const invoiceEditorSchema = z.object({
+  client_id: z.string().uuid(),
+  property_id: z.string().uuid().nullable().optional(),
+  subject: z.string().trim().min(1).max(200).default("For Services Rendered"),
+  issue_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  payment_terms_days: z.number().int().min(0).max(365),
+  discount_cents: z.number().int().min(0).max(100_000_000).default(0),
+  tax_rate_bp: z.number().int().min(0).max(10000).default(0),
+  client_message: z.string().trim().max(4000).optional(),
+  terms_text: z.string().trim().max(4000).optional(),
+  allow_card: z.boolean().default(true),
+  allow_venmo: z.boolean().default(true),
+  card_surcharge: z.boolean().default(false),
+  line_items: z.array(editorLineSchema).min(1, "Add at least one line item"),
+  save_defaults: z.boolean().default(false),
+});
+
+type InvoiceEditorInput = z.infer<typeof invoiceEditorSchema>;
+
+async function requireInvoiceManager(context: { supabase: any; userId: string }) {
+  const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+  if (!isMgr) throw new Error("Only owners and managers can edit invoices.");
+  const { data: prof } = await context.supabase
+    .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+  if (!prof) throw new Error("No profile");
+  return prof.tenant_id as string;
+}
+
+async function verifyProperty(sb: any, tenantId: string, clientId: string, propertyId: string | null | undefined) {
+  if (!propertyId) return null;
+  const { data: prop, error } = await sb
+    .from("client_properties").select("id").eq("id", propertyId)
+    .eq("client_id", clientId).eq("tenant_id", tenantId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!prop) throw new Error("Select a property belonging to this client");
+  return propertyId;
+}
+
+function editorTotals(data: InvoiceEditorInput) {
+  return computeInvoiceTotals(data.line_items, data.discount_cents, data.tax_rate_bp, data.card_surcharge);
+}
+
+async function insertEditorLines(sb: any, tenantId: string, invoiceId: string, lines: InvoiceEditorInput["line_items"]) {
+  const rows = lines.map((l, i) => ({
+    invoice_id: invoiceId,
+    tenant_id: tenantId,
+    description: l.description,
+    details: l.details?.trim() || null,
+    quantity: l.quantity,
+    unit_price_cents: l.unit_price_cents,
+    line_total_cents: Math.round(l.quantity * l.unit_price_cents),
+    service_date: l.service_date ?? null,
+    sort_order: i,
+  }));
+  const { error } = await sb.from("invoice_line_items").insert(rows);
+  if (error) throw new Error(error.message);
+}
+
+/** Tenant-level reusable defaults for the editor's message and terms. */
+export const getInvoiceEditorDefaults = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: prof } = await context.supabase
+      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+    if (!prof) throw new Error("No profile");
+    const { data: tenant, error } = await context.supabase
+      .from("tenants")
+      .select("payment_terms_days, invoice_message_default, invoice_terms_default")
+      .eq("id", prof.tenant_id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return {
+      payment_terms_days: (tenant as any)?.payment_terms_days ?? 14,
+      invoice_message_default: (tenant as any)?.invoice_message_default ?? "",
+      invoice_terms_default: (tenant as any)?.invoice_terms_default ?? "",
+    };
+  });
+
+/** Save the editor's message/terms as the reusable business defaults. Owners/managers only. */
+export const saveInvoiceEditorDefaults = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      client_message: z.string().trim().max(4000).optional(),
+      terms_text: z.string().trim().max(4000).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const tenantId = await requireInvoiceManager(context);
+    const { error } = await context.supabase
+      .from("tenants")
+      .update({
+        invoice_message_default: data.client_message?.trim() || null,
+        invoice_terms_default: data.terms_text?.trim() || null,
+      } as never)
+      .eq("id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Create a draft invoice from the editor. Owners/managers only. */
+export const createInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => invoiceEditorSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const tenantId = await requireInvoiceManager(context);
+    const sb = context.supabase;
+    const propertyId = await verifyProperty(sb, tenantId, data.client_id, data.property_id);
+    const totals = editorTotals(data);
+    const { data: num, error: ne } = await sb.rpc("next_invoice_number", { _tenant: tenantId });
+    if (ne || !num) throw new Error(ne?.message ?? "Could not generate invoice number");
+    const { data: invoice, error } = await sb
+      .from("invoices")
+      .insert({
+        tenant_id: tenantId,
+        client_id: data.client_id,
+        property_id: propertyId,
+        job_id: null,
+        number: num as string,
+        status: "draft",
+        subject: data.subject,
+        currency: "usd",
+        subtotal_cents: totals.subtotal_cents,
+        discount_cents: totals.discount_cents,
+        tax_rate_bp: data.tax_rate_bp,
+        tax_cents: totals.tax_cents,
+        surcharge_cents: totals.surcharge_cents,
+        total_cents: totals.total_cents,
+        amount_cents: totals.total_cents,
+        issue_date: data.issue_date,
+        due_date: dueDateFrom(data.issue_date, data.payment_terms_days),
+        payment_terms_days: data.payment_terms_days,
+        client_message: data.client_message?.trim() || null,
+        terms_text: data.terms_text?.trim() || null,
+        allow_card: data.allow_card,
+        allow_venmo: data.allow_venmo,
+        card_surcharge: data.card_surcharge,
+        cleanings_count: data.line_items.length,
+      })
+      .select("id, number").single();
+    if (error) throw new Error(error.message);
+    await insertEditorLines(sb, tenantId, invoice.id, data.line_items);
+    if (data.save_defaults) {
+      await sb.from("tenants").update({
+        invoice_message_default: data.client_message?.trim() || null,
+        invoice_terms_default: data.terms_text?.trim() || null,
+      } as never).eq("id", tenantId);
+    }
+    return { id: invoice.id as string, number: invoice.number as string };
+  });
+
+/** Replace a draft invoice's content from the editor. Owners/managers only. */
+export const updateInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid() }).merge(invoiceEditorSchema).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const tenantId = await requireInvoiceManager(context);
+    const sb = context.supabase;
+    const { data: inv, error: ge } = await sb
+      .from("invoices").select("id, status, tenant_id").eq("id", data.id).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!inv) throw new Error("Invoice not found");
+    if (inv.status !== "draft") throw new Error("Only draft invoices can be edited. Un-send it first.");
+    const propertyId = await verifyProperty(sb, tenantId, data.client_id, data.property_id);
+    const totals = editorTotals(data);
+    const { error } = await sb
+      .from("invoices")
+      .update({
+        client_id: data.client_id,
+        property_id: propertyId,
+        subject: data.subject,
+        subtotal_cents: totals.subtotal_cents,
+        discount_cents: totals.discount_cents,
+        tax_rate_bp: data.tax_rate_bp,
+        tax_cents: totals.tax_cents,
+        surcharge_cents: totals.surcharge_cents,
+        total_cents: totals.total_cents,
+        amount_cents: totals.total_cents,
+        issue_date: data.issue_date,
+        due_date: dueDateFrom(data.issue_date, data.payment_terms_days),
+        payment_terms_days: data.payment_terms_days,
+        client_message: data.client_message?.trim() || null,
+        terms_text: data.terms_text?.trim() || null,
+        allow_card: data.allow_card,
+        allow_venmo: data.allow_venmo,
+        card_surcharge: data.card_surcharge,
+        cleanings_count: data.line_items.length,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    // Job-linked lines (hourly billing) stay managed from the invoice page.
+    const { data: jobLines } = await sb.from("invoice_line_items")
+      .select("id").eq("invoice_id", data.id).not("job_id", "is", null);
+    if ((jobLines ?? []).length) {
+      throw new Error("This invoice has job-linked lines; edit hours from the invoice page instead.");
+    }
+    const { error: de } = await sb.from("invoice_line_items")
+      .delete().eq("invoice_id", data.id);
+    if (de) throw new Error(de.message);
+    await insertEditorLines(sb, tenantId, data.id, data.line_items);
+    if (data.save_defaults) {
+      await sb.from("tenants").update({
+        invoice_message_default: data.client_message?.trim() || null,
+        invoice_terms_default: data.terms_text?.trim() || null,
+      } as never).eq("id", tenantId);
+    }
+    return { ok: true };
   });
