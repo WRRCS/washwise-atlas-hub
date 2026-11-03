@@ -1470,6 +1470,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          details: string | null
           hours: number | null
           hours_manual: boolean
           id: string
@@ -1485,6 +1486,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          details?: string | null
           hours?: number | null
           hours_manual?: boolean
           id?: string
@@ -1500,6 +1502,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          details?: string | null
           hours?: number | null
           hours_manual?: boolean
           id?: string
@@ -1531,8 +1534,10 @@ export type Database = {
           card_surcharge: boolean
           cleanings_count: number | null
           client_id: string
+          client_message: string | null
           created_at: string
           currency: string
+          discount_cents: number
           due_at: string | null
           due_date: string | null
           id: string
@@ -1543,11 +1548,16 @@ export type Database = {
           pay_link: string | null
           payment_terms_days: number | null
           photo_ids: string[]
+          property_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
+          subject: string | null
           subtotal_cents: number
           surcharge_cents: number
+          tax_cents: number
+          tax_rate_bp: number
           tenant_id: string
+          terms_text: string | null
           total_cents: number
         }
         Insert: {
@@ -1558,8 +1568,10 @@ export type Database = {
           card_surcharge?: boolean
           cleanings_count?: number | null
           client_id: string
+          client_message?: string | null
           created_at?: string
           currency?: string
+          discount_cents?: number
           due_at?: string | null
           due_date?: string | null
           id?: string
@@ -1570,11 +1582,16 @@ export type Database = {
           pay_link?: string | null
           payment_terms_days?: number | null
           photo_ids?: string[]
+          property_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          subject?: string | null
           subtotal_cents?: number
           surcharge_cents?: number
+          tax_cents?: number
+          tax_rate_bp?: number
           tenant_id: string
+          terms_text?: string | null
           total_cents?: number
         }
         Update: {
@@ -1585,8 +1602,10 @@ export type Database = {
           card_surcharge?: boolean
           cleanings_count?: number | null
           client_id?: string
+          client_message?: string | null
           created_at?: string
           currency?: string
+          discount_cents?: number
           due_at?: string | null
           due_date?: string | null
           id?: string
@@ -1597,11 +1616,16 @@ export type Database = {
           pay_link?: string | null
           payment_terms_days?: number | null
           photo_ids?: string[]
+          property_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          subject?: string | null
           subtotal_cents?: number
           surcharge_cents?: number
+          tax_cents?: number
+          tax_rate_bp?: number
           tenant_id?: string
+          terms_text?: string | null
           total_cents?: number
         }
         Relationships: [
@@ -1617,6 +1641,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "client_properties"
             referencedColumns: ["id"]
           },
           {
@@ -3435,8 +3466,10 @@ export type Database = {
           hourly_rate_cents: number
           id: string
           invoice_footer: string | null
+          invoice_message_default: string | null
           invoice_prefix: string | null
           invoice_series: string | null
+          invoice_terms_default: string | null
           late_fee_percent: number | null
           legal_name: string | null
           locale: string
@@ -3468,8 +3501,10 @@ export type Database = {
           hourly_rate_cents?: number
           id?: string
           invoice_footer?: string | null
+          invoice_message_default?: string | null
           invoice_prefix?: string | null
           invoice_series?: string | null
+          invoice_terms_default?: string | null
           late_fee_percent?: number | null
           legal_name?: string | null
           locale?: string
@@ -3501,8 +3536,10 @@ export type Database = {
           hourly_rate_cents?: number
           id?: string
           invoice_footer?: string | null
+          invoice_message_default?: string | null
           invoice_prefix?: string | null
           invoice_series?: string | null
+          invoice_terms_default?: string | null
           late_fee_percent?: number | null
           legal_name?: string | null
           locale?: string
