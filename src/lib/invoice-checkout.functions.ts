@@ -98,7 +98,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       property_address: prop ? `${prop.label ?? ""} — ${prop.address ?? ""}`.replace(/^— | —$/g, "").trim() : null,
       client_message: (inv as any).client_message ?? null,
       terms_text: (inv as any).terms_text ?? null,
-      line_items: (lineRows ?? []) as InvoiceSummary extends never ? never : any,
+      line_items: (lineRows ?? []) as { description: string; details: string | null; quantity: number; unit_price_cents: number; line_total_cents: number; service_date: string | null }[],
     };
   });
 
