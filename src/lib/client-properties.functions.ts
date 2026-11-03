@@ -78,6 +78,7 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
           price_cents: data.price_cents ?? null,
         sop: data.sop || null,
         ...(data.sop_id !== undefined ? { sop_id: data.sop_id } : {}),
+        ...(data.default_service_type_id !== undefined ? { default_service_type_id: data.default_service_type_id } : {}),
         })
         .eq("id", data.id);
       if (error) throw new Error(error.message);
@@ -98,6 +99,7 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
         price_cents: data.price_cents ?? null,
         sop: data.sop || null,
         ...(data.sop_id !== undefined ? { sop_id: data.sop_id } : {}),
+        ...(data.default_service_type_id !== undefined ? { default_service_type_id: data.default_service_type_id } : {}),
       })
       .select("id").single();
     if (error) throw new Error(error.message);
