@@ -48,6 +48,7 @@ import { Route as AuthenticatedInventoryRecipesRouteImport } from './routes/_aut
 import { Route as AuthenticatedInventoryUsageRouteImport } from './routes/_authenticated/inventory.usage'
 import { Route as AuthenticatedInvoicesIndexRouteImport } from './routes/_authenticated/invoices.index'
 import { Route as AuthenticatedInvoicesInvoiceIdRouteImport } from './routes/_authenticated/invoices.$invoiceId'
+import { Route as AuthenticatedInvoicesNewRouteImport } from './routes/_authenticated/invoices.new'
 import { Route as AuthenticatedJobsIndexRouteImport } from './routes/_authenticated/jobs.index'
 import { Route as AuthenticatedJobsJobIdRouteImport } from './routes/_authenticated/jobs.$jobId'
 import { Route as AuthenticatedJobsNewRouteImport } from './routes/_authenticated/jobs.new'
@@ -286,6 +287,12 @@ const AuthenticatedInvoicesInvoiceIdRoute =
   AuthenticatedInvoicesInvoiceIdRouteImport.update({
     id: '/invoices/$invoiceId',
     path: '/invoices/$invoiceId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInvoicesNewRoute =
+  AuthenticatedInvoicesNewRouteImport.update({
+    id: '/invoices/new',
+    path: '/invoices/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedJobsIndexRoute = AuthenticatedJobsIndexRouteImport.update({
@@ -548,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
   '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
+  '/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
@@ -624,6 +632,7 @@ export interface FileRoutesByTo {
   '/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/inventory/usage': typeof AuthenticatedInventoryUsageRoute
   '/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
+  '/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/jobs/new': typeof AuthenticatedJobsNewRoute
   '/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
@@ -704,6 +713,7 @@ export interface FileRoutesById {
   '/_authenticated/inventory/recipes': typeof AuthenticatedInventoryRecipesRoute
   '/_authenticated/inventory/usage': typeof AuthenticatedInventoryUsageRoute
   '/_authenticated/invoices/$invoiceId': typeof AuthenticatedInvoicesInvoiceIdRoute
+  '/_authenticated/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/_authenticated/jobs/$jobId': typeof AuthenticatedJobsJobIdRoute
   '/_authenticated/jobs/new': typeof AuthenticatedJobsNewRoute
   '/_authenticated/leads/$leadId': typeof AuthenticatedLeadsLeadIdRoute
@@ -784,6 +794,7 @@ export interface FileRouteTypes {
     | '/inventory/recipes'
     | '/inventory/usage'
     | '/invoices/$invoiceId'
+    | '/invoices/new'
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/leads/$leadId'
@@ -860,6 +871,7 @@ export interface FileRouteTypes {
     | '/inventory/recipes'
     | '/inventory/usage'
     | '/invoices/$invoiceId'
+    | '/invoices/new'
     | '/jobs/$jobId'
     | '/jobs/new'
     | '/leads/$leadId'
@@ -939,6 +951,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inventory/recipes'
     | '/_authenticated/inventory/usage'
     | '/_authenticated/invoices/$invoiceId'
+    | '/_authenticated/invoices/new'
     | '/_authenticated/jobs/$jobId'
     | '/_authenticated/jobs/new'
     | '/_authenticated/leads/$leadId'
@@ -1282,6 +1295,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices/$invoiceId'
       fullPath: '/invoices/$invoiceId'
       preLoaderRoute: typeof AuthenticatedInvoicesInvoiceIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invoices/new': {
+      id: '/_authenticated/invoices/new'
+      path: '/invoices/new'
+      fullPath: '/invoices/new'
+      preLoaderRoute: typeof AuthenticatedInvoicesNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/jobs/': {
@@ -1654,6 +1674,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
   AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
   AuthenticatedInvoicesInvoiceIdRoute: typeof AuthenticatedInvoicesInvoiceIdRoute
+  AuthenticatedInvoicesNewRoute: typeof AuthenticatedInvoicesNewRoute
   AuthenticatedJobsJobIdRoute: typeof AuthenticatedJobsJobIdRoute
   AuthenticatedJobsNewRoute: typeof AuthenticatedJobsNewRoute
   AuthenticatedSettingsAiRoute: typeof AuthenticatedSettingsAiRoute
@@ -1693,6 +1714,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
   AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
   AuthenticatedInvoicesInvoiceIdRoute: AuthenticatedInvoicesInvoiceIdRoute,
+  AuthenticatedInvoicesNewRoute: AuthenticatedInvoicesNewRoute,
   AuthenticatedJobsJobIdRoute: AuthenticatedJobsJobIdRoute,
   AuthenticatedJobsNewRoute: AuthenticatedJobsNewRoute,
   AuthenticatedSettingsAiRoute: AuthenticatedSettingsAiRoute,
