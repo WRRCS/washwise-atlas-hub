@@ -75,6 +75,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
         venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
       }
     }
+    const prop = (inv as any).property as { label?: string; address?: string } | null;
     return {
       photos,
       allow_card: allowCard,
@@ -82,14 +83,22 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       id: inv.id,
       number: inv.number,
       status: inv.status,
+      subject: (inv as any).subject ?? null,
       total_cents: inv.total_cents ?? 0,
       subtotal_cents: inv.subtotal_cents ?? 0,
+      discount_cents: (inv as any).discount_cents ?? 0,
+      tax_cents: (inv as any).tax_cents ?? 0,
       surcharge_cents: inv.surcharge_cents ?? 0,
       card_surcharge: inv.card_surcharge ?? false,
       currency: inv.currency ?? "usd",
+      issue_date: (inv as any).issue_date ?? null,
       due_date: inv.due_date,
       client_name: [client?.first_name, client?.last_name].filter(Boolean).join(" ") || "Customer",
       client_email: client?.email ?? null,
+      property_address: prop ? `${prop.label ?? ""} — ${prop.address ?? ""}`.replace(/^— | —$/g, "").trim() : null,
+      client_message: (inv as any).client_message ?? null,
+      terms_text: (inv as any).terms_text ?? null,
+      line_items: (lineRows ?? []) as InvoiceSummary extends never ? never : any,
     };
   });
 
