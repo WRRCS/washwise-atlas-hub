@@ -592,7 +592,14 @@ function editorTotals(data: InvoiceEditorInput) {
   return computeInvoiceTotals(data.line_items, data.discount_cents, data.tax_rate_bp, data.card_surcharge);
 }
 
-async function insertEditorLines(sb: any, tenantId: string, invoiceId: string, lines: InvoiceEditorInput["line_items"]) {
+async function insertEditorLines(
+  sb: any,
+  tenantId: string,
+  invoiceId: string,
+  lines: InvoiceEditorInput["line_items"],
+  sortBase = 0,
+) {
+  if (!lines.length) return;
   const rows = lines.map((l, i) => ({
     invoice_id: invoiceId,
     tenant_id: tenantId,
@@ -602,7 +609,7 @@ async function insertEditorLines(sb: any, tenantId: string, invoiceId: string, l
     unit_price_cents: l.unit_price_cents,
     line_total_cents: Math.round(l.quantity * l.unit_price_cents),
     service_date: l.service_date ?? null,
-    sort_order: i,
+    sort_order: sortBase + i,
   }));
   const { error } = await sb.from("invoice_line_items").insert(rows);
   if (error) throw new Error(error.message);
