@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Prepare Dalton/Barbra-only reminder pilot: manager participant selection, backend enforcement, delivery off, staged clock/arrival rules, banner, per-device readiness, push/offline registration and account ownership fix, separate Outlook fallback.
-- [ ] Run no-send reminder/registration regression tests and signed-in pilot settings/banner checks.
+- [x] Prepare Dalton/Barbra-only reminder pilot: manager participant selection, backend enforcement, delivery locked off, staged clock/arrival rules, banner, per-device readiness, separate push/offline scopes, authenticated registration checks, account-change cleanup and separate Outlook fallback. No notification attempts created; no SMS added; unrelated queues preserved.
+- [x] Thirty-three no-send reminder/registration tests pass; signed in as Dalton and Barbra, clock and device recheck controls render with no runtime errors and employee pilot-management controls absent. Latest build OK.
+- [ ] Signed-in manager participant-save and due-banner/appointment-link browser checks — waiting for an authorized manager session and controlled appointment setup; employee screens and no-send eligibility rules verified.
 - [ ] Controlled real-phone receipt, locked-screen appointment links and suppression — awaiting Leslie's test authorization and physical-phone observations; broader rollout stays disabled.
 
 - [ ] Prepare Outlook owner/admin photo-batch and work-session clock alerts, separate recipient/enable controls, confirmation gate, saved-event deduplication and honest provider-status logs. Preserve existing email routing and client hold.
