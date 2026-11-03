@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import wrrcLogo from "@/assets/wrrcs-logo.png.asset.json";
+import { authDestination } from '@/lib/auth-destination';
 
 
 type AuthSearch = { redirect?: string };
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
+  head:()=>({meta:[{title:'Sign in | WRRCS'},{name:'description',content:'Sign in to your WRRCS employee or management account.'},{property:'og:title',content:'Sign in | WRRCS'},{property:'og:description',content:'Sign in to your WRRCS employee or management account.'},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary'}]}),
   validateSearch: (s: Record<string, unknown>): AuthSearch => ({
     redirect: typeof s.redirect === "string" ? s.redirect : undefined,
   }),
@@ -27,10 +29,16 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const goToDestination=()=>{
+    const saved=sessionStorage.getItem('wrrcs-auth-destination') ?? undefined;
+    const target=authDestination(redirect ?? saved);
+    sessionStorage.removeItem('wrrcs-auth-destination');
+    window.location.assign(target);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: redirect ?? "/jobs", replace: true });
+      if (data.session) goToDestination();
     });
   }, [navigate, redirect]);
 
@@ -49,7 +57,7 @@ function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate({ to: redirect ?? "/jobs", replace: true });
+      goToDestination();
     } catch (err) {
       toast.error(friendlyAuthError(err instanceof Error ? err.message : undefined));
     } finally {
@@ -58,6 +66,7 @@ function AuthPage() {
   };
 
   const handleGoogle = async () => {
+    sessionStorage.setItem('wrrcs-auth-destination',authDestination(redirect));
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
@@ -66,7 +75,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: redirect ?? "/jobs", replace: true });
+    goToDestination();
   };
 
   return (

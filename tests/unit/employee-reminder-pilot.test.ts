@@ -1,0 +1,24 @@
+import {describe,it,expect,vi} from 'vitest';
+import {pilotReminder,withinReminderLimits,type PilotSettings,type PilotState} from '../../src/lib/employee-reminder-rules';
+import {enqueueActionReminders,currentActionReminder} from '../../src/lib/cleaner-action-reminders.server';
+import {authDestination} from '../../src/lib/auth-destination';
+const p=():PilotSettings=>({participant_ids:['dalton','barbra'],delivery_enabled:true,before_enabled:true,start_enabled:true,followup_enabled:true,before_minutes:15,followup_minutes:5,channel:'push'});
+const s=():PilotState=>({userId:'dalton',assigned:true,active:true,clockedIn:false,onLunch:false,arrived:false,job:{id:'job',tenant_id:'wrrcs',scheduled_start:'2026-11-03T18:00:00Z',scheduled_end:'2026-11-03T20:00:00Z',status:'scheduled',service_location_label:'Test property',service_address:null}});
+const t=(x:string)=>Date.parse(`2026-11-03T${x}Z`);
+describe('two employee staged pilot',()=>{
+ it('only Dalton and Barbra participate regardless of registration',()=>{for(const userId of ['dalton','barbra'])expect(pilotReminder({...s(),userId},p(),t('18:00:00'))).not.toBeNull();expect(pilotReminder({...s(),userId:'third'},p(),t('18:00:00'))).toBeNull();});
+ it('delivery off blocks push and email while allowing pilot banner',()=>{for(const channel of ['push','email'] as const){const settings={...p(),channel,delivery_enabled:false};expect(pilotReminder(s(),settings,t('18:00:00'))).toBeNull();expect(pilotReminder(s(),settings,t('18:00:00'),false)).not.toBeNull();}});
+ it('initial stages are 15 minutes before, start and one 5 minute follow-up',()=>{expect(pilotReminder(s(),p(),t('17:45:00'))?.stage).toBe('before');expect(pilotReminder(s(),p(),t('18:00:00'))?.stage).toBe('start');expect(pilotReminder(s(),p(),t('18:05:00'))?.stage).toBe('followup');});
+ it('existing work produces arrival only at/after start and never duplicate work',()=>{expect(pilotReminder({...s(),clockedIn:true},p(),t('17:45:00'))).toBeNull();expect(pilotReminder({...s(),clockedIn:true},p(),t('18:00:00'))?.action).toBe('arrival');});
+ it('lunch suppresses and explicit resume can recheck banner',()=>{expect(pilotReminder({...s(),onLunch:true},p(),t('18:00:00'))).toBeNull();expect(pilotReminder({...s(),clockedIn:true},p(),t('18:01:00'),false)?.action).toBe('arrival');});
+ it('saved arrival suppresses all stages',()=>expect(pilotReminder({...s(),arrived:true},p(),t('18:05:00'))).toBeNull());
+ it.each(['canceled','completed'])('%s suppresses',status=>expect(pilotReminder({...s(),job:{...s().job,status}},p(),t('18:00:00'))).toBeNull());
+ it('reassignment suppresses',()=>expect(pilotReminder({...s(),assigned:false},p(),t('18:00:00'))).toBeNull());
+ it('rescheduling invalidates occurrence keys',()=>{const first=pilotReminder(s(),p(),t('18:00:00'));const changed={...s(),job:{...s().job,scheduled_start:'2026-11-03T19:00:00Z'}};expect(pilotReminder(changed,p(),t('18:00:00'))).toBeNull();expect(pilotReminder(changed,p(),t('19:00:00'))?.key).not.toBe(first?.key);});
+ it('expired stages cannot burst after downtime',()=>expect(pilotReminder(s(),p(),t('18:09:00'))).toBeNull());
+ it('ten minute employee spacing applies across different jobs',()=>expect(withinReminderLimits([{attempted_at:'2026-11-03T17:55:00Z',job_id:'other',scheduled_start:s().job.scheduled_start}],s(),t('18:00:00'))).toBe(false));
+ it('no more than three attempts per occurrence',()=>expect(withinReminderLimits(Array.from({length:3},()=>({attempted_at:'2026-11-03T17:00:00Z',job_id:'job',scheduled_start:s().job.scheduled_start})),s(),t('18:00:00'))).toBe(false));
+ it('Pacific daylight saving preserves actual start instant',()=>{expect(pilotReminder(s(),p(),t('18:00:00'))?.body).toContain('10:00 AM Pacific');const summer={...s(),job:{...s().job,scheduled_start:'2026-10-25T17:00:00Z',scheduled_end:'2026-10-25T19:00:00Z'}};expect(pilotReminder(summer,p(),Date.parse('2026-10-25T17:00:00Z'))?.body).toContain('10:00 AM Pacific');});
+ it('legacy scheduler and queued actions cannot bypass disabled pilot',async()=>{const network=vi.spyOn(globalThis,'fetch');const db={from(){const q:any={select(){return q;},eq(){return q;},then(resolve:any){return Promise.resolve({data:[],error:null}).then(resolve);}};return q;}};expect(await enqueueActionReminders(db)).toBe(0);expect(await currentActionReminder(db,{recipient_id:'third',payload:{job_id:'job',action:'clock_in'},action_reminder_key:'old'})).toBeNull();expect(network).not.toHaveBeenCalled();network.mockRestore();});
+ it('auth preserves appointment hash and rejects external redirects',()=>{expect(authDestination('/jobs/job?view=employee#clock-actions')).toBe('/jobs/job?view=employee#clock-actions');expect(authDestination('//example.com')).toBe('/my-jobs');});
+});

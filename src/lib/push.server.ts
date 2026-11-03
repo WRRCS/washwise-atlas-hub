@@ -2,7 +2,7 @@
 // The `web-push` npm package breaks on the Worker runtime ("buffer.hasOwnProperty is not a function").
 // Import only from *.functions.ts handlers or server routes; never from client components.
 
-export type PushPayload = { title: string; body: string; url?: string; tag?: string };
+export type PushPayload = { title: string; body: string; url?: string; tag?: string; recipientUserId?: string; ttlSeconds?: number };
 export type PushTarget = { endpoint: string; p256dh: string; auth: string };
 
 type Bytes = Uint8Array<ArrayBuffer>;
@@ -95,7 +95,7 @@ export async function sendWebPush(target: PushTarget, payload: PushPayload): Pro
       Authorization: await vapidAuthHeader(target.endpoint),
       "Content-Encoding": "aes128gcm",
       "Content-Type": "application/octet-stream",
-      TTL: String(60 * 60 * 24),
+      TTL: String(payload.ttlSeconds ?? 60 * 60 * 24),
       Urgency: "normal",
     },
     body,

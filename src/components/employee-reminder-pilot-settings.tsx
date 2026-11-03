@@ -1,0 +1,27 @@
+import { useEffect,useState } from 'react';
+import { useQuery,useQueryClient } from '@tanstack/react-query';
+import { useServerFn } from '@tanstack/react-start';
+import { Save,RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { getReminderPilot,saveReminderPilot } from '@/lib/employee-reminder-pilot.functions';
+export function EmployeeReminderPilotSettings() {
+ const get=useServerFn(getReminderPilot),save=useServerFn(saveReminderPilot),qc=useQueryClient();
+ const q=useQuery({queryKey:['employee-reminder-pilot'],queryFn:()=>get()});
+ const [ids,setIds]=useState<string[]>([]),[before,setBefore]=useState(15),[followup,setFollowup]=useState(5),[stages,setStages]=useState([true,true,true]),[channel,setChannel]=useState<'push'|'email'>('push'),[busy,setBusy]=useState(false);
+ useEffect(()=>{const p=q.data?.pilot;if(p){setIds(p.participant_ids);setBefore(p.before_minutes);setFollowup(p.followup_minutes);setStages([p.before_enabled,p.start_enabled,p.followup_enabled]);setChannel(p.channel as 'push'|'email');}},[q.data?.pilot]);
+ if(q.isLoading)return <p>Loading pilot settings…</p>;
+ if(q.error)return <p className="text-destructive">Unable to load pilot settings.</p>;
+ if(!q.data?.manager)return null;
+ const submit=async()=>{setBusy(true);try{await save({data:{participant_ids:ids,before_enabled:stages[0] ?? false,start_enabled:stages[1] ?? false,followup_enabled:stages[2] ?? false,before_minutes:before,followup_minutes:followup,channel}});await qc.invalidateQueries({queryKey:['employee-reminder-pilot']});toast.success('Pilot saved · delivery remains off');}catch(e){toast.error(e instanceof Error?e.message:'Unable to save pilot');}finally{setBusy(false);}};
+ return <section aria-label="Employee reminder pilot" className="space-y-5 border-y border-border py-6">
+ <div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-semibold">Employee reminder pilot</h2><p className="text-sm text-muted-foreground">Delivery locked off · broader rollout disabled</p></div><Button variant="outline" size="icon" aria-label="Recheck pilot readiness" onClick={()=>q.refetch()}><RefreshCw className="size-4"/></Button></div>
+ <fieldset className="flex flex-wrap gap-x-6 gap-y-3"><legend className="mb-2 font-medium text-sm">Two pilot participants ({ids.length}/2)</legend>{q.data.people.map(p=><label key={p.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ids.includes(p.id)} disabled={!ids.includes(p.id) && ids.length>=2} onChange={e=>setIds(e.target.checked?[...ids,p.id]:ids.filter(id=>id!==p.id))}/>{p.full_name}</label>)}</fieldset>
+ <div className="grid gap-3 sm:grid-cols-3">{['Before appointment','At scheduled start','One follow-up'].map((label,i)=><label key={label} className="text-sm"><span className="flex items-center gap-2"><input type="checkbox" checked={stages[i]} onChange={e=>setStages(stages.map((v,k)=>k===i?e.target.checked:v))}/>{label}</span>{i!==1 && <input aria-label={i===0?'Minutes before start':'Follow-up minutes after start'} type="number" min={0} max={120} value={i===0?before:followup} onChange={e=>i===0?setBefore(Number(e.target.value)):setFollowup(Number(e.target.value))} className="mt-2 w-24 rounded border border-input bg-background px-2 py-1"/>}</label>)}</div>
+ <fieldset className="flex flex-wrap gap-5 text-sm"><legend className="mb-2 font-medium">One delivery channel</legend><label><input type="radio" name="pilot-channel" checked={channel==='push'} onChange={()=>setChannel('push')}/> Push · {q.data.pushConfigured?'available':'setup needed'}</label><label><input type="radio" name="pilot-channel" checked={channel==='email'} disabled={!q.data.emailConfigured} onChange={()=>setChannel('email')}/> Outlook fallback · {q.data.emailConfigured?'available, not sending':'unavailable'}</label></fieldset>
+ <p className="text-sm text-muted-foreground">Maximum three attempts per appointment; at least ten minutes between employee reminders. The other employees are not participating.</p>
+ <div className="divide-y divide-border">{q.data.people.filter(p=>q.data?.pilot?.participant_ids.includes(p.id)).map(p=>{const devices=q.data?.devices.filter(d=>d.user_id===p.id) ?? [];return <div key={p.id} className="py-3 space-y-2"><h3 className="font-medium">{p.full_name}</h3>{!devices.length?<p className="text-sm">No device registered yet · pilot setup pending</p>:devices.map((d,i)=>{const last=q.data?.deviceHistory.find(h=>h.subscription_id===d.id);return <div key={d.id} className="text-sm border-l-2 border-border pl-3"><p>Device {i+1} · {d.user_agent?.includes('iPhone')?'iPhone':d.user_agent?.includes('Android')?'Android':'Browser'}</p><p className="text-muted-foreground">{d.registration_checked_at?'Registration checked '+new Date(d.registration_checked_at).toLocaleString():'Legacy registration · recheck on this device'} · {d.permission_state ?? 'permission unverified'}</p><p>{last?`Last attempt: ${last.status}${last.error?' · '+last.error:''}`:'No pilot delivery attempt'} · phone display unverified</p></div>;})}</div>;})}</div>
+ <Button onClick={submit} disabled={busy || ids.length!==2 || before<0 || before>120 || followup<0 || followup>120}><Save className="size-4"/>Save pilot settings</Button>
+ {q.data.history.length>0 && <ul className="text-sm divide-y divide-border">{q.data.history.map(h=><li key={h.id} className="py-2">{h.stage} · {h.action} · {h.channel} · {h.status} · {new Date(h.attempted_at).toLocaleString()}</li>)}</ul>}
+ </section>;
+}

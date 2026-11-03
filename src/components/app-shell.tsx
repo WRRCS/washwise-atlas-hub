@@ -9,6 +9,7 @@ import { AiChat } from "@/components/ai-chat";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUnreadCount } from "@/lib/sms.functions";
+import { deletePushSubscription } from '@/lib/push.functions';
 import { amIClientChatCapable, getClientChatUnread } from "@/lib/client-chat.functions";
 import { useT } from "@/lib/i18n";
 import { LanguageSetupDialog } from "@/components/language-setup-dialog";
@@ -106,6 +107,11 @@ function AppShellInner({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    const {getCurrentEndpoint,unsubscribeFromPush,setMessagingOwner}=await import('@/lib/push-client');
+    const endpoint=await getCurrentEndpoint().catch(()=>null);
+    await setMessagingOwner(null);
+    if(endpoint)await deletePushSubscription({data:{endpoint}}).catch(()=>undefined);
+    await unsubscribeFromPush().catch(()=>undefined);
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   };

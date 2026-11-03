@@ -993,6 +993,184 @@ export type Database = {
           },
         ]
       }
+      employee_reminder_attempts: {
+        Row: {
+          accepted_at: string | null
+          action: string
+          attempted_at: string
+          channel: string
+          error: string | null
+          id: string
+          job_id: string
+          reminder_key: string
+          scheduled_start: string
+          stage: string
+          status: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          action: string
+          attempted_at?: string
+          channel: string
+          error?: string | null
+          id?: string
+          job_id: string
+          reminder_key: string
+          scheduled_start: string
+          stage: string
+          status?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          action?: string
+          attempted_at?: string
+          channel?: string
+          error?: string | null
+          id?: string
+          job_id?: string
+          reminder_key?: string
+          scheduled_start?: string
+          stage?: string
+          status?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_reminder_attempts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_reminder_attempts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_reminder_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_reminder_device_attempts: {
+        Row: {
+          accepted_at: string | null
+          attempt_id: string
+          attempted_at: string
+          device_id: string | null
+          error: string | null
+          id: string
+          status: string
+          subscription_id: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          attempt_id: string
+          attempted_at?: string
+          device_id?: string | null
+          error?: string | null
+          id?: string
+          status: string
+          subscription_id?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          attempt_id?: string
+          attempted_at?: string
+          device_id?: string | null
+          error?: string | null
+          id?: string
+          status?: string
+          subscription_id?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_reminder_device_attempts_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "employee_reminder_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_reminder_device_attempts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_reminder_device_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_reminder_pilots: {
+        Row: {
+          before_enabled: boolean
+          before_minutes: number
+          channel: string
+          delivery_enabled: boolean
+          followup_enabled: boolean
+          followup_minutes: number
+          participant_ids: string[]
+          start_enabled: boolean
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          before_enabled?: boolean
+          before_minutes?: number
+          channel?: string
+          delivery_enabled?: boolean
+          followup_enabled?: boolean
+          followup_minutes?: number
+          participant_ids?: string[]
+          start_enabled?: boolean
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          before_enabled?: boolean
+          before_minutes?: number
+          channel?: string
+          delivery_enabled?: boolean
+          followup_enabled?: boolean
+          followup_minutes?: number
+          participant_ids?: string[]
+          start_enabled?: boolean
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_reminder_pilots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_unavailability: {
         Row: {
           all_day: boolean
@@ -2380,10 +2558,13 @@ export type Database = {
           auth: string
           client_id: string | null
           created_at: string
+          device_id: string | null
           endpoint: string
           id: string
           last_used_at: string | null
           p256dh: string
+          permission_state: string | null
+          registration_checked_at: string | null
           tenant_id: string | null
           user_agent: string | null
           user_id: string | null
@@ -2392,10 +2573,13 @@ export type Database = {
           auth: string
           client_id?: string | null
           created_at?: string
+          device_id?: string | null
           endpoint: string
           id?: string
           last_used_at?: string | null
           p256dh: string
+          permission_state?: string | null
+          registration_checked_at?: string | null
           tenant_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -2404,10 +2588,13 @@ export type Database = {
           auth?: string
           client_id?: string | null
           created_at?: string
+          device_id?: string | null
           endpoint?: string
           id?: string
           last_used_at?: string | null
           p256dh?: string
+          permission_state?: string | null
+          registration_checked_at?: string | null
           tenant_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -3928,6 +4115,19 @@ export type Database = {
       }
       admin_platform_stats: { Args: never; Returns: Json }
       can_view_client_specs: { Args: { _client_id: string }; Returns: boolean }
+      claim_employee_reminder: {
+        Args: {
+          _action: string
+          _channel: string
+          _job: string
+          _key: string
+          _stage: string
+          _start: string
+          _tenant: string
+          _user: string
+        }
+        Returns: string
+      }
       client_contact_info: {
         Args: { _ids?: string[] }
         Returns: {

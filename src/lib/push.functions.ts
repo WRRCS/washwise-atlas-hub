@@ -13,6 +13,7 @@ const subInput = z.object({
   p256dh: z.string().min(1),
   auth: z.string().min(1),
   user_agent: z.string().optional(),
+  device_id: z.string().uuid().optional(),
 });
 
 export const savePushSubscription = createServerFn({ method: "POST" })
@@ -33,6 +34,10 @@ export const savePushSubscription = createServerFn({ method: "POST" })
         {
           tenant_id: role.tenant_id,
           user_id: context.userId,
+          client_id: null,
+          device_id: data.device_id ?? null,
+          permission_state: "granted",
+          registration_checked_at: new Date().toISOString(),
           endpoint: data.endpoint,
           p256dh: data.p256dh,
           auth: data.auth,
@@ -43,6 +48,14 @@ export const savePushSubscription = createServerFn({ method: "POST" })
       );
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const checkMyPushRegistration = createServerFn({method:"POST"}).middleware([requireSupabaseAuth])
+  .inputValidator((input:unknown)=>z.object({endpoint:z.string().url()}).parse(input))
+  .handler(async({data,context})=>{
+    const {data:row,error}=await context.supabase.from("push_subscriptions").select("id,device_id,registration_checked_at").eq("endpoint",data.endpoint).eq("user_id",context.userId).maybeSingle();
+    if(error)throw new Error(error.message);
+    return {registered:!!row,userId:context.userId,deviceId:row?.device_id ?? null};
   });
 
 export const deletePushSubscription = createServerFn({ method: "POST" })

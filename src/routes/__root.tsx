@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -132,8 +132,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "robots", content: "noindex, nofollow" },
       { name: "twitter:title", content: "WRRCS.com — Wash Rinse Repeat Cleaning" },
       { name: "twitter:description", content: "Internal field service management for WRRCS.com: jobs, scheduling, SOPs, invoicing." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/50f631e2-33dd-4294-85d7-ff8b3e23ce39/id-preview-ab85c438--d344868a-ce88-407a-a141-0f3d42ef0e99.lovable.app-1783111080692.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/50f631e2-33dd-4294-85d7-ff8b3e23ce39/id-preview-ab85c438--d344868a-ce88-407a-a141-0f3d42ef0e99.lovable.app-1783111080692.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -172,19 +170,26 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const [identity,setIdentity]=useState<string|null>(null);
 
   useEffect(() => {
     let previousUser: string | null | undefined;
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       const userId = session?.user.id ?? null;
-      if (event === "INITIAL_SESSION") { previousUser = userId; return; }
+      if (event === "INITIAL_SESSION") { previousUser = userId; setIdentity(userId); return; }
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       if (event === "SIGNED_OUT" || previousUser !== userId) {
+        void import('@/lib/push-client').then(async m=>{
+          await m.setMessagingOwner(null);
+          const {clearLocalPushIdentity}=await import('@/lib/push-worker-registration');
+          await clearLocalPushIdentity();
+        });
         void queryClient.cancelQueries();
         queryClient.clear();
         window.localStorage.removeItem("atlas-offline-cache");
       }
       previousUser = userId;
+      setIdentity(userId);
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
@@ -195,7 +200,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <Outlet />
+        <Outlet key={identity ?? 'signed-out'} />
       </LanguageProvider>
       <Toaster />
       <OfflineBanner />

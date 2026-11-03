@@ -22,6 +22,7 @@ import { BulkReminderPrefsEditor } from "@/components/bulk-reminder-prefs-editor
 import { PhotoEmailSettings } from "@/components/photo-email-settings";
 import { ClockEmailSettings } from "@/components/clock-email-settings";
 import { CleanerActionReminderSettings } from "@/components/cleaner-action-reminder-settings";
+import { EmployeeReminderPilotSettings } from "@/components/employee-reminder-pilot-settings";
 
 export const Route = createFileRoute("/_authenticated/settings/notifications")({
   head: () => ({ meta: [{ title: "Notification settings | WRRCS" }, { name: "description", content: "Manage WRRCS staff reminders, photo upload emails and delivery history." }, { property: "og:title", content: "Notification settings | WRRCS" }, { property: "og:description", content: "Manage WRRCS staff reminders, photo upload emails and delivery history." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -138,7 +139,7 @@ function NotificationsSettings() {
         subtitle="Templates and delivery rules for client + team messaging"
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
-        <CleanerActionReminderSettings />
+        <EmployeeReminderPilotSettings />
         {canBulkEdit && <PhotoEmailSettings />}
         {canBulkEdit && <ClockEmailSettings />}
         <div className="bg-card rounded-xl ring-1 ring-black/5 p-6">
