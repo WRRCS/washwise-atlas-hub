@@ -169,6 +169,10 @@ function PayInvoicePage() {
               </EmbeddedCheckoutProvider>
             </div>
           )}
+
+          {inv.terms_text && (
+            <div className="mt-6 text-xs text-muted-foreground whitespace-pre-wrap border-t border-border/40 pt-4">{inv.terms_text}</div>
+          )}
         </div>
       </div>
     </>
