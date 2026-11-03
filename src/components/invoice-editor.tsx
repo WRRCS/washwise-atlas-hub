@@ -155,7 +155,7 @@ export function InvoiceEditor({ initial, onCancel }: { initial?: InvoiceEditorIn
       await qc.invalidateQueries({ queryKey: ["invoice", id] });
       toast.success("Invoice saved");
       if (thenSend) {
-        navigate({ to: "/invoices/$invoiceId", params: { invoiceId: id }, search: { send: 1 } });
+        navigate({ to: "/invoices/$invoiceId", params: { invoiceId: id }, search: { send: true } });
       } else {
         navigate({ to: "/invoices/$invoiceId", params: { invoiceId: id }, search: {} });
       }
