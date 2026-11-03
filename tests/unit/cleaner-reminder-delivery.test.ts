@@ -3,6 +3,7 @@ import {enqueueActionReminders,currentActionReminder,claimPushDelivery} from "..
 const now=Date.parse("2026-10-25T17:10:00Z");
 function fakeDb(){
   const records:Record<string,any[]>={
+    employee_reminder_pilots:[{tenant_id:"test-business",participant_ids:["test-cleaner","second-cleaner"],delivery_enabled:true}],
     cleaner_action_reminder_settings:[{user_id:"test-cleaner",tenant_id:"test-business",enabled:true,channels:["push"],clock_in_minutes_before:15,arrival_minutes_after:5}],
     jobs:[{id:"test-job",tenant_id:"test-business",assigned_to:null,status:"scheduled",scheduled_start:"2026-10-25T17:00:00Z",scheduled_end:"2026-10-25T19:00:00Z",service_location_label:"Fern",service_address:"12 Fern Road"}],
     profiles:[{id:"test-cleaner",tenant_id:"test-business",is_active:true}],job_employees:[{id:"assignment",job_id:"test-job",employee_id:"test-cleaner"}],time_entries:[],work_clock_entries:[],job_visits:[],notifications:[],
