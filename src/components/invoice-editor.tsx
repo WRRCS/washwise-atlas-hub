@@ -42,6 +42,16 @@ export type InvoiceEditorInitial = {
   line_items: EditorLine[];
 };
 
+/** Job-linked lines created automatically when a job is completed. Shown
+ *  read-only in the editor; their hours stay managed from the invoice page. */
+export type LockedLine = {
+  description: string;
+  details: string | null;
+  line_total_cents: number;
+  service_date: string | null;
+  hours: number | null;
+};
+
 const emptyLine = (): EditorLine => ({ description: "", details: "", quantity: 1, unitPriceStr: "", service_date: "" });
 
 function money(cents: number) {
@@ -52,7 +62,7 @@ function todayISO() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
 
-export function InvoiceEditor({ initial, onCancel }: { initial?: InvoiceEditorInitial; onCancel: () => void }) {
+export function InvoiceEditor({ initial, lockedLines = [], onCancel }: { initial?: InvoiceEditorInitial; lockedLines?: LockedLine[]; onCancel: () => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const clientsFn = useServerFn(listClients);
