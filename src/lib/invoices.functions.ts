@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderEmailForClientContext } from "@/lib/templates.functions";
 import { clientContact } from "@/lib/privacy";
 import { dueDateFrom } from "@/lib/payment-terms";
+import { computeInvoiceTotals, calcCardSurcharge } from "@/lib/invoice-totals";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
@@ -52,12 +53,12 @@ export const getInvoice = createServerFn({ method: "POST" })
     const [{ data: inv, error }, { data: items, error: ie }] = await Promise.all([
       context.supabase
         .from("invoices")
-        .select("id, number, status, subtotal_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, allow_card, allow_venmo, cleanings_count, payment_terms_days, bundle_month, job_id, client_id, client:clients(id, first_name, last_name, service_address)")
+        .select("id, number, status, subject, subtotal_cents, discount_cents, tax_rate_bp, tax_cents, surcharge_cents, total_cents, amount_cents, currency, issue_date, due_date, sent_at, paid_at, card_surcharge, allow_card, allow_venmo, cleanings_count, payment_terms_days, bundle_month, job_id, client_id, property_id, client_message, terms_text, client:clients(id, first_name, last_name, service_address), property:client_properties(id, label, address)")
         .eq("id", data.id)
         .maybeSingle(),
       context.supabase
         .from("invoice_line_items")
-        .select("id, description, quantity, unit_price_cents, line_total_cents, service_date, sort_order, hours, hours_manual, job_id")
+        .select("id, description, details, quantity, unit_price_cents, line_total_cents, service_date, sort_order, hours, hours_manual, job_id")
         .eq("invoice_id", data.id)
         .order("sort_order")
         .order("service_date"),
