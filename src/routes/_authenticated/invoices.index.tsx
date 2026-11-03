@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { listInvoices, createMonthlyBundle, previewMonthlyBundle } from "@/lib/invoices.functions";
 import { listClients } from "@/lib/entities.functions";
-import { Layers, Filter } from "lucide-react";
+import { Layers, Filter, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/invoices/")({
   component: InvoicesPage,
