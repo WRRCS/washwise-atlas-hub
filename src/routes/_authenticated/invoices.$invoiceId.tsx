@@ -145,11 +145,17 @@ function InvoiceDetailPage() {
         }
       />
       <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-6">
+        {(inv as any).subject && (
+          <p className="text-lg font-medium">{(inv as any).subject}</p>
+        )}
         {/* Header card */}
         <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 grid gap-6 md:grid-cols-3">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Bill to</p>
             <p className="font-medium">{fullName(inv.client)}</p>
+            {(inv as any).property && (
+              <p className="text-sm text-muted-foreground">Service at: {(inv as any).property.label} — {(inv as any).property.address}</p>
+            )}
             {inv.client?.email && <p className="text-sm text-muted-foreground">{inv.client.email}</p>}
             {inv.client?.phone && <p className="text-sm text-muted-foreground">{inv.client.phone}</p>}
             {inv.client?.billing_address && (
@@ -212,7 +218,11 @@ function InvoiceDetailPage() {
             <tbody>
               {inv.line_items.map((li) => (
                 <tr key={li.id} className="border-t border-border/40">
-                  <td className="px-4 py-3">{li.description}</td>
+                  <td className="px-4 py-3">
+                    <p>{li.description}</p>
+                    {(li as any).details && <p className="text-xs text-muted-foreground">{(li as any).details}</p>}
+                    {li.service_date && <p className="text-xs text-muted-foreground">Service date: {li.service_date}</p>}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {(li as any).hours != null ? (
                       <HoursCell line={li as any} editable={inv.status === "draft"} invoiceId={inv.id} />
