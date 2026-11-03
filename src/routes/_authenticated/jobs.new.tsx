@@ -79,6 +79,25 @@ function NewJob() {
     }
   }, [clientId, properties, propertyId]);
 
+  // Load the selected property's saved service default; switching properties
+  // replaces (never retains) the previous property's value.
+  const propertyDefaultService = defaultServiceTypeId(selectedProperty);
+  useEffect(() => {
+    setServiceId(propertyDefaultService);
+    setSaveDefaults(false);
+    if (propertyDefaultService) {
+      const s = services.find((x) => x.id === propertyDefaultService);
+      if (s) {
+        const [h, m] = start.slice(11, 16).split(":").map(Number);
+        const total = ((h * 60 + m + s.default_duration_minutes) % 1440 + 1440) % 1440;
+        setEndTime(`${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, propertyDefaultService]);
+
+  const serviceOverridden = serviceDefaultOverridden(selectedProperty, serviceId);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId || !serviceId || !start) return;
