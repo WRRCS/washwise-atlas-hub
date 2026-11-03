@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -170,12 +170,13 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const [identity,setIdentity]=useState<string|null>(null);
 
   useEffect(() => {
     let previousUser: string | null | undefined;
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       const userId = session?.user.id ?? null;
-      if (event === "INITIAL_SESSION") { previousUser = userId; return; }
+      if (event === "INITIAL_SESSION") { previousUser = userId; setIdentity(userId); return; }
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       if (event === "SIGNED_OUT" || previousUser !== userId) {
         void import('@/lib/push-client').then(async m=>{
@@ -188,6 +189,7 @@ function RootComponent() {
         window.localStorage.removeItem("atlas-offline-cache");
       }
       previousUser = userId;
+      setIdentity(userId);
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
@@ -198,7 +200,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <Outlet />
+        <Outlet key={identity ?? 'signed-out'} />
       </LanguageProvider>
       <Toaster />
       <OfflineBanner />

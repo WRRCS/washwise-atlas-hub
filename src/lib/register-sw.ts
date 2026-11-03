@@ -13,8 +13,10 @@ function isRefusedContext(): boolean {
   } catch {
     return true;
   }
-  const host = window.location.hostname;
-  if (host.startsWith("id-preview--") || host.startsWith("preview--")) return true;
+  const host = window.location.hostname.toLowerCase();
+  const label=host.split('.')[0] ?? '';
+  if (/\.(lovable\.app|gpt-eng\.com|gptengineer\.run)$/.test(host) && /^(?:id-preview|preview)(?:-[a-z0-9]+)?--.+$/.test(label)) return true;
+  if (/^project--.+-dev\.(lovable\.app|gpt-eng\.com|gptengineer\.run)$/.test(host)) return true;
   if (host === "lovableproject.com" || host.endsWith(".lovableproject.com")) return true;
   if (host === "lovableproject-dev.com" || host.endsWith(".lovableproject-dev.com")) return true;
   if (host === "beta.lovable.dev" || host.endsWith(".beta.lovable.dev")) return true;
