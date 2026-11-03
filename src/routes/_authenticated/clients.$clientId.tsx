@@ -1066,6 +1066,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
       priceStr: p.price_cents != null ? String(p.price_cents / 100) : "",
       sop: p.sop ?? "",
       sop_id: p.sop_id ?? "",
+      default_service_type_id: p.default_service_type_id ?? "",
     });
     setAdding(true);
   };
@@ -1092,6 +1093,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
           price_cents: form.priceStr.trim() !== "" ? Math.round((parseFloat(form.priceStr) || 0) * 100) : null,
           sop: form.sop.trim(),
           sop_id: form.sop_id || null,
+          default_service_type_id: form.default_service_type_id || null,
         },
       });
       toast.success(editing ? "Property updated" : "Property added");
