@@ -118,12 +118,15 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel }: { initial
   const totals = useMemo(
     () =>
       computeInvoiceTotals(
-        lines.map((l) => ({ quantity: l.quantity || 0, unit_price_cents: Math.round((parseFloat(l.unitPriceStr) || 0) * 100) })),
+        [
+          ...lockedLines.map((l) => ({ quantity: 1, unit_price_cents: l.line_total_cents })),
+          ...lines.map((l) => ({ quantity: l.quantity || 0, unit_price_cents: Math.round((parseFloat(l.unitPriceStr) || 0) * 100) })),
+        ],
         discountCents,
         taxRateBp,
         cardSurcharge,
       ),
-    [lines, discountCents, taxRateBp, cardSurcharge],
+    [lines, lockedLines, discountCents, taxRateBp, cardSurcharge],
   );
 
   const setLine = (i: number, patch: Partial<EditorLine>) =>
@@ -154,6 +157,7 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel }: { initial
 
   const save = async (thenSend: boolean) => {
     if (!clientId) { toast.error("Select a client"); return; }
+    if (!lines.length && !lockedLines.length) { toast.error("Add at least one line item"); return; }
     if (lines.some((l) => !l.description.trim())) { toast.error("Each line item needs a name"); return; }
     setSaving(true);
     try {
