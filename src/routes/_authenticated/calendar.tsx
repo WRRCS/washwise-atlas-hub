@@ -27,7 +27,7 @@ import { ZoomPanSurface } from "@/components/zoom-pan-surface";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 import { JobDetailView } from "./jobs.$jobId";
 import { PropertyTypeField } from "@/components/property-type-field";
-import { selectedPropertyType, type PropertyTypeDraft } from "@/lib/property-type";
+import { selectedPropertyType, defaultServiceTypeId, serviceDefaultOverridden, type PropertyTypeDraft } from "@/lib/property-type";
 
 
 
@@ -851,6 +851,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   const [clientId, setClientId] = useState("");
   const [serviceId, setServiceId] = useState("");
+  const [saveDefaults, setSaveDefaults] = useState(false);
   const [assignees, setAssignees] = useState<string[]>(employeeId ? [employeeId] : []);
   const [startTime, setStartTime] = useState("09:00");
   const [dateStr, setDateStr] = useState(format(date, "yyyy-MM-dd"));
