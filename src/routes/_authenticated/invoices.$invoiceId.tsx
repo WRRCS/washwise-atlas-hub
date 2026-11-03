@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { InvoicePhotosCard } from "@/components/invoice-photos-card";
+import { InvoiceEditor } from "@/components/invoice-editor";
 import { format } from "date-fns";
 import {
   getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, deleteInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours,
@@ -16,11 +17,14 @@ import {
 import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
 import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functions";
-import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2, Trash2, Pencil } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    send: search.send === 1 || search.send === "1",
+  }),
   component: InvoiceDetailPage,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
