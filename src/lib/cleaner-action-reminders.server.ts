@@ -1,6 +1,6 @@
 import { actionReminder, type ActionReminderKind } from "@/lib/cleaner-action-reminders";
 type Db = any;
-export async function loadActionState(db:Db,jobId:string,userId:string) {
+export async function loadActionState(db:Db,jobId:string,userId:string,pilot=false) {
   const results = await Promise.all([
     db.from("jobs").select("id,tenant_id,scheduled_start,scheduled_end,status,assigned_to,service_location_label,service_address").eq("id",jobId).maybeSingle(),
     db.from("profiles").select("tenant_id,is_active").eq("id",userId).maybeSingle(),
@@ -13,14 +13,18 @@ export async function loadActionState(db:Db,jobId:string,userId:string) {
   const failure=results.find(r=>r.error);
   if(failure)throw new Error(failure.error.message);
   const [{data:job},{data:profile},{data:settings},{data:links},{data:clock},{data:other},{data:visits}] = results;
-  if(!job || !settings || profile?.tenant_id!==job.tenant_id || settings.tenant_id!==job.tenant_id)return null;
+  if(!job || (!settings && !pilot) || profile?.tenant_id!==job.tenant_id || (settings && settings.tenant_id!==job.tenant_id))return null;
   return {job,settings,userId,assigned:job.assigned_to===userId || !!links?.length,active:!!profile.is_active,clockedIn:!!clock?.length || !!other?.some((r:any)=>r.kind==="work"),onLunch:!!other?.some((r:any)=>r.kind==="lunch"),arrived:!!visits?.length};
 }
 export async function enqueueActionReminders(db:Db,now=Date.now()) {
+  const {data:pilots,error:pilotError}=await db.from("employee_reminder_pilots").select("tenant_id,participant_ids,delivery_enabled").eq("delivery_enabled",true);
+  if(pilotError)throw new Error(pilotError.message);
+  if(!pilots?.length)return 0;
   const {data:prefs,error}=await db.from("cleaner_action_reminder_settings").select("user_id,tenant_id").eq("enabled",true);
   if(error)throw new Error(error.message);
   let queued=0;
   for(const pref of prefs ?? []) {
+    if(!pilots.some((p:any)=>p.tenant_id===pref.tenant_id && p.participant_ids.length===2 && p.participant_ids.includes(pref.user_id)))continue;
     const {data:jobs,error:je}=await db.from("jobs").select("id").eq("tenant_id",pref.tenant_id).in("status",["scheduled","in_progress"]).gt("scheduled_end",new Date(now).toISOString()).lte("scheduled_start",new Date(now+120*60000).toISOString());
     if(je)throw new Error(je.message);
     for(const job of jobs ?? []) {
@@ -40,6 +44,9 @@ export async function claimPushDelivery(db:Db,id:string) {
   return !!data?.length;
 }
 export async function currentActionReminder(db:Db,n:{recipient_id:string;payload:Record<string,unknown>;action_reminder_key:string|null},now=Date.now()) {
+  const {data:pilots,error}=await db.from("employee_reminder_pilots").select("participant_ids,delivery_enabled").eq("delivery_enabled",true);
+  if(error)throw new Error(error.message);
+  if(!pilots?.some((p:any)=>p.participant_ids.length===2 && p.participant_ids.includes(n.recipient_id)))return null;
   if(typeof n.payload.job_id!=="string" || !["clock_in","arrival"].includes(String(n.payload.action)))return null;
   const state=await loadActionState(db,n.payload.job_id,n.recipient_id);if(!state)return null;
   const reminder=actionReminder(state,n.payload.action as ActionReminderKind,now);

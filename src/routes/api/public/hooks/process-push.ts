@@ -42,7 +42,9 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { sendWebPush } = await import("@/lib/push.server");
         const { enqueueActionReminders, currentActionReminder, claimPushDelivery } = await import("@/lib/cleaner-action-reminders.server");
-        await enqueueActionReminders(supabaseAdmin);
+        // The staged pilot replaces legacy action enqueueing; unrelated push queues stay unchanged.
+        const { dispatchPilotReminders } = await import("@/lib/employee-reminder-pilot.server");
+        await dispatchPilotReminders(supabaseAdmin);
 
         // Fetch batch of pending push notifications
         const { data: pending, error } = await supabaseAdmin
