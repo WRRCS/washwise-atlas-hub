@@ -1,4 +1,5 @@
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
+import { EmployeeReminderBanner } from "@/components/employee-reminder-banner";
 import { clockTotals } from "@/lib/clock-totals";
 import { jobLocation } from "@/lib/job-location";
 import { createFileRoute } from "@tanstack/react-router";
@@ -273,6 +274,7 @@ function MyJobsPage() {
       <PageHeader title={t("My jobs")} subtitle={t("Your assigned work and time tracking")} />
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 pt-4">
         <EmployeeClockControls />
+        <EmployeeReminderBanner />
         <PushToggle mode="app" />
       </div>
       <div className="max-w-5xl w-full mx-auto px-6 md:px-8 py-6">
