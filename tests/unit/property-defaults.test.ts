@@ -26,6 +26,6 @@ describe("persistent property service defaults", () => {
     expect(serviceDefaultOverridden({ default_service_type_id: "svc-1" }, "")).toBe(false);
   });
   it("treats a first-time choice on a property without defaults as not an override", () => {
-    expect(serviceDefaultOverridden({ default_service_type_id: null }, "svc-1")).toBe(true);
+    expect(serviceDefaultOverridden({ default_service_type_id: null }, "svc-1")).toBe(false);
   });
 });
