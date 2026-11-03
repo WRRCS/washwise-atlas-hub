@@ -49,4 +49,20 @@ describe("invoice editor totals", () => {
     expect(t.surcharge_cents).toBe(0);
     expect(t.total_cents).toBe(0);
   });
+
+  it("includes preserved job-linked lines in the totals", () => {
+    // Auto-generated job line ($180) kept as-is + one edited line ($50):
+    // subtotal $230, $30 discount, 10% tax on $200 = $20, no surcharge.
+    const jobLine = { quantity: 1, unit_price_cents: 18000 };
+    const t = computeInvoiceTotals([jobLine, { quantity: 1, unit_price_cents: 5000 }], 3000, 1000, false);
+    expect(t.subtotal_cents).toBe(23000);
+    expect(t.tax_cents).toBe(2000);
+    expect(t.total_cents).toBe(22000);
+  });
+
+  it("supports an invoice whose only lines are job-linked", () => {
+    const t = computeInvoiceTotals([{ quantity: 1, unit_price_cents: 12500 }], 0, 0, false);
+    expect(t.subtotal_cents).toBe(12500);
+    expect(t.total_cents).toBe(12500);
+  });
 });

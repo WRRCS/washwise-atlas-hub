@@ -42,6 +42,16 @@ export type InvoiceEditorInitial = {
   line_items: EditorLine[];
 };
 
+/** Job-linked lines created automatically when a job is completed. Shown
+ *  read-only in the editor; their hours stay managed from the invoice page. */
+export type LockedLine = {
+  description: string;
+  details: string | null;
+  line_total_cents: number;
+  service_date: string | null;
+  hours: number | null;
+};
+
 const emptyLine = (): EditorLine => ({ description: "", details: "", quantity: 1, unitPriceStr: "", service_date: "" });
 
 function money(cents: number) {
@@ -52,7 +62,7 @@ function todayISO() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
 
-export function InvoiceEditor({ initial, onCancel }: { initial?: InvoiceEditorInitial; onCancel: () => void }) {
+export function InvoiceEditor({ initial, lockedLines = [], onCancel }: { initial?: InvoiceEditorInitial; lockedLines?: LockedLine[]; onCancel: () => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const clientsFn = useServerFn(listClients);
@@ -73,7 +83,7 @@ export function InvoiceEditor({ initial, onCancel }: { initial?: InvoiceEditorIn
   const [subject, setSubject] = useState(initial?.subject ?? "For Services Rendered");
   const [issueDate, setIssueDate] = useState(initial?.issue_date ?? todayISO());
   const [termsDays, setTermsDays] = useState(initial?.payment_terms_days ?? 14);
-  const [lines, setLines] = useState<EditorLine[]>(initial?.line_items?.length ? initial.line_items : [emptyLine()]);
+  const [lines, setLines] = useState<EditorLine[]>(initial ? initial.line_items : [emptyLine()]);
   const [discountStr, setDiscountStr] = useState(initial ? (initial.discount_cents / 100).toFixed(2) : "");
   const [taxRateStr, setTaxRateStr] = useState(initial ? (initial.tax_rate_bp / 100).toString() : "");
   const [message, setMessage] = useState(initial?.client_message ?? "");
@@ -108,12 +118,15 @@ export function InvoiceEditor({ initial, onCancel }: { initial?: InvoiceEditorIn
   const totals = useMemo(
     () =>
       computeInvoiceTotals(
-        lines.map((l) => ({ quantity: l.quantity || 0, unit_price_cents: Math.round((parseFloat(l.unitPriceStr) || 0) * 100) })),
+        [
+          ...lockedLines.map((l) => ({ quantity: 1, unit_price_cents: l.line_total_cents })),
+          ...lines.map((l) => ({ quantity: l.quantity || 0, unit_price_cents: Math.round((parseFloat(l.unitPriceStr) || 0) * 100) })),
+        ],
         discountCents,
         taxRateBp,
         cardSurcharge,
       ),
-    [lines, discountCents, taxRateBp, cardSurcharge],
+    [lines, lockedLines, discountCents, taxRateBp, cardSurcharge],
   );
 
   const setLine = (i: number, patch: Partial<EditorLine>) =>
@@ -144,6 +157,7 @@ export function InvoiceEditor({ initial, onCancel }: { initial?: InvoiceEditorIn
 
   const save = async (thenSend: boolean) => {
     if (!clientId) { toast.error("Select a client"); return; }
+    if (!lines.length && !lockedLines.length) { toast.error("Add at least one line item"); return; }
     if (lines.some((l) => !l.description.trim())) { toast.error("Each line item needs a name"); return; }
     setSaving(true);
     try {
@@ -227,6 +241,22 @@ export function InvoiceEditor({ initial, onCancel }: { initial?: InvoiceEditorIn
       {/* Line items */}
       <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 space-y-4">
         <h3 className="text-sm font-semibold">Products / Services</h3>
+        {lockedLines.length > 0 && (
+          <div className="space-y-2">
+            {lockedLines.map((l, i) => (
+              <div key={i} className="rounded-lg bg-muted/40 ring-1 ring-border/60 p-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{l.description}</p>
+                  {l.details && <p className="text-xs text-muted-foreground mt-0.5">{l.details}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From a completed job{l.hours != null ? ` — ${l.hours} hrs billed` : ""}. Edit hours from the invoice page.
+                  </p>
+                </div>
+                <span className="text-sm font-medium tabular-nums shrink-0">{money(l.line_total_cents)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="space-y-4">
           {lines.map((l, i) => (
             <div key={i} className="rounded-lg ring-1 ring-border/60 p-4 space-y-3">
