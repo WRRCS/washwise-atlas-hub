@@ -241,6 +241,22 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel }: { initial
       {/* Line items */}
       <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 space-y-4">
         <h3 className="text-sm font-semibold">Products / Services</h3>
+        {lockedLines.length > 0 && (
+          <div className="space-y-2">
+            {lockedLines.map((l, i) => (
+              <div key={i} className="rounded-lg bg-muted/40 ring-1 ring-border/60 p-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{l.description}</p>
+                  {l.details && <p className="text-xs text-muted-foreground mt-0.5">{l.details}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    From a completed job{l.hours != null ? ` — ${l.hours} hrs billed` : ""}. Edit hours from the invoice page.
+                  </p>
+                </div>
+                <span className="text-sm font-medium tabular-nums shrink-0">{money(l.line_total_cents)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="space-y-4">
           {lines.map((l, i) => (
             <div key={i} className="rounded-lg ring-1 ring-border/60 p-4 space-y-3">
