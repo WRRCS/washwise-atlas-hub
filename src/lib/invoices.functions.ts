@@ -86,13 +86,15 @@ export const setCardSurcharge = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: inv, error: ge } = await context.supabase
       .from("invoices")
-      .select("subtotal_cents")
+      .select("subtotal_cents, discount_cents, tax_rate_bp")
       .eq("id", data.id)
       .maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!inv) throw new Error("Invoice not found");
+    const taxable = Math.max(inv.subtotal_cents - (inv.discount_cents ?? 0), 0);
+    const tax = Math.round((taxable * (inv.tax_rate_bp ?? 0)) / 10000);
     const surcharge = data.enabled ? calcSurcharge(inv.subtotal_cents) : 0;
-    const total = inv.subtotal_cents + surcharge;
+    const total = taxable + tax + surcharge;
     const { error } = await context.supabase
       .from("invoices")
       .update({
@@ -526,10 +528,13 @@ export const setLineItemHours = createServerFn({ method: "POST" })
     if (ue) throw new Error(ue.message);
     const { data: lines } = await sb.from("invoice_line_items").select("line_total_cents").eq("invoice_id", li.invoice_id);
     const subtotal = (lines ?? []).reduce((s: number, l: any) => s + (l.line_total_cents ?? 0), 0);
+    const { data: invRow } = await sb.from("invoices").select("discount_cents, tax_rate_bp").eq("id", li.invoice_id).maybeSingle();
+    const taxable = Math.max(subtotal - (invRow?.discount_cents ?? 0), 0);
+    const tax = Math.round((taxable * (invRow?.tax_rate_bp ?? 0)) / 10000);
     const surcharge = li.invoice?.card_surcharge ? calcSurcharge(subtotal) : 0;
-    const total = subtotal + surcharge;
+    const total = taxable + tax + surcharge;
     const { error: ie } = await sb.from("invoices")
-      .update({ subtotal_cents: subtotal, surcharge_cents: surcharge, total_cents: total, amount_cents: total })
+      .update({ subtotal_cents: subtotal, tax_cents: tax, surcharge_cents: surcharge, total_cents: total, amount_cents: total })
       .eq("id", li.invoice_id);
     if (ie) throw new Error(ie.message);
     return { ok: true, hours };
