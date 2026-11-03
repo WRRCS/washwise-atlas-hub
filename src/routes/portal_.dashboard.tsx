@@ -19,6 +19,11 @@ export const Route = createFileRoute("/portal_/dashboard")({
   head: () => ({
     meta: [
       { title: "My Portal — Wash Rinse Repeat Cleaning" },
+      {name:'description',content:'Your WRRCS appointments, invoices and service requests.'},
+      {property:'og:title',content:'My Portal — Wash Rinse Repeat Cleaning'},
+      {property:'og:description',content:'Your WRRCS appointments, invoices and service requests.'},
+      {property:'og:type',content:'website'},
+      {name:'twitter:card',content:'summary'},
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -94,6 +99,11 @@ function PortalDashboard() {
   });
 
   const handleSignOut = async () => {
+    const {getCurrentEndpoint,unsubscribeFromPush,setMessagingOwner}=await import('@/lib/push-client');
+    const endpoint=await getCurrentEndpoint().catch(()=>null);
+    await setMessagingOwner(null);
+    if(endpoint)await supabase.rpc('portal_delete_push_subscription',{_endpoint:endpoint});
+    await unsubscribeFromPush().catch(()=>undefined);
     await qc.cancelQueries();
     qc.clear();
     await supabase.auth.signOut();
