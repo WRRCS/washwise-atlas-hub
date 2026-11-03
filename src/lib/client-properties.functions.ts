@@ -24,7 +24,7 @@ export const listClientProperties = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ClientProperty[]> => {
     const { data: rows, error } = await context.supabase
       .from("client_properties")
-      .select("id, client_id, label, address, notes, is_primary, is_active, property_type, service_frequency, price_cents, sop, sop_id")
+      .select("id, client_id, label, address, notes, is_primary, is_active, property_type, default_service_type_id, service_frequency, price_cents, sop, sop_id")
       .eq("client_id", data.client_id)
       .eq("is_active", true)
       .order("is_primary", { ascending: false })
@@ -42,6 +42,7 @@ const upsertSchema = z.object({
   is_primary: z.boolean().optional(),
   is_active: z.boolean().optional(),
   property_type: z.string().trim().max(60).optional(),
+  default_service_type_id: z.string().uuid().nullable().optional(),
   service_frequency: z.string().trim().max(60).optional(),
   price_cents: z.number().int().nonnegative().nullable().optional(),
   sop: z.string().trim().max(12000).optional(),
