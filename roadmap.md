@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Prepare Dalton/Barbra-only reminder pilot: manager participant selection, backend enforcement, delivery off, staged clock/arrival rules, banner, per-device readiness, push/offline registration and account ownership fix, separate Outlook fallback.
+- [ ] Run no-send reminder/registration regression tests and signed-in pilot settings/banner checks.
+- [ ] Controlled real-phone receipt, locked-screen appointment links and suppression — awaiting Leslie's test authorization and physical-phone observations; broader rollout stays disabled.
+
 - [ ] Prepare Outlook owner/admin photo-batch and work-session clock alerts, separate recipient/enable controls, confirmation gate, saved-event deduplication and honest provider-status logs. Preserve existing email routing and client hold.
 - [ ] Confirm sender/test recipient, verify deployed delivery, then activate only explicitly confirmed notification types — awaiting Leslie's confirmation and publication.
 
