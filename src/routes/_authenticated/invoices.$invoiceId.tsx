@@ -238,6 +238,18 @@ function InvoiceDetailPage() {
                 <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Subtotal</td>
                 <td className="px-4 py-2 text-right tabular-nums">{money(inv.subtotal_cents)}</td>
               </tr>
+              {(inv as any).discount_cents > 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Discount</td>
+                  <td className="px-4 py-2 text-right tabular-nums">−{money((inv as any).discount_cents)}</td>
+                </tr>
+              )}
+              {(inv as any).tax_cents > 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Tax ({((inv as any).tax_rate_bp / 100).toString()}%)</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{money((inv as any).tax_cents)}</td>
+                </tr>
+              )}
               {inv.surcharge_cents > 0 && (
                 <tr>
                   <td colSpan={3} className="px-4 py-2 text-right text-muted-foreground">Card surcharge (3% + $0.30)</td>
