@@ -9,6 +9,7 @@ import {
   savePushSubscription,
   deletePushSubscription,
   sendTestPush,
+  checkMyPushRegistration,
 } from "@/lib/push.functions";
 import {
   isIOSDevice,
@@ -17,6 +18,7 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
   getCurrentEndpoint,
+  setMessagingOwner,
 } from "@/lib/push-client";
 
 type Props = {
@@ -34,6 +36,9 @@ export function PushToggle({ mode, className }: Props) {
   const saveFn = useServerFn(savePushSubscription);
   const deleteFn = useServerFn(deletePushSubscription);
   const testFn = useServerFn(sendTestPush);
+  const checkFn = useServerFn(checkMyPushRegistration);
+  const [detail,setDetail]=useState("Not checked on this device");
+  const [userId,setUserId]=useState<string | null>(null);
 
   const [subscribed, setSubscribed] = useState<boolean>(false);
   const [busy, setBusy] = useState(false);
@@ -42,18 +47,37 @@ export function PushToggle({ mode, className }: Props) {
   const iosNeedsInstall = isIOSDevice() && !isStandalone();
 
   useEffect(() => {
-    if (!supported) {
-      setReady(true);
-      return;
-    }
-    getCurrentEndpoint()
-      .then((ep) => setSubscribed(!!ep))
-      .finally(() => setReady(true));
-  }, [supported]);
+    supabase.auth.getUser().then(({data})=>setUserId(data.user?.id ?? null));
+  },[]);
+  async function recheck() {
+    setSubscribed(false);
+    try {
+      if(!supported){setDetail('Notifications unsupported on this device');return;}
+      const endpoint=await getCurrentEndpoint();
+      if(!endpoint){setDetail('Not registered on this device');return;}
+      if(mode==='app') {
+        const result=await checkFn({data:{endpoint}});
+        const permission=Notification.permission;
+        setSubscribed(result.registered && permission==='granted');
+        setDetail(result.registered ? `Registration saved · permission ${permission} · phone display unverified` : 'This account has no matching registration · enable again');
+        if(result.registered && permission==='granted')await setMessagingOwner(result.userId);
+        else await setMessagingOwner(null);
+      } else {setSubscribed(Notification.permission==='granted');setDetail('Browser registration found · phone display unverified');}
+    } catch(e){setDetail(e instanceof Error?e.message:'Unable to recheck registration');}
+    finally {setReady(true);}
+  }
+  useEffect(()=>{setReady(false);void recheck();},[userId,mode]);
 
   async function enable() {
     setBusy(true);
     try {
+      if(window.top!==window.self)throw new Error('Open WRRCS in its own tab to enable notifications.');
+      // Never reuse another account's endpoint on a shared phone.
+      const current=await getCurrentEndpoint();
+      if(current && mode==='app') {
+        const check=await checkFn({data:{endpoint:current}});
+        if(!check.registered) {await setMessagingOwner(null);await unsubscribeFromPush();}
+      }
       const { publicKey } = await vapidFn();
       const payload = await subscribeToPush(publicKey);
       if (mode === "portal") {
@@ -66,9 +90,12 @@ export function PushToggle({ mode, className }: Props) {
         if (error) throw new Error(error.message);
       } else {
         await saveFn({ data: payload });
+        const check=await checkFn({data:{endpoint:payload.endpoint}});
+        await setMessagingOwner(check.userId);
       }
       setSubscribed(true);
-      toast.success("Notifications enabled");
+      setDetail("Registration saved · permission granted · phone display unverified");
+      toast.success("Device registered · phone delivery still needs testing");
     } catch (e: any) {
       toast.error(e?.message ?? "Could not enable notifications");
     } finally {
@@ -79,7 +106,8 @@ export function PushToggle({ mode, className }: Props) {
   async function disable() {
     setBusy(true);
     try {
-      const endpoint = await unsubscribeFromPush();
+      const endpoint = await getCurrentEndpoint();
+      await setMessagingOwner(null);
       if (endpoint) {
         if (mode === "portal") {
           await supabase.rpc("portal_delete_push_subscription", { _endpoint: endpoint });
@@ -87,7 +115,9 @@ export function PushToggle({ mode, className }: Props) {
           await deleteFn({ data: { endpoint } });
         }
       }
+      await unsubscribeFromPush();
       setSubscribed(false);
+      setDetail("Not registered on this device");
       toast.success("Notifications disabled");
     } catch (e: any) {
       toast.error(e?.message ?? "Could not disable notifications");
@@ -125,7 +155,9 @@ export function PushToggle({ mode, className }: Props) {
 
   return (
     <div className={className}>
+      <p className="text-xs text-muted-foreground mb-2">{detail}</p>
       <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" onClick={()=>recheck()} disabled={busy}>Recheck registration</Button>
         {subscribed ? (
           <>
             <Button size="sm" variant="outline" onClick={disable} disabled={busy}>
@@ -140,7 +172,7 @@ export function PushToggle({ mode, className }: Props) {
                   setBusy(true);
                   try {
                     const r = await testFn();
-                    toast.success(`Test sent to ${r.sent}/${r.devices} device(s)`);
+                    toast.success(`Push service accepted ${r.sent}/${r.devices} requests · check your phone`);
                   } catch (e: any) {
                     toast.error(e?.message ?? "Test failed");
                   } finally {
