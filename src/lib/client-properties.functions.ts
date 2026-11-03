@@ -11,6 +11,7 @@ export type ClientProperty = {
   is_primary: boolean;
   is_active: boolean;
   property_type: string | null;
+  default_service_type_id: string | null;
   service_frequency: string | null;
   price_cents: number | null;
   sop: string | null;
