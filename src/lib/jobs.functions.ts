@@ -87,6 +87,8 @@ const createJobSchema = z.object({
   notes: z.string().optional(),
   price_cents: z.number().int().nonnegative().optional(),
   is_recurring: z.boolean().default(false),
+  /** When true, the chosen service/property type replace the property's saved defaults. */
+  save_property_defaults: z.boolean().default(false),
   recurrence_rule: z.enum(["weekly", "biweekly", "every3weeks", "every4weeks", "monthly", "monthly_dow"]).nullable().optional(),
   /** null = open-ended series (auto-extends into future schedules) */
   recurrence_end: z.string().nullable().optional(),
@@ -128,26 +130,37 @@ export const createJob = createServerFn({ method: "POST" })
     let locationLabel: string | null = null;
     let propertyId = data.property_id ?? null;
     let propertyType: string;
+    let savedServiceDefault: string | null = null;
     if (propertyId) {
-      const { data: property, error } = await context.supabase.from("client_properties").select("address, label, property_type").eq("id", propertyId).eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id).single();
+      const { data: property, error } = await context.supabase.from("client_properties").select("address, label, property_type, default_service_type_id").eq("id", propertyId).eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id).single();
       if (error || !property) throw new Error("Select a property belonging to this client");
       address = property.address.trim(); locationLabel = property.label;
       propertyType = requirePropertyType(property.property_type, data.property_type);
+      savedServiceDefault = property.default_service_type_id ?? null;
     } else {
       if (!address) throw new Error("Select a service location before saving this appointment");
       const { data: existing, error: lookupError } = await context.supabase.from("client_properties")
-        .select("id, label, property_type").eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id)
+        .select("id, label, property_type, default_service_type_id").eq("client_id", data.client_id).eq("tenant_id", prof.tenant_id)
         .eq("address", address).eq("is_active", true).limit(1).maybeSingle();
       if (lookupError) throw new Error(lookupError.message);
       propertyType = requirePropertyType(existing?.property_type, data.property_type);
-      if (existing) { propertyId = existing.id; locationLabel = existing.label; }
+      if (existing) { propertyId = existing.id; locationLabel = existing.label; savedServiceDefault = existing.default_service_type_id ?? null; }
       else {
         const { data: added, error: addError } = await context.supabase.from("client_properties")
-          .insert({ tenant_id: prof.tenant_id, client_id: data.client_id, label: "Main address", address, property_type: propertyType })
+          .insert({ tenant_id: prof.tenant_id, client_id: data.client_id, label: "Main address", address, property_type: propertyType, default_service_type_id: data.service_type_id })
           .select("id, label").single();
         if (addError) throw new Error(addError.message);
         propertyId = added.id; locationLabel = added.label;
+        savedServiceDefault = data.service_type_id;
       }
+    }
+    // Remember this service for future scheduling when the property has no
+    // default yet, or replace the saved defaults when the scheduler asked to.
+    if (propertyId && (data.save_property_defaults || !savedServiceDefault)) {
+      const defaultUpdates: Record<string, unknown> = { default_service_type_id: data.service_type_id };
+      if (data.save_property_defaults) defaultUpdates.property_type = propertyType;
+      const { error: defaultError } = await context.supabase.from("client_properties").update(defaultUpdates).eq("id", propertyId);
+      if (defaultError) throw new Error(defaultError.message);
     }
     if (!address) throw new Error("Select a service location before saving this appointment");
     const tz = (tenant as any)?.timezone || DEFAULT_TZ;
