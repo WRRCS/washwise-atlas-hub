@@ -989,7 +989,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
         setConflicts(null);
         setClientId("");
         setPropertyId(""); setTypeDraft({ key: "", value: "" });
-        setServiceId("");
+        setServiceId(""); setSaveDefaults(false);
         setNotes("");
         setPriceStr("");
         setStartTime(endTime);
@@ -1031,6 +1031,12 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
               <option value="">Select…</option>
               {services.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+            {serviceOverridden && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-1">
+                <input type="checkbox" checked={saveDefaults} onChange={(e) => setSaveDefaults(e.target.checked)} className="size-3.5" />
+                Save as this property's defaults
+              </label>
+            )}
           </Field>
           <Field label="Property">
             {!clientId ? (
