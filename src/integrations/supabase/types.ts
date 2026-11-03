@@ -534,6 +534,7 @@ export type Database = {
           client_id: string
           color: string | null
           created_at: string
+          default_service_type_id: string | null
           id: string
           is_active: boolean
           is_primary: boolean
@@ -552,6 +553,7 @@ export type Database = {
           client_id: string
           color?: string | null
           created_at?: string
+          default_service_type_id?: string | null
           id?: string
           is_active?: boolean
           is_primary?: boolean
@@ -570,6 +572,7 @@ export type Database = {
           client_id?: string
           color?: string | null
           created_at?: string
+          default_service_type_id?: string | null
           id?: string
           is_active?: boolean
           is_primary?: boolean
@@ -589,6 +592,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_properties_default_service_type_id_fkey"
+            columns: ["default_service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
           {
