@@ -19,6 +19,7 @@ import {
   createPhotoUploadUrl, registerClientPhoto, deleteClientPhoto,
 } from "@/lib/entities.functions";
 import { listClientProperties, upsertClientProperty, deleteClientProperty, type ClientProperty } from "@/lib/client-properties.functions";
+import { listServiceTypes } from "@/lib/entities.functions";
 import { getClientSummary, listClientJobs } from "@/lib/client-page.functions";
 import { listInvoices } from "@/lib/invoices.functions";
 import { listQuoteTemplates, listEmailTemplates, getClientPreference, setClientQuotePreference, sendClientEmail, renderTemplate, COMPANY_NAME } from "@/lib/templates.functions";
@@ -1048,10 +1049,12 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
   });
   const listSopsFn = useServerFn(listSops);
   const { data: sopOptions = [] } = useQuery({ queryKey: ["sops"], queryFn: () => listSopsFn() });
+  const svcFn = useServerFn(listServiceTypes);
+  const { data: serviceOptions = [] } = useQuery({ queryKey: ["services"], queryFn: () => svcFn({}) });
   const [editing, setEditing] = useState<ClientProperty | null>(null);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "", sop_id: "" };
+  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "", sop_id: "", default_service_type_id: "" };
   const [form, setForm] = useState(empty);
 
   const startAdd = () => { setForm(empty); setEditing(null); setAdding(true); };
