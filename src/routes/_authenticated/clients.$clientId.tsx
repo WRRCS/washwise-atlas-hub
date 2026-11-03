@@ -1153,6 +1153,18 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
             <FieldRow label="Price ($)">
               <Input type="number" min={0} step="0.01" placeholder="Set price for this property" value={form.priceStr} onChange={(e) => setForm({ ...form, priceStr: e.target.value })} />
             </FieldRow>
+            <FieldRow label="Default service">
+              <select
+                value={form.default_service_type_id}
+                onChange={(e) => setForm({ ...form, default_service_type_id: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">None — ask each time</option>
+                {serviceOptions.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </FieldRow>
             <div className="md:col-span-2">
               <FieldRow label="SOP document (from the SOP library)">
                 <select
