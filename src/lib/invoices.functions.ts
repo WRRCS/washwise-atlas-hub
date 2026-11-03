@@ -700,11 +700,16 @@ export const createInvoice = createServerFn({ method: "POST" })
     return { id: invoice.id as string, number: invoice.number as string };
   });
 
-/** Replace a draft invoice's content from the editor. Owners/managers only. */
+/** Replace a draft invoice's content from the editor. Owners/managers only.
+ *  Job-linked lines (created when a job is completed) are preserved as-is —
+ *  their hours stay managed from the invoice page — while every other line is
+ *  replaced by the editor's lines. Totals always cover both kinds. */
 export const updateInvoice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ id: z.string().uuid() }).merge(invoiceEditorSchema).parse(input),
+    z.object({ id: z.string().uuid() })
+      .merge(invoiceEditorSchema.extend({ line_items: z.array(editorLineSchema) }))
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const tenantId = await requireInvoiceManager(context);
@@ -715,7 +720,23 @@ export const updateInvoice = createServerFn({ method: "POST" })
     if (!inv) throw new Error("Invoice not found");
     if (inv.status !== "draft") throw new Error("Only draft invoices can be edited. Un-send it first.");
     const propertyId = await verifyProperty(sb, tenantId, data.client_id, data.property_id);
-    const totals = editorTotals(data);
+    // Job-linked lines stay untouched; include them in the totals.
+    const { data: jobLines, error: jlErr } = await sb.from("invoice_line_items")
+      .select("id, line_total_cents, sort_order").eq("invoice_id", data.id).not("job_id", "is", null);
+    if (jlErr) throw new Error(jlErr.message);
+    const kept = jobLines ?? [];
+    if (!kept.length && !data.line_items.length) {
+      throw new Error("Add at least one line item");
+    }
+    const totals = computeInvoiceTotals(
+      [
+        ...kept.map((l: any) => ({ quantity: 1, unit_price_cents: l.line_total_cents ?? 0 })),
+        ...data.line_items,
+      ],
+      data.discount_cents,
+      data.tax_rate_bp,
+      data.card_surcharge,
+    );
     const { error } = await sb
       .from("invoices")
       .update({
@@ -737,20 +758,17 @@ export const updateInvoice = createServerFn({ method: "POST" })
         allow_card: data.allow_card,
         allow_venmo: data.allow_venmo,
         card_surcharge: data.card_surcharge,
-        cleanings_count: data.line_items.length,
+        cleanings_count: kept.length + data.line_items.length,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
-    // Job-linked lines (hourly billing) stay managed from the invoice page.
-    const { data: jobLines } = await sb.from("invoice_line_items")
-      .select("id").eq("invoice_id", data.id).not("job_id", "is", null);
-    if ((jobLines ?? []).length) {
-      throw new Error("This invoice has job-linked lines; edit hours from the invoice page instead.");
-    }
+    // Replace only the non-job lines; job-linked lines keep their identity so
+    // hours recalculation and duplicate-invoice guards keep working.
     const { error: de } = await sb.from("invoice_line_items")
-      .delete().eq("invoice_id", data.id);
+      .delete().eq("invoice_id", data.id).is("job_id", null);
     if (de) throw new Error(de.message);
-    await insertEditorLines(sb, tenantId, data.id, data.line_items);
+    const sortBase = kept.reduce((m: number, l: any) => Math.max(m, (l.sort_order ?? 0) + 1), 0);
+    await insertEditorLines(sb, tenantId, data.id, data.line_items, sortBase);
     if (data.save_defaults) {
       await sb.from("tenants").update({
         invoice_message_default: data.client_message?.trim() || null,
