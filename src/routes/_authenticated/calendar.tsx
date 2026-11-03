@@ -929,6 +929,21 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId]);
 
+  // Load the selected property's saved service default; switching properties
+  // replaces (never retains) the previous property's value.
+  const propertyDefaultService = defaultServiceTypeId(selectedProperty);
+  useEffect(() => {
+    setServiceId(propertyDefaultService);
+    setSaveDefaults(false);
+    if (propertyDefaultService) {
+      const s = services.find((x: any) => x.id === propertyDefaultService);
+      if (s) setEndTime(addMinutesToTime(startTime, s.default_duration_minutes));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, propertyDefaultService]);
+
+  const serviceOverridden = serviceDefaultOverridden(selectedProperty, serviceId);
+
   const toggleAssignee = (id: string) => {
     setAssignees((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     setConflicts(null);
@@ -961,6 +976,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
           notes: notes || undefined,
           price_cents: priceCents,
           is_recurring: recur.mode === "recurring",
+          save_property_defaults: saveDefaults,
           recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
           recurrence_end: recurrenceEndValue(recur, dateStr),
         },
