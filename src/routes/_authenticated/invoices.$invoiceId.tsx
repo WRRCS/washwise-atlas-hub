@@ -374,6 +374,23 @@ function InvoiceDetailPage() {
 
 
 
+        {((inv as any).client_message || (inv as any).terms_text) && (
+          <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 space-y-3">
+            {(inv as any).client_message && (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Client message</p>
+                <p className="text-sm whitespace-pre-wrap">{(inv as any).client_message}</p>
+              </div>
+            )}
+            {(inv as any).terms_text && (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Contract / Disclaimer</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{(inv as any).terms_text}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         <InvoicePhotosCard invoiceId={inv.id} />
       <Dialog open={sendOpen} onOpenChange={setSendOpen}>
         <DialogContent>
