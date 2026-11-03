@@ -48,6 +48,7 @@ function fullName(c: { first_name: string | null; last_name: string | null } | n
 
 function InvoiceDetailPage() {
   const { invoiceId } = Route.useParams();
+  const { send: sendParam } = Route.useSearch();
   const qc = useQueryClient();
   const getFn = useServerFn(getInvoice);
   const sendFn = useServerFn(sendInvoice);
@@ -59,6 +60,7 @@ function InvoiceDetailPage() {
   const [sendOpen, setSendOpen] = useState(false);
   const [sendTo, setSendTo] = useState("");
   const [sending, setSending] = useState(false);
+  const [editing, setEditing] = useState(false);
   const toggleFn = useServerFn(setCardSurcharge);
   const payOptsFn = useServerFn(setInvoicePaymentOptions);
   const termsFn = useServerFn(setInvoiceTerms);
@@ -67,6 +69,14 @@ function InvoiceDetailPage() {
     queryKey: ["invoice", invoiceId],
     queryFn: () => getFn({ data: { id: invoiceId } }),
   });
+
+  // "Save & send" from the editor lands here with ?send=1.
+  useEffect(() => {
+    if (sendParam && inv?.status === "draft") {
+      setSendTo(inv.client?.email ?? "");
+      setSendOpen(true);
+    }
+  }, [sendParam, inv?.id, inv?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
@@ -77,6 +87,51 @@ function InvoiceDetailPage() {
   if (!inv) return <div className="p-8 text-sm text-muted-foreground">Invoice not found.</div>;
 
   const canEdit = inv.status === "draft";
+  const hasJobLines = inv.line_items.some((li: any) => li.job_id);
+
+  if (editing && canEdit && !hasJobLines) {
+    return (
+      <>
+        <PageHeader
+          title={`Edit invoice ${inv.number}`}
+          subtitle={fullName(inv.client)}
+          action={
+            <button onClick={() => setEditing(false)} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <ArrowLeft className="size-4" /> Back
+            </button>
+          }
+        />
+        <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6">
+          <InvoiceEditor
+            initial={{
+              id: inv.id,
+              number: inv.number,
+              client_id: inv.client_id ?? "",
+              property_id: (inv as any).property_id ?? null,
+              subject: (inv as any).subject ?? "For Services Rendered",
+              issue_date: (inv.issue_date ?? "").slice(0, 10),
+              payment_terms_days: inv.payment_terms_days ?? 14,
+              discount_cents: (inv as any).discount_cents ?? 0,
+              tax_rate_bp: (inv as any).tax_rate_bp ?? 0,
+              client_message: (inv as any).client_message ?? "",
+              terms_text: (inv as any).terms_text ?? "",
+              allow_card: (inv as any).allow_card !== false,
+              allow_venmo: (inv as any).allow_venmo !== false,
+              card_surcharge: inv.card_surcharge,
+              line_items: inv.line_items.map((li: any) => ({
+                description: li.description,
+                details: li.details ?? "",
+                quantity: li.quantity,
+                unitPriceStr: (li.unit_price_cents / 100).toFixed(2),
+                service_date: li.service_date ?? "",
+              })),
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
