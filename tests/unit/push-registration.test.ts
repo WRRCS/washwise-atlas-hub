@@ -1,0 +1,8 @@
+import {describe,it,expect,vi,afterEach} from 'vitest';
+import {messagingRegistration,ensureMessagingRegistration,clearLocalPushIdentity,PUSH_SCOPE} from '../../src/lib/push-worker-registration';
+afterEach(()=>vi.unstubAllGlobals());
+describe('push registration isolation',()=>{
+ it('does not reuse root offline registration',async()=>{const offline={scope:'https://wrrcs.com/'};const push={scope:'https://wrrcs.com/push-messaging/',active:{}};const register=vi.fn().mockResolvedValue(push);vi.stubGlobal('navigator',{serviceWorker:{getRegistrations:async()=>[offline],register}});expect(await messagingRegistration()).toBeNull();expect(await ensureMessagingRegistration()).toBe(push);expect(register).toHaveBeenCalledWith('/push-sw.js',{scope:PUSH_SCOPE});});
+ it('reuses only messaging scope and leaves root worker in place',async()=>{const root={scope:'https://wrrcs.com/'};const push={scope:'https://wrrcs.com/push-messaging/'};vi.stubGlobal('navigator',{serviceWorker:{getRegistrations:async()=>[root,push]}});expect(await messagingRegistration()).toBe(push);});
+ it('account change unsubscribes and closes old notices without unregistering offline',async()=>{const unsubscribe=vi.fn().mockResolvedValue(true),close=vi.fn(),removeItem=vi.fn();const reg={pushManager:{getSubscription:async()=>({unsubscribe})},getNotifications:async()=>[{close}],unregister:vi.fn()};vi.stubGlobal('navigator',{serviceWorker:{getRegistrations:async()=>[reg]}});vi.stubGlobal('localStorage',{removeItem});await clearLocalPushIdentity();expect(unsubscribe).toHaveBeenCalledOnce();expect(close).toHaveBeenCalledOnce();expect(reg.unregister).not.toHaveBeenCalled();});
+});

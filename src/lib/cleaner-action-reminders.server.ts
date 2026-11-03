@@ -1,7 +1,7 @@
 import { actionReminder, type ActionReminderKind } from "@/lib/cleaner-action-reminders";
 type Db = any;
 export async function loadActionState(db:Db,jobId:string,userId:string,pilot=false) {
-  const results = await Promise.all([
+  const requests = [
     db.from("jobs").select("id,tenant_id,scheduled_start,scheduled_end,status,assigned_to,service_location_label,service_address").eq("id",jobId).maybeSingle(),
     db.from("profiles").select("tenant_id,is_active").eq("id",userId).maybeSingle(),
     db.from("cleaner_action_reminder_settings").select("*").eq("user_id",userId).maybeSingle(),
@@ -9,7 +9,9 @@ export async function loadActionState(db:Db,jobId:string,userId:string,pilot=fal
     db.from("time_entries").select("id").eq("user_id",userId).is("ended_at",null),
     db.from("work_clock_entries").select("kind").eq("user_id",userId).is("ended_at",null),
     db.from("job_visits").select("id").eq("job_id",jobId).eq("employee_id",userId).limit(1),
-  ]);
+  ];
+  const results=[];
+  for(let i=0;i<requests.length;i+=6)results.push(...await Promise.all(requests.slice(i,i+6)));
   const failure=results.find(r=>r.error);
   if(failure)throw new Error(failure.error.message);
   const [{data:job},{data:profile},{data:settings},{data:links},{data:clock},{data:other},{data:visits}] = results;
