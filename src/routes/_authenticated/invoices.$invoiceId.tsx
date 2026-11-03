@@ -87,9 +87,10 @@ function InvoiceDetailPage() {
   if (!inv) return <div className="p-8 text-sm text-muted-foreground">Invoice not found.</div>;
 
   const canEdit = inv.status === "draft";
-  const hasJobLines = inv.line_items.some((li: any) => li.job_id);
+  const jobLines = inv.line_items.filter((li: any) => li.job_id);
+  const editableLines = inv.line_items.filter((li: any) => !li.job_id);
 
-  if (editing && canEdit && !hasJobLines) {
+  if (editing && canEdit) {
     return (
       <>
         <PageHeader
@@ -118,7 +119,7 @@ function InvoiceDetailPage() {
               allow_card: (inv as any).allow_card !== false,
               allow_venmo: (inv as any).allow_venmo !== false,
               card_surcharge: inv.card_surcharge,
-              line_items: inv.line_items.map((li: any) => ({
+              line_items: editableLines.map((li: any) => ({
                 description: li.description,
                 details: li.details ?? "",
                 quantity: li.quantity,
@@ -126,6 +127,13 @@ function InvoiceDetailPage() {
                 service_date: li.service_date ?? "",
               })),
             }}
+            lockedLines={jobLines.map((li: any) => ({
+              description: li.description,
+              details: li.details ?? null,
+              line_total_cents: li.line_total_cents,
+              service_date: li.service_date ?? null,
+              hours: li.hours ?? null,
+            }))}
             onCancel={() => setEditing(false)}
           />
         </div>
