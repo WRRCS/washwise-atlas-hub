@@ -307,6 +307,11 @@ function InvoiceDetailPage() {
             ))}
           </div>
           <div className="flex gap-2">
+            {inv.status === "draft" && !hasJobLines && (
+              <Button variant="outline" onClick={() => setEditing(true)}>
+                <Pencil className="size-4 mr-1.5" /> Edit
+              </Button>
+            )}
             {inv.status === "draft" && (
               <Button
                 onClick={() => { setSendTo(inv.client?.email ?? ""); setSendOpen(true); }}
