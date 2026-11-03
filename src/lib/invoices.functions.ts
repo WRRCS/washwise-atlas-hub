@@ -545,7 +545,7 @@ export const setLineItemHours = createServerFn({ method: "POST" })
 const editorLineSchema = z.object({
   description: z.string().trim().min(1, "Each line needs a name").max(200),
   details: z.string().trim().max(1000).optional(),
-  quantity: z.number().min(0.01).max(10000),
+  quantity: z.number().int().min(1).max(10000),
   unit_price_cents: z.number().int().min(0).max(100_000_000),
   service_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
@@ -741,15 +741,15 @@ export const updateInvoice = createServerFn({ method: "POST" })
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
-    // Replace lines, but keep rows tied to a job (hourly billing links) intact.
-    const { error: de } = await sb.from("invoice_line_items")
-      .delete().eq("invoice_id", data.id).is("job_id", null);
-    if (de) throw new Error(de.message);
-    const { data: kept } = await sb.from("invoice_line_items")
-      .select("id").eq("invoice_id", data.id);
-    if ((kept ?? []).length) {
+    // Job-linked lines (hourly billing) stay managed from the invoice page.
+    const { data: jobLines } = await sb.from("invoice_line_items")
+      .select("id").eq("invoice_id", data.id).not("job_id", "is", null);
+    if ((jobLines ?? []).length) {
       throw new Error("This invoice has job-linked lines; edit hours from the invoice page instead.");
     }
+    const { error: de } = await sb.from("invoice_line_items")
+      .delete().eq("invoice_id", data.id);
+    if (de) throw new Error(de.message);
     await insertEditorLines(sb, tenantId, data.id, data.line_items);
     if (data.save_defaults) {
       await sb.from("tenants").update({
