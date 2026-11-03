@@ -19,6 +19,7 @@ import {
   createPhotoUploadUrl, registerClientPhoto, deleteClientPhoto,
 } from "@/lib/entities.functions";
 import { listClientProperties, upsertClientProperty, deleteClientProperty, type ClientProperty } from "@/lib/client-properties.functions";
+import { listServiceTypes } from "@/lib/entities.functions";
 import { getClientSummary, listClientJobs } from "@/lib/client-page.functions";
 import { listInvoices } from "@/lib/invoices.functions";
 import { listQuoteTemplates, listEmailTemplates, getClientPreference, setClientQuotePreference, sendClientEmail, renderTemplate, COMPANY_NAME } from "@/lib/templates.functions";
@@ -1048,10 +1049,12 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
   });
   const listSopsFn = useServerFn(listSops);
   const { data: sopOptions = [] } = useQuery({ queryKey: ["sops"], queryFn: () => listSopsFn() });
+  const svcFn = useServerFn(listServiceTypes);
+  const { data: serviceOptions = [] } = useQuery({ queryKey: ["services"], queryFn: () => svcFn({}) });
   const [editing, setEditing] = useState<ClientProperty | null>(null);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "", sop_id: "" };
+  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "", sop_id: "", default_service_type_id: "" };
   const [form, setForm] = useState(empty);
 
   const startAdd = () => { setForm(empty); setEditing(null); setAdding(true); };
@@ -1063,6 +1066,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
       priceStr: p.price_cents != null ? String(p.price_cents / 100) : "",
       sop: p.sop ?? "",
       sop_id: p.sop_id ?? "",
+      default_service_type_id: p.default_service_type_id ?? "",
     });
     setAdding(true);
   };
@@ -1089,6 +1093,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
           price_cents: form.priceStr.trim() !== "" ? Math.round((parseFloat(form.priceStr) || 0) * 100) : null,
           sop: form.sop.trim(),
           sop_id: form.sop_id || null,
+          default_service_type_id: form.default_service_type_id || null,
         },
       });
       toast.success(editing ? "Property updated" : "Property added");
@@ -1147,6 +1152,18 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
             </FieldRow>
             <FieldRow label="Price ($)">
               <Input type="number" min={0} step="0.01" placeholder="Set price for this property" value={form.priceStr} onChange={(e) => setForm({ ...form, priceStr: e.target.value })} />
+            </FieldRow>
+            <FieldRow label="Default service">
+              <select
+                value={form.default_service_type_id}
+                onChange={(e) => setForm({ ...form, default_service_type_id: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">None — ask each time</option>
+                {serviceOptions.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </FieldRow>
             <div className="md:col-span-2">
               <FieldRow label="SOP document (from the SOP library)">

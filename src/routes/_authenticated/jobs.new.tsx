@@ -12,7 +12,7 @@ import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
 import { PropertyTypeField } from "@/components/property-type-field";
-import { selectedPropertyType, type PropertyTypeDraft } from "@/lib/property-type";
+import { selectedPropertyType, defaultServiceTypeId, serviceDefaultOverridden, type PropertyTypeDraft } from "@/lib/property-type";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
@@ -38,6 +38,7 @@ function NewJob() {
   const [propertyId, setPropertyId] = useState("");
   const [typeDraft, setTypeDraft] = useState<PropertyTypeDraft>({ key: "", value: "" });
   const [serviceId, setServiceId] = useState("");
+  const [saveDefaults, setSaveDefaults] = useState(false);
   const [assignee, setAssignee] = useState("");
   const [start, setStart] = useState(() => {
     const d = new Date(); d.setHours(9, 0, 0, 0);
@@ -78,6 +79,25 @@ function NewJob() {
     }
   }, [clientId, properties, propertyId]);
 
+  // Load the selected property's saved service default; switching properties
+  // replaces (never retains) the previous property's value.
+  const propertyDefaultService = defaultServiceTypeId(selectedProperty);
+  useEffect(() => {
+    setServiceId(propertyDefaultService);
+    setSaveDefaults(false);
+    if (propertyDefaultService) {
+      const s = services.find((x) => x.id === propertyDefaultService);
+      if (s) {
+        const [h, m] = start.slice(11, 16).split(":").map(Number);
+        const total = ((h * 60 + m + s.default_duration_minutes) % 1440 + 1440) % 1440;
+        setEndTime(`${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, propertyDefaultService]);
+
+  const serviceOverridden = serviceDefaultOverridden(selectedProperty, serviceId);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId || !serviceId || !start) return;
@@ -103,6 +123,7 @@ function NewJob() {
           assigned_employee_ids: assignee ? [assignee] : [],
           notes: notes || undefined,
           is_recurring: recur.mode === "recurring",
+          save_property_defaults: saveDefaults,
           recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
           recurrence_end: recurrenceEndValue(recur, startDate),
         },
@@ -172,6 +193,12 @@ function NewJob() {
                 <option value="">Select…</option>
                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              {serviceOverridden && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-1">
+                  <input type="checkbox" checked={saveDefaults} onChange={(e) => setSaveDefaults(e.target.checked)} className="size-3.5" />
+                  Save as this property's defaults
+                </label>
+              )}
             </Field>
             <Field label="Cleaner">
               <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">

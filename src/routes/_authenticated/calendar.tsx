@@ -27,7 +27,7 @@ import { ZoomPanSurface } from "@/components/zoom-pan-surface";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 import { JobDetailView } from "./jobs.$jobId";
 import { PropertyTypeField } from "@/components/property-type-field";
-import { selectedPropertyType, type PropertyTypeDraft } from "@/lib/property-type";
+import { selectedPropertyType, defaultServiceTypeId, serviceDefaultOverridden, type PropertyTypeDraft } from "@/lib/property-type";
 
 
 
@@ -851,6 +851,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   const [clientId, setClientId] = useState("");
   const [serviceId, setServiceId] = useState("");
+  const [saveDefaults, setSaveDefaults] = useState(false);
   const [assignees, setAssignees] = useState<string[]>(employeeId ? [employeeId] : []);
   const [startTime, setStartTime] = useState("09:00");
   const [dateStr, setDateStr] = useState(format(date, "yyyy-MM-dd"));
@@ -928,6 +929,21 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId]);
 
+  // Load the selected property's saved service default; switching properties
+  // replaces (never retains) the previous property's value.
+  const propertyDefaultService = defaultServiceTypeId(selectedProperty);
+  useEffect(() => {
+    setServiceId(propertyDefaultService);
+    setSaveDefaults(false);
+    if (propertyDefaultService) {
+      const s = services.find((x: any) => x.id === propertyDefaultService);
+      if (s) setEndTime(addMinutesToTime(startTime, s.default_duration_minutes));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, propertyDefaultService]);
+
+  const serviceOverridden = serviceDefaultOverridden(selectedProperty, serviceId);
+
   const toggleAssignee = (id: string) => {
     setAssignees((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     setConflicts(null);
@@ -960,6 +976,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
           notes: notes || undefined,
           price_cents: priceCents,
           is_recurring: recur.mode === "recurring",
+          save_property_defaults: saveDefaults,
           recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
           recurrence_end: recurrenceEndValue(recur, dateStr),
         },
@@ -972,7 +989,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
         setConflicts(null);
         setClientId("");
         setPropertyId(""); setTypeDraft({ key: "", value: "" });
-        setServiceId("");
+        setServiceId(""); setSaveDefaults(false);
         setNotes("");
         setPriceStr("");
         setStartTime(endTime);
@@ -1014,6 +1031,12 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
               <option value="">Select…</option>
               {services.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+            {serviceOverridden && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-1">
+                <input type="checkbox" checked={saveDefaults} onChange={(e) => setSaveDefaults(e.target.checked)} className="size-3.5" />
+                Save as this property's defaults
+              </label>
+            )}
           </Field>
           <Field label="Property">
             {!clientId ? (
