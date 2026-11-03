@@ -157,7 +157,7 @@ export const createJob = createServerFn({ method: "POST" })
     // Remember this service for future scheduling when the property has no
     // default yet, or replace the saved defaults when the scheduler asked to.
     if (propertyId && (data.save_property_defaults || !savedServiceDefault)) {
-      const defaultUpdates: Record<string, unknown> = { default_service_type_id: data.service_type_id };
+      const defaultUpdates: { default_service_type_id: string; property_type?: string } = { default_service_type_id: data.service_type_id };
       if (data.save_property_defaults) defaultUpdates.property_type = propertyType;
       const { error: defaultError } = await context.supabase.from("client_properties").update(defaultUpdates).eq("id", propertyId);
       if (defaultError) throw new Error(defaultError.message);
