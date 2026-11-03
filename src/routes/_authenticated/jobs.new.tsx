@@ -12,7 +12,7 @@ import { createJob } from "@/lib/jobs.functions";
 import { listClients, listServiceTypes, listEmployees } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
 import { PropertyTypeField } from "@/components/property-type-field";
-import { selectedPropertyType, type PropertyTypeDraft } from "@/lib/property-type";
+import { selectedPropertyType, defaultServiceTypeId, serviceDefaultOverridden, type PropertyTypeDraft } from "@/lib/property-type";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/new")({
@@ -38,6 +38,7 @@ function NewJob() {
   const [propertyId, setPropertyId] = useState("");
   const [typeDraft, setTypeDraft] = useState<PropertyTypeDraft>({ key: "", value: "" });
   const [serviceId, setServiceId] = useState("");
+  const [saveDefaults, setSaveDefaults] = useState(false);
   const [assignee, setAssignee] = useState("");
   const [start, setStart] = useState(() => {
     const d = new Date(); d.setHours(9, 0, 0, 0);
