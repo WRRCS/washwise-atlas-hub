@@ -315,7 +315,7 @@ function InvoiceDetailPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            {inv.status === "draft" && !hasJobLines && (
+            {inv.status === "draft" && (
               <Button variant="outline" onClick={() => setEditing(true)}>
                 <Pencil className="size-4 mr-1.5" /> Edit
               </Button>
