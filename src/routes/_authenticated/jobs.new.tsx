@@ -123,6 +123,7 @@ function NewJob() {
           assigned_employee_ids: assignee ? [assignee] : [],
           notes: notes || undefined,
           is_recurring: recur.mode === "recurring",
+          save_property_defaults: saveDefaults,
           recurrence_rule: recur.mode === "recurring" ? recur.rule : null,
           recurrence_end: recurrenceEndValue(recur, startDate),
         },
@@ -192,6 +193,12 @@ function NewJob() {
                 <option value="">Select…</option>
                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              {serviceOverridden && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-1">
+                  <input type="checkbox" checked={saveDefaults} onChange={(e) => setSaveDefaults(e.target.checked)} className="size-3.5" />
+                  Save as this property's defaults
+                </label>
+              )}
             </Field>
             <Field label="Cleaner">
               <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
