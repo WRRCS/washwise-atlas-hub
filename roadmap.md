@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Fix existing draft invoice saves to exit editing and Save & send to open confirmation; verify without sending client email.
+
 - [x] Prepare Dalton/Barbra-only reminder pilot: manager participant selection, backend enforcement, delivery locked off, staged clock/arrival rules, banner, per-device readiness, separate push/offline scopes, authenticated registration checks, account-change cleanup and separate Outlook fallback. No notification attempts created; no SMS added; unrelated queues preserved.
 - [x] Thirty-three no-send reminder/registration tests pass; signed in as Dalton and Barbra, clock and device recheck controls render with no runtime errors and employee pilot-management controls absent. Latest build OK.
 - [ ] Signed-in manager participant-save and due-banner/appointment-link browser checks — waiting for an authorized manager session and controlled appointment setup; employee screens and no-send eligibility rules verified.

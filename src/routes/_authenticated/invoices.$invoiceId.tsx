@@ -23,8 +23,16 @@ import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   validateSearch: (search: Record<string, unknown>): { send?: boolean } => ({
-    send: search.send === 1 || search.send === "1" ? true : undefined,
+    send: search.send === true || search.send === 1 || search.send === "1" ? true : undefined,
   }),
+  head: () => ({ meta: [
+    { title: "Invoice details | WRRCS" },
+    { name: "description", content: "Review, edit and confirm sending a WRRCS invoice." },
+    { property: "og:title", content: "Invoice details | WRRCS" },
+    { property: "og:description", content: "Review, edit and confirm sending a WRRCS invoice." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: InvoiceDetailPage,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
@@ -135,6 +143,7 @@ function InvoiceDetailPage() {
               hours: li.hours ?? null,
             }))}
             onCancel={() => setEditing(false)}
+            onSaved={() => setEditing(false)}
           />
         </div>
       </>
