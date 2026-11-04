@@ -78,13 +78,14 @@ function InvoiceDetailPage() {
     queryFn: () => getFn({ data: { id: invoiceId } }),
   });
 
-  // "Save & send" from the editor lands here with ?send=1.
+  // Consume the send request so canceling and editing again can reopen confirmation.
   useEffect(() => {
     if (sendParam && inv?.status === "draft") {
       setSendTo(inv.client?.email ?? "");
       setSendOpen(true);
+      void navigate({ to: "/invoices/$invoiceId", params: { invoiceId }, search: {}, replace: true });
     }
-  }, [sendParam, inv?.id, inv?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sendParam, inv?.id, inv?.status, invoiceId, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
