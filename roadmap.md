@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Fix existing draft saves to notify the parent and exit editing; accept the boolean send flag and consume it after opening confirmation so repeat attempts work. Eleven invoice tests pass; build OK. No emails sent.
+- [ ] Signed-in existing-draft browser save/confirmation check — blocked: requesting-user session mint found no matching account, and browser redirects to sign-in. Changes remain preview-only.
+
 - [x] Prepare Dalton/Barbra-only reminder pilot: manager participant selection, backend enforcement, delivery locked off, staged clock/arrival rules, banner, per-device readiness, separate push/offline scopes, authenticated registration checks, account-change cleanup and separate Outlook fallback. No notification attempts created; no SMS added; unrelated queues preserved.
 - [x] Thirty-three no-send reminder/registration tests pass; signed in as Dalton and Barbra, clock and device recheck controls render with no runtime errors and employee pilot-management controls absent. Latest build OK.
 - [ ] Signed-in manager participant-save and due-banner/appointment-link browser checks — waiting for an authorized manager session and controlled appointment setup; employee screens and no-send eligibility rules verified.

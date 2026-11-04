@@ -62,7 +62,7 @@ function todayISO() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
 
-export function InvoiceEditor({ initial, lockedLines = [], onCancel }: { initial?: InvoiceEditorInitial; lockedLines?: LockedLine[]; onCancel: () => void }) {
+export function InvoiceEditor({ initial, lockedLines = [], onCancel, onSaved }: { initial?: InvoiceEditorInitial; lockedLines?: LockedLine[]; onCancel: () => void; onSaved?: () => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const clientsFn = useServerFn(listClients);
@@ -168,6 +168,7 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel }: { initial
       await qc.invalidateQueries({ queryKey: ["invoices"] });
       await qc.invalidateQueries({ queryKey: ["invoice", id] });
       toast.success("Invoice saved");
+      onSaved?.();
       if (thenSend) {
         navigate({ to: "/invoices/$invoiceId", params: { invoiceId: id }, search: { send: true } });
       } else {

@@ -23,8 +23,16 @@ import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   validateSearch: (search: Record<string, unknown>): { send?: boolean } => ({
-    send: search.send === 1 || search.send === "1" ? true : undefined,
+    send: search.send === true || search.send === 1 || search.send === "1" ? true : undefined,
   }),
+  head: () => ({ meta: [
+    { title: "Invoice details | WRRCS" },
+    { name: "description", content: "Review, edit and confirm sending a WRRCS invoice." },
+    { property: "og:title", content: "Invoice details | WRRCS" },
+    { property: "og:description", content: "Review, edit and confirm sending a WRRCS invoice." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: InvoiceDetailPage,
   errorComponent: ({ error }) => <div className="p-8 text-sm text-destructive">{(error as Error).message}</div>,
 });
@@ -70,13 +78,14 @@ function InvoiceDetailPage() {
     queryFn: () => getFn({ data: { id: invoiceId } }),
   });
 
-  // "Save & send" from the editor lands here with ?send=1.
+  // Consume the send request so canceling and editing again can reopen confirmation.
   useEffect(() => {
     if (sendParam && inv?.status === "draft") {
       setSendTo(inv.client?.email ?? "");
       setSendOpen(true);
+      void navigate({ to: "/invoices/$invoiceId", params: { invoiceId }, search: {}, replace: true });
     }
-  }, [sendParam, inv?.id, inv?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sendParam, inv?.id, inv?.status, invoiceId, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
@@ -135,6 +144,7 @@ function InvoiceDetailPage() {
               hours: li.hours ?? null,
             }))}
             onCancel={() => setEditing(false)}
+            onSaved={() => setEditing(false)}
           />
         </div>
       </>
