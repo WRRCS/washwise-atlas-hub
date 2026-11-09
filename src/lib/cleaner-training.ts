@@ -1,5 +1,7 @@
 import content from "./cleaner-training.json";
 import type { Lang } from "@/lib/i18n";
+import pdfEn from "../assets/training/WRRCS-Cleaner-Training-EN.pdf?url";
+import pdfUk from "../assets/training/WRRCS-Cleaner-Training-UK.pdf?url";
 
 export type TrainingSection = {
   id: string;
@@ -25,10 +27,8 @@ export type TrainingGuide = {
 /** One shared source for the in-app page and the printable PDFs. */
 export const CLEANER_TRAINING = content as Record<Lang, TrainingGuide>;
 
-export const TRAINING_PDF: Record<Lang, string> = {
-  en: "/training/WRRCS-Cleaner-Training-EN.pdf",
-  uk: "/training/WRRCS-Cleaner-Training-UK.pdf",
-};
+
+export const TRAINING_PDF: Record<Lang, string> = { en: pdfEn, uk: pdfUk };
 
 const files = import.meta.glob("../assets/training/*.jpg", { eager: true, import: "default" }) as Record<string, string>;
 

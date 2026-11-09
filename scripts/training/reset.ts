@@ -1,0 +1,10 @@
+import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "fs";
+const env = Object.fromEntries(readFileSync("/dev-server/.env", "utf8").split("\n").filter((l) => l.includes("=")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^"|"$/g, "")]; }));
+const admin = createClient(env.SUPABASE_URL || env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const demo = JSON.parse(readFileSync("/tmp/training/demo.json", "utf8"));
+const T = demo.tenant;
+if (T === "00000000-0000-0000-0000-000000000001") throw new Error("refusing real tenant");
+for (const tb of ["job_visits", "job_sop_confirmations"]) console.log(tb, (await (admin.from(tb as any) as any).delete().eq("tenant_id", T)).error?.message ?? "ok");
+for (const tb of ["time_entries", "work_clock_entries"]) console.log(tb, (await (admin.from(tb as any) as any).delete().eq("tenant_id", T)).error?.message ?? "ok");
+console.log("jobs", (await admin.from("jobs").update({ status: "scheduled", actual_start: null, actual_end: null }).eq("tenant_id", T)).error?.message ?? "ok");

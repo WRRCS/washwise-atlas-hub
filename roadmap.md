@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] New-hire cleaner training in English and Ukrainian: in-app Training page (menu item, language switch, download/print) plus two printable PDFs with sample-data phone screenshots. Captured from a temporary practice workspace that was deleted afterward; real data untouched. Fixed the Leaving photo dialog being cut off on narrow phones.
+
 - [x] Fix existing draft saves to notify the parent and exit editing; accept the boolean send flag and consume it after opening confirmation so repeat attempts work. Eleven invoice tests pass; build OK. No emails sent.
 - [ ] Signed-in existing-draft browser save/confirmation check — blocked: requesting-user session mint found no matching account, and browser redirects to sign-in. Changes remain preview-only.
 
