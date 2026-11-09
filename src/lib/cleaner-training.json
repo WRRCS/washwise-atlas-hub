@@ -1,0 +1,509 @@
+{
+  "en": {
+    "title": "WRRCS Cleaner Training",
+    "subtitle": "How to use the WRRCS app on your phone, step by step",
+    "sampleNote": "All screenshots use a practice account. Client names, addresses and teammates shown are made up.",
+    "downloadLabel": "Download printable guide (PDF)",
+    "printLabel": "Print",
+    "contentsLabel": "Contents",
+    "stepLabel": "Steps",
+    "tipLabel": "Tip",
+    "sections": [
+      {
+        "id": "welcome",
+        "title": "Welcome to WRRCS",
+        "intro": "The WRRCS app is where you see your jobs, clock your time, read each property's instructions (SOP), add your photos, keep track of your supplies and ask for time off. Keep it on your phone and open it at the start of every workday.",
+        "steps": [
+          "Everything you need for the day is on the My jobs screen.",
+          "The menu at the bottom of the screen takes you to My jobs, Schedule, Timesheet, My tips, Team, My caddy, Time off & swaps, Language and Training.",
+          "If something in the app looks wrong, do not guess — contact the office."
+        ],
+        "images": []
+      },
+      {
+        "id": "getting-in",
+        "title": "Getting into the app",
+        "intro": "You do not need a password. The office sends you a one-tap sign-in link by email.",
+        "steps": [
+          "Open the invitation email from WRRCS and tap the sign-in link.",
+          "iPhone: in Safari tap Share, then Add to Home Screen. Android: tap the ⋮ menu, then Add to Home screen or Install app.",
+          "From now on, open WRRCS from the icon on your home screen.",
+          "The first time you sign in, choose English or Українська. You can change it any time under Language in the menu."
+        ],
+        "tip": "If your link has expired, ask the office to send you a new one.",
+        "images": ["15-language"]
+      },
+      {
+        "id": "notifications",
+        "title": "Turn on notifications",
+        "intro": "Notifications let the office reach you about schedule changes and reminders.",
+        "steps": [
+          "On My jobs, tap Enable notifications and choose Allow.",
+          "On iPhone this only works when the app is opened from the Home Screen icon.",
+          "\"Not registered on this device\" means notifications are not on yet. Tap Recheck registration if you are not sure."
+        ],
+        "images": []
+      },
+      {
+        "id": "my-jobs",
+        "title": "Your My jobs screen",
+        "intro": "This is your home screen. Check it before you leave for work.",
+        "steps": [
+          "My clock (top) shows where you are right now: Clocked out, On site, Drive / other, or On unpaid lunch.",
+          "The large card shows your next job: client, service, time, and address. Tap the address for directions.",
+          "Notes for this visit shows the key or door access, pets, parking and special instructions. Read them before you arrive.",
+          "WITH shows the teammates working that job with you.",
+          "Use the tabs Today & upcoming, My schedule and My timesheet to switch views."
+        ],
+        "images": ["01-myjobs"]
+      },
+      {
+        "id": "clock-in",
+        "title": "Start your day: Clock in",
+        "intro": "Clock in when you arrive at your first job — not from home.",
+        "steps": [
+          "When you arrive at your first property, tap the blue Clock in button on that job.",
+          "If your phone asks to use your location, tap Allow.",
+          "The card changes to Currently on the clock and My clock shows On site.",
+          "The orange Leaving button is what you will tap when you finish this job."
+        ],
+        "tip": "Only clock in early or from somewhere else if the office has asked you to.",
+        "images": ["03-clocked-in"]
+      },
+      {
+        "id": "unscheduled",
+        "title": "Work that isn't on your schedule",
+        "intro": "Sometimes the office asks you to do work that is not a scheduled job, like picking up supplies or training.",
+        "steps": [
+          "Under My clock, tap Clock in without a scheduled job.",
+          "Type a short description of the work (for example, \"Supply pickup at the office\").",
+          "Tap Clock in. When you finish, tap Clock out for the day or go to your next job."
+        ],
+        "images": ["02-unscheduled"]
+      },
+      {
+        "id": "sop",
+        "title": "Read the SOP before you start",
+        "intro": "The SOP is the list of instructions for that property. Every property can be different.",
+        "steps": [
+          "Tap View SOP on the job card.",
+          "Read every step before you start cleaning.",
+          "If you see Mark SOP reviewed, tap it after you have read the instructions.",
+          "Tap Close SOP to go back. If there is no SOP, contact the office before you start."
+        ],
+        "images": ["04-sop"]
+      },
+      {
+        "id": "leaving",
+        "title": "Finishing a job: photos and Leaving",
+        "intro": "Your photos are proof of your work. They are saved under your name for that visit.",
+        "steps": [
+          "When the job is done, tap the orange Leaving button.",
+          "Tap Take photo to use the camera, or Upload to choose photos you already took.",
+          "Under each photo choose Before, After, Damage or Other.",
+          "Damage photos must have a short description of what is damaged.",
+          "Add any notes for the office (optional), then tap Leaving to finish the job."
+        ],
+        "tip": "Report any damage right away with a Damage photo and tell the office.",
+        "images": ["04b-leaving"]
+      },
+      {
+        "id": "drive",
+        "title": "Driving to your next job",
+        "intro": "After you tap Leaving, your paid clock keeps running for drive time.",
+        "steps": [
+          "My clock shows Drive / other while you drive.",
+          "When you reach the next property, tap the blue Arrived button on that job.",
+          "Repeat for each job: read the notes and SOP, clean, add photos, tap Leaving."
+        ],
+        "images": ["05-driving", "05b-arrive-next"]
+      },
+      {
+        "id": "lunch",
+        "title": "Unpaid lunch",
+        "intro": "Lunch is unpaid, so always mark it in the app.",
+        "steps": [
+          "Tap Start unpaid lunch. My clock shows On unpaid lunch.",
+          "When your break is over, tap End lunch / Resume work.",
+          "You cannot tap Arrived while you are on lunch — end lunch first."
+        ],
+        "images": ["04c-lunch"]
+      },
+      {
+        "id": "clock-out",
+        "title": "End your day: Clock out",
+        "intro": "Clock out after you tap Leaving at your last job of the day.",
+        "steps": [
+          "Tap Clock out for the day and confirm.",
+          "My clock changes back to Clocked out.",
+          "Forgot to clock in or out? Tell the office the same day so they can correct your time. You cannot change your own times."
+        ],
+        "images": []
+      },
+      {
+        "id": "schedule",
+        "title": "Checking your schedule",
+        "intro": "See what is coming up so you can plan your week.",
+        "steps": [
+          "On My jobs, tap My schedule to see your week. Use the arrows to change weeks.",
+          "Schedule in the bottom menu shows the team's week. Tap Today to come back to this week.",
+          "Your schedule can change. Check the app every morning."
+        ],
+        "images": ["08-schedule", "16-calendar"]
+      },
+      {
+        "id": "timesheet",
+        "title": "Checking your hours",
+        "intro": "Your timesheet shows the hours that will be paid.",
+        "steps": [
+          "On My jobs, tap My timesheet to see this week's clock-in and clock-out times, paid hours and unpaid lunch.",
+          "Timesheet in the bottom menu shows each day in more detail.",
+          "If a time is wrong, tell the office. Managers make the correction."
+        ],
+        "images": ["09-timesheet"]
+      },
+      {
+        "id": "caddy",
+        "title": "My caddy: supplies",
+        "intro": "Tell the office how full your supply caddy is so you never run out at a job.",
+        "steps": [
+          "Tap My caddy in the menu, then tap your name to open your list.",
+          "For each item tap how full it is: Full, 3/4, Half, 1/4 or Out.",
+          "Update it at the end of the day or whenever something runs low."
+        ],
+        "images": ["11-caddy"]
+      },
+      {
+        "id": "time-off",
+        "title": "Time off and shift swaps",
+        "intro": "Ask for days off or ask a teammate to cover a job — all in the app.",
+        "steps": [
+          "Tap Time off & swaps in the menu.",
+          "Request time off: choose the start and end date, write the reason, tap Submit request.",
+          "Request shift swap: pick the job you need covered and, if you want, a teammate who could take it.",
+          "Your requests and their status (pending, approved or denied) appear on the same page."
+        ],
+        "images": ["12-timeoff"]
+      },
+      {
+        "id": "team",
+        "title": "Team and messages",
+        "intro": "Stay in touch with the office and your teammates.",
+        "steps": [
+          "Tap Team in the menu. Roster lists your teammates.",
+          "Tap Team messages to message the office or a teammate.",
+          "Use Team messages for work questions instead of personal text messages."
+        ],
+        "images": ["13-team"]
+      },
+      {
+        "id": "tips",
+        "title": "My tips",
+        "intro": "See tips from clients for the jobs you worked.",
+        "steps": [
+          "Tap My tips in the menu and choose the month.",
+          "When a client pays more than the invoice, the extra is split evenly between the cleaners on that job.",
+          "You only see your own tips."
+        ],
+        "images": ["14-tips"]
+      },
+      {
+        "id": "privacy",
+        "title": "Privacy and good habits",
+        "intro": "Clients trust us with their homes. Protect their information.",
+        "steps": [
+          "Never share door codes, key locations, addresses or client details with anyone outside WRRCS.",
+          "Never post job photos on social media or send them from your personal phone. Photos are for the office only.",
+          "Do not contact clients about schedules, prices or payments. The office handles all client messages.",
+          "Photograph the work, not people.",
+          "Only use your own sign-in. On a shared phone, sign out with the arrow icon at the top right."
+        ],
+        "images": []
+      },
+      {
+        "id": "help",
+        "title": "Problems and quick fixes",
+        "intro": "What to do when something doesn't look right.",
+        "steps": [
+          "No address or \"Location needs review\" on a job: call the office before you drive.",
+          "No SOP for a property: contact the office before you start.",
+          "A button does nothing: check your signal, wait a moment and try once more. Do not tap many times.",
+          "Not getting notifications: open the app from the Home Screen icon, tap Enable notifications, then Recheck registration.",
+          "Forgot to clock in, out or mark lunch: tell the office the same day."
+        ],
+        "images": []
+      },
+      {
+        "id": "checklist",
+        "title": "Daily checklist",
+        "intro": "Your workday in nine steps.",
+        "steps": [
+          "Open the app and check My jobs and the notes for each visit.",
+          "Arrive at your first job and tap Clock in.",
+          "Tap View SOP and read the instructions.",
+          "Clean the property.",
+          "Take your photos, then tap Leaving.",
+          "Drive to the next job and tap Arrived.",
+          "Mark lunch with Start unpaid lunch and End lunch / Resume work.",
+          "After your last job, tap Leaving, then Clock out for the day.",
+          "Update My caddy so the office knows what you need."
+        ],
+        "images": []
+      }
+    ]
+  },
+  "uk": {
+    "title": "Навчання для прибиральників WRRCS",
+    "subtitle": "Як користуватися застосунком WRRCS на телефоні — крок за кроком",
+    "sampleNote": "Усі знімки екрана зроблено в навчальному обліковому записі. Імена клієнтів, адреси та колеги вигадані.",
+    "downloadLabel": "Завантажити посібник для друку (PDF)",
+    "printLabel": "Друк",
+    "contentsLabel": "Зміст",
+    "stepLabel": "Кроки",
+    "tipLabel": "Порада",
+    "sections": [
+      {
+        "id": "welcome",
+        "title": "Ласкаво просимо до WRRCS",
+        "intro": "У застосунку WRRCS ви бачите свої роботи, відмічаєте робочий час, читаєте інструкції для кожного об'єкта (SOP), додаєте фото, стежите за своїми матеріалами та просите вихідні. Тримайте його на телефоні й відкривайте на початку кожного робочого дня.",
+        "steps": [
+          "Усе потрібне на день — на екрані «Мої зміни».",
+          "Меню внизу екрана веде до розділів «Мої зміни», «Графік», «Timesheet» (табель), «My tips» (чайові), «Команда», «My caddy» (матеріали), «Відпустки та обміни», «Мова» та «Навчання».",
+          "Деякі кнопки в застосунку поки що англійською. У цьому посібнику ми пишемо їхню назву так, як вона виглядає на екрані, а поруч — переклад.",
+          "Якщо щось у застосунку виглядає неправильно, не вгадуйте — зверніться до офісу."
+        ],
+        "images": []
+      },
+      {
+        "id": "getting-in",
+        "title": "Як увійти в застосунок",
+        "intro": "Пароль не потрібен. Офіс надсилає вам на пошту посилання для входу одним дотиком.",
+        "steps": [
+          "Відкрийте лист-запрошення від WRRCS і натисніть посилання для входу.",
+          "iPhone: у Safari натисніть «Поділитися», потім «На початковий екран». Android: натисніть меню ⋮, потім «Додати на головний екран» або «Встановити застосунок».",
+          "Надалі відкривайте WRRCS зі значка на головному екрані.",
+          "Під час першого входу оберіть English або Українська. Змінити мову можна будь-коли в розділі «Мова» в меню."
+        ],
+        "tip": "Якщо посилання вже не працює, попросіть офіс надіслати нове.",
+        "images": ["15-language"]
+      },
+      {
+        "id": "notifications",
+        "title": "Увімкніть сповіщення",
+        "intro": "Сповіщення дозволяють офісу повідомляти вас про зміни в графіку та нагадування.",
+        "steps": [
+          "На екрані «Мої зміни» натисніть Enable notifications (увімкнути сповіщення) і виберіть «Дозволити».",
+          "На iPhone це працює лише тоді, коли застосунок відкрито зі значка на головному екрані.",
+          "Напис Not registered on this device означає, що сповіщення ще не ввімкнені. Якщо не впевнені, натисніть Recheck registration (перевірити ще раз)."
+        ],
+        "images": []
+      },
+      {
+        "id": "my-jobs",
+        "title": "Екран «Мої зміни»",
+        "intro": "Це ваш головний екран. Перегляньте його перед виїздом на роботу.",
+        "steps": [
+          "My clock (мій час) угорі показує, де ви зараз: Clocked out (не на зміні), On site (на об'єкті), Drive / other (у дорозі / інше) або On unpaid lunch (на неоплачуваному обіді).",
+          "Велика картка показує вашу наступну роботу: клієнта, послугу, час і адресу. Натисніть адресу («Натисніть для маршруту»), щоб відкрити маршрут.",
+          "«Нотатки до цього візиту» — це ключі чи доступ до дверей, тварини, паркування та особливі вказівки. Прочитайте їх до приїзду.",
+          "WITH (разом з) показує колег, які працюють на цій роботі з вами.",
+          "Вкладки «Сьогодні та найближчі», «Мій графік» і «Мій табель» перемикають вигляд."
+        ],
+        "images": ["01-myjobs"]
+      },
+      {
+        "id": "clock-in",
+        "title": "Початок дня: «Почати зміну»",
+        "intro": "Починайте зміну, коли приїхали на першу роботу, — не з дому.",
+        "steps": [
+          "Коли ви приїхали на перший об'єкт, натисніть синю кнопку «Почати зміну» на картці цієї роботи.",
+          "Якщо телефон просить доступ до місцезнаходження, натисніть «Дозволити».",
+          "Картка зміниться на «Зараз на зміні», а My clock покаже On site (на об'єкті).",
+          "Помаранчеву кнопку Leaving (виїжджаю) ви натиснете, коли закінчите цю роботу."
+        ],
+        "tip": "Починайте зміну раніше або з іншого місця, лише якщо вас про це попросив офіс.",
+        "images": ["03-clocked-in"]
+      },
+      {
+        "id": "unscheduled",
+        "title": "Робота, якої немає в графіку",
+        "intro": "Іноді офіс просить зробити роботу, якої немає в графіку, наприклад забрати матеріали або пройти навчання.",
+        "steps": [
+          "Під My clock натисніть Clock in without a scheduled job (почати зміну без запланованої роботи).",
+          "Коротко опишіть роботу в полі Work description (наприклад, «Забрати матеріали в офісі»).",
+          "Натисніть Clock in. Коли закінчите, натисніть Clock out for the day або їдьте на наступну роботу."
+        ],
+        "images": ["02-unscheduled"]
+      },
+      {
+        "id": "sop",
+        "title": "Прочитайте інструкцію (SOP) перед початком",
+        "intro": "SOP — це перелік інструкцій для конкретного об'єкта. Кожен об'єкт може відрізнятися.",
+        "steps": [
+          "Натисніть «Переглянути інструкцію» на картці роботи.",
+          "Прочитайте всі кроки, перш ніж почати прибирання.",
+          "Якщо бачите кнопку «Позначити інструкцію переглянутою», натисніть її після прочитання.",
+          "Натисніть Close SOP (закрити), щоб повернутися. Якщо інструкції немає, зверніться до офісу до початку роботи."
+        ],
+        "images": ["04-sop"]
+      },
+      {
+        "id": "leaving",
+        "title": "Завершення роботи: фото та Leaving",
+        "intro": "Ваші фото — доказ виконаної роботи. Вони зберігаються під вашим ім'ям для цього візиту.",
+        "steps": [
+          "Коли роботу закінчено, натисніть помаранчеву кнопку Leaving (виїжджаю).",
+          "Натисніть Take photo (зробити фото), щоб відкрити камеру, або Upload (завантажити), щоб вибрати вже зроблені фото.",
+          "Під кожним фото виберіть тип: BEFORE (до), AFTER (після), DAMAGE (пошкодження) або OTHER (інше).",
+          "До фото пошкоджень обов'язково додайте короткий опис того, що пошкоджено.",
+          "За потреби додайте нотатку для офісу (Notes), потім натисніть Leaving, щоб завершити роботу."
+        ],
+        "tip": "Про будь-яке пошкодження повідомляйте одразу: зробіть фото з типом DAMAGE і скажіть офісу.",
+        "images": ["04b-leaving"]
+      },
+      {
+        "id": "drive",
+        "title": "Дорога до наступної роботи",
+        "intro": "Після натискання Leaving ваш оплачуваний час продовжує йти — це час у дорозі.",
+        "steps": [
+          "Поки ви їдете, My clock показує Drive / other (у дорозі / інше).",
+          "Коли приїдете на наступний об'єкт, натисніть синю кнопку Arrived (прибув / прибула) на картці цієї роботи.",
+          "Повторюйте для кожної роботи: прочитайте нотатки та інструкцію, приберіть, додайте фото, натисніть Leaving."
+        ],
+        "images": ["05-driving", "05b-arrive-next"]
+      },
+      {
+        "id": "lunch",
+        "title": "Неоплачуваний обід",
+        "intro": "Обід не оплачується, тому завжди відмічайте його в застосунку.",
+        "steps": [
+          "Натисніть Start unpaid lunch (почати неоплачуваний обід). My clock покаже On unpaid lunch.",
+          "Коли перерва закінчиться, натисніть End lunch / Resume work (завершити обід / продовжити роботу).",
+          "Під час обіду не можна натиснути Arrived — спочатку завершіть обід."
+        ],
+        "images": ["04c-lunch"]
+      },
+      {
+        "id": "clock-out",
+        "title": "Кінець дня: завершення зміни",
+        "intro": "Завершуйте зміну після того, як натиснули Leaving на останній роботі дня.",
+        "steps": [
+          "Натисніть Clock out for the day (завершити робочий день) і підтвердьте.",
+          "My clock знову покаже Clocked out (не на зміні).",
+          "Забули почати або завершити зміну? Повідомте офіс того ж дня, щоб там виправили ваш час. Самостійно змінити свій час не можна."
+        ],
+        "images": []
+      },
+      {
+        "id": "schedule",
+        "title": "Як переглянути графік",
+        "intro": "Дивіться, що попереду, щоб планувати свій тиждень.",
+        "steps": [
+          "На екрані «Мої зміни» натисніть «Мій графік», щоб побачити свій тиждень. Стрілки змінюють тиждень.",
+          "«Графік» у нижньому меню показує тиждень усієї команди. Кнопка Today повертає до поточного тижня.",
+          "Графік може змінюватися. Перевіряйте застосунок щоранку."
+        ],
+        "images": ["08-schedule", "16-calendar"]
+      },
+      {
+        "id": "timesheet",
+        "title": "Як перевірити свої години",
+        "intro": "Табель показує години, які будуть оплачені.",
+        "steps": [
+          "На екрані «Мої зміни» натисніть «Мій табель»: там час початку й завершення, оплачувані години та неоплачуваний обід за цей тиждень.",
+          "Timesheet у нижньому меню показує кожен день детальніше.",
+          "Якщо час неправильний, скажіть офісу. Виправлення вносить менеджер."
+        ],
+        "images": ["09-timesheet"]
+      },
+      {
+        "id": "caddy",
+        "title": "My caddy: ваші матеріали",
+        "intro": "Повідомляйте офіс, наскільки заповнений ваш набір матеріалів, щоб вони не закінчилися на роботі.",
+        "steps": [
+          "Натисніть My caddy в меню, потім своє ім'я, щоб відкрити список.",
+          "Для кожного засобу виберіть, скільки залишилося: Full (повний), 3/4, Half (половина), 1/4 або Out (закінчився).",
+          "Оновлюйте список наприкінці дня або щойно щось закінчується."
+        ],
+        "images": ["11-caddy"]
+      },
+      {
+        "id": "time-off",
+        "title": "Відпустки та обмін змінами",
+        "intro": "Просіть вихідні або просіть колегу підмінити вас — усе в застосунку.",
+        "steps": [
+          "Натисніть «Відпустки та обміни» в меню.",
+          "«Запит на відпустку»: виберіть дату початку й кінця (Start date, End date), напишіть причину (Reason) і натисніть Submit request (надіслати запит).",
+          "Request shift swap (обмін змінами): виберіть роботу, яку потрібно передати, і, за бажанням, колегу, який може її взяти.",
+          "Ваші запити та їхній статус (pending — очікує, approved — схвалено, denied — відхилено) видно на цій же сторінці."
+        ],
+        "images": ["12-timeoff"]
+      },
+      {
+        "id": "team",
+        "title": "Команда та повідомлення",
+        "intro": "Будьте на зв'язку з офісом і колегами.",
+        "steps": [
+          "Натисніть «Команда» в меню. «Склад команди» показує ваших колег.",
+          "Натисніть «Повідомлення команди», щоб написати офісу або колезі.",
+          "З робочих питань пишіть у «Повідомлення команди», а не в особисті повідомлення."
+        ],
+        "images": ["13-team"]
+      },
+      {
+        "id": "tips",
+        "title": "My tips: ваші чайові",
+        "intro": "Тут видно чайові від клієнтів за роботи, у яких ви брали участь.",
+        "steps": [
+          "Натисніть My tips у меню та виберіть місяць.",
+          "Якщо клієнт заплатив більше за суму рахунку, різниця ділиться порівну між прибиральниками на цій роботі.",
+          "Ви бачите лише свої чайові."
+        ],
+        "images": ["14-tips"]
+      },
+      {
+        "id": "privacy",
+        "title": "Конфіденційність і добрі звички",
+        "intro": "Клієнти довіряють нам свої домівки. Бережіть їхню інформацію.",
+        "steps": [
+          "Ніколи не передавайте коди дверей, місця ключів, адреси чи дані клієнтів нікому поза WRRCS.",
+          "Ніколи не публікуйте фото з робіт у соцмережах і не надсилайте їх з особистого телефону. Фото — лише для офісу.",
+          "Не зв'язуйтеся з клієнтами щодо графіка, цін чи оплати. Усі повідомлення клієнтам надсилає офіс.",
+          "Фотографуйте роботу, а не людей.",
+          "Входьте лише під своїм обліковим записом. На спільному телефоні виходьте зі застосунку значком зі стрілкою вгорі праворуч."
+        ],
+        "images": []
+      },
+      {
+        "id": "help",
+        "title": "Проблеми та швидкі рішення",
+        "intro": "Що робити, якщо щось виглядає неправильно.",
+        "steps": [
+          "На роботі немає адреси або написано Location needs review: зателефонуйте в офіс, перш ніж їхати.",
+          "Для об'єкта немає інструкції (SOP): зверніться до офісу до початку роботи.",
+          "Кнопка не реагує: перевірте зв'язок, зачекайте трохи й спробуйте ще раз. Не натискайте багато разів.",
+          "Не приходять сповіщення: відкрийте застосунок зі значка на головному екрані, натисніть Enable notifications, потім Recheck registration.",
+          "Забули почати чи завершити зміну або відмітити обід: повідомте офіс того ж дня."
+        ],
+        "images": []
+      },
+      {
+        "id": "checklist",
+        "title": "Щоденний контрольний список",
+        "intro": "Ваш робочий день за дев'ять кроків.",
+        "steps": [
+          "Відкрийте застосунок і перегляньте «Мої зміни» та нотатки до кожного візиту.",
+          "Приїдьте на першу роботу й натисніть «Почати зміну».",
+          "Натисніть «Переглянути інструкцію» і прочитайте її.",
+          "Приберіть об'єкт.",
+          "Зробіть фото, потім натисніть Leaving.",
+          "Їдьте на наступну роботу й натисніть Arrived.",
+          "Відмічайте обід кнопками Start unpaid lunch і End lunch / Resume work.",
+          "Після останньої роботи натисніть Leaving, потім Clock out for the day.",
+          "Оновіть My caddy, щоб офіс знав, що вам потрібно."
+        ],
+        "images": []
+      }
+    ]
+  }
+}

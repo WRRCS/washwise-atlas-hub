@@ -18,6 +18,8 @@ const UK: Record<string, string> = {
   Schedule: "Графік",
   Team: "Команда",
   "Time off & swaps": "Відпустки та обміни",
+  Training: "Навчання",
+  "Cleaner training": "Навчання прибиральників",
   "Client chat": "Чат з клієнтом",
   Language: "Мова",
   "Sign out": "Вийти",

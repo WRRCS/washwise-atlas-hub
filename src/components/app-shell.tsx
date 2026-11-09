@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, PackageOpen, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe, Timer, ArrowLeft, HandCoins, PanelLeftClose, PanelLeftOpen,
+  Briefcase, Calendar, Users, UserCog, Receipt, LogOut, Plus, Sparkles, ClipboardList, Bell, Plug, LayoutDashboard, BookOpen, Package, PackageOpen, FileText, Inbox, Building2, BarChart3, Bot, Shield, CreditCard, MessageSquare, Users2, CalendarClock, ClipboardCheck, Globe, Timer, ArrowLeft, HandCoins, PanelLeftClose, PanelLeftOpen, GraduationCap,
 } from "lucide-react";
 import { AiChat } from "@/components/ai-chat";
 import { useQuery } from "@tanstack/react-query";
@@ -42,6 +42,7 @@ const OWNER_NAV = [
   { to: "/settings/integrations", label: "Integrations", icon: Plug },
   { to: "/settings/ai", label: "AI Assistant", icon: Bot },
   { to: "/settings/billing", label: "Billing & plan", icon: CreditCard },
+  { to: "/training", label: "Cleaner training", icon: GraduationCap },
   { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 
@@ -56,6 +57,7 @@ const EMPLOYEE_NAV = [
   { to: "/team", label: "Team", icon: Users2 },
   { to: "/caddies", label: "My caddy", icon: PackageOpen },
   { to: "/time-off", label: "Time off & swaps", icon: CalendarClock },
+  { to: "/training", label: "Training", icon: GraduationCap },
   { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 

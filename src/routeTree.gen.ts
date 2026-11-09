@@ -36,6 +36,7 @@ import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/t
 import { Route as AuthenticatedTimeOffRouteImport } from './routes/_authenticated/time-off'
 import { Route as AuthenticatedTimesheetRouteImport } from './routes/_authenticated/timesheet'
 import { Route as AuthenticatedTipsRouteImport } from './routes/_authenticated/tips'
+import { Route as AuthenticatedTrainingRouteImport } from './routes/_authenticated/training'
 import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as PayInvoiceIdRouteImport } from './routes/pay.$invoiceId'
 import { Route as PayReturnRouteImport } from './routes/pay.return'
@@ -221,6 +222,11 @@ const AuthenticatedTimesheetRoute = AuthenticatedTimesheetRouteImport.update({
 const AuthenticatedTipsRoute = AuthenticatedTipsRouteImport.update({
   id: '/tips',
   path: '/tips',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTrainingRoute = AuthenticatedTrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedVoiceRoute = AuthenticatedVoiceRouteImport.update({
@@ -545,6 +551,7 @@ export interface FileRoutesByFullPath {
   '/time-off': typeof AuthenticatedTimeOffRoute
   '/timesheet': typeof AuthenticatedTimesheetRoute
   '/tips': typeof AuthenticatedTipsRoute
+  '/training': typeof AuthenticatedTrainingRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
@@ -622,6 +629,7 @@ export interface FileRoutesByTo {
   '/time-off': typeof AuthenticatedTimeOffRoute
   '/timesheet': typeof AuthenticatedTimesheetRoute
   '/tips': typeof AuthenticatedTipsRoute
+  '/training': typeof AuthenticatedTrainingRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
@@ -703,6 +711,7 @@ export interface FileRoutesById {
   '/_authenticated/time-off': typeof AuthenticatedTimeOffRoute
   '/_authenticated/timesheet': typeof AuthenticatedTimesheetRoute
   '/_authenticated/tips': typeof AuthenticatedTipsRoute
+  '/_authenticated/training': typeof AuthenticatedTrainingRoute
   '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/pay/$invoiceId': typeof PayInvoiceIdRoute
   '/pay/return': typeof PayReturnRoute
@@ -784,6 +793,7 @@ export interface FileRouteTypes {
     | '/time-off'
     | '/timesheet'
     | '/tips'
+    | '/training'
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
@@ -861,6 +871,7 @@ export interface FileRouteTypes {
     | '/time-off'
     | '/timesheet'
     | '/tips'
+    | '/training'
     | '/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
@@ -941,6 +952,7 @@ export interface FileRouteTypes {
     | '/_authenticated/time-off'
     | '/_authenticated/timesheet'
     | '/_authenticated/tips'
+    | '/_authenticated/training'
     | '/_authenticated/voice'
     | '/pay/$invoiceId'
     | '/pay/return'
@@ -1211,6 +1223,13 @@ declare module '@tanstack/react-router' {
       path: '/tips'
       fullPath: '/tips'
       preLoaderRoute: typeof AuthenticatedTipsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/training': {
+      id: '/_authenticated/training'
+      path: '/training'
+      fullPath: '/training'
+      preLoaderRoute: typeof AuthenticatedTrainingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/voice': {
@@ -1671,6 +1690,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTimeOffRoute: typeof AuthenticatedTimeOffRoute
   AuthenticatedTimesheetRoute: typeof AuthenticatedTimesheetRoute
   AuthenticatedTipsRoute: typeof AuthenticatedTipsRoute
+  AuthenticatedTrainingRoute: typeof AuthenticatedTrainingRoute
   AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
   AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
   AuthenticatedInvoicesInvoiceIdRoute: typeof AuthenticatedInvoicesInvoiceIdRoute
@@ -1711,6 +1731,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTimeOffRoute: AuthenticatedTimeOffRoute,
   AuthenticatedTimesheetRoute: AuthenticatedTimesheetRoute,
   AuthenticatedTipsRoute: AuthenticatedTipsRoute,
+  AuthenticatedTrainingRoute: AuthenticatedTrainingRoute,
   AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
   AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
   AuthenticatedInvoicesInvoiceIdRoute: AuthenticatedInvoicesInvoiceIdRoute,
