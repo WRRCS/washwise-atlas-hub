@@ -3,6 +3,15 @@ import { Download, Loader2, RotateCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildPhotoZip, deliverPhotoFile, preparePhotoExport, triggerDownload, uniquePhotoReferences, zipFilename, type DownloadPhoto, type PhotoExportContext, type PreparedPhoto } from "@/lib/photo-downloads";
 
+export const PHOTO_TYPE_DOWNLOADS = [
+  { type: "before", label: "BEFORE Only" },
+  { type: "after", label: "AFTER Only" },
+  { type: "damage", label: "DAMAGE only" },
+] as const;
+export function photosOfType(photos: DownloadPhoto[], type: string) {
+  return photos.filter(p => p.photo_type === type);
+}
+
 type ZipState = {
   requested: DownloadPhoto[];
   files: PreparedPhoto[];
@@ -45,8 +54,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
     await deliverPhotoFile(result.files[0].blob, result.files[0].filename);
   });
 
-  const finishZip = async (requested: DownloadPhoto[], files: PreparedPhoto[], failures: string[], failedPhotos: DownloadPhoto[]) => {
-    const filename = zipFilename(context, options.cleanerName);
+  const finishZip = async (requested: DownloadPhoto[], files: PreparedPhoto[], failures: string[], failedPhotos: DownloadPhoto[], filename: string) => {
     if (failedPhotos.length) {
       // Do not download an incomplete ZIP silently — let the user retry or choose to continue.
       setZipState({ requested, files, failures, failedPhotos, zip: null, filename, started: false });
@@ -60,13 +68,13 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
     setZipState({ requested, files, failures: [], failedPhotos: [], zip, filename, started: auto });
   };
 
-  const downloadZip = (items: DownloadPhoto[]) => {
+  const downloadZip = (items: DownloadPhoto[], filename = zipFilename(context, options.cleanerName)) => {
     if (items.length === 1) return downloadOne(items[0]);
     return run(async () => {
       setZipState(null);
       const result = await preparePhotoExport(items, context, { onProgress: progressFor });
       if (!mounted.current) return;
-      await finishZip(items, result.files, result.failures, result.failedPhotos);
+      await finishZip(items, result.files, result.failures, result.failedPhotos, filename);
     });
   };
 
@@ -83,7 +91,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
       files.sort((a, b) => (order.get(a.photoId) ?? 0) - (order.get(b.photoId) ?? 0));
       const failedPhotos = retried ? retried.failedPhotos : state.failedPhotos;
       const failures = retried ? retried.failures : state.failures;
-      await finishZip(state.requested, files, failures, failedPhotos);
+      await finishZip(state.requested, files, failures, failedPhotos, state.filename);
     });
   };
 
@@ -113,9 +121,15 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
   const selectedPhotos = photos.filter(p => selected.has(p.id));
   const allLabel = options.allCleaners ? "Download all cleaners’ photos" : "Download all";
   const total = zipState ? zipState.requested.length : 0;
+  // Per-cleaner type downloads: only photos the cleaner labelled with that type; ZIP named property + date only.
+  const typeButtons = options.allCleaners ? [] : PHOTO_TYPE_DOWNLOADS.map(({ type, label }) => {
+    const items = photosOfType(photos, type);
+    return <Button key={type} variant="outline" size="sm" disabled={busy || items.length === 0} onClick={() => downloadZip(items, zipFilename(context))}><Download className="size-4" /> {label} ({items.length})</Button>;
+  });
 
   const toolbar = photos.length > 0 && <div className="space-y-3 mb-4">
     <div className="flex flex-wrap gap-2 items-center">
+      {typeButtons}
       <Button size="sm" disabled={busy} onClick={() => downloadZip(photos)}><Download className="size-4" /> {allLabel} ({photos.length})</Button>
       <Button variant="ghost" size="sm" disabled={busy} onClick={() => setSelected(selectedPhotos.length === photos.length ? new Set() : new Set(photos.map(p => p.id)))}>{selectedPhotos.length === photos.length ? "Clear selection" : "Select all"}</Button>
       {selectedPhotos.length > 0 && <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadZip(selectedPhotos)}><Download className="size-4" /> Download selected ({selectedPhotos.length})</Button>}

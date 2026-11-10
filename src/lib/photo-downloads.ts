@@ -1,4 +1,4 @@
-export type DownloadPhoto = { id: string; storage_path: string; url: string | null; uploaded_by: string | null; uploader_name: string | null };
+export type DownloadPhoto = { id: string; storage_path: string; url: string | null; uploaded_by: string | null; uploader_name: string | null; photo_type?: string | null };
 export type PhotoExportContext = { date: string; property: string };
 export type PreparedPhoto = { blob: Blob; filename: string; photoId: string };
 export function uniquePhotoReferences(photos: DownloadPhoto[]) {

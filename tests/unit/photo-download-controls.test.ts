@@ -34,22 +34,50 @@ beforeEach(() => {
 describe("photo download actions", () => {
   it("downloads all on a one-photo job as an image, not a ZIP", async () => {
     const downloads = usePhotoDownloads([photo], { date: "2026-10-27", property: "Test" });
-    await clickableElements(downloads.toolbar)[0].props.onClick();
+    await clickableElements(downloads.toolbar)[3].props.onClick();
     expect(mocks.deliver).toHaveBeenCalledWith(expect.objectContaining({ type: "image/png" }), "a.png");
     expect(mocks.build).not.toHaveBeenCalled();
   });
   it("downloads a single selected photo as an image from a larger collection", async () => {
     mocks.selected.add("a");
     const downloads = usePhotoDownloads([photo, { ...photo, id: "b", storage_path: "b" }], { date: "2026-10-27", property: "Test" });
-    await clickableElements(downloads.toolbar)[2].props.onClick();
+    await clickableElements(downloads.toolbar)[5].props.onClick();
     expect(mocks.prepare.mock.calls[0][0].map((p: DownloadPhoto) => p.id)).toEqual(["a"]);
     expect(mocks.deliver).toHaveBeenCalledWith(expect.objectContaining({ type: "image/png" }), "a.png");
     expect(mocks.build).not.toHaveBeenCalled();
   });
   it("retains one flat ZIP for multi-photo downloads", async () => {
     const downloads = usePhotoDownloads([photo, { ...photo, id: "b", storage_path: "b" }], { date: "2026-10-27", property: "Test" });
-    await clickableElements(downloads.toolbar)[0].props.onClick();
+    await clickableElements(downloads.toolbar)[3].props.onClick();
     expect(mocks.build.mock.calls[0][0]).toHaveLength(2);
     expect(mocks.trigger).toHaveBeenCalledWith(expect.objectContaining({ type: "application/zip" }), "Test_2026-10-27_photos.zip");
+  });
+  it("BEFORE/AFTER/DAMAGE buttons download only photos labelled with that type, named by property and date", async () => {
+    const set: DownloadPhoto[] = [
+      { ...photo, id: "b1", storage_path: "b1", photo_type: "before" },
+      { ...photo, id: "a1", storage_path: "a1", photo_type: "after" },
+      { ...photo, id: "b2", storage_path: "b2", photo_type: "before" },
+      { ...photo, id: "d1", storage_path: "d1", photo_type: "damage" },
+      { ...photo, id: "d2", storage_path: "d2", photo_type: "damage" },
+      { ...photo, id: "o1", storage_path: "o1", photo_type: "other" },
+    ];
+    const downloads = usePhotoDownloads(set, { date: "2026-11-09", property: "Village" }, { cleanerName: "Barbra Elder" });
+    const buttons = clickableElements(downloads.toolbar);
+    await buttons[0].props.onClick();
+    expect(mocks.prepare.mock.calls[0][0].map((p: DownloadPhoto) => p.id)).toEqual(["b1", "b2"]);
+    expect(mocks.trigger).toHaveBeenLastCalledWith(expect.anything(), "Village_2026-11-09_photos.zip");
+    await buttons[2].props.onClick();
+    expect(mocks.prepare.mock.calls[1][0].map((p: DownloadPhoto) => p.id)).toEqual(["d1", "d2"]);
+    await buttons[1].props.onClick();
+    expect(mocks.prepare.mock.calls[2][0].map((p: DownloadPhoto) => p.id)).toEqual(["a1"]);
+  });
+  it("greys out a type button when the cleaner has no photos of that type", () => {
+    const downloads = usePhotoDownloads([{ ...photo, photo_type: "before" }, { ...photo, id: "b", storage_path: "b", photo_type: "after" }], { date: "2026-11-09", property: "Village" });
+    const damage = clickableElements(downloads.toolbar)[2] as unknown as ReactElement<{ disabled: boolean }>;
+    expect(damage.props.disabled).toBe(true);
+  });
+  it("does not show type buttons on the combined all-cleaners view", () => {
+    const downloads = usePhotoDownloads([{ ...photo, photo_type: "before" }], { date: "2026-11-09", property: "Village" }, { allCleaners: true });
+    expect(clickableElements(downloads.toolbar)).toHaveLength(2);
   });
 });
