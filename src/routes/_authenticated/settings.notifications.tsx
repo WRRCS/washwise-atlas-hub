@@ -36,7 +36,7 @@ const SAMPLE: Record<string, string> = {
   client_name: "Jamie Rivera",
   service_name: "Residential Cleaning",
   scheduled_start: "Sat, Jul 4 at 10:00 AM",
-  invoice_number: "WRR-2026-042",
+  invoice_number: "2026-1042",
   total: "$180.00",
   due_date: "Jul 18, 2026",
   pay_link: "https://pay.example.com/inv/xyz",

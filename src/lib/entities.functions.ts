@@ -891,10 +891,16 @@ export const updateEmployeeJobDetails = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: prof } = await supabaseAdmin.from("profiles").select("tenant_id").eq("id", data.id).maybeSingle();
     if (!prof || prof.tenant_id !== tenantId) throw new Error("Employee not found in your business");
-    const { error: pErr } = await supabaseAdmin.from("profiles")
-      .update({ hourly_rate_cents: data.hourly_rate_cents ?? 0, address: data.address || null } as any)
-      .eq("id", data.id);
+    // Write as the signed-in owner: the profile guard trigger only lets owners change pay,
+    // so an admin-client write (no signed-in user) was silently reset to the old rate.
+    // A blank rate leaves the saved rate unchanged instead of resetting it to $0.
+    const patch: { address: string | null; hourly_rate_cents?: number } = { address: data.address || null };
+    if (data.hourly_rate_cents != null) patch.hourly_rate_cents = data.hourly_rate_cents;
+    const { data: updated, error: pErr } = await context.supabase.from("profiles")
+      .update(patch as any)
+      .eq("id", data.id).select("hourly_rate_cents").maybeSingle();
     if (pErr) throw new Error(pErr.message);
+    if (!updated || (patch.hourly_rate_cents != null && (updated as any).hourly_rate_cents !== patch.hourly_rate_cents)) throw new Error("Pay rate was not saved — please try again");
     const { error } = await (context.supabase as any).from("employee_job_details").upsert({
       profile_id: data.id, tenant_id: tenantId, start_date: data.start_date, job_title: data.job_title || null,
     });

@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { buildPhotoZip, deliverPhotoFile, preparePhotoExport, triggerDownload, uniquePhotoReferences, zipFilename, type DownloadPhoto, type PhotoExportContext, type PreparedPhoto } from "@/lib/photo-downloads";
 
 export const PHOTO_TYPE_DOWNLOADS = [
-  { type: "before", label: "BEFORE Only" },
-  { type: "after", label: "AFTER Only" },
-  { type: "damage", label: "DAMAGE only" },
+  { type: "before", label: "BEFORE" },
+  { type: "after", label: "AFTER" },
+  { type: "damage", label: "DAMAGE" },
 ] as const;
 export function photosOfType(photos: DownloadPhoto[], type: string) {
   return photos.filter(p => p.photo_type === type);

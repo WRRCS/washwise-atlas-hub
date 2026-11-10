@@ -38,7 +38,7 @@ export const getTimesheetCorrection = createServerFn({method:"POST"})
 
 const intervalSchema=z.object({id:z.string().uuid(),source:z.enum(["time","clock"]),kind:z.enum(["work","drive","lunch"]),started_at:z.string().datetime({offset:true}),ended_at:z.string().datetime({offset:true}).nullable(),job_id:z.string().uuid().nullable(),description:z.string().max(300)});
 export const saveTimesheetCorrection=createServerFn({method:"POST"})
-  .middleware([requireSupabaseAuth]).inputValidator((input:unknown)=>reviewSchema.extend({original:z.unknown(),records:z.array(intervalSchema).max(100),visits:z.array(z.object({id:z.string().uuid(),arrived_at:z.string().datetime({offset:true}),left_at:z.string().datetime({offset:true}).nullable()})).max(50),status:z.enum(["worked","no_show","missing_punch"]),reason:z.string().trim().min(3).max(1000)}).parse(input))
+  .middleware([requireSupabaseAuth]).inputValidator((input:unknown)=>reviewSchema.extend({original:z.unknown(),records:z.array(intervalSchema).max(100),visits:z.array(z.object({id:z.string().uuid(),arrived_at:z.string().datetime({offset:true}),left_at:z.string().datetime({offset:true}).nullable()})).max(50),status:z.enum(["worked","no_show","missing_punch"]),reason:z.string().trim().max(1000).default("")}).parse(input))
   .handler(async({data,context})=>{
     validateCorrectionIntervals(data.records,data.visits,data.status,data.job_id);
     const args={_employee:data.employee_id,_job:data.job_id,_from:data.from,_to:data.to,_original:data.original as Json,_records:data.records,_visits:data.visits,_status:data.status,_reason:data.reason};

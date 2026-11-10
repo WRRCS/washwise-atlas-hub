@@ -4309,7 +4309,9 @@ export type Database = {
         Returns: string
       }
       my_profile: { Args: never; Returns: Json }
-      next_invoice_number: { Args: { _tenant: string }; Returns: string }
+      next_invoice_number:
+        | { Args: { _tenant: string }; Returns: string }
+        | { Args: { _issue_date: string; _tenant: string }; Returns: string }
       portal_delete_push_subscription: {
         Args: { _endpoint: string }
         Returns: undefined

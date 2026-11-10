@@ -171,14 +171,14 @@ function Employees() {
   const openEdit = (e: Employee) => {
     setEditing(e);
     setEditForm({ phone: e.phone ?? "", is_active: e.is_active, full_name: e.full_name ?? "" });
-    setJob({ start_date: "", job_title: "", rate: "", address: "" });
+    setJob({ start_date: "", job_title: "", rate: e.hourly_rate_cents != null ? (e.hourly_rate_cents / 100).toFixed(2) : "", address: "" });
     if (isOwner) {
       getJobFn({ data: { id: e.id } }).then((d) => setJob({
         start_date: d.start_date ?? "",
         job_title: d.job_title ?? "",
         rate: d.hourly_rate_cents != null ? (d.hourly_rate_cents / 100).toFixed(2) : "",
         address: d.address ?? "",
-      })).catch(() => {});
+      })).catch(() => toast.error("Couldn't load job details — pay rate is unchanged unless you edit it"));
     }
   };
 
@@ -453,7 +453,7 @@ function Section({ title, rows, empty, showWages, children }: { title: string; r
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div className={`hidden md:grid gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground ${showWages ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]"}`}>
+          <div className={`hidden md:grid gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground ${showWages ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]"}`}>
             <div>Name</div><div>Email</div><div>Phone</div>{showWages && <div>Pay rate</div>}<div>Status</div><div>Alerts</div><div>Last login</div><div className="text-right">Actions</div>
           </div>
           <div className="divide-y divide-border/60">
@@ -520,7 +520,7 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
     "bg-clay-100 text-muted-foreground";
   const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
-    <div className={`grid grid-cols-1 gap-x-4 gap-y-3 items-center px-5 py-4 ${showWages ? "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_152px]"}`}>
+    <div className={`grid grid-cols-1 gap-x-4 gap-y-3 items-center px-5 py-4 ${showWages ? "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]"}`}>
       {/* Name, role and access */}
       <div className="min-w-0">
         <div className="font-medium truncate" title={e.full_name ?? undefined}>{e.full_name ?? "—"}</div>
@@ -659,6 +659,9 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
 
       {/* Actions */}
       <div className="flex items-center gap-1.5 justify-end">
+        <Button size="sm" variant="outline" onClick={onEdit} title="Edit name, phone and pay rate">
+          <Pencil className="size-3.5 mr-1.5" /> Edit
+        </Button>
         {e.email ? (
           <Button size="sm" onClick={onEmailLink} title="Email this person a one-tap sign-in link (no password needed)">
             <Mail className="size-3.5 mr-1.5" /> Invite
@@ -668,9 +671,9 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
             <Copy className="size-3.5 mr-1.5" /> Invite
           </Button>
         )}
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button size="icon" variant="ghost" className="size-8" title="More actions">
+            <Button size="icon" variant="ghost" className="size-8" title="More actions" aria-label="More actions">
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>

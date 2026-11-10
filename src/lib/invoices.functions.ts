@@ -409,7 +409,7 @@ export const createMonthlyBundle = createServerFn({ method: "POST" })
       }).eq("id", invoiceId);
       if (ue) throw new Error(ue.message);
     } else {
-      const { data: num, error: ne } = await sb.rpc("next_invoice_number", { _tenant: prof.tenant_id as string });
+      const { data: num, error: ne } = await sb.rpc("next_invoice_number", { _tenant: prof.tenant_id as string, _issue_date: issue });
       if (ne || !num) throw new Error(ne?.message ?? "Could not generate invoice number");
       number = num as string;
       const { data: invoice, error: ie } = await sb
@@ -665,7 +665,7 @@ export const createInvoice = createServerFn({ method: "POST" })
     const sb = context.supabase;
     const propertyId = await verifyProperty(sb, tenantId, data.client_id, data.property_id);
     const totals = editorTotals(data);
-    const { data: num, error: ne } = await sb.rpc("next_invoice_number", { _tenant: tenantId });
+    const { data: num, error: ne } = await sb.rpc("next_invoice_number", { _tenant: tenantId, _issue_date: data.issue_date });
     if (ne || !num) throw new Error(ne?.message ?? "Could not generate invoice number");
     const { data: invoice, error } = await sb
       .from("invoices")

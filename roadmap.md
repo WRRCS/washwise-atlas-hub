@@ -101,3 +101,4 @@
 - [ ] Employee pay rate editable + persistent per employee; set requested rates
 - [ ] Timesheet correction reason optional
 - [ ] Invoice numbers YYYY-NNNN (2026-1001…), year from invoice date; remove prefix/series settings
+- [ ] Photo type buttons labelled BEFORE / AFTER / DAMAGE (no "Only")

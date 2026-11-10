@@ -57,8 +57,6 @@ function BusinessSettingsPage() {
           timezone: p.timezone ?? null,
           logo_url: p.logo_url ?? null,
           primary_color: p.primary_color ?? null,
-          invoice_prefix: p.invoice_prefix ?? null,
-          invoice_series: p.invoice_series ?? null,
           invoice_footer: p.invoice_footer ?? null,
           payment_terms_days: p.payment_terms_days ?? null,
           late_fee_percent: p.late_fee_percent ?? null,
@@ -162,17 +160,9 @@ function BusinessSettingsPage() {
         <section className="bg-card rounded-xl ring-1 ring-black/5 p-6 space-y-4">
           <h2 className="text-base font-medium">Invoicing defaults</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            <Field label="Invoice number prefix">
-              <Input placeholder="WRR" value={form.invoice_prefix ?? ""} onChange={(e) => patch({ invoice_prefix: e.target.value })} />
-            </Field>
-            <Field label="Invoice number year / series">
-              <Input
-                placeholder="2026"
-                value={form.invoice_series ?? ""}
-                onChange={(e) => patch({ invoice_series: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                New invoices are numbered {(form.invoice_prefix || "WRR")}-{(form.invoice_series || "2026")}-001. Change this each year to start a new series.
+            <Field label="Invoice numbers">
+              <p className="text-sm text-muted-foreground">
+                Numbered automatically by invoice year: 2026-1001, 2026-1002 and so on. Each new year starts again at 1001 (2027-1001).
               </p>
             </Field>
             <Field label="Default payment terms">

@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/settings/templates")({
 const SAMPLE_VARS: Record<string, string> = {
   client_name: "Jamie Rivera",
   date: "Saturday, July 4",
-  invoice_number: "WRR-2026-042",
+  invoice_number: "2026-1042",
   amount: "$180.00",
   service_type: "Residential Cleaning",
   company_name: COMPANY_NAME,

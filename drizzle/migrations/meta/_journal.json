@@ -253,6 +253,13 @@
       "when": 1793679023907,
       "tag": "0035_auto_invoice_editor_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794346295956,
+      "tag": "0036_invoice_year_numbers_optional_correction_reason",
+      "breakpoints": true
     }
   ]
 }
