@@ -896,11 +896,13 @@ export const updateEmployeeJobDetails = createServerFn({ method: "POST" })
     // A blank rate leaves the saved rate unchanged instead of resetting it to $0.
     const patch: { address: string | null; hourly_rate_cents?: number } = { address: data.address || null };
     if (data.hourly_rate_cents != null) patch.hourly_rate_cents = data.hourly_rate_cents;
-    const { data: updated, error: pErr } = await context.supabase.from("profiles")
-      .update(patch as any)
-      .eq("id", data.id).select("hourly_rate_cents").maybeSingle();
+    // Wage columns are not readable through the signed-in client, so confirm with the admin read.
+    const { error: pErr } = await context.supabase.from("profiles").update(patch as any).eq("id", data.id);
     if (pErr) throw new Error(pErr.message);
-    if (!updated || (patch.hourly_rate_cents != null && (updated as any).hourly_rate_cents !== patch.hourly_rate_cents)) throw new Error("Pay rate was not saved — please try again");
+    if (patch.hourly_rate_cents != null) {
+      const { data: saved } = await supabaseAdmin.from("profiles").select("hourly_rate_cents").eq("id", data.id).maybeSingle();
+      if ((saved as any)?.hourly_rate_cents !== patch.hourly_rate_cents) throw new Error("Pay rate was not saved — please try again");
+    }
     const { error } = await (context.supabase as any).from("employee_job_details").upsert({
       profile_id: data.id, tenant_id: tenantId, start_date: data.start_date, job_title: data.job_title || null,
     });

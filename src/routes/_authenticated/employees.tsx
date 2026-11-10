@@ -453,7 +453,7 @@ function Section({ title, rows, empty, showWages, children }: { title: string; r
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div className={`hidden md:grid gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground ${showWages ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]"}`}>
+          <div className={`hidden xl:grid gap-x-4 px-5 py-3 border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground ${showWages ? "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_196px]" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_196px]"}`}>
             <div>Name</div><div>Email</div><div>Phone</div>{showWages && <div>Pay rate</div>}<div>Status</div><div>Alerts</div><div>Last login</div><div className="text-right">Actions</div>
           </div>
           <div className="divide-y divide-border/60">
@@ -520,7 +520,7 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
     "bg-clay-100 text-muted-foreground";
   const toggle = (key: keyof typeof EMPTY_PERMS, v: boolean) => onSavePerms({ ...current, [key]: v });
   return (
-    <div className={`grid grid-cols-1 gap-x-4 gap-y-3 items-center px-5 py-4 ${showWages ? "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]" : "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_220px]"}`}>
+    <div className={`grid grid-cols-1 gap-x-4 gap-y-3 items-center px-5 py-4 ${showWages ? "md:grid-cols-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_196px]" : "md:grid-cols-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.85fr)_minmax(0,0.85fr)_minmax(0,0.55fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_196px]"}`}>
       {/* Name, role and access */}
       <div className="min-w-0">
         <div className="font-medium truncate" title={e.full_name ?? undefined}>{e.full_name ?? "—"}</div>
@@ -602,20 +602,20 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
 
       {/* Email */}
       <div className="min-w-0">
-        <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Email</div>
+        <div className="xl:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Email</div>
         <div className="text-[13px] text-foreground/80 break-words leading-snug">{e.email ?? "—"}</div>
       </div>
 
       {/* Phone */}
       <div className="min-w-0">
-        <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Phone</div>
+        <div className="xl:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Phone</div>
         <div className="text-sm text-foreground/80 whitespace-nowrap">{fmtPhone(e.phone)}</div>
       </div>
 
       {/* Pay rate — admin-side only, never shown to employees */}
       {showWages && (
         <div>
-          <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Pay rate</div>
+          <div className="xl:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Pay rate</div>
           <div className="text-sm tabular-nums text-foreground/80 whitespace-nowrap">
             {e.hourly_rate_cents == null ? "—" : `$${(e.hourly_rate_cents / 100).toFixed(2)}/hr`}
           </div>
@@ -624,7 +624,7 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
 
       {/* Status */}
       <div>
-        <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Status</div>
+        <div className="xl:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Status</div>
         <div className="flex flex-col items-start gap-1.5">
           <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${e.is_active ? "bg-emerald-50 text-emerald-700" : "bg-clay-200 text-muted-foreground"}`}>
             {e.is_active ? "Active" : "Archived"}
@@ -641,7 +641,7 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
 
       {/* Push alerts */}
       <div>
-        <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Alerts</div>
+        <div className="xl:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Alerts</div>
         <span
           className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ${e.has_push ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-clay-100 text-muted-foreground ring-black/10"}`}
           title={e.has_push ? "Phone notifications are on — they get publish alerts" : e.has_app_access ? "Has the app but hasn't turned on notifications yet" : "No app access yet — invite them first"}
@@ -653,13 +653,13 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
 
       {/* Last login */}
       <div>
-        <div className="md:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Last login</div>
+        <div className="xl:hidden text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">Last login</div>
         <div className="text-sm text-muted-foreground">{formatLast(e.last_sign_in_at)}</div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1.5 justify-end">
-        <Button size="sm" variant="outline" onClick={onEdit} title="Edit name, phone and pay rate">
+      <div className="flex items-center gap-1.5 justify-start xl:justify-end md:col-span-3 xl:col-span-1">
+        <Button size="sm" variant="outline" onClick={onEdit} title="Edit name, phone and pay rate" aria-label="Edit">
           <Pencil className="size-3.5 mr-1.5" /> Edit
         </Button>
         {e.email ? (

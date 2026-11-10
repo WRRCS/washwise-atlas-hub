@@ -98,7 +98,7 @@
 - [x] Weekly calendar layout fix + collapsible sidebar (expanded 208px / collapsed 60px, remembered per device, icon tooltips). All 7 days fit at 1280/1366/1440/1920 at 100% zoom, both sidebar states; 125%-zoom equivalent and tablet scroll inside the grid to Sat/Sun. Not published.
 
 ## Nov 10 2026 requests
-- [ ] Employee pay rate editable + persistent per employee; set requested rates
-- [ ] Timesheet correction reason optional
-- [ ] Invoice numbers YYYY-NNNN (2026-1001…), year from invoice date; remove prefix/series settings
-- [ ] Photo type buttons labelled BEFORE / AFTER / DAMAGE (no "Only")
+- [x] Employee pay rate editable + persistent per employee; set requested rates
+- [x] Timesheet correction reason optional
+- [x] Invoice numbers YYYY-NNNN (2026-1001…), year from invoice date; remove prefix/series settings
+- [x] Photo type buttons labelled BEFORE / AFTER / DAMAGE (no "Only")
