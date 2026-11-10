@@ -25,3 +25,23 @@ describe("cleaner training", () => {
     expect(existsSync(resolve(__dirname, "../../src/assets/training/WRRCS-Cleaner-Training-UK.pdf"))).toBe(true);
   });
 });
+
+const firstDay = content as unknown as Record<"en" | "uk", { firstDay: { steps: { id: string; image: string; lines: string[] }[] } }>;
+
+describe("first-day guide", () => {
+  it("has the same 10 steps in English and Ukrainian, each with a picture in that language", () => {
+    for (const lang of ["en", "uk"] as const) {
+      const steps = firstDay[lang].firstDay.steps;
+      expect(steps).toHaveLength(10);
+      expect(steps.map((s) => s.id)).toEqual(firstDay.en.firstDay.steps.map((s) => s.id));
+      for (const s of steps) {
+        expect(existsSync(resolve(__dirname, `../../src/assets/training/${lang}-${s.image}.jpg`)), `${lang}-${s.image}`).toBe(true);
+      }
+    }
+  });
+
+  it("ships one separate first-day PDF per language", () => {
+    expect(existsSync(resolve(__dirname, "../../src/assets/training/WRRCS-First-Day-Guide-EN.pdf"))).toBe(true);
+    expect(existsSync(resolve(__dirname, "../../src/assets/training/WRRCS-First-Day-Guide-UK.pdf"))).toBe(true);
+  });
+});

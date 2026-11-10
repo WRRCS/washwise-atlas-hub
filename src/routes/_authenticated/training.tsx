@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Download, Lightbulb, Printer } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, Lightbulb, Printer } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { useLanguage, type Lang } from "@/lib/i18n";
-import { CLEANER_TRAINING, TRAINING_PDF, trainingImage } from "@/lib/cleaner-training";
+import { CLEANER_TRAINING, FIRST_DAY_PDF, TRAINING_PDF, trainingImage } from "@/lib/cleaner-training";
 
 export const Route = createFileRoute("/_authenticated/training")({
   component: TrainingPage,
@@ -29,6 +29,7 @@ function TrainingPage() {
   const [lang, setLang] = useState<Lang>(appLang);
   useEffect(() => setLang(appLang), [appLang]);
   const guide = CLEANER_TRAINING[lang];
+  const first = guide.firstDay;
 
   return (
     <AppShell>
@@ -56,6 +57,79 @@ function TrainingPage() {
         }
       />
       <div className="max-w-3xl w-full mx-auto px-6 md:px-8 py-6 space-y-8" lang={lang}>
+        <section id="first-day" aria-labelledby="first-day-title" className="space-y-5">
+          <div className="rounded-2xl border border-brand/30 bg-brand/5 p-5 md:p-6">
+            <h2 id="first-day-title" className="text-2xl font-semibold leading-tight">{first.title}</h2>
+            <p className="mt-1 text-brand font-medium">{first.subtitle}</p>
+            <p className="mt-3 text-[15px] leading-relaxed">{first.intro}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-card border border-border/60 p-4">
+                <h3 className="font-semibold">{first.beforeTitle}</h3>
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {first.before.map((b) => (
+                    <li key={b} className="flex gap-2"><CheckCircle2 className="size-4 shrink-0 mt-0.5 text-brand" />{b}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-xl bg-clay-100 p-4">
+                <h3 className="font-semibold">{first.rememberTitle}</h3>
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {first.remember.map((r) => (
+                    <li key={r} className="flex gap-2"><AlertCircle className="size-4 shrink-0 mt-0.5 text-brand" />{r}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <a
+              href={FIRST_DAY_PDF[lang]}
+              download
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand text-brand-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90 print:hidden"
+            >
+              <Download className="size-4" /> {first.downloadLabel}
+            </a>
+          </div>
+          <ol className="space-y-4">
+            {first.steps.map((st, i) => {
+              const src = trainingImage(lang, st.image);
+              return (
+                <li key={st.id} id={`first-${st.id}`} className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 break-inside-avoid">
+                  <div className="grid gap-5 sm:grid-cols-[1fr_220px] items-start">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="grid place-items-center size-9 shrink-0 rounded-full bg-brand text-brand-foreground font-semibold">{i + 1}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-brand">{first.stepWord} {i + 1} / {first.steps.length}</p>
+                          <h3 className="text-lg font-semibold leading-snug">{st.title}</h3>
+                        </div>
+                      </div>
+                      <ul className="mt-3 space-y-2">
+                        {st.lines.map((line, k) => (
+                          <li key={k} className="flex gap-3 text-[15px] leading-relaxed">
+                            <span className="mt-0.5 grid place-items-center size-6 shrink-0 rounded-full bg-clay-100 text-xs font-semibold text-muted-foreground">{k + 1}</span>
+                            <span className="min-w-0">{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {src && (
+                      <img
+                        src={src}
+                        alt={`${st.title} — screenshot`}
+                        loading="lazy"
+                        width={300}
+                        height={649}
+                        className="w-full max-w-[220px] h-auto rounded-2xl border border-border shadow-sm justify-self-center"
+                      />
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+
+        <h2 className="text-2xl font-semibold leading-tight pt-4 border-t border-border/60">{first.fullGuideLabel}</h2>
+
         <div className="flex flex-wrap gap-2 print:hidden">
           <a
             href={TRAINING_PDF[lang]}
