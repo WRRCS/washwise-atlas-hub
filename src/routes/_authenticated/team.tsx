@@ -23,6 +23,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
+import { PhoneSharingCard } from "@/components/phone-sharing-card";
 import { myCapabilities, updateEmployee } from "@/lib/entities.functions";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -164,6 +165,7 @@ function RosterView({ canManage }: { canManage: boolean }) {
 
   return (
     <>
+      {!isOwner && !ownerQ.isLoading && <PhoneSharingCard />}
       <div className="border border-border bg-card rounded-md overflow-hidden print:border-0">
         <div className="flex flex-wrap items-center gap-3 p-3 md:p-4 border-b border-border print:hidden">
           <div className="relative w-full sm:w-72">
@@ -211,8 +213,9 @@ function RosterView({ canManage }: { canManage: boolean }) {
                   </td>
                   {canShowContact && <td className="px-4 py-3 text-foreground">
                     <div className="space-y-0.5 break-all">
-                      <div>{member.email ?? "—"}</div>
-                      {member.phone && <div className="text-muted-foreground">{member.phone}</div>}
+                      {member.email && <div>{member.email}</div>}
+                      {member.phone && <div className={member.email ? "text-muted-foreground" : undefined}><a href={`tel:${member.phone}`} className="hover:underline">{member.phone}</a></div>}
+                      {!member.email && !member.phone && <div className="text-muted-foreground">—</div>}
                     </div>
                   </td>}
                   <td className="px-4 py-3 capitalize">{t(member.role.replaceAll("_", " "))}</td>

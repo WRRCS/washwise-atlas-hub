@@ -2497,6 +2497,7 @@ export type Database = {
           is_active: boolean
           language: string | null
           phone: string | null
+          share_phone_with_team: boolean
           tenant_id: string
           updated_at: string
         }
@@ -2511,6 +2512,7 @@ export type Database = {
           is_active?: boolean
           language?: string | null
           phone?: string | null
+          share_phone_with_team?: boolean
           tenant_id: string
           updated_at?: string
         }
@@ -2525,6 +2527,7 @@ export type Database = {
           is_active?: boolean
           language?: string | null
           phone?: string | null
+          share_phone_with_team?: boolean
           tenant_id?: string
           updated_at?: string
         }
@@ -4314,6 +4317,7 @@ export type Database = {
         }
         Returns: string
       }
+      my_phone_sharing: { Args: never; Returns: Json }
       my_profile: { Args: never; Returns: Json }
       next_invoice_number:
         | { Args: { _tenant: string }; Returns: string }
@@ -4470,6 +4474,10 @@ export type Database = {
           occurred_on: string
           status: string
         }[]
+      }
+      set_my_phone_sharing: {
+        Args: { _phone?: string; _share: boolean }
+        Returns: Json
       }
       staff_directory: {
         Args: never

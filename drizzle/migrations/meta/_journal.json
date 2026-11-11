@@ -267,6 +267,13 @@
       "when": 1794356973289,
       "tag": "0037_sop_ukrainian_name",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794362981807,
+      "tag": "0038_employee_phone_sharing",
+      "breakpoints": true
     }
   ]
 }
