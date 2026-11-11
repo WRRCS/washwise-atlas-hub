@@ -105,3 +105,4 @@
 - [x] Combined Masha's duplicate team entries into her sign-in account (name, phone, $23/hr, Cleaner, Nov 11 start); removed the empty extra entry. Confirmed only owners can change pay; Leslie Walker account holds a view-wages permission.
 
 - [ ] Short first-day cleaner guide with pictures: separate English and Ukrainian files (one language per file), also on the Training page; full guide already exists
+- [ ] Owner/manager menu: move Cleaner training directly beneath Team

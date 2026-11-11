@@ -31,6 +31,7 @@ const OWNER_NAV = [
   { to: "/sops", label: "SOPs", icon: BookOpen },
   { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/team", label: "Team", icon: Users2 },
+  { to: "/training", label: "Cleaner training", icon: GraduationCap },
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/caddies", label: "Caddy supplies", icon: PackageOpen },
   { to: "/invoices", label: "Invoices", icon: Receipt },
@@ -42,7 +43,6 @@ const OWNER_NAV = [
   { to: "/settings/integrations", label: "Integrations", icon: Plug },
   { to: "/settings/ai", label: "AI Assistant", icon: Bot },
   { to: "/settings/billing", label: "Billing & plan", icon: CreditCard },
-  { to: "/training", label: "Cleaner training", icon: GraduationCap },
   { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 
