@@ -174,11 +174,14 @@ function SchedulePage() {
 
   const dupFn = useServerFn(duplicateJobToEmployee);
   const dupMut = useMutation({
-    mutationFn: (v: { id: string; employeeId: string; start: Date; end: Date }) =>
-      dupFn({ data: { id: v.id, employee_id: v.employeeId, scheduled_start: v.start.toISOString(), scheduled_end: v.end.toISOString() } }),
-    onSuccess: () => {
+    mutationFn: (v: { id: string; employeeId: string; start: Date; end: Date; mode?: "auto" | "new" }) =>
+      dupFn({ data: { id: v.id, employee_id: v.employeeId, scheduled_start: v.start.toISOString(), scheduled_end: v.end.toISOString(), mode: v.mode ?? "auto" } }),
+    onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      toast.success("Shift copied to team member");
+      const when = format(new Date(r.start), "EEE, MMM d");
+      if (r.result === "already") toast.info(`${r.cleaner} is already on this job`);
+      else if (r.result === "added") toast.success(`Added ${r.cleaner} to ${r.client} — ${when}`);
+      else toast.success(`New job created for ${r.cleaner} — ${r.client}, ${when}`);
     },
     onError: (e: any) => toast.error(e?.message ?? "Copy failed"),
   });
@@ -310,7 +313,7 @@ function SchedulePage() {
     .filter((j: any) => (j.status === "scheduled" || j.status === "in_progress") && new Date(j.scheduled_end).getTime() < Date.now())
     .map((j: any) => j.id as string);
 
-  const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string } | null>(null);
+  const [copiedShift, setCopiedShift] = useState<{ id: string; startISO: string; endISO: string; label: string; mode: "auto" | "new" } | null>(null);
   const [openJob, setOpenJob] = useState<{ jobId: string; employeeId?: string } | null>(null);
 
   const pasteShift = (employeeId: string, day: Date) => {
@@ -323,7 +326,7 @@ function SchedulePage() {
       zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz),
     );
     const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
-    dupMut.mutate({ id: copiedShift.id, employeeId, start: newStart, end: newEnd });
+    dupMut.mutate({ id: copiedShift.id, employeeId, start: newStart, end: newEnd, mode: copiedShift.mode });
   };
 
   const onDropOnCell = (e: React.DragEvent, employeeId: string, day: Date) => {
@@ -682,17 +685,27 @@ function SchedulePage() {
                                         }
                                       />
                                        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                                         <Copy className="size-3" /> Drag this shift onto another team member to copy it.
+                                         <Copy className="size-3" /> Drag onto another team member to add them to this cleaning.
                                        </p>
                                        <button
                                          type="button"
                                          onClick={() => {
-                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label });
-                                           toast.success("Shift copied — tap \"Paste here\" on any day/team member to place it.");
+                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label, mode: "auto" });
+                                           toast.success("Shift copied — tap \"Paste here\" on a team member to add them to this cleaning.");
                                          }}
                                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
                                        >
                                          <Copy className="size-3" /> Copy shift
+                                       </button>
+                                       <button
+                                         type="button"
+                                         onClick={() => {
+                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label, mode: "new" });
+                                           toast.success("Ready to duplicate — tap \"Paste here\" to create a separate new job.");
+                                         }}
+                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
+                                       >
+                                         <Plus className="size-3" /> Duplicate job
                                        </button>
                                       {(j.status === "scheduled" || j.status === "in_progress") && (
                                         <button
@@ -828,7 +841,7 @@ function SchedulePage() {
       {copiedShift && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-brand text-white text-xs font-medium pl-3 pr-1.5 py-1.5 shadow-lg">
           <ClipboardPaste className="size-3.5" />
-          <span className="max-w-48 truncate">“{copiedShift.label}” copied — tap Paste here on any day</span>
+          <span className="max-w-56 truncate">{copiedShift.mode === "new" ? `Duplicating “${copiedShift.label}” as a new job — tap Paste here` : `“${copiedShift.label}” copied — tap Paste here on any day`}</span>
           <button
             type="button"
             onClick={() => setCopiedShift(null)}

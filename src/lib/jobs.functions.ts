@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCanViewPricing } from "@/lib/team.functions";
 import { clientContact, staffDirectory } from "@/lib/privacy";
-import { planAssigneeChange, blockedRemovals } from "@/lib/job-assignees";
-import { DEFAULT_TZ } from "@/lib/tz";
+import { planAssigneeChange, blockedRemovals, findPasteTarget, type PasteCandidate } from "@/lib/job-assignees";
+import { DEFAULT_TZ, dayKeyTZ } from "@/lib/tz";
 import { ownSopConfirmation } from "@/lib/sop-confirmation";
 import { requirePropertyType } from "@/lib/property-type";
 import {
@@ -507,23 +507,75 @@ export const deleteJob = createServerFn({ method: "POST" })
     return { ok: true, unassigned: false as const };
   });
 
-/** Copy an existing shift onto another employee (optionally another day). */
+/**
+ * Paste a copied shift onto a team member. When the same cleaning already
+ * exists (same client, property, service, day and overlapping time) the
+ * cleaner joins it, so one cleaning stays one job and one invoice. A new job
+ * is created only when nothing matches, or when mode is "new" (Duplicate job).
+ */
 export const duplicateJobToEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string; employee_id: string; scheduled_start?: string; scheduled_end?: string }) => input)
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      employee_id: z.string().uuid(),
+      scheduled_start: z.string().datetime({ offset: true }).optional(),
+      scheduled_end: z.string().datetime({ offset: true }).optional(),
+      mode: z.enum(["auto", "new"]).default("auto"),
+    }).parse(input),
+  )
   .handler(async ({ data, context }) => {
-    const { data: src, error: srcErr } = await context.supabase
+    const sb = context.supabase as any;
+    const { data: allowed } = await sb.rpc("is_owner_or_manager");
+    if (!allowed) throw new Error("Only owners and managers can copy shifts");
+    const { data: src, error: srcErr } = await sb
       .from("jobs")
-      .select("tenant_id, client_id, property_id, service_address, service_location_label, service_type_id, scheduled_start, scheduled_end, notes, price_cents")
+      .select("id, tenant_id, client_id, property_id, service_address, service_location_label, service_type_id, scheduled_start, scheduled_end, notes, price_cents, client:clients(first_name, last_name)")
       .eq("id", data.id)
       .maybeSingle();
     if (srcErr) throw new Error(srcErr.message);
     if (!src) throw new Error("Shift not found");
 
+    const roster = await staffDirectory(sb);
+    const emp = roster.find((m) => m.id === data.employee_id);
+    if (!emp || emp.tenant_id !== src.tenant_id) throw new Error("That cleaner isn't on your team");
+    if (emp.is_active === false) throw new Error(`${emp.full_name ?? "That team member"} is no longer active`);
+    const cleanerName = emp.full_name ?? "Cleaner";
+    const clientName = [src.client?.first_name, src.client?.last_name].filter(Boolean).join(" ").trim() || src.service_location_label || "this client";
+
     const start = data.scheduled_start ?? src.scheduled_start;
     const end = data.scheduled_end ?? src.scheduled_end;
 
-    const { data: job, error } = await context.supabase
+    if (data.mode === "auto" && src.client_id) {
+      const { data: tenant } = await sb.from("tenants").select("timezone").eq("id", src.tenant_id).maybeSingle();
+      const tz = tenant?.timezone || DEFAULT_TZ;
+      let q = sb.from("jobs")
+        .select("id, client_id, property_id, service_type_id, status, scheduled_start, scheduled_end, assigned_to, links:job_employees(employee_id)")
+        .eq("tenant_id", src.tenant_id).eq("client_id", src.client_id).neq("status", "canceled")
+        .lt("scheduled_start", end).gt("scheduled_end", start);
+      q = src.property_id ? q.eq("property_id", src.property_id) : q.is("property_id", null);
+      const { data: rows, error: cErr } = await q;
+      if (cErr) throw new Error(cErr.message);
+      const candidates: Array<PasteCandidate & { assigned_to: string | null }> = (rows ?? []).map((r: any) => ({
+        ...r, assignee_ids: (r.links ?? []).map((l: any) => l.employee_id),
+      }));
+      const match = findPasteTarget(src, { start, end, dayKey: dayKeyTZ(start, tz) }, candidates, (iso) => dayKeyTZ(iso, tz)) as (typeof candidates)[number] | null;
+      if (match) {
+        if (match.assignee_ids.includes(data.employee_id)) {
+          return { result: "already" as const, id: match.id, cleaner: cleanerName, client: clientName, start: match.scheduled_start };
+        }
+        const { error: insErr } = await sb.from("job_employees")
+          .insert({ tenant_id: src.tenant_id, job_id: match.id, employee_id: data.employee_id });
+        if (insErr) {
+          if ((insErr as any).code === "23505") return { result: "already" as const, id: match.id, cleaner: cleanerName, client: clientName, start: match.scheduled_start };
+          throw new Error(insErr.message);
+        }
+        if (!match.assigned_to) await sb.from("jobs").update({ assigned_to: data.employee_id }).eq("id", match.id);
+        return { result: "added" as const, id: match.id, cleaner: cleanerName, client: clientName, start: match.scheduled_start };
+      }
+    }
+
+    const { data: job, error } = await sb
       .from("jobs")
       .insert({
         tenant_id: src.tenant_id,
@@ -542,20 +594,18 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    await context.supabase
-      .from("job_employees")
-      .insert({ tenant_id: src.tenant_id, job_id: job.id, employee_id: data.employee_id });
+    await sb.from("job_employees").insert({ tenant_id: src.tenant_id, job_id: job.id, employee_id: data.employee_id });
 
-    const { data: steps } = await context.supabase
-      .from("job_sop_items")
-      .select("position, label, label_uk")
-      .eq("job_id", data.id);
-    if (steps?.length) {
-      await context.supabase.from("job_sop_items").insert(
+    const { data: allSteps } = await sb.from("job_sop_items").select("position, label, label_uk").eq("job_id", data.id).order("position");
+    // Copy the checklist once, not each cleaner's personal copy.
+    const seen = new Set<string>();
+    const steps = (allSteps ?? []).filter((s: any) => { const k = `${s.position}|${s.label}`; if (seen.has(k)) return false; seen.add(k); return true; });
+    if (steps.length) {
+      await sb.from("job_sop_items").insert(
         steps.map((s: any) => ({ tenant_id: src.tenant_id, job_id: job.id, position: s.position, label: s.label, label_uk: s.label_uk ?? null })),
       );
     }
-    return { id: job.id };
+    return { result: "created" as const, id: job.id as string, cleaner: cleanerName, client: clientName, start };
   });
 
 /**
