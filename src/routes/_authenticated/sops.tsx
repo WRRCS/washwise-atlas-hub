@@ -19,6 +19,9 @@ import {
   createSopUploadUrl, bulkImportSops, deleteSopAttachment,
   type SopListRow, type SopDetail,
 } from "@/lib/sops.functions";
+import { LinkifiedText } from "@/components/linkified-text";
+import { SopDocumentPreview } from "@/components/sop-document-preview";
+import { usePick } from "@/lib/i18n";
 
 const sopsQO = queryOptions({ queryKey: ["sops"], queryFn: () => listSops() });
 const svcQO = queryOptions({ queryKey: ["service-types"], queryFn: () => listServiceTypes() });
@@ -40,6 +43,7 @@ function SopsPage() {
   const router = useRouter();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
   const dupFn = useServerFn(duplicateSop);
   const delFn = useServerFn(deleteSop);
 
@@ -92,19 +96,26 @@ function SopsPage() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {g.items.map((s) => (
-                <article key={s.id} className="bg-white rounded-xl ring-1 ring-black/5 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-medium tracking-tight">{s.name}</h3>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider font-medium ${
-                      s.is_active ? "bg-green-100 text-green-800" : "bg-clay-200 text-muted-foreground"
-                    }`}>
-                      {s.is_active ? "Active" : "Draft"}
-                    </span>
-                  </div>
-                  {s.description && <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{s.description}</p>}
-                  <p className="text-xs text-muted-foreground mb-4">
-                    {s.step_count} step{s.step_count === 1 ? "" : "s"} · {s.attachment_count} attachment{s.attachment_count === 1 ? "" : "s"}
-                  </p>
+                <article key={s.id} className="bg-card rounded-xl ring-1 ring-border p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => setViewId(s.id)}
+                    aria-label={`Open ${s.name}`}
+                    className="flex-1 text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-medium tracking-tight">{s.name}</h3>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider font-medium ${
+                        s.is_active ? "bg-success/15 text-success" : "bg-clay-200 text-muted-foreground"
+                      }`}>
+                        {s.is_active ? "Active" : "Draft"}
+                      </span>
+                    </div>
+                    {s.description && <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{s.description}</p>}
+                    <p className="text-xs text-muted-foreground mb-4">
+                      {s.step_count} step{s.step_count === 1 ? "" : "s"} · {s.attachment_count} attachment{s.attachment_count === 1 ? "" : "s"}
+                    </p>
+                  </button>
                   <div className="mt-auto flex gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditId(s.id); setWizardOpen(true); }}>
                       <Pencil className="size-3.5 mr-1.5" /> Edit
@@ -123,6 +134,21 @@ function SopsPage() {
         ))}
       </div>
 
+      {viewId && (
+        <Dialog open onOpenChange={(open) => { if (!open) setViewId(null); }}>
+          <DialogContent className="max-w-4xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader className="pr-8">
+              <DialogTitle>{(sops as SopListRow[]).find((s) => s.id === viewId)?.name ?? "SOP"}</DialogTitle>
+              <DialogDescription>Read-only preview</DialogDescription>
+            </DialogHeader>
+            <SopLibraryPreview sopId={viewId} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewId(null)}>Close SOP</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {wizardOpen && (
         <SopWizard
           services={services as ServiceType[]}
@@ -132,6 +158,65 @@ function SopsPage() {
         />
       )}
     </AppShell>
+  );
+}
+
+function SopLibraryPreview({ sopId }: { sopId: string }) {
+  const getFn = useServerFn(getSop);
+  const pick = usePick();
+  const { data: sop, isLoading, isError, refetch } = useQuery({
+    queryKey: ["sop", sopId],
+    queryFn: () => getFn({ data: { id: sopId } }),
+  });
+
+  if (isLoading) return <p role="status" className="text-sm text-muted-foreground">Loading SOP…</p>;
+  if (isError) return (
+    <div role="alert" className="space-y-2">
+      <p className="text-sm text-destructive">Could not load this SOP. Please try again.</p>
+      <Button variant="outline" onClick={() => refetch()}>Try again</Button>
+    </div>
+  );
+  if (!sop) return <p className="text-sm text-muted-foreground">SOP not found.</p>;
+
+  const description = pick(sop.description, sop.description_uk);
+  return (
+    <div className="min-w-0 space-y-5 text-base leading-relaxed">
+      {description && <p className="whitespace-pre-wrap"><LinkifiedText text={description} /></p>}
+      {sop.steps.length > 0 && (
+        <ol className="space-y-5">
+          {sop.steps.map((step) => (
+            <li key={step.id} className="border-b border-border pb-4">
+              <p className="font-semibold">{step.step_number}. {pick(step.title, step.title_uk)}</p>
+              {pick(step.description, step.description_uk) && (
+                <p className="mt-2 whitespace-pre-wrap"><LinkifiedText text={pick(step.description, step.description_uk)} /></p>
+              )}
+              {step.reference_photo_url && (
+                <img src={step.reference_photo_url} alt={pick(step.title, step.title_uk)} className="mt-3 w-full h-auto rounded-lg" />
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+      {sop.attachments.map((attachment) => (
+        <section key={attachment.id} className="space-y-3 border-t border-border pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-medium break-words">{attachment.original_filename}</h3>
+              {attachment.caption && <p className="text-sm text-muted-foreground">{attachment.caption}</p>}
+            </div>
+            {attachment.url && (
+              <Button asChild variant="outline" size="sm">
+                <a href={attachment.url} download={attachment.original_filename} target="_blank" rel="noreferrer">Download</a>
+              </Button>
+            )}
+          </div>
+          <SopDocumentPreview url={attachment.url} filename={attachment.original_filename} />
+        </section>
+      ))}
+      {!description && sop.steps.length === 0 && sop.attachments.length === 0 && (
+        <p className="text-sm text-muted-foreground">This SOP has no saved instructions or documents yet.</p>
+      )}
+    </div>
   );
 }
 
