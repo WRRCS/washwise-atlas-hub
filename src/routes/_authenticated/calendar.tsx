@@ -333,7 +333,7 @@ function SchedulePage() {
     <>
       <PageHeader
         title={tr("Schedule")}
-        subtitle={`${format(anchor, "MMM d", dateLocaleOpts())} — ${format(addDays(anchor, 6), "MMM d, yyyy", dateLocaleOpts())}`}
+        subtitle={`${format(anchor, dateLocaleOpts() ? "d MMM" : "MMM d", dateLocaleOpts())} — ${format(addDays(anchor, 6), dateLocaleOpts() ? "d MMM yyyy" : "MMM d, yyyy", dateLocaleOpts())}`}
         action={
           <div className="flex flex-wrap gap-2 items-center">
             <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-clay-100">

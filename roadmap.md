@@ -108,6 +108,6 @@
 - [x] Owner/manager menu: move Cleaner training directly beneath Team
 
 ## Nov 10 2026 — general SOP + Ukrainian
-- [ ] One shared general home-cleaning SOP (from Leslie's worksheet, simplified, EN + UK) linked to homes with no SOP of their own
-- [ ] Ukrainian for Ukrainian-language users across the cleaner screens (whole app they can reach)
-- [ ] Ukrainian text for the Madrona Street SOP steps
+- [x] One shared general home-cleaning SOP (from Leslie's worksheet, simplified, EN + UK) linked to homes with no SOP of their own
+- [x] Ukrainian for Ukrainian-language users across the cleaner screens (whole app they can reach)
+- [x] Ukrainian text for the Madrona Street SOP steps

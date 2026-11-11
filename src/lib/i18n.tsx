@@ -36,6 +36,7 @@ const UK: Record<string, string> = {
   Language: "Мова",
   "Sign out": "Вийти",
   Menu: "Меню",
+  "My caddy": "Мій кошик",
 
   // Language setup
   "Choose your language": "Оберіть свою мову",

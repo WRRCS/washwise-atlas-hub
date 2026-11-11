@@ -39,3 +39,5 @@
 - InvoiceEditor notifies its parent after successful persistence so same-invoice navigation exits edit mode; the send search flag opens confirmation only and never sends email automatically.
 - Invoice numbers come only from next_invoice_number(tenant, invoice date): invoice-date year plus a per-year sequence from 1001; callers pass the issue date so years roll over automatically. Tenant prefix/series columns are deprecated.
 - Owner pay-rate edits write profiles through the signed-in owner client (the privileged-field trigger resets admin-client writes) and confirm via an admin read, because wage columns are not selectable by authenticated users.
+
+- Employee-reachable UI text goes through useT/translateNow with English source strings as keys in the i18n.tsx UK dictionary (dates via dateLocaleOpts/activeLocales); SOP names, descriptions and steps carry *_uk columns picked with usePick, so missing translations fall back to English instead of breaking screens.
