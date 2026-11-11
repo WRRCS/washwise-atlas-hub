@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { resolveCanViewPricing } from "@/lib/team.functions";
-import { clientContact } from "@/lib/privacy";
+import { clientContact, staffDirectory } from "@/lib/privacy";
+import { planAssigneeChange, blockedRemovals } from "@/lib/job-assignees";
 import { DEFAULT_TZ } from "@/lib/tz";
 import { ownSopConfirmation } from "@/lib/sop-confirmation";
 import { requirePropertyType } from "@/lib/property-type";
@@ -618,4 +619,115 @@ export const updateJobLocation = createServerFn({ method: "POST" })
     const { error: saveError } = await q;
     if (saveError) throw new Error(saveError.message);
     return { ok: true };
+  });
+
+/**
+ * Owner/manager action: add, remove or swap the cleaners on an appointment
+ * (or this and later scheduled visits in its repeating series).
+ * Cleaners who already recorded work on a visit stay on it so their time,
+ * photos and checklist are never orphaned.
+ */
+export const updateJobAssignees = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      employee_ids: z.array(z.string().uuid()).max(20),
+      scope: z.enum(["this", "future"]).default("this"),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { data: allowed } = await sb.rpc("is_owner_or_manager");
+    if (!allowed) throw new Error("Only owners and managers can change cleaners");
+    const { data: job, error } = await sb.from("jobs")
+      .select("id, tenant_id, recurrence_group_id, scheduled_start, status").eq("id", data.id).single();
+    if (error || !job) throw new Error("Appointment not found");
+    if (job.status === "canceled") throw new Error("This appointment was canceled");
+
+    const roster = await staffDirectory(sb);
+    const byId = new Map(roster.map((m) => [m.id, m]));
+    const requested = [...new Set(data.employee_ids)];
+    for (const id of requested) {
+      const m = byId.get(id);
+      if (!m || m.tenant_id !== job.tenant_id) throw new Error("One of the selected cleaners isn't on your team");
+      if (m.is_active === false) throw new Error(`${m.full_name ?? "That team member"} is no longer active`);
+    }
+
+    let targets: Array<{ id: string }> = [{ id: job.id }];
+    if (data.scope === "future" && job.recurrence_group_id) {
+      const { data: series, error: sErr } = await sb.from("jobs").select("id")
+        .eq("recurrence_group_id", job.recurrence_group_id)
+        .gte("scheduled_start", job.scheduled_start)
+        .eq("status", "scheduled");
+      if (sErr) throw new Error(sErr.message);
+      const ids = new Set([job.id, ...(series ?? []).map((r: any) => r.id)]);
+      targets = [...ids].map((id) => ({ id }));
+    }
+    const jobIds = targets.map((t) => t.id);
+
+    const [links, leads, visits, times, photos, confirmations, checked] = await Promise.all([
+      sb.from("job_employees").select("job_id, employee_id").in("job_id", jobIds),
+      sb.from("jobs").select("id, assigned_to").in("id", jobIds),
+      sb.from("job_visits").select("job_id, employee_id").in("job_id", jobIds),
+      sb.from("time_entries").select("job_id, user_id").in("job_id", jobIds),
+      sb.from("job_photos").select("job_id, uploaded_by").in("job_id", jobIds),
+      sb.from("job_sop_confirmations").select("job_id, employee_id").in("job_id", jobIds),
+      sb.from("job_sop_items").select("job_id, employee_id").in("job_id", jobIds).eq("completed", true).not("employee_id", "is", null),
+    ]);
+    for (const r of [links, leads, visits, times, photos, confirmations, checked]) if (r.error) throw new Error(r.error.message);
+    const worked = new Map<string, Set<string>>();
+    const mark = (jobId: string, emp: string | null) => {
+      if (!emp) return;
+      if (!worked.has(jobId)) worked.set(jobId, new Set());
+      worked.get(jobId)!.add(emp);
+    };
+    for (const r of visits.data ?? []) mark(r.job_id, r.employee_id);
+    for (const r of times.data ?? []) mark(r.job_id, r.user_id);
+    for (const r of photos.data ?? []) mark(r.job_id, r.uploaded_by);
+    for (const r of confirmations.data ?? []) mark(r.job_id, r.employee_id);
+    for (const r of checked.data ?? []) mark(r.job_id, r.employee_id);
+
+    const currentByJob = new Map<string, string[]>();
+    for (const l of links.data ?? []) {
+      const arr = currentByJob.get(l.job_id) ?? [];
+      arr.push(l.employee_id);
+      currentByJob.set(l.job_id, arr);
+    }
+
+    // Validate every visit before changing any of them.
+    const leadByJob = new Map<string, string | null>((leads.data ?? []).map((r: any) => [r.id, r.assigned_to]));
+    const plans = jobIds.map((jobId) => ({ jobId, plan: planAssigneeChange(currentByJob.get(jobId) ?? [], requested, leadByJob.get(jobId) ?? null) }));
+    for (const { jobId, plan } of plans) {
+      const blocked = blockedRemovals(plan.remove, worked.get(jobId) ?? []);
+      if (blocked.length) {
+        const names = blocked.map((id) => byId.get(id)?.full_name ?? "A cleaner").join(", ");
+        throw new Error(
+          jobId === job.id
+            ? `${names} already recorded time, photos or checklist work on this visit, so they stay on it. You can still add other cleaners.`
+            : `${names} already recorded work on a later visit in this series. Change this visit only, or change that visit separately.`,
+        );
+      }
+    }
+
+    let changed = 0;
+    for (const { jobId, plan } of plans) {
+      if (plan.add.length) {
+        const { error: insErr } = await sb.from("job_employees")
+          .insert(plan.add.map((eid) => ({ tenant_id: job.tenant_id, job_id: jobId, employee_id: eid })));
+        if (insErr) throw new Error(insErr.message);
+      }
+      if (plan.remove.length) {
+        const { error: delErr } = await sb.from("job_employees").delete().eq("job_id", jobId).in("employee_id", plan.remove);
+        if (delErr) throw new Error(delErr.message);
+        // Their untouched personal checklist copy goes too; the shared template stays.
+        await sb.from("job_sop_items").delete().eq("job_id", jobId).in("employee_id", plan.remove).eq("completed", false);
+      }
+      if (plan.primary !== (leadByJob.get(jobId) ?? null)) {
+        const { error: upErr } = await sb.from("jobs").update({ assigned_to: plan.primary }).eq("id", jobId);
+        if (upErr) throw new Error(upErr.message);
+      }
+      if (plan.add.length || plan.remove.length) changed++;
+    }
+    return { ok: true, visits: changed };
   });

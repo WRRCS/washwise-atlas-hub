@@ -2,6 +2,7 @@ import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { closeJobs } from "@/lib/jobs.functions";
 import { jobLocation } from "@/lib/job-location";
 import { JobLocationEditor } from "@/components/job-location-editor";
+import { JobAssigneesEditor } from "@/components/job-assignees-editor";
 import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -435,6 +436,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
             {job.assignees && job.assignees.length ? (
               <ul className="space-y-1">{job.assignees.map((a: any) => <li key={a.id} className="text-sm">{a.full_name ?? "—"}</li>)}</ul>
             ) : <p className="text-sm text-muted-foreground">{t("Unassigned")}</p>}
+            {canMessageClient && <JobAssigneesEditor jobId={jobId} assignees={job.assignees ?? []} recurring={!!job.recurrence_group_id} />}
           </div>
 
           {(() => {
