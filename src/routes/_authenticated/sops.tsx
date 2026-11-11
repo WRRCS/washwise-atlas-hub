@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { queryOptions, useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
@@ -27,6 +27,17 @@ const sopsQO = queryOptions({ queryKey: ["sops"], queryFn: () => listSops() });
 const svcQO = queryOptions({ queryKey: ["service-types"], queryFn: () => listServiceTypes() });
 
 export const Route = createFileRoute("/_authenticated/sops")({
+  beforeLoad: async () => {
+    // Owners and managers only; cleaners read SOPs from their appointments.
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    const { data: roles } = await supabase
+      .from("user_roles").select("role").eq("user_id", data.user.id);
+    const list = (roles ?? []).map((r) => r.role as string);
+    if (!list.includes("owner") && !list.includes("manager") && !list.includes("super_admin")) {
+      throw redirect({ to: "/my-jobs" });
+    }
+  },
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(sopsQO),

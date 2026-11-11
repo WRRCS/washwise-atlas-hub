@@ -54,6 +54,17 @@ async function tenantId(context: any) {
   return prof.tenant_id as string;
 }
 
+// The SOP library (list/detail/edit) is staff-only. Cleaners read SOPs through
+// getSopForJob / getSopForServiceType on their own appointments instead.
+async function requireStaff(context: any) {
+  const { data: roles } = await context.supabase
+    .from("user_roles").select("role").eq("user_id", context.userId);
+  const list = (roles ?? []).map((r: any) => r.role);
+  if (!list.includes("owner") && !list.includes("manager") && !list.includes("super_admin")) {
+    throw new Error("Only owners and managers can open the SOP library");
+  }
+}
+
 async function signSopPath(context: any, path: string | null | undefined) {
   if (!path) return null;
   const { data } = await context.supabase.storage.from("sop-photos").createSignedUrl(path, 3600);
@@ -65,6 +76,7 @@ async function signSopPath(context: any, path: string | null | undefined) {
 export const listSops = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SopListRow[]> => {
+    await requireStaff(context);
     const { data: rows, error } = await context.supabase
       .from("sops")
       .select("id, name, description, is_active, updated_at, service:service_types(id,name,color)")
@@ -131,7 +143,10 @@ async function fetchSopDetail(context: any, sopId: string): Promise<SopDetail | 
 export const getSop = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data, context }) => fetchSopDetail(context, data.id));
+  .handler(async ({ data, context }) => {
+    await requireStaff(context);
+    return fetchSopDetail(context, data.id);
+  });
 
 // Get the active SOP for a service type (for job detail views)
 export const getSopForServiceType = createServerFn({ method: "POST" })
@@ -185,6 +200,7 @@ export const createSopUploadUrl = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const tid = await tenantId(context);
+    await requireStaff(context);
     const safe = data.file_name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `${tid}/${data.kind}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
     const { data: signed, error } = await context.supabase.storage
@@ -224,6 +240,7 @@ export const createSop = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => createSopSchema.parse(input))
   .handler(async ({ data, context }) => {
     const tid = await tenantId(context);
+    await requireStaff(context);
     const { data: sop, error } = await context.supabase
       .from("sops")
       .insert({
@@ -277,6 +294,7 @@ export const updateSop = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => updateSopSchema.parse(input))
   .handler(async ({ data, context }) => {
     const tid = await tenantId(context);
+    await requireStaff(context);
     const { error: ue } = await context.supabase
       .from("sops")
       .update({
@@ -335,6 +353,7 @@ export const deleteSop = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireStaff(context);
     // Collect storage paths and delete files
     const [{ data: steps }, { data: atts }] = await Promise.all([
       context.supabase.from("sop_steps").select("reference_photo_path").eq("sop_id", data.id),
@@ -356,6 +375,7 @@ export const deleteSopAttachment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await requireStaff(context);
     const { data: att } = await context.supabase
       .from("sop_attachments").select("storage_path").eq("id", data.id).maybeSingle();
     if ((att as any)?.storage_path) {
@@ -373,6 +393,7 @@ export const duplicateSop = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const tid = await tenantId(context);
+    await requireStaff(context);
     const { data: src } = await context.supabase
       .from("sops")
       .select("service_type_id, name, description, name_uk, description_uk, is_active")
@@ -427,6 +448,7 @@ export const bulkImportSops = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ items: z.array(bulkItem).min(1) }).parse(input))
   .handler(async ({ data, context }) => {
     const tid = await tenantId(context);
+    await requireStaff(context);
     const created: string[] = [];
     for (const it of data.items) {
       const { data: sop, error } = await context.supabase
