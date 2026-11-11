@@ -40,5 +40,5 @@
 - Invoice numbers come only from next_invoice_number(tenant, invoice date): invoice-date year plus a per-year sequence from 1001; callers pass the issue date so years roll over automatically. Tenant prefix/series columns are deprecated.
 - Owner pay-rate edits write profiles through the signed-in owner client (the privileged-field trigger resets admin-client writes) and confirm via an admin read, because wage columns are not selectable by authenticated users.
 
-- Employee-reachable UI text goes through useT/translateNow with English source strings as keys in the i18n.tsx UK dictionary (dates via dateLocaleOpts/activeLocales); SOP names, descriptions and steps carry *_uk columns picked with usePick, so missing translations fall back to English instead of breaking screens.
-- Cleaner changes on existing appointments go only through updateJobAssignees (owner/manager, validate all visits before writing); cleaners with recorded visits, time, photos, SOP confirmations or checked steps cannot be removed from that visit, and jobs.assigned_to keeps the current lead while still assigned because RLS reads it.
+- Employee UI text uses useT/translateNow keyed by English source in the i18n.tsx UK dictionary; SOP text uses *_uk columns via usePick, so gaps fall back to English.
+- Change cleaners only via updateJobAssignees: validate all visits first, never remove a cleaner with recorded work on that visit, keep the current lead in jobs.assigned_to (RLS reads it).
