@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy, ClipboardPaste, X } from "lucide-react";
 import { toast } from "sonner";
+import { useT, dateLocaleOpts } from "@/lib/i18n";
 import { useBusinessTz } from "@/hooks/use-business-tz";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { ZoomPanSurface } from "@/components/zoom-pan-surface";
@@ -83,6 +84,7 @@ function chipColor(seed: string | null | undefined) {
 
 function SchedulePage() {
   const qc = useQueryClient();
+  const tr = useT();
   const tz = useBusinessTz();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [view, setView] = useState<View>("grid");
@@ -152,9 +154,9 @@ function SchedulePage() {
     mutationFn: (v: { job_id: string; employee_id?: string }) => claimFn({ data: v }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      toast.success("Shift assigned");
+      toast.success(tr("Shift assigned"));
     },
-    onError: (e: any) => toast.error(e?.message ?? "Could not assign shift"),
+    onError: (e: any) => toast.error(e?.message ?? tr("Could not assign shift")),
   });
 
   const openByDay = useMemo(() => {
@@ -330,20 +332,20 @@ function SchedulePage() {
   return (
     <>
       <PageHeader
-        title="Schedule"
-        subtitle={`${format(anchor, "MMM d")} — ${format(addDays(anchor, 6), "MMM d, yyyy")}`}
+        title={tr("Schedule")}
+        subtitle={`${format(anchor, "MMM d", dateLocaleOpts())} — ${format(addDays(anchor, 6), "MMM d, yyyy", dateLocaleOpts())}`}
         action={
           <div className="flex flex-wrap gap-2 items-center">
             <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-clay-100">
               <button onClick={() => setView("grid")} className={`px-2.5 py-1 text-xs rounded flex items-center gap-1 ${view === "grid" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}>
-                <LayoutGrid className="size-3.5" /> Week grid
+                <LayoutGrid className="size-3.5" /> {tr("Week grid")}
               </button>
               <button onClick={() => setView("list")} className={`px-2.5 py-1 text-xs rounded flex items-center gap-1 ${view === "list" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}>
-                <ListIcon className="size-3.5" /> List
+                <ListIcon className="size-3.5" /> {tr("List")}
               </button>
             </div>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, -7))}>←</Button>
-            <Button variant="outline" size="sm" onClick={() => setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Today</Button>
+            <Button variant="outline" size="sm" onClick={() => setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 }))}>{tr("Today")}</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
             {canManageSchedule ? (
               <>
@@ -410,7 +412,7 @@ function SchedulePage() {
             ) : (
               <Button asChild size="sm" className="bg-brand text-brand-foreground hover:opacity-90">
                 <Link to="/my-jobs">
-                  <Clock className="size-4" /> Clock in
+                  <Clock className="size-4" /> {tr("Clock in")}
                 </Link>
               </Button>
             )}
@@ -425,13 +427,13 @@ function SchedulePage() {
             <div className="schedule-row schedule-head grid w-full">
               <div className="sticky left-0 z-20 px-2 py-2 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
-                <Users className="size-4" /> Team members ({cleaners.length})
+                <Users className="size-4" /> {tr("Team members")} ({cleaners.length})
               </div>
               {days.map((d) => {
                 const today = isSameDay(d, new Date());
                 return (
                   <div key={d.toISOString()} className={`min-w-0 px-1 py-2 text-center border-b border-l border-border/60 ${today ? "bg-brand/5" : "bg-clay-50"}`}>
-                    <p className={`text-[9px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE")}</p>
+                    <p className={`text-[9px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE", dateLocaleOpts())}</p>
                     <p className={`text-base font-semibold ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
                   </div>
                 );
@@ -443,8 +445,8 @@ function SchedulePage() {
               <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                 <div className="size-9 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>
                 <div className="min-w-0">
-                  <p className="schedule-employee text-base font-medium truncate">Open shifts</p>
-                  <p className="text-xs text-muted-foreground truncate">{canManageSchedule ? "Drag onto a person" : "Tap to pick up"}</p>
+                  <p className="schedule-employee text-base font-medium truncate">{tr("Open shifts")}</p>
+                  <p className="text-xs text-muted-foreground truncate">{tr(canManageSchedule ? "Drag onto a person" : "Tap to pick up")}</p>
                 </div>
               </div>
               {days.map((d) => {
@@ -460,15 +462,15 @@ function SchedulePage() {
                         className="rounded-md border border-dashed border-border bg-card text-card-foreground px-2 py-2 text-xs leading-snug"
                       >
                         <ScheduleAppointmentDetails job={j} tz={tz} compact />
-                        <p className="mt-1 text-xs text-muted-foreground break-words">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Job"}</p>
+                        <p className="mt-1 text-xs text-muted-foreground break-words">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || tr("Job")}</p>
                         {!canManageSchedule ? (
                           <button
                             className="mt-1 w-full rounded bg-brand text-brand-foreground py-0.5 font-medium disabled:opacity-50"
                             disabled={claimMut.isPending}
-                            onClick={() => { if (confirm("Pick up this shift?")) claimMut.mutate({ job_id: j.id }); }}
-                          >Pick up</button>
+                            onClick={() => { if (confirm(tr("Pick up this shift?"))) claimMut.mutate({ job_id: j.id }); }}
+                          >{tr("Pick up")}</button>
                         ) : (
-                          <button className="mt-1 text-brand underline" onClick={() => setOpenJob({ jobId: j.id })}>Open</button>
+                          <button className="mt-1 text-brand underline" onClick={() => setOpenJob({ jobId: j.id })}>{tr("Open")}</button>
                         )}
                       </div>
                     ))}
@@ -479,7 +481,7 @@ function SchedulePage() {
 
             {/* Employee rows */}
             {cleaners.length === 0 && (
-              <div className="p-6 text-sm text-muted-foreground">No employees yet. Add employees to see the schedule grid.</div>
+              <div className="p-6 text-sm text-muted-foreground">{tr("No employees yet. Add employees to see the schedule grid.")}</div>
             )}
             {cleaners.map((emp: any) => {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
@@ -492,7 +494,7 @@ function SchedulePage() {
                     <div className="min-w-0">
                       <p className="schedule-employee text-base font-medium truncate">{emp.full_name ?? emp.email}</p>
                       <p className="text-xs text-muted-foreground tabular-nums truncate">
-                        {totals.hours.toFixed(2)} hrs{canSeeWages ? ` / $${totals.wages.toFixed(2)}` : ""}
+                        {totals.hours.toFixed(2)} {tr("hrs")}{canSeeWages ? ` / $${totals.wages.toFixed(2)}` : ""}
                       </p>
                     </div>
                   </div>
@@ -510,9 +512,9 @@ function SchedulePage() {
                       >
                         {unavs.map((u: any) => (
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
-                            <p className="font-semibold text-muted-foreground">Unavailable</p>
+                            <p className="font-semibold text-muted-foreground">{tr("Unavailable")}</p>
                             <p className="text-muted-foreground">
-                              {u.all_day ? "All Day" : `${fmtTimeTZ(u.starts_at, tz)}-${fmtTimeTZ(u.ends_at, tz)}`}
+                              {u.all_day ? tr("All Day") : `${fmtTimeTZ(u.starts_at, tz)}-${fmtTimeTZ(u.ends_at, tz)}`}
                             </p>
                           </div>
                         ))}
@@ -536,7 +538,7 @@ function SchedulePage() {
                             const cardBody = (
                               <>
                                 <div className="flex items-center gap-1 font-semibold">
-                                  {j.status === "completed" && <CheckCircle2 aria-label="Completed" className="size-3.5 shrink-0" />}
+                                  {j.status === "completed" && <CheckCircle2 aria-label={tr("Completed")} className="size-3.5 shrink-0" />}
                                   {conflict && <AlertTriangle className="size-3 shrink-0" />}
                                 </div>
                                 <ScheduleAppointmentDetails job={j} tz={tz} compact />
@@ -551,7 +553,7 @@ function SchedulePage() {
                                   onClick={() => setOpenJob({ jobId: j.id, employeeId: emp.id })}
                                   className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                   style={{ backgroundColor: c }}
-                                  title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? " (draft)" : ""}`}
+                                  title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? ` (${tr("draft")})` : ""}`}
                                 >
                                   {cardBody}
                                 </button>
@@ -572,7 +574,7 @@ function SchedulePage() {
                                     }}
                                     className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                     style={{ backgroundColor: c }}
-                                    title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? " (draft)" : ""}`}
+                                    title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? ` (${tr("draft")})` : ""}`}
                                   >
                                     {cardBody}
                                   </button>
@@ -631,7 +633,7 @@ function SchedulePage() {
                                       </button>
                                     ) : <span />}
                                     <button type="button" onClick={() => setOpenJob({ jobId: j.id, employeeId: emp.id })} className="text-[11px] font-medium text-brand inline-flex items-center gap-1 hover:underline">
-                                      Open job <ExternalLink className="size-3" />
+                                      {tr("Open job")} <ExternalLink className="size-3" />
                                     </button>
                                   </div>
                                   {canManageSchedule && (
@@ -726,7 +728,7 @@ function SchedulePage() {
             <div className="schedule-row grid w-full border-t-2 border-border">
               <div className="sticky left-0 z-10 px-2 py-2 bg-clay-50 border-r border-border/60">
                 {canSeeWages && <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>}
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hours</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{tr("Hours")}</p>
               </div>
               {dailyTotals.map((t) => (
                 <div key={t.dayKey} className="min-w-0 px-1 py-2 border-l border-border/60 bg-clay-50 text-right tabular-nums overflow-hidden">
@@ -739,19 +741,19 @@ function SchedulePage() {
 
           <div className="mt-3 flex justify-end text-xs text-muted-foreground tabular-nums">
             <span>
-              Week total:{" "}
+              {tr("Week total:")}{" "}
               {canSeeWages && (
                 <>
                   <span className="font-semibold text-foreground">${weekTotals.wages.toFixed(2)}</span> •{" "}
                 </>
               )}
-              {weekTotals.hours.toFixed(2)} hrs
+              {weekTotals.hours.toFixed(2)} {tr("hrs")}
             </span>
           </div>
         </div>
       ) : (
         <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-2">
-          {jobs.length === 0 && <p className="text-sm text-muted-foreground">No jobs scheduled this week.</p>}
+          {jobs.length === 0 && <p className="text-sm text-muted-foreground">{tr("No jobs scheduled this week.")}</p>}
           {jobs.map((j: any) => (
             <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} className="block bg-card rounded-lg ring-1 ring-black/5 p-4 hover:ring-brand/30 transition">
               <div className="flex flex-wrap items-start gap-3 sm:gap-4">
@@ -759,7 +761,7 @@ function SchedulePage() {
                   <p className="text-xs text-muted-foreground">{fmtDateTZ(j.scheduled_start, tz)}</p>
                 </div>
                 <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: (j.service?.color ?? "#eee") + "22", color: j.service?.color ?? "#333" }}>
-                  {j.service?.name}
+                  {j.service?.name ? tr(j.service.name) : null}
                 </span>
                 <div className="w-full sm:w-auto flex-1 min-w-0 text-card-foreground">
                   <ScheduleAppointmentDetails job={j} tz={tz} />
@@ -769,7 +771,7 @@ function SchedulePage() {
                   {j.assignees.slice(0, 3).map((a: any) => (
                     <div key={a.id} className="size-7 rounded-full bg-clay-200 grid place-items-center text-[10px] font-medium ring-2 ring-card">{initials(a.full_name)}</div>
                   ))}
-                  {j.assignees.length === 0 && <span className="text-xs text-muted-foreground">Unassigned</span>}
+                  {j.assignees.length === 0 && <span className="text-xs text-muted-foreground">{tr("Unassigned")}</span>}
                 </div>
               </div>
             </Link>
@@ -813,7 +815,7 @@ function SchedulePage() {
         }}
       >
         <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">
-          <DialogHeader className="sr-only"><DialogTitle>Job details</DialogTitle></DialogHeader>
+          <DialogHeader className="sr-only"><DialogTitle>{tr("Job details")}</DialogTitle></DialogHeader>
           {openJob && (
             <JobDetailView
               key={`${openJob.jobId}-${openJob.employeeId ?? "combined"}`}

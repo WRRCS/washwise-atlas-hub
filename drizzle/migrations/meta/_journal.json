@@ -260,6 +260,13 @@
       "when": 1794346295956,
       "tag": "0036_invoice_year_numbers_optional_correction_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794356973289,
+      "tag": "0037_sop_ukrainian_name",
+      "breakpoints": true
     }
   ]
 }

@@ -3136,9 +3136,11 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          description_uk: string | null
           id: string
           is_active: boolean
           name: string
+          name_uk: string | null
           service_type_id: string
           tenant_id: string
           updated_at: string
@@ -3146,9 +3148,11 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          description_uk?: string | null
           id?: string
           is_active?: boolean
           name: string
+          name_uk?: string | null
           service_type_id: string
           tenant_id: string
           updated_at?: string
@@ -3156,9 +3160,11 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          description_uk?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          name_uk?: string | null
           service_type_id?: string
           tenant_id?: string
           updated_at?: string

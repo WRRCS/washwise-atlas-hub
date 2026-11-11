@@ -1,11 +1,13 @@
 import { jobLocation } from "@/lib/job-location";
 import { fmtTimeTZ } from "@/lib/tz";
+import { useT } from "@/lib/i18n";
 
 type Appointment = Parameters<typeof jobLocation>[0] & { scheduled_start: string; scheduled_end: string };
 
 /** Keep essential details shared between compact roster cells and appointment lists. */
 export function ScheduleAppointmentDetails({ job, tz, compact = false }: { job: Appointment; tz: string; compact?: boolean }) {
   const location = jobLocation(job);
+  const t = useT();
   return <div className={`schedule-details space-y-1 ${compact ? "text-[15px]" : "text-[16px]"} leading-snug`}>
     <p className="schedule-time flex flex-wrap gap-x-1 font-semibold tabular-nums">
       <span className="whitespace-nowrap">{fmtTimeTZ(job.scheduled_start, tz)}</span>
@@ -13,7 +15,7 @@ export function ScheduleAppointmentDetails({ job, tz, compact = false }: { job: 
       <span className="whitespace-nowrap">{fmtTimeTZ(job.scheduled_end, tz)}</span>
     </p>
     {location.label && <p className="schedule-location font-semibold whitespace-normal [overflow-wrap:anywhere]">{location.label}</p>}
-    <p className="schedule-address font-medium whitespace-normal [overflow-wrap:anywhere]">{location.address ?? "Location needs review"}</p>
+    <p className="schedule-address font-medium whitespace-normal [overflow-wrap:anywhere]">{location.address ?? t("Location needs review")}</p>
   </div>;
 }
 

@@ -1,3 +1,4 @@
+import { useT, dateLocaleOpts } from "@/lib/i18n";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -25,7 +26,7 @@ function DatePick({ value, onChange, id }: { value: string; onChange: (v: string
       <PopoverTrigger asChild>
         <Button id={id} type="button" variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
           <CalendarIcon className="size-4" />
-          {date ? format(date, "MMM d, yyyy") : <span>Pick a date</span>}
+          {date ? format(date, "MMM d, yyyy", dateLocaleOpts()) : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -56,6 +57,7 @@ const money = (c: number) => `$${(c / 100).toFixed(2)}`;
 function TipsPage() {
   const qc = useQueryClient();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const tr = useT();
   const from = month.toISOString();
   const to = addMonths(month, 1).toISOString();
   const tipsFn = useServerFn(listTips);
@@ -157,15 +159,15 @@ function TipsPage() {
   return (
     <>
       <PageHeader
-        title={isMgr ? "Tip tracker" : "My tips"}
-        subtitle="Anything a client pays above the invoice total (card fee included) is split evenly between the cleaners on that job."
+        title={tr(isMgr ? "Tip tracker" : "My tips")}
+        subtitle={tr("Anything a client pays above the invoice total (card fee included) is split evenly between the cleaners on that job.")}
       />
       <div className="px-6 md:px-8 py-6 space-y-6 max-w-5xl w-full mx-auto">
         <div className="flex items-center gap-2 flex-wrap">
-          <Button size="icon" variant="outline" onClick={() => setMonth(addMonths(month, -1))} aria-label="Previous month"><ChevronLeft className="size-4" /></Button>
-          <div className="font-medium min-w-32 text-center">{format(month, "MMMM yyyy")}</div>
-          <Button size="icon" variant="outline" onClick={() => setMonth(addMonths(month, 1))} aria-label="Next month"><ChevronRight className="size-4" /></Button>
-          <div className="ml-auto text-sm">Total: <span className="font-semibold">{money(grand)}</span></div>
+          <Button size="icon" variant="outline" onClick={() => setMonth(addMonths(month, -1))} aria-label={tr("Previous month")}><ChevronLeft className="size-4" /></Button>
+          <div className="font-medium min-w-32 text-center">{format(month, "LLLL yyyy", dateLocaleOpts())}</div>
+          <Button size="icon" variant="outline" onClick={() => setMonth(addMonths(month, 1))} aria-label={tr("Next month")}><ChevronRight className="size-4" /></Button>
+          <div className="ml-auto text-sm">{tr("Total:")} <span className="font-semibold">{money(grand)}</span></div>
           {isMgr && (
             <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setAddOpen(true)}>
               <Plus className="size-4" /> Add cash tip
@@ -179,7 +181,7 @@ function TipsPage() {
               <div key={t.name} className="rounded-xl border border-border/60 p-4">
                 <div className="text-sm text-muted-foreground">{t.name}</div>
                 <div className="text-2xl font-semibold">{money(t.cents)}</div>
-                <div className="text-xs text-muted-foreground">{t.count} tip{t.count === 1 ? "" : "s"}</div>
+                <div className="text-xs text-muted-foreground">{t.count} {tr(t.count === 1 ? "tip" : "tips")}</div>
               </div>
             ))}
           </div>
@@ -188,18 +190,18 @@ function TipsPage() {
         <div className="rounded-xl border border-border/60 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-muted-foreground border-b border-border/60">
-              <tr><th className="p-3">Received</th><th className="p-3">Date of clean</th><th className="p-3">Cleaner</th><th className="p-3">Client</th><th className="p-3">From</th><th className="p-3 text-right">Amount</th><th className="p-3">Paid</th><th className="p-3">Date paid out</th>{isMgr && <th className="p-3 w-10"></th>}</tr>
+              <tr><th className="p-3">{tr("Received")}</th><th className="p-3">{tr("Date of clean")}</th><th className="p-3">{tr("Cleaner")}</th><th className="p-3">{tr("Client")}</th><th className="p-3">{tr("From")}</th><th className="p-3 text-right">{tr("Amount")}</th><th className="p-3">{tr("Paid")}</th><th className="p-3">{tr("Date paid out")}</th>{isMgr && <th className="p-3 w-10"></th>}</tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td className="p-3" colSpan={9}>Loading…</td></tr>}
+              {isLoading && <tr><td className="p-3" colSpan={9}>{tr("Loading…")}</td></tr>}
               {error && <tr><td className="p-3 text-destructive" colSpan={9}>{(error as Error).message}</td></tr>}
               {!isLoading && !error && tips.length === 0 && (
-                <tr><td className="p-3 text-muted-foreground" colSpan={9}>No tips this month.</td></tr>
+                <tr><td className="p-3 text-muted-foreground" colSpan={9}>{tr("No tips this month.")}</td></tr>
               )}
               {tips.map((t) => (
                 <tr key={t.id} className="border-b border-border/40 last:border-0">
-                  <td className="p-3">{format(new Date(t.received_date ? t.received_date + "T12:00:00" : t.created_at), "MMM d, yyyy")}</td>
-                  <td className="p-3">{t.clean_date ? format(new Date(t.clean_date + "T12:00:00"), "MMM d, yyyy") : t.job_start ? format(new Date(t.job_start), "MMM d, yyyy") : "—"}</td>
+                  <td className="p-3">{format(new Date(t.received_date ? t.received_date + "T12:00:00" : t.created_at), "MMM d, yyyy", dateLocaleOpts())}</td>
+                  <td className="p-3">{t.clean_date ? format(new Date(t.clean_date + "T12:00:00"), "MMM d, yyyy", dateLocaleOpts()) : t.job_start ? format(new Date(t.job_start), "MMM d, yyyy", dateLocaleOpts()) : "—"}</td>
                   <td className="p-3">
                     {t.employee_id ? t.employee_name : isMgr ? (
                       <select className="border rounded-md px-2 py-1 bg-background" defaultValue=""
@@ -207,18 +209,18 @@ function TipsPage() {
                         <option value="">Assign to…</option>
                         {(employees as any[]).map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
                       </select>
-                    ) : "Unassigned"}
+                    ) : tr("Unassigned")}
                   </td>
                   <td className="p-3">{t.client_name ?? "—"}</td>
                   <td className="p-3 text-muted-foreground">
-                    {t.source === "manual" ? `Cash${t.note ? ` · ${t.note}` : ""}` : `Invoice ${t.invoice_number ?? ""}`}
+                    {t.source === "manual" ? `${tr("Cash")}${t.note ? ` · ${t.note}` : ""}` : `${tr("Invoice")} ${t.invoice_number ?? ""}`}
                   </td>
                   <td className="p-3 text-right font-medium">{money(t.amount_cents)}</td>
                   <td className="p-3">
-                    <Checkbox aria-label="Paid" checked={t.paid} disabled={!isMgr || paidMut.isPending}
+                    <Checkbox aria-label={tr("Paid")} checked={t.paid} disabled={!isMgr || paidMut.isPending}
                       onCheckedChange={(v) => paidMut.mutate({ id: t.id, paid: !!v })} />
                   </td>
-                  <td className="p-3">{t.paid_out_date ? format(new Date(t.paid_out_date + "T12:00:00"), "MMM d, yyyy") : "—"}</td>
+                  <td className="p-3">{t.paid_out_date ? format(new Date(t.paid_out_date + "T12:00:00"), "MMM d, yyyy", dateLocaleOpts()) : "—"}</td>
                   {isMgr && (
                     <td className="p-3">
                       <Button size="icon" variant="ghost" aria-label="Edit tip" onClick={() => openEdit(t)}><Pencil className="size-4" /></Button>

@@ -1,3 +1,4 @@
+import { useT, translateNow as tn, activeLocales, dateLocaleOpts } from "@/lib/i18n";
 import { TimesheetCorrectionDialog } from "@/components/timesheet-correction-dialog";
 import { attendanceIssue } from "@/lib/timesheet-corrections";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
@@ -38,18 +39,19 @@ const ON_TIME_BAND = 5; // minutes either side of the scheduled length
 function longDur(m: number) {
   const r = Math.round(m);
   const h = Math.floor(r / 60), mm = r % 60;
-  if (!h) return `${mm} min`;
-  return `${h} hr${h === 1 ? "" : "s"}${mm ? ` ${mm} min` : ""}`;
+  if (!h) return `${mm} ${tn("min")}`;
+  return `${h} ${tn(h === 1 ? "hr" : "hrs")}${mm ? ` ${mm} ${tn("min")}` : ""}`;
 }
 const shortDur = (m: number) => {
   const r = Math.round(m);
-  return r < 60 ? `${r} min` : `${Math.floor(r / 60)}h ${String(r % 60).padStart(2, "0")}m`;
+  return r < 60 ? `${r} ${tn("min")}` : `${Math.floor(r / 60)}${tn("h")} ${String(r % 60).padStart(2, "0")}${tn("m")}`;
 };
 
 type Issue = "No-Show" | "Missing punch" | "Late" | "Clocked in" | null;
 
 function TimesheetPage() {
   const tz = useBusinessTz();
+  const t = useT();
   const [day, setDay] = useState(() => startOfDay(new Date()));
   const [view, setView] = useState<"day" | "week">("day");
   const [correction,setCorrection]=useState<{employeeId?:string;jobId?:string|null}|null>(null);
@@ -62,7 +64,7 @@ function TimesheetPage() {
   const isMgr = !!caps?.isStaff;
 
   const time = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).toLowerCase() : "—";
+    iso ? new Date(iso).toLocaleTimeString(activeLocales()[0] ?? "en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).toLowerCase() : "—";
 
   const rows = q.data?.rows ?? [];
   const entries = q.data?.entries ?? [];
@@ -100,7 +102,7 @@ function TimesheetPage() {
   if (view === "week") {
     return (
       <>
-        <PageHeader title="Timesheet" subtitle="Pay period (week) · Pacific time" />
+        <PageHeader title={t("Timesheet")} subtitle={`${t("Pay period (week)")} · ${t("Pacific time")}`} />
         <WeekView day={day} onBack={() => setView("day")} onPickDay={(d) => { setDay(d); setView("day"); }} setDay={setDay} />
       </>
     );
@@ -109,18 +111,18 @@ function TimesheetPage() {
   return (
     <>
       <PageHeader
-        title="Timesheet"
-        subtitle={`${format(day, "EEE, MMM d, yyyy")} · Pacific time`}
-        action={<Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />Download</Button>}
+        title={t("Timesheet")}
+        subtitle={`${format(day, "EEE, MMM d, yyyy", dateLocaleOpts())} · ${t("Pacific time")}`}
+        action={<Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />{t("Download")}</Button>}
       />
       <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 space-y-4">
         {caps && !isMgr && <EmployeeClockControls />}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, -1))}><ChevronLeft className="size-4 mr-1" />Prev</Button>
-          <Button variant="outline" size="sm" disabled={isToday} onClick={() => setDay(startOfDay(new Date()))}>Today</Button>
-          <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, 1))}>Next<ChevronRight className="size-4 ml-1" /></Button>
-          <Button variant="secondary" size="sm" onClick={() => setView("week")}>Pay period (week)</Button>
-          {isMgr&&<Button variant="outline" size="sm" onClick={()=>setCorrection({})}><Plus className="size-4 mr-1"/>Add / correct time</Button>}
+          <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, -1))}><ChevronLeft className="size-4 mr-1" />{t("Prev")}</Button>
+          <Button variant="outline" size="sm" disabled={isToday} onClick={() => setDay(startOfDay(new Date()))}>{t("Today")}</Button>
+          <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, 1))}>{t("Next")}<ChevronRight className="size-4 ml-1" /></Button>
+          <Button variant="secondary" size="sm" onClick={() => setView("week")}>{t("Pay period (week)")}</Button>
+          {isMgr&&<Button variant="outline" size="sm" onClick={()=>setCorrection({})}><Plus className="size-4 mr-1"/>{t("Add / correct time")}</Button>}
           <input
             type="date"
             className="ml-auto h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -133,18 +135,18 @@ function TimesheetPage() {
           <table className="w-full text-sm min-w-[760px]">
             <thead className="text-xs text-muted-foreground border-b border-border/60">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">Team member</th>
-                <th className="text-left px-4 py-3 font-medium">Worked</th>
-                <th className="text-left px-4 py-3 font-medium">On site</th>
-                <th className="text-left px-4 py-3 font-medium">Drive / other</th>
-                <th className="text-left px-4 py-3 font-medium">Issues</th>
+                <th className="text-left px-4 py-3 font-medium">{t("Team member")}</th>
+                <th className="text-left px-4 py-3 font-medium">{t("Worked")}</th>
+                <th className="text-left px-4 py-3 font-medium">{t("On site")}</th>
+                <th className="text-left px-4 py-3 font-medium">{t("Drive / other")}</th>
+                <th className="text-left px-4 py-3 font-medium">{t("Issues")}</th>
                 {isMgr && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody>
-              {q.isLoading && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>}
+              {q.isLoading && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t("Loading…")}</td></tr>}
               {!q.isLoading && rows.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No jobs or time recorded this day.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t("No jobs or time recorded this day.")}</td></tr>
               )}
               {rows.map((r) => (
                 <TimesheetRow key={r.key} row={r} issue={issueOf(r)} time={time} isMgr={isMgr} from={from} to={to} onEdit={()=>setCorrection({employeeId:r.employee_id,jobId:r.job_id})} />
@@ -156,25 +158,25 @@ function TimesheetPage() {
         {dayTotals.length > 0 && (
           <section className="rounded-xl border border-border/60 bg-card">
             <div className="px-4 py-3 border-b border-border/60">
-              <h2 className="font-semibold text-sm">Total hours for the day</h2>
-              <p className="text-xs text-muted-foreground">On site plus drive / other time.</p>
+              <h2 className="font-semibold text-sm">{t("Total hours for the day")}</h2>
+              <p className="text-xs text-muted-foreground">{t("On site plus drive / other time.")}</p>
             </div>
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground"><tr>
-                <th className="text-left px-4 py-2 font-medium">Team member</th>
-                <th className="text-right px-4 py-2 font-medium">Paid work</th>
-                <th className="text-right px-4 py-2 font-medium">Drive</th>
-                <th className="text-right px-4 py-2 font-medium">Unpaid lunch</th>
-                <th className="text-right px-4 py-2 font-medium">Paid total</th>
+                <th className="text-left px-4 py-2 font-medium">{t("Team member")}</th>
+                <th className="text-right px-4 py-2 font-medium">{t("Paid work")}</th>
+                <th className="text-right px-4 py-2 font-medium">{t("Drive")}</th>
+                <th className="text-right px-4 py-2 font-medium">{t("Unpaid lunch")}</th>
+                <th className="text-right px-4 py-2 font-medium">{t("Paid total")}</th>
               </tr></thead>
               <tbody>
-                {dayTotals.map((t) => (
-                  <tr key={t.name} className="border-t border-border/40 tabular-nums">
-                    <td className="px-4 py-2">{t.name}</td>
-                    <td className="px-4 py-2 text-right">{shortDur(t.total-t.drive)}</td>
-                    <td className="px-4 py-2 text-right">{shortDur(t.drive)}</td>
-                    <td className="px-4 py-2 text-right">{shortDur(t.unpaid)}</td>
-                    <td className="px-4 py-2 text-right font-semibold">{shortDur(t.total)}</td>
+                {dayTotals.map((tot) => (
+                  <tr key={tot.name} className="border-t border-border/40 tabular-nums">
+                    <td className="px-4 py-2">{tot.name}</td>
+                    <td className="px-4 py-2 text-right">{shortDur(tot.total-tot.drive)}</td>
+                    <td className="px-4 py-2 text-right">{shortDur(tot.drive)}</td>
+                    <td className="px-4 py-2 text-right">{shortDur(tot.unpaid)}</td>
+                    <td className="px-4 py-2 text-right font-semibold">{shortDur(tot.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -185,15 +187,15 @@ function TimesheetPage() {
         {isMgr && (entries.length>0 || (q.data?.clockRecords.length??0)>0) && (
           <section className="rounded-xl border border-border/60 bg-card">
             <div className="px-4 py-3 border-b border-border/60">
-              <h2 className="font-semibold text-sm">Work, drive &amp; unpaid lunch</h2>
+              <h2 className="font-semibold text-sm">{t("Work, drive & unpaid lunch")}</h2>
             </div>
             <div className="divide-y divide-border/40">
               {[...entries,...(q.data?.clockRecords??[]).filter(e=>e.kind==="lunch")].map((en) => (
                 <div key={en.id} className="px-4 py-2 flex flex-wrap items-center gap-3 text-sm">
                   <span className="font-medium w-40 truncate">{en.employee_name}</span>
-                  <span>{en.kind==="lunch"?"Unpaid lunch": "activity_type" in en&&en.activity_type==="drive"?"Drive":en.job_id?"Paid work":"Unscheduled work"}</span>
-                  <span>{time(en.started_at)} – {en.ended_at?time(en.ended_at):"Missing clock-out"}</span>
-                  <Button size="icon" variant="ghost" aria-label="Edit time record" onClick={()=>setCorrection({employeeId:en.employee_id,jobId:en.job_id})}><Pencil className="size-4"/></Button>
+                  <span>{t(en.kind==="lunch"?"Unpaid lunch": "activity_type" in en&&en.activity_type==="drive"?"Drive":en.job_id?"Paid work":"Unscheduled work")}</span>
+                  <span>{time(en.started_at)} – {en.ended_at?time(en.ended_at):t("Missing clock-out")}</span>
+                  <Button size="icon" variant="ghost" aria-label={t("Edit time record")} onClick={()=>setCorrection({employeeId:en.employee_id,jobId:en.job_id})}><Pencil className="size-4"/></Button>
                 </div>
               ))}
             </div>
@@ -223,6 +225,7 @@ function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
   const sched = r.scheduled_start && r.scheduled_end ? mins(r.scheduled_start, r.scheduled_end) : null;
   const diff = useMemo(() => (r.arrived_at && r.left_at && sched != null ? onSite - sched : null), [r, onSite, sched]);
   const lateBy = issue === "Late" && r.scheduled_start && r.arrived_at ? mins(r.scheduled_start, r.arrived_at) : 0;
+  const t = useT();
 
   return (
     <tr className="border-b border-border/40 last:border-0 align-top">
@@ -240,34 +243,34 @@ function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
       <td className="px-4 py-4">
         {r.arrived_at ? (
           <>
-            <div className="text-[15px] tabular-nums">{time(r.arrived_at)} – {r.left_at ? time(r.left_at) : "now"}</div>
+            <div className="text-[15px] tabular-nums">{time(r.arrived_at)} – {r.left_at ? time(r.left_at) : t("now")}</div>
             <div className="text-xs text-muted-foreground">
-              {r.left_at ? `Total: ${longDur(onSite)}` : `On site ${longDur(onSite)}`}
-              {lateBy > 0 && ` · arrived ${longDur(lateBy)} late`}
+              {r.left_at ? `${t("Total:")} ${longDur(onSite)}` : `${t("On site")} ${longDur(onSite)}`}
+              {lateBy > 0 && ` · ${t("arrived {d} late").replace("{d}", longDur(lateBy))}`}
               {diff != null && (
                 Math.abs(diff) <= ON_TIME_BAND
-                  ? <span className="ml-1 font-semibold text-green-700">✓ on time</span>
+                  ? <span className="ml-1 font-semibold text-green-700">✓ {t("on time")}</span>
                   : diff > 0
-                    ? <span className="ml-1 font-semibold text-orange-600">↑ {longDur(diff)} over</span>
-                    : <span className="ml-1 font-semibold text-sky-700">↓ {longDur(-diff)} under</span>
+                    ? <span className="ml-1 font-semibold text-orange-600">↑ {longDur(diff)} {t("over")}</span>
+                    : <span className="ml-1 font-semibold text-sky-700">↓ {longDur(-diff)} {t("under")}</span>
               )}
             </div>
           </>
         ) : (
           <>
             <div className="text-[15px] text-muted-foreground">--:-- – --:--</div>
-            <div className="text-xs text-muted-foreground">Scheduled: {time(r.scheduled_start)} – {time(r.scheduled_end)}</div>
+            <div className="text-xs text-muted-foreground">{t("Scheduled:")} {time(r.scheduled_start)} – {time(r.scheduled_end)}</div>
           </>
         )}
       </td>
       <td className="px-4 py-4 text-[15px] tabular-nums">{shortDur(onSite)}</td>
       <td className="px-4 py-4 text-[15px] tabular-nums">{shortDur(r.drive_min)}</td>
       <td className="px-4 py-4">
-        {issue && <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${ISSUE_STYLE[issue]}`}>{issue}</span>}
+        {issue && <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${ISSUE_STYLE[issue]}`}>{t(issue)}</span>}
       </td>
       {isMgr && (
         <td className="px-4 py-4 text-right whitespace-nowrap">
-          <Button size="sm" variant="ghost" aria-label="Edit times" onClick={onEdit}><Pencil className="size-3.5" /></Button>
+          <Button size="sm" variant="ghost" aria-label={t("Edit times")} onClick={onEdit}><Pencil className="size-3.5" /></Button>
         </td>
       )}
     </tr>
@@ -298,6 +301,7 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   const start = startOfWeek(day, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const fn = useServerFn(listDailyTimesheet);
+  const tt = useT();
   const results = useQueries({
     queries: days.map((d) => {
       const from = zonedToUTCISO(format(d,"yyyy-MM-dd"), "00:00", "America/Los_Angeles");
@@ -329,32 +333,32 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   return (
     <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, -7))}><ChevronLeft className="size-4 mr-1" />Prev week</Button>
-        <Button variant="outline" size="sm" onClick={() => setDay(startOfDay(new Date()))}>This week</Button>
-        <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, 7))}>Next week<ChevronRight className="size-4 ml-1" /></Button>
-        <span className="text-sm font-medium ml-2">{format(start, "MMM d")} – {format(addDays(start, 6), "MMM d, yyyy")}</span>
+        <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, -7))}><ChevronLeft className="size-4 mr-1" />{tt("Prev week")}</Button>
+        <Button variant="outline" size="sm" onClick={() => setDay(startOfDay(new Date()))}>{tt("This week")}</Button>
+        <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, 7))}>{tt("Next week")}<ChevronRight className="size-4 ml-1" /></Button>
+        <span className="text-sm font-medium ml-2">{format(start, "MMM d", dateLocaleOpts())} – {format(addDays(start, 6), "MMM d, yyyy", dateLocaleOpts())}</span>
         <span className="ml-auto flex gap-2">
-          <Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />Download</Button>
-          <Button variant="secondary" size="sm" onClick={onBack}>Day view</Button>
+          <Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />{tt("Download")}</Button>
+          <Button variant="secondary" size="sm" onClick={onBack}>{tt("Day view")}</Button>
         </span>
       </div>
       <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
         <table className="w-full text-sm min-w-[760px]">
           <thead className="text-xs text-muted-foreground border-b border-border/60">
             <tr>
-              <th className="text-left px-4 py-3 font-medium">Team member</th>
+              <th className="text-left px-4 py-3 font-medium">{tt("Team member")}</th>
               {days.map((d) => (
                 <th key={d.toISOString()} className="text-right px-3 py-3 font-medium">
-                  <button className="hover:underline" onClick={() => onPickDay(d)}>{format(d, "EEE M/d")}</button>
+                  <button className="hover:underline" onClick={() => onPickDay(d)}>{format(d, "EEE M/d", dateLocaleOpts())}</button>
                 </th>
               ))}
-              <th className="text-right px-4 py-3 font-medium">Unpaid lunch</th>
-              <th className="text-right px-4 py-3 font-medium">Paid total hrs</th>
+              <th className="text-right px-4 py-3 font-medium">{tt("Unpaid lunch")}</th>
+              <th className="text-right px-4 py-3 font-medium">{tt("Paid total hrs")}</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>}
-            {!loading && list.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No time recorded this week.</td></tr>}
+            {loading && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">{tt("Loading…")}</td></tr>}
+            {!loading && list.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">{tt("No time recorded this week.")}</td></tr>}
             {list.map((p) => (
               <tr key={p.name} className="border-b border-border/40 last:border-0 tabular-nums">
                 <td className="px-4 py-3 font-medium">{p.name}</td>
@@ -366,7 +370,7 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted-foreground">Hours include on-site and drive / other time. Tap a day to see its details.</p>
+      <p className="text-xs text-muted-foreground">{tt("Hours include on-site and drive / other time. Tap a day to see its details.")}</p>
     </div>
   );
 }

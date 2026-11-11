@@ -38,6 +38,8 @@ export type SopDetail = {
   service_type_id: string;
   name: string;
   description: string | null;
+  name_uk: string | null;
+  description_uk: string | null;
   is_active: boolean;
   updated_at: string;
   service: { id: string; name: string; color: string | null } | null;
@@ -102,7 +104,7 @@ export const listSops = createServerFn({ method: "GET" })
 async function fetchSopDetail(context: any, sopId: string): Promise<SopDetail | null> {
   const { data: sop, error } = await context.supabase
     .from("sops")
-    .select("id, service_type_id, name, description, is_active, updated_at, service:service_types(id,name,color)")
+    .select("id, service_type_id, name, description, name_uk, description_uk, is_active, updated_at, service:service_types(id,name,color)")
     .eq("id", sopId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -210,6 +212,8 @@ const createSopSchema = z.object({
   service_type_id: z.string().uuid(),
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).optional().default(""),
+  name_uk: z.string().trim().max(200).optional().default(""),
+  description_uk: z.string().trim().max(2000).optional().default(""),
   is_active: z.boolean().optional().default(true),
   steps: z.array(stepInput).default([]),
   attachments: z.array(attachmentInput).default([]),
@@ -227,6 +231,8 @@ export const createSop = createServerFn({ method: "POST" })
         service_type_id: data.service_type_id,
         name: data.name,
         description: data.description || null,
+        name_uk: data.name_uk || null,
+        description_uk: data.description_uk || null,
         is_active: data.is_active,
       })
       .select("id")
@@ -277,6 +283,8 @@ export const updateSop = createServerFn({ method: "POST" })
         service_type_id: data.service_type_id,
         name: data.name,
         description: data.description || null,
+        name_uk: data.name_uk || null,
+        description_uk: data.description_uk || null,
         is_active: data.is_active,
       })
       .eq("id", data.id);
@@ -367,7 +375,7 @@ export const duplicateSop = createServerFn({ method: "POST" })
     const tid = await tenantId(context);
     const { data: src } = await context.supabase
       .from("sops")
-      .select("service_type_id, name, description, is_active")
+      .select("service_type_id, name, description, name_uk, description_uk, is_active")
       .eq("id", data.id).maybeSingle();
     if (!src) throw new Error("SOP not found");
     const { data: newSop, error } = await context.supabase
@@ -377,6 +385,8 @@ export const duplicateSop = createServerFn({ method: "POST" })
         service_type_id: (src as any).service_type_id,
         name: `${(src as any).name} (copy)`,
         description: (src as any).description,
+        name_uk: (src as any).name_uk ? `${(src as any).name_uk} (копія)` : null,
+        description_uk: (src as any).description_uk,
         is_active: false,
       })
       .select("id").single();
@@ -384,7 +394,7 @@ export const duplicateSop = createServerFn({ method: "POST" })
     const newId = (newSop as any).id as string;
     const { data: steps } = await context.supabase
       .from("sop_steps")
-      .select("step_number, title, description, reference_photo_path")
+      .select("step_number, title, description, title_uk, description_uk, reference_photo_path")
       .eq("sop_id", data.id).order("step_number");
     if (steps && steps.length) {
       await context.supabase.from("sop_steps").insert(
@@ -394,6 +404,8 @@ export const duplicateSop = createServerFn({ method: "POST" })
           step_number: s.step_number,
           title: s.title,
           description: s.description,
+          title_uk: s.title_uk,
+          description_uk: s.description_uk,
           reference_photo_path: s.reference_photo_path,
         })),
       );

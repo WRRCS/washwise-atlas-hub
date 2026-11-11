@@ -11,7 +11,7 @@ import {
   type TeamMember,
   type TeamThread,
 } from "@/lib/team.functions";
-import { useT } from "@/lib/i18n";
+import { useT, dateLocaleOpts } from "@/lib/i18n";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, Users2, Megaphone, Pencil, Search, Download, Printer, MoreVertical, Filter, Plus } from "lucide-react";
 import { format } from "date-fns";
@@ -51,8 +51,8 @@ function TeamPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Team roster"
-        action={caps?.canManage ? <Button onClick={() => setAddOpen(true)}><Plus className="size-4" /> Add team member</Button> : undefined}
+        title={t("Team roster")}
+        action={caps?.canManage ? <Button onClick={() => setAddOpen(true)}><Plus className="size-4" /> {t("Add team member")}</Button> : undefined}
       />
       <AddEmployeeDialog open={addOpen} onOpenChange={setAddOpen} />
       <div className="w-full px-4 md:px-8 py-6">
@@ -89,6 +89,7 @@ function RosterView({ canManage }: { canManage: boolean }) {
   const qc = useQueryClient();
   const rosterFn = useServerFn(listTeamRoster);
   const updateFn = useServerFn(updateEmployee);
+  const t = useT();
   const q = useQuery({ queryKey: ["team-roster"], queryFn: () => rosterFn() });
   const ownerQ = useQuery({
     queryKey: ["viewer-is-owner"],
@@ -139,8 +140,8 @@ function RosterView({ canManage }: { canManage: boolean }) {
     }
   };
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground py-8">Loading roster…</p>;
-  if (q.isError) return <p className="text-sm text-destructive py-8">Could not load the roster. Please try again.</p>;
+  if (q.isLoading) return <p className="text-sm text-muted-foreground py-8">{t("Loading roster…")}</p>;
+  if (q.isError) return <p className="text-sm text-destructive py-8">{t("Could not load the roster. Please try again.")}</p>;
   const members = q.data ?? [];
   const canShowContact = canManage || !!members.some((m) => m.email || m.phone);
   const roles = [...new Set(members.map((m) => m.role))].sort();
@@ -167,34 +168,34 @@ function RosterView({ canManage }: { canManage: boolean }) {
         <div className="flex flex-wrap items-center gap-3 p-3 md:p-4 border-b border-border print:hidden">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input aria-label="Search team members" placeholder="Search team members…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input aria-label={t("Search team members")} placeholder={t("Search team members…")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
-          <span className="text-sm text-muted-foreground tabular-nums">{filtered.length} team member{filtered.length === 1 ? "" : "s"}</span>
+          <span className="text-sm text-muted-foreground tabular-nums">{filtered.length} {t(filtered.length === 1 ? "team member" : "team members")}</span>
           <div className="flex items-center gap-2 sm:ml-auto">
             <Switch id="show-terminated" checked={showTerminated} onCheckedChange={setShowTerminated} />
-            <Label htmlFor="show-terminated" className="text-sm whitespace-nowrap">Show terminated</Label>
+            <Label htmlFor="show-terminated" className="text-sm whitespace-nowrap">{t("Show terminated")}</Label>
           </div>
           <div className="w-36">
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger aria-label="Filter by access level"><Filter className="size-4 shrink-0 mr-1" /><SelectValue placeholder="Filter" /></SelectTrigger>
+              <SelectTrigger aria-label={t("Filter by access level")}><Filter className="size-4 shrink-0 mr-1" /><SelectValue placeholder={t("Filter")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All roles</SelectItem>
-                {roles.map((role) => <SelectItem key={role} value={role} className="capitalize">{role.replaceAll("_", " ")}</SelectItem>)}
+                <SelectItem value="all">{t("All roles")}</SelectItem>
+                {roles.map((role) => <SelectItem key={role} value={role} className="capitalize">{t(role.replaceAll("_", " "))}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <Button size="icon" variant="ghost" aria-label="Download roster" title="Download roster" onClick={exportRoster}><Download className="size-4" /></Button>
-          <Button size="icon" variant="ghost" aria-label="Print roster" title="Print roster" onClick={() => window.print()}><Printer className="size-4" /></Button>
+          <Button size="icon" variant="ghost" aria-label={t("Download roster")} title={t("Download roster")} onClick={exportRoster}><Download className="size-4" /></Button>
+          <Button size="icon" variant="ghost" aria-label={t("Print roster")} title={t("Print roster")} onClick={() => window.print()}><Printer className="size-4" /></Button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[660px] text-left text-sm">
             <thead className="border-b border-border text-xs font-medium text-muted-foreground">
               <tr>
-                <th scope="col" className="px-4 py-3 font-medium">Team member</th>
-                {canShowContact && <th scope="col" className="px-4 py-3 font-medium">Contact information</th>}
-                <th scope="col" className="px-4 py-3 font-medium">Access level</th>
-                <th scope="col" className="px-4 py-3 font-medium">Status</th>
-                {canManage && <th scope="col" className="w-12 px-3 py-3 font-medium print:hidden"><span className="sr-only">Actions</span></th>}
+                <th scope="col" className="px-4 py-3 font-medium">{t("Team member")}</th>
+                {canShowContact && <th scope="col" className="px-4 py-3 font-medium">{t("Contact information")}</th>}
+                <th scope="col" className="px-4 py-3 font-medium">{t("Access level")}</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t("Status")}</th>
+                {canManage && <th scope="col" className="w-12 px-3 py-3 font-medium print:hidden"><span className="sr-only">{t("Actions")}</span></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -214,8 +215,8 @@ function RosterView({ canManage }: { canManage: boolean }) {
                       {member.phone && <div className="text-muted-foreground">{member.phone}</div>}
                     </div>
                   </td>}
-                  <td className="px-4 py-3 capitalize">{member.role.replaceAll("_", " ")}</td>
-                  <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${member.is_active ? "bg-success/15 text-foreground" : "bg-muted text-muted-foreground"}`}>{member.is_active ? "Active" : "Terminated"}</span></td>
+                  <td className="px-4 py-3 capitalize">{t(member.role.replaceAll("_", " "))}</td>
+                  <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${member.is_active ? "bg-success/15 text-foreground" : "bg-muted text-muted-foreground"}`}>{t(member.is_active ? "Active" : "Terminated")}</span></td>
                   {canManage && <td className="px-3 py-3 print:hidden">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label={`Actions for ${member.full_name ?? "team member"}`}><MoreVertical className="size-4" /></Button></DropdownMenuTrigger>
@@ -224,7 +225,7 @@ function RosterView({ canManage }: { canManage: boolean }) {
                   </td>}
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={3 + Number(canShowContact) + Number(canManage)} className="px-4 py-12 text-center text-muted-foreground">{members.length ? "No team members match your search." : "No team members yet."}</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={3 + Number(canShowContact) + Number(canManage)} className="px-4 py-12 text-center text-muted-foreground">{t(members.length ? "No team members match your search." : "No team members yet.")}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -270,6 +271,7 @@ type SelectedThread = { peer_id: string | null; peer_name: string | null };
 
 function TeamMessagesView() {
   const qc = useQueryClient();
+  const tr = useT();
   const threadsFn = useServerFn(listTeamThreads);
   const rosterFn = useServerFn(listTeamRoster);
 
@@ -299,7 +301,7 @@ function TeamMessagesView() {
     threads.find((t) => t.peer_id === null) ?? {
       peer_id: null,
       peer_name: null,
-      last_body: "Broadcast to the whole team",
+      last_body: tr("Broadcast to the whole team"),
       last_at: "",
       unread: 0,
     },
@@ -322,14 +324,14 @@ function TeamMessagesView() {
       <aside className="bg-clay-50 border border-border/60 rounded-xl ring-1 ring-black/5 overflow-hidden">
         <div className="p-3 border-b border-border/60 flex items-center justify-between">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Conversations
+            {tr("Conversations")}
           </p>
           <button
             type="button"
             onClick={() => setComposeOpen((v) => !v)}
             className="text-[11px] text-brand hover:underline"
           >
-            {composeOpen ? "Cancel" : "New"}
+            {tr(composeOpen ? "Cancel" : "New")}
           </button>
         </div>
         {composeOpen && (
@@ -368,7 +370,7 @@ function TeamMessagesView() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium truncate">
-                        {isBroadcast ? "Everyone" : t.peer_name ?? "Teammate"}
+                        {isBroadcast ? tr("Everyone") : t.peer_name ?? tr("Teammate")}
                       </p>
                       {t.unread > 0 && (
                         <span className="bg-brand text-brand-foreground text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
@@ -405,6 +407,7 @@ function NewThreadPicker({
   roster: TeamMember[];
   onPick: (t: SelectedThread) => void;
 }) {
+  const t = useT();
   return (
     <div className="p-2 border-b border-border/60 bg-clay-100/60 max-h-52 overflow-y-auto">
       <button
@@ -412,7 +415,7 @@ function NewThreadPicker({
         onClick={() => onPick({ peer_id: null, peer_name: null })}
         className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-clay-200/70 flex items-center gap-2"
       >
-        <Megaphone className="size-3.5 text-muted-foreground" /> Everyone
+        <Megaphone className="size-3.5 text-muted-foreground" /> {t("Everyone")}
       </button>
       {roster.map((m) => (
         <button
@@ -442,6 +445,7 @@ function ThreadView({
   const listFn = useServerFn(listTeamMessages);
   const sendFn = useServerFn(sendTeamMessage);
   const [body, setBody] = useState("");
+  const t = useT();
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const q = useQuery({
@@ -468,7 +472,7 @@ function ThreadView({
       });
       onSent();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send");
+      toast.error(err instanceof Error ? err.message : t("Failed to send"));
     }
   };
 
@@ -478,27 +482,27 @@ function ThreadView({
         {peerId === null ? (
           <>
             <Megaphone className="size-4 text-muted-foreground" />
-            <p className="font-medium text-sm">Everyone · broadcast</p>
+            <p className="font-medium text-sm">{t("Everyone")} · {t("broadcast")}</p>
           </>
         ) : (
           <>
             <Users2 className="size-4 text-muted-foreground" />
-            <p className="font-medium text-sm">{peerName ?? "Teammate"}</p>
+            <p className="font-medium text-sm">{peerName ?? t("Teammate")}</p>
           </>
         )}
       </header>
       <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {q.isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t("Loading…")}</p>
         ) : (q.data ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No messages yet — say hi.</p>
+          <p className="text-sm text-muted-foreground">{t("No messages yet — say hi.")}</p>
         ) : (
           (q.data ?? []).map((m) => (
             <div key={m.id} className="text-sm">
               <div className="flex items-baseline gap-2">
                 <span className="font-medium">{m.sender_name ?? "—"}</span>
                 <span className="text-[11px] text-muted-foreground">
-                  {format(new Date(m.created_at), "MMM d, h:mma")}
+                  {format(new Date(m.created_at), "MMM d, h:mma", dateLocaleOpts())}
                 </span>
               </div>
               <p className="whitespace-pre-wrap text-foreground">{m.body}</p>
@@ -522,8 +526,8 @@ function ThreadView({
           rows={1}
           placeholder={
             peerId === null
-              ? "Message the whole team…"
-              : `Message ${peerName ?? "teammate"}…`
+              ? t("Message the whole team…")
+              : `${t("Message")} ${peerName ?? t("teammate")}…`
           }
           className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
         />
@@ -532,7 +536,7 @@ function ThreadView({
           disabled={!body.trim()}
           className="inline-flex items-center gap-1 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 disabled:opacity-40"
         >
-          <Send className="size-4" /> Send
+          <Send className="size-4" /> {t("Send")}
         </button>
       </form>
     </section>

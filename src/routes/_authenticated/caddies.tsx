@@ -1,3 +1,4 @@
+import { useT, activeLocales } from "@/lib/i18n";
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -54,6 +55,7 @@ function CaddiesPage() {
   const setLevel = useServerFn(setCaddyLevel);
   const delItem = useServerFn(deleteCaddyItem);
   const stock = useServerFn(stockCaddyFromTemplate);
+  const t = useT();
 
   const [addFor, setAddFor] = useState<CaddyEmployee | null>(null);
   const [editItem, setEditItem] = useState<CaddyItem | null>(null);
@@ -90,40 +92,40 @@ function CaddiesPage() {
     try {
       await setLevel({ data: { id: item.id, level_pct: pct } });
       refresh();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : t("Failed")); }
   };
 
   const onDelete = async (item: CaddyItem) => {
-    if (!confirm(`Remove "${item.name}" from this caddy?`)) return;
+    if (!confirm(t("Remove \"{name}\" from this caddy?").replace("{name}", item.name))) return;
     try {
       await delItem({ data: { id: item.id } });
-      toast.success("Removed");
+      toast.success(t("Removed"));
       refresh();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : t("Failed")); }
   };
 
   const onStock = async (emp: CaddyEmployee) => {
     try {
       const res = await stock({ data: { employee_id: emp.id } });
-      toast.success(res.added ? `Added ${res.added} standard item${res.added === 1 ? "" : "s"}` : "Already has every standard item");
+      toast.success(res.added ? t(res.added === 1 ? "Added {n} standard item" : "Added {n} standard items").replace("{n}", String(res.added)) : t("Already has every standard item"));
       refresh();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : t("Failed")); }
   };
 
   return (
     <AppShell>
       <PageHeader
-        title="Caddy supplies"
-        subtitle="Tap how full each item is — Full, 3/4, Half, 1/4 or Out"
+        title={t("Caddy supplies")}
+        subtitle={t("Tap how full each item is — Full, 3/4, Half, 1/4 or Out")}
         action={data.isManager ? (
           <BrandButton onClick={() => setShowTemplate(true)}>
-            <Pencil className="size-4 mr-1.5" />Standard caddy list
+            <Pencil className="size-4 mr-1.5" />{t("Standard caddy list")}
           </BrandButton>
         ) : undefined}
       />
       <div className="max-w-5xl mx-auto w-full px-6 md:px-8 py-8 space-y-6">
         {data.employees.length === 0 && (
-          <div className="text-muted-foreground">No team members yet.</div>
+          <div className="text-muted-foreground">{t("No team members yet.")}</div>
         )}
         {uniqueCaddyEmployees(data.employees).map((emp) => (
           <div key={emp.id} data-employee-id={emp.id} className={`bg-white rounded-xl overflow-hidden ${isNew(emp) ? "ring-2 ring-amber-400" : "ring-1 ring-black/5"}`}>
@@ -137,10 +139,10 @@ function CaddiesPage() {
                 onClick={() => setExpanded((current) => toggleCaddyEmployee(current, emp.id))}
               >
                 {expanded.has(emp.id) ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-                {emp.full_name}{emp.id === data.myId ? " (you)" : ""}
+                {emp.full_name}{emp.id === data.myId ? ` (${t("you")})` : ""}
                 {isNew(emp) && (
                   <span className="text-[11px] font-semibold uppercase tracking-wide rounded-full bg-amber-400 text-amber-950 px-2 py-0.5">
-                    Updated {new Date(lastUpdate(emp)).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {t("Updated")} {new Date(lastUpdate(emp)).toLocaleString(activeLocales()[0] ?? "en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                   </span>
                 )}
               </Button>
@@ -148,18 +150,18 @@ function CaddiesPage() {
             {expanded.has(emp.id) && <div id={`caddy-supplies-${emp.id}`}>
               <div className="px-4 py-3 flex flex-wrap items-center gap-2">
                 {isNew(emp) && (
-                  <Button variant="ghost" size="sm" onClick={() => markSeen(emp)}>Mark seen</Button>
+                  <Button variant="ghost" size="sm" onClick={() => markSeen(emp)}>{t("Mark seen")}</Button>
                 )}
                 <Button variant="outline" size="sm" onClick={() => onStock(emp)}>
-                  <PackagePlus className="size-4 mr-1.5" />Stock standard
+                  <PackagePlus className="size-4 mr-1.5" />{t("Stock standard")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setAddFor(emp)}>
-                  <Plus className="size-4 mr-1.5" />Add item
+                  <Plus className="size-4 mr-1.5" />{t("Add item")}
                 </Button>
               </div>
             {emp.items.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-                Caddy is empty — tap “Stock standard” to fill it with the standard list.
+                {t("Caddy is empty — tap “Stock standard” to fill it with the standard list.")}
               </div>
             ) : (
               <ul className="divide-y divide-border/60">
@@ -189,12 +191,12 @@ function CaddiesPage() {
                                   : "bg-background hover:bg-muted"
                               }`}
                             >
-                              {l.label}
+                              {t(l.label)}
                             </button>
                           );
                         })}
                       </div>
-                      <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditItem(it)}>
+                      <Button variant="ghost" size="icon" className="size-8" aria-label={t("Edit")} onClick={() => setEditItem(it)}>
                         <Pencil className="size-4" />
                       </Button>
                       {data.isManager && (
@@ -245,51 +247,52 @@ function ItemDialog({ item, employeeId, onClose, onSaved, save }: {
   const [qty, setQty] = useState(String(item?.qty ?? 1));
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   const submit = async () => {
-    if (!name.trim()) { toast.error("Name is required"); return; }
+    if (!name.trim()) { toast.error(t("Name is required")); return; }
     setBusy(true);
     try {
       await save({ data: { id: item?.id, employee_id: employeeId, name, unit, qty: Number(qty) || 0, notes: notes || null } });
-      toast.success("Saved");
+      toast.success(t("Saved"));
       onSaved();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : t("Failed")); }
     finally { setBusy(false); }
   };
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{item ? "Edit caddy item" : "Add caddy item"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t(item ? "Edit caddy item" : "Add caddy item")}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Item</Label>
+            <Label>{t("Item")}</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Bar Keepers Friend" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Quantity</Label>
+              <Label>{t("Quantity")}</Label>
               <Input type="text" inputMode="decimal" value={qty} onFocus={(e) => e.target.select()} onChange={(e) => setQty(e.target.value.replace(/[^0-9.]/g, ""))} />
             </div>
             <div>
-              <Label>Unit</Label>
+              <Label>{t("Unit")}</Label>
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
               >
-                {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                {UNITS.map((u) => <option key={u} value={u}>{t(u)}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <Label>Notes (optional)</Label>
+            <Label>{t("Notes (optional)")}</Label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <BrandButton onClick={() => { if (!busy) void submit(); }}>Save</BrandButton>
+          <Button variant="outline" onClick={onClose}>{t("Cancel")}</Button>
+          <BrandButton onClick={() => { if (!busy) void submit(); }}>{t("Save")}</BrandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

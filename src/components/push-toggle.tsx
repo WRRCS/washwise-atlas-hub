@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { Bell, BellOff, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getVapidPublicKey,
@@ -37,6 +38,7 @@ export function PushToggle({ mode, className }: Props) {
   const deleteFn = useServerFn(deletePushSubscription);
   const testFn = useServerFn(sendTestPush);
   const checkFn = useServerFn(checkMyPushRegistration);
+  const t = useT();
   const [detail,setDetail]=useState("Not checked on this device");
   const [userId,setUserId]=useState<string | null>(null);
 
@@ -95,9 +97,9 @@ export function PushToggle({ mode, className }: Props) {
       }
       setSubscribed(true);
       setDetail("Registration saved · permission granted · phone display unverified");
-      toast.success("Device registered · phone delivery still needs testing");
+      toast.success(t("Device registered · phone delivery still needs testing"));
     } catch (e: any) {
-      toast.error(e?.message ?? "Could not enable notifications");
+      toast.error(e?.message ?? t("Could not enable notifications"));
     } finally {
       setBusy(false);
     }
@@ -118,9 +120,9 @@ export function PushToggle({ mode, className }: Props) {
       await unsubscribeFromPush();
       setSubscribed(false);
       setDetail("Not registered on this device");
-      toast.success("Notifications disabled");
+      toast.success(t("Notifications disabled"));
     } catch (e: any) {
-      toast.error(e?.message ?? "Could not disable notifications");
+      toast.error(e?.message ?? t("Could not disable notifications"));
     } finally {
       setBusy(false);
     }
@@ -133,7 +135,7 @@ export function PushToggle({ mode, className }: Props) {
       <div className={className}>
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <Info className="h-3.5 w-3.5" />
-          Push notifications aren't supported in this browser.
+          {t("Push notifications aren't supported in this browser.")}
         </p>
       </div>
     );
@@ -144,10 +146,9 @@ export function PushToggle({ mode, className }: Props) {
       <div className={className}>
         <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
           <div className="font-medium text-foreground mb-1 flex items-center gap-1.5">
-            <Bell className="h-3.5 w-3.5" /> Install to enable notifications
+            <Bell className="h-3.5 w-3.5" /> {t("Install to enable notifications")}
           </div>
-          On iPhone/iPad, tap Share → <span className="font-medium">Add to Home Screen</span>, then
-          open WRRCS.com from your home screen to turn on notifications.
+          {t("On iPhone/iPad, tap Share →")} <span className="font-medium">{t("Add to Home Screen")}</span>{t(", then open WRRCS.com from your home screen to turn on notifications.")}
         </div>
       </div>
     );
@@ -155,14 +156,14 @@ export function PushToggle({ mode, className }: Props) {
 
   return (
     <div className={className}>
-      <p className="text-xs text-muted-foreground mb-2">{detail}</p>
+      <p className="text-xs text-muted-foreground mb-2">{detail.split(" · ").map((part) => t(part)).join(" · ")}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" onClick={()=>recheck()} disabled={busy}>Recheck registration</Button>
+        <Button size="sm" variant="outline" onClick={()=>recheck()} disabled={busy}>{t("Recheck registration")}</Button>
         {subscribed ? (
           <>
             <Button size="sm" variant="outline" onClick={disable} disabled={busy}>
               <BellOff className="h-4 w-4 mr-1.5" />
-              Turn off notifications
+              {t("Turn off notifications")}
             </Button>
             {mode === "app" ? (
               <Button
@@ -172,23 +173,23 @@ export function PushToggle({ mode, className }: Props) {
                   setBusy(true);
                   try {
                     const r = await testFn();
-                    toast.success(`Push service accepted ${r.sent}/${r.devices} requests · check your phone`);
+                    toast.success(`${t("Push service accepted")} ${r.sent}/${r.devices} · ${t("check your phone")}`);
                   } catch (e: any) {
-                    toast.error(e?.message ?? "Test failed");
+                    toast.error(e?.message ?? t("Test failed"));
                   } finally {
                     setBusy(false);
                   }
                 }}
                 disabled={busy}
               >
-                Send test
+                {t("Send test")}
               </Button>
             ) : null}
           </>
         ) : (
           <Button size="sm" onClick={enable} disabled={busy}>
             <Bell className="h-4 w-4 mr-1.5" />
-            Enable notifications
+            {t("Enable notifications")}
           </Button>
         )}
       </div>

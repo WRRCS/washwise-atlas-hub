@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SopViewer } from "@/components/sop-viewer";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { usePick } from "@/lib/i18n";
+import { usePick, useT, activeLocales, dateLocaleOpts } from "@/lib/i18n";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { useBusinessTz } from "@/hooks/use-business-tz";
@@ -60,6 +60,7 @@ function VisitButtons({ jobId }: { jobId: string }) {
   const dayInFn = useServerFn(clockInDay);
   const dayOutFn = useServerFn(endMyShift);
   const [busy, setBusy] = useState(false);
+  const tr = useT();
   const { data: visit } = useQuery({ queryKey: ["job-visit", jobId], queryFn: () => getFn({ data: { job_id: jobId } }) });
   const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => shiftFn(), refetchInterval: 60000 });
   const run = async (f: () => Promise<unknown>, msg: string) => {
@@ -69,17 +70,17 @@ function VisitButtons({ jobId }: { jobId: string }) {
       ["job-visit", "timesheet", "my-shift", "my-jobs", "jobs"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       qc.invalidateQueries({ queryKey: ["job", jobId] });
     }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Something went wrong"); }
+    catch (e) { toast.error(e instanceof Error ? e.message : tr("Something went wrong")); }
     finally { setBusy(false); }
   };
-  const t = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const t = (iso: string) => new Date(iso).toLocaleTimeString(activeLocales(), { hour: "numeric", minute: "2-digit" });
   const onSite = visit && !visit.left_at;
   if (shift?.kind === "lunch") return <EmployeeClockControls />;
   if (!shift) {
     return (
-      <button disabled={busy} onClick={() => run(() => dayInFn({ data: { job_id: jobId, gps: null } }), "Clocked in")}
+      <button disabled={busy} onClick={() => run(() => dayInFn({ data: { job_id: jobId, gps: null } }), tr("Clocked in"))}
         className="text-sm font-medium bg-brand text-brand-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
-        Clock in
+        {tr("Clock in")}
       </button>
     );
   }
@@ -87,19 +88,19 @@ function VisitButtons({ jobId }: { jobId: string }) {
     <div className="flex flex-wrap gap-2">
       <EmployeeClockControls />
       {onSite ? (
-        <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit!.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); }, "Left job — drive time is counting")}
+        <button disabled={busy} onClick={() => run(async () => { await leaveFn({ data: { visit_id: visit!.id } }); await setStatus({ data: { id: jobId, status: "completed" } }); }, tr("Left job — drive time is counting"))}
           className="text-sm font-medium bg-accent text-accent-foreground rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50">
-          Leaving (here since {t(visit!.arrived_at)})
+          {tr("Leaving")} ({tr("here since")} {t(visit!.arrived_at)})
         </button>
       ) : (
-        <button disabled={busy} onClick={() => run(() => arriveFn({ data: { job_id: jobId } }), "Arrival time saved")}
+        <button disabled={busy} onClick={() => run(() => arriveFn({ data: { job_id: jobId } }), tr("Arrival time saved"))}
           className="text-sm font-medium border border-brand text-brand rounded-lg px-3 py-2 hover:bg-brand/5 disabled:opacity-50">
-          {visit?.left_at ? `Arrived again (left ${t(visit.left_at)})` : "Arrived"}
+          {visit?.left_at ? `${tr("Arrived again")} (${tr("left")} ${t(visit.left_at)})` : tr("Arrived")}
         </button>
       )}
-      <button disabled={busy} onClick={() => { if (confirm("Clock out for the day?")) run(() => dayOutFn({ data: { gps: null } }), "Clocked out"); }}
+      <button disabled={busy} onClick={() => { if (confirm(tr("Clock out for the day?"))) run(() => dayOutFn({ data: { gps: null } }), tr("Clocked out")); }}
         className="text-sm font-medium border border-destructive text-destructive rounded-lg px-3 py-2 hover:bg-destructive/5 disabled:opacity-50">
-        Clock out for the day
+        {tr("Clock out for the day")}
       </button>
     </div>
   );
@@ -138,10 +139,11 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
   });
 
   const pick = usePick();
+  const t = useT();
   const closeFn = useServerFn(closeJobs);
 
-  if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
-  if (!job) return <div className="p-8">Not found.</div>;
+  if (isLoading) return <div className="p-8 text-sm text-muted-foreground">{t("Loading…")}</div>;
+  if (!job) return <div className="p-8">{t("Not found.")}</div>;
 
   const sop = (job.sop ?? []).slice().sort((a, b) => a.position - b.position);
   const done = sop.filter((s) => s.completed).length;
@@ -175,8 +177,8 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
     <>
       <PageHeader
         back={onBack}
-        title={job.service?.name ?? "Job"}
-        subtitle={`${jobLocation(job).display} · ${format(new Date(job.scheduled_start), "PPp")}`}
+        title={t(job.service?.name ?? "Job")}
+        subtitle={`${jobLocation(job).display} · ${format(new Date(job.scheduled_start), "PPp", dateLocaleOpts())}`}
         action={
           <div className="flex flex-wrap gap-2 [&>*]:flex-1 [&>*]:justify-center sm:[&>*]:flex-none">
             {canMessageClient && canSeePricing && job.client?.phone && (
@@ -211,10 +213,10 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
         <section className="md:col-span-2 bg-card p-6 rounded-xl ring-1 ring-black/5">
           <Tabs value={detailTab} onValueChange={setDetailTab}>
             <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
-              <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">SOP Checklist</TabsTrigger>
-              <Button variant="outline" type="button" onClick={() => setSopOpen(true)} className="h-auto rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 hover:bg-brand hover:text-brand-foreground">SOP</Button>
-              <TabsTrigger value="photos" className="rounded-lg border-2 border-success/40 bg-success/10 text-success font-semibold px-3 py-2 data-[state=active]:bg-success data-[state=active]:text-primary-foreground">Photos</TabsTrigger>
-              <TabsTrigger value="gps" className="rounded-lg border-2 border-warning/40 bg-warning/10 text-warning font-semibold px-3 py-2 data-[state=active]:bg-warning data-[state=active]:text-primary-foreground">Location</TabsTrigger>
+              <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t("SOP Checklist")}</TabsTrigger>
+              <Button variant="outline" type="button" onClick={() => setSopOpen(true)} className="h-auto rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 hover:bg-brand hover:text-brand-foreground">{t("SOP")}</Button>
+              <TabsTrigger value="photos" className="rounded-lg border-2 border-success/40 bg-success/10 text-success font-semibold px-3 py-2 data-[state=active]:bg-success data-[state=active]:text-primary-foreground">{t("Photos")}</TabsTrigger>
+              <TabsTrigger value="gps" className="rounded-lg border-2 border-warning/40 bg-warning/10 text-warning font-semibold px-3 py-2 data-[state=active]:bg-warning data-[state=active]:text-primary-foreground">{t("Location")}</TabsTrigger>
             </TabsList>
             <TabsContent value="sop" className="mt-4">
               {cleanerTabs ? (
@@ -273,11 +275,11 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
               ) : (
                 <>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-semibold">SOP Checklist</h3>
-                    <span className="text-xs text-muted-foreground">{done} / {sop.length} complete</span>
+                    <h3 className="text-sm font-semibold">{t("SOP Checklist")}</h3>
+                    <span className="text-xs text-muted-foreground">{done} / {sop.length} {t("complete")}</span>
                   </div>
                   {sop.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No checklist items for this service.</p>
+                    <p className="text-sm text-muted-foreground">{t("No checklist items for this service.")}</p>
                   ) : (
                     <ul className="space-y-3">
                       {sop.map((s) => (
@@ -331,10 +333,10 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
           </Tabs>
           <Dialog open={sopOpen} onOpenChange={setSopOpen}>
             <DialogContent className="w-[calc(100%-1rem)] max-w-4xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6">
-              <DialogHeader className="pr-8"><DialogTitle>SOP</DialogTitle></DialogHeader>
+              <DialogHeader className="pr-8"><DialogTitle>{t("SOP")}</DialogTitle></DialogHeader>
           {job.client?.client_sop && job.client.client_sop.trim() && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2 border-l-4 border-brand">
-              <h4 className="text-xs uppercase tracking-wider text-brand">Property SOP</h4>
+              <h4 className="text-xs uppercase tracking-wider text-brand">{t("Property SOP")}</h4>
               
               <p className="text-base whitespace-pre-wrap">{job.client.client_sop}</p>
               {(() => {
@@ -349,16 +351,16 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                         try {
                           await confirmSop({ data: { job_id: job.id, confirmed: e.target.checked } });
                           qc.invalidateQueries({ queryKey: ["job", jobId] });
-                          toast.success(e.target.checked ? "SOP confirmed" : "Confirmation removed");
+                          toast.success(t(e.target.checked ? "SOP confirmed" : "Confirmation removed"));
                         } catch (err) {
-                          toast.error(err instanceof Error ? err.message : "Could not save");
+                          toast.error(err instanceof Error ? err.message : t("Could not save"));
                         }
                       }}
                     />
                     <span className="text-sm">
-                      <span className="font-medium">I followed this SOP</span>
+                      <span className="font-medium">{t("I followed this SOP")}</span>
                       <span className="block text-xs text-muted-foreground">
-                        {confirmedAt ? `Confirmed ${format(new Date(confirmedAt), "PP p")}` : "Check this when every step is done."}
+                        {confirmedAt ? `${t("Confirmed")} ${format(new Date(confirmedAt), "PP p", dateLocaleOpts())}` : t("Check this when every step is done.")}
                       </span>
                     </span>
                   </label>
@@ -367,13 +369,13 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
             </div>
           )}
               <SopViewer serviceTypeId={job.service?.id ?? null} jobId={jobId} hasTextSop={!!job.client?.client_sop?.trim()} readableText={job.client?.client_sop ?? ""} />
-              <DialogClose asChild><Button variant="outline">Close SOP</Button></DialogClose>
+              <DialogClose asChild><Button variant="outline">{t("Close SOP")}</Button></DialogClose>
             </DialogContent>
           </Dialog>
         </section>
         <aside className="space-y-6">
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
-            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Client</h4>
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Client")}</h4>
             <div>
               <p className="text-sm font-medium">{[job.client?.first_name, job.client?.last_name].filter(Boolean).join(" ") || "—"}</p>
               {perms?.isOwner ? (
@@ -382,12 +384,12 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                   <p className="text-xs text-muted-foreground">{job.client?.phone ?? "—"}</p>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground italic">Contact info hidden — owners only</p>
+                <p className="text-xs text-muted-foreground italic">{t("Contact info hidden — owners only")}</p>
               )}
             </div>
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
-            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service address</h4>
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Service address")}</h4>
             {jobLocation(job).address ? (
               <a
                 href={directionsUrl(jobLocation(job).address ?? "")}
@@ -399,13 +401,13 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                 <span>{jobLocation(job).display}</span>
               </a>
             ) : (
-              <p className="text-sm text-destructive">Location needs review</p>
+              <p className="text-sm text-destructive">{t("Location needs review")}</p>
             )}
             {canMessageClient && job.client_id && <JobLocationEditor jobId={jobId} clientId={job.client_id} propertyId={job.property_id} recurring={!!job.recurrence_group_id} />}
           </div>
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
-            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Service</h4>
-            <p className="text-sm font-medium">{job.service?.name ?? "—"}</p>
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Service")}</h4>
+            <p className="text-sm font-medium">{job.service?.name ? t(job.service.name) : "—"}</p>
             {(() => {
               const mins =
                 job.service?.default_duration_minutes ??
@@ -419,9 +421,9 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                 );
               const h = Math.floor(mins / 60);
               const m = mins % 60;
-              const label = h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`;
+              const label = h ? `${h}${t("h")}${m ? ` ${m}${t("m")}` : ""}` : `${m}${t("m")}`;
               return (
-                <p className="text-xs text-muted-foreground">Expected duration · {label}</p>
+                <p className="text-xs text-muted-foreground">{t("Expected duration")} · {label}</p>
               );
             })()}
           </div>
@@ -429,10 +431,10 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
             <ScheduleCard jobId={jobId} startISO={job.scheduled_start} endISO={job.scheduled_end} />
           )}
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
-            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Assignment</h4>
+            <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Assignment")}</h4>
             {job.assignees && job.assignees.length ? (
               <ul className="space-y-1">{job.assignees.map((a: any) => <li key={a.id} className="text-sm">{a.full_name ?? "—"}</li>)}</ul>
-            ) : <p className="text-sm text-muted-foreground">Unassigned</p>}
+            ) : <p className="text-sm text-muted-foreground">{t("Unassigned")}</p>}
           </div>
 
           {(() => {
@@ -456,12 +458,12 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
             const hasAny = rows.length > 0 || clientNotes.length > 0 || (job.notes && job.notes.trim());
             return (
               <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
-                <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Notes &amp; access</h4>
+                <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Notes & access")}</h4>
                 {rows.length > 0 && (
                   <dl className="space-y-2">
                     {rows.map(([k, v]) => (
                       <div key={k}>
-                        <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{k}</dt>
+                        <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{t(k)}</dt>
                         <dd className="text-sm whitespace-pre-wrap">{v}</dd>
                       </div>
                     ))}
@@ -469,18 +471,18 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                 )}
                 {job.notes && job.notes.trim() && (
                   <div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Job notes</div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Job notes")}</div>
                     <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
                   </div>
                 )}
                 {clientNotes.length > 0 && (
                   <div>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Client notes</div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Client notes")}</div>
                     <ul className="space-y-2 mt-1">
                       {clientNotes.map((n) => (
                         <li key={n.id} className="text-sm whitespace-pre-wrap border-l-2 border-brand/30 pl-2">
                           {n.note}
-                          <div className="text-[10px] text-muted-foreground">{format(new Date(n.created_at), "MMM d, yyyy")}</div>
+                          <div className="text-[10px] text-muted-foreground">{format(new Date(n.created_at), "MMM d, yyyy", dateLocaleOpts())}</div>
                         </li>
                       ))}
                     </ul>
@@ -497,7 +499,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">No door codes or access notes on file — ask a manager to add them.</p>
+                    <p className="text-xs text-muted-foreground">{t("No door codes or access notes on file — ask a manager to add them.")}</p>
                   )
                 )}
               </div>
@@ -507,7 +509,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
 
           {(job as any).external_source === "turno" && (job as any).external_metadata && (
             <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-2">
-              <h4 className="text-xs uppercase tracking-wider text-muted-foreground">Turno reservation</h4>
+              <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Turno reservation")}</h4>
               <div className="text-xs text-muted-foreground font-mono">ID: {(job as any).external_id}</div>
               {(() => {
                 const m = (job as any).external_metadata as {
@@ -516,16 +518,16 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                 };
                 return (
                   <div className="text-sm space-y-1">
-                    {m.guest_name && <div><span className="text-muted-foreground">Guest:</span> {m.guest_name}</div>}
-                    {m.property_name && <div><span className="text-muted-foreground">Property:</span> {m.property_name}</div>}
-                    {m.checkin_at && <div><span className="text-muted-foreground">Check-in:</span> {format(new Date(m.checkin_at), "PPp")}</div>}
-                    {m.checkout_at && <div><span className="text-muted-foreground">Check-out:</span> {format(new Date(m.checkout_at), "PPp")}</div>}
+                    {m.guest_name && <div><span className="text-muted-foreground">{t("Guest:")}</span> {m.guest_name}</div>}
+                    {m.property_name && <div><span className="text-muted-foreground">{t("Property:")}</span> {m.property_name}</div>}
+                    {m.checkin_at && <div><span className="text-muted-foreground">{t("Check-in:")}</span> {format(new Date(m.checkin_at), "PPp", dateLocaleOpts())}</div>}
+                    {m.checkout_at && <div><span className="text-muted-foreground">{t("Check-out:")}</span> {format(new Date(m.checkout_at), "PPp", dateLocaleOpts())}</div>}
                   </div>
                 );
               })()}
             </div>
           )}
-          <Link to="/jobs" className="block text-center text-sm text-muted-foreground hover:text-foreground">← Back to queue</Link>
+          <Link to="/jobs" className="block text-center text-sm text-muted-foreground hover:text-foreground">← {t("Back to queue")}</Link>
         </aside>
       </div>
     </>
@@ -553,6 +555,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
   const [shareOpen, setShareOpen] = useState(false);
   const [photoType, setPhotoType] = useState<PhotoType>("other");
   const [saving, setSaving] = useState(false);
+  const t = useT();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -564,7 +567,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
     try {
       for (const file of Array.from(files)) {
         const { data: identity } = await supabase.auth.getUser();
-        if (identity.user?.id !== viewerId) throw new Error("Your login changed. Please reopen the appointment and upload again.");
+        if (identity.user?.id !== viewerId) throw new Error(t("Your login changed. Please reopen the appointment and upload again."));
         const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: file.name } });
         const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, {
           contentType: file.type,
@@ -581,13 +584,13 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
         savedIds.push(saved.id);
       }
       qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
-      toast.success("Photo saved");
+      toast.success(t("Photo saved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save photo");
+      toast.error(e instanceof Error ? e.message : t("Failed to save photo"));
     } finally {
       setSaving(false);
       qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
-      if (savedIds.length) void finishBatchFn({ data: { job_id: jobId, photo_ids: savedIds } }).catch(() => toast.error("Photos saved, but the owner email could not be prepared."));
+      if (savedIds.length) void finishBatchFn({ data: { job_id: jobId, photo_ids: savedIds } }).catch(() => toast.error(t("Photos saved, but the owner email could not be prepared.")));
     }
   };
 
@@ -609,13 +612,13 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
   }, [photos, lightbox]);
 
   const onDelete = async (p: JobPhotoRow) => {
-    if (!confirm("Delete this photo?")) return;
+    if (!confirm(t("Delete this photo?"))) return;
     try {
       await delFn({ data: { id: p.id } });
       qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
-      toast.success("Deleted");
+      toast.success(t("Deleted"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(e instanceof Error ? e.message : t("Failed"));
     }
   };
 
@@ -657,7 +660,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
                 : "bg-clay-100 text-muted-foreground hover:text-foreground"
             }`}
           >
-            {pt}
+            {t(pt === "before" ? "Before" : pt === "after" ? "After" : pt === "damage" ? "Damage" : "Other")}
           </button>
         ))}
       </div>
@@ -668,7 +671,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
           disabled={saving}
           className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90 disabled:opacity-50"
         >
-          <Camera className="size-4" /> {saving ? "Saving…" : "Take photo"}
+          <Camera className="size-4" /> {saving ? t("Saving…") : t("Take photo")}
         </button>
         <button
           type="button"
@@ -676,13 +679,13 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
           disabled={saving}
           className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2.5 hover:bg-clay-100 disabled:opacity-50"
         >
-          <ImagePlus className="size-4" /> From gallery
+          <ImagePlus className="size-4" /> {t("From gallery")}
         </button>
       </div>
     </div>
   );
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">{t("Loading…")}</p>;
 
   return (
     <>
@@ -696,7 +699,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
       )}
       <PhotoShareDialog jobId={jobId} photos={photos} open={shareOpen} onClose={() => setShareOpen(false)} />
       {downloads.toolbar}
-      {!photos.length && <p className="text-sm text-muted-foreground">No photos yet.</p>}
+      {!photos.length && <p className="text-sm text-muted-foreground">{t("No photos yet.")}</p>}
       {(["before", "after", "damage", "other"] as PhotoType[]).map((group) => {
         const groupPhotos = photos.filter((p) => p.photo_type === group);
         if (!groupPhotos.length) return null;
@@ -704,7 +707,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
       <section key={group} className="mb-6">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {group === "before" ? "Before" : group === "after" ? "After" : group === "damage" ? "Damage" : "Other"} · {groupPhotos.length}
+          {t(group === "before" ? "Before" : group === "after" ? "After" : group === "damage" ? "Damage" : "Other")} · {groupPhotos.length}
         </h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -718,24 +721,24 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
               {p.url ? (
                 <img src={p.url} alt={p.caption ?? ""} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full grid place-items-center text-xs text-muted-foreground">No preview</div>
+                <div className="w-full h-full grid place-items-center text-xs text-muted-foreground">{t("No preview")}</div>
               )}
             </button>
             <div className="p-2 space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="flex items-center gap-2 text-xs"><Checkbox aria-label={`Select photo ${p.id}`} checked={downloads.selected.has(p.id)} disabled={downloads.busy} onCheckedChange={() => downloads.toggle(p.id)} /> Select</label>
+                <label className="flex items-center gap-2 text-xs"><Checkbox aria-label={`Select photo ${p.id}`} checked={downloads.selected.has(p.id)} disabled={downloads.busy} onCheckedChange={() => downloads.toggle(p.id)} /> {t("Select")}</label>
                 {downloads.singleButton(p)}
               </div>
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${typeBadge[p.photo_type]}`}>
-                  {p.photo_type}
+                  {t(p.photo_type === "before" ? "Before" : p.photo_type === "after" ? "After" : p.photo_type === "damage" ? "Damage" : "Other")}
                 </span>
                 <div className="flex gap-1">
                   {!readOnly && (
                     <button
                       onClick={() => onDelete(p)}
                       className="p-1 text-muted-foreground hover:text-destructive"
-                      aria-label="Delete"
+                      aria-label={t("Delete")}
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -744,9 +747,9 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
               </div>
               {p.caption && <p className="text-xs text-muted-foreground truncate">{p.caption}</p>}
               <p className="text-[10px] text-muted-foreground">
-                {p.uploader_name ?? "—"} · {format(new Date(p.uploaded_at), "MMM d, h:mma")}
+                {p.uploader_name ?? "—"} · {format(new Date(p.uploaded_at), "MMM d, h:mma", dateLocaleOpts())}
               </p>
-              {p.attribution_review_reason && <p className="text-xs text-destructive" title={p.attribution_review_reason}>Uploader needs admin review</p>}
+              {p.attribution_review_reason && <p className="text-xs text-destructive" title={p.attribution_review_reason}>{t("Uploader needs admin review")}</p>}
             </div>
           </div>
         ))}
@@ -756,11 +759,11 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
       })}
       <Dialog open={!!lightbox} onOpenChange={open => { if (!open) setLightbox(null); }}>
         <DialogContent className="max-w-4xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Job photo</DialogTitle></DialogHeader>
-          {lightbox?.url && <img src={lightbox.url} alt={lightbox.caption ?? "Job photo"} className="max-h-[65dvh] w-full object-contain" />}
+          <DialogHeader><DialogTitle>{t("Job photo")}</DialogTitle></DialogHeader>
+          {lightbox?.url && <img src={lightbox.url} alt={lightbox.caption ?? t("Job photo")} className="max-h-[65dvh] w-full object-contain" />}
           {lightbox?.caption && <p className="text-sm">{lightbox.caption}</p>}
           {lightbox && downloads.singleButton(lightbox)}
-          <DialogClose asChild><Button variant="outline">Close photo</Button></DialogClose>
+          <DialogClose asChild><Button variant="outline">{t("Close photo")}</Button></DialogClose>
         </DialogContent>
       </Dialog>
     </>
@@ -769,19 +772,19 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
 
 function GpsTab({ jobId }: { jobId: string }) {
   const fetchGps = useServerFn(listJobGps);
+  const t = useT();
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ["job-gps", jobId],
     queryFn: () => fetchGps({ data: { job_id: jobId } }),
   });
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">{t("Loading…")}</p>;
   const withGps = entries.filter(
     (e) => e.clock_in_latitude !== null || e.clock_out_latitude !== null,
   );
   if (!withGps.length) {
     return (
       <p className="text-sm text-muted-foreground">
-        No GPS coordinates recorded. Enable "Track employee GPS on clock-in" in Business profile to start capturing
-        location.
+        {t("No GPS coordinates recorded. Enable \"Track employee GPS on clock-in\" in Business profile to start capturing location.")}
       </p>
     );
   }

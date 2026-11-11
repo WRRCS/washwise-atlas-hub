@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({ selected: new Set<string>(), deliver: vi.fn(),
 vi.mock("react", async (original) => ({
   ...await original<typeof import("react")>(),
   useEffect: () => {},
+  useContext: () => ({ lang: "en" }),
+  useCallback: (fn: unknown) => fn,
   useRef: (value: unknown) => ({ current: value }),
   useState: (value: unknown) => [value instanceof Set ? mocks.selected : value, vi.fn()],
 }));

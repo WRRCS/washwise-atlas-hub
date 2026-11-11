@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { employeeClockAction } from "@/lib/employee-clock.functions";
 import { getMyShift } from "@/lib/time.functions";
+import { useT, useLanguage } from "@/lib/i18n";
 
 export function EmployeeClockControls() {
   const getShift = useServerFn(getMyShift);
   const action = useServerFn(employeeClockAction);
   const qc = useQueryClient();
+  const t = useT();
+  const { lang } = useLanguage();
   const q = useQuery({ queryKey: ["my-shift"], queryFn: () => getShift(), refetchInterval: 15000 });
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
@@ -23,28 +26,28 @@ export function EmployeeClockControls() {
       await action({ data: { action: value, description: value === "start_work" ? description : undefined } });
       setOpen(false);
       ["my-shift", "my-jobs", "job-visit", "my-timesheet", "timesheet", "reports", "report-timesheets", "report-payroll"].forEach(key => void qc.invalidateQueries({ queryKey: [key] }));
-      toast.success(value === "start_lunch" ? "On unpaid lunch" : value === "clock_out" ? "Clocked out" : "Paid work tracking started");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Unable to update clock"); }
+      toast.success(t(value === "start_lunch" ? "On unpaid lunch" : value === "clock_out" ? "Clocked out" : "Paid work tracking started"));
+    } catch (error) { toast.error(error instanceof Error ? error.message : t("Unable to update clock")); }
     finally { setBusy(false); }
   };
   const shift = q.data;
-  const time = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" });
+  const time = (iso: string) => new Date(iso).toLocaleTimeString(lang === "uk" ? "uk-UA" : "en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" });
   return (
-    <section aria-label="Employee clock" className="mb-6 border-y border-border py-5 flex flex-wrap items-center justify-between gap-4">
+    <section aria-label={t("Employee clock")} className="mb-6 border-y border-border py-5 flex flex-wrap items-center justify-between gap-4">
       <div className="min-w-0">
-      <h2 className="mb-1 text-base font-semibold">My clock</h2>
+      <h2 className="mb-1 text-base font-semibold">{t("My clock")}</h2>
       <div role="status" className="text-sm">
-        {q.isLoading ? "Loading clock…" : q.error ? "Clock unavailable" : shift ? <><strong>{shift.kind === "lunch" ? "On unpaid lunch" : shift.on_site_since ? "On site" : shift.kind === "work" ? "Unscheduled work" : "Drive / other"}</strong><span className="text-muted-foreground"> · since {time(shift.kind === "lunch" ? shift.started_at : shift.on_site_since ?? shift.last_left_at ?? shift.started_at)}</span>{shift.kind === "work" && <div className="text-muted-foreground break-words">{shift.description}</div>}</> : "Clocked out"}
+        {q.isLoading ? t("Loading clock…") : q.error ? t("Clock unavailable") : shift ? <><strong>{t(shift.kind === "lunch" ? "On unpaid lunch" : shift.on_site_since ? "On site" : shift.kind === "work" ? "Unscheduled work" : "Drive / other")}</strong><span className="text-muted-foreground"> · {t("since")} {time(shift.kind === "lunch" ? shift.started_at : shift.on_site_since ?? shift.last_left_at ?? shift.started_at)}</span>{shift.kind === "work" && <div className="text-muted-foreground break-words">{shift.description}</div>}</> : t("Clocked out")}
       </div>
       </div>
       <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-        {!shift ? <Button className="h-auto min-h-11 max-w-full whitespace-normal text-left" disabled={q.isLoading || !!q.error || busy} onClick={() => { setDescription(""); setOpen(true); }}><Clock className="size-4 shrink-0" />Clock in without a scheduled job</Button> : shift.kind === "lunch" ? <Button className="h-auto min-h-11 whitespace-normal" disabled={busy} onClick={() => run("end_lunch")}><Play className="size-4" />End lunch / Resume work</Button> : <><Button variant="outline" disabled={busy} onClick={() => run("start_lunch")}><Coffee className="size-4" />Start unpaid lunch</Button><Button variant="outline" disabled={busy} onClick={() => run("clock_out")}><Square className="size-4" />Clock out for the day</Button></>}
+        {!shift ? <Button className="h-auto min-h-11 max-w-full whitespace-normal text-left" disabled={q.isLoading || !!q.error || busy} onClick={() => { setDescription(""); setOpen(true); }}><Clock className="size-4 shrink-0" />{t("Clock in without a scheduled job")}</Button> : shift.kind === "lunch" ? <Button className="h-auto min-h-11 whitespace-normal" disabled={busy} onClick={() => run("end_lunch")}><Play className="size-4" />{t("End lunch / Resume work")}</Button> : <><Button variant="outline" disabled={busy} onClick={() => run("start_lunch")}><Coffee className="size-4" />{t("Start unpaid lunch")}</Button><Button variant="outline" disabled={busy} onClick={() => run("clock_out")}><Square className="size-4" />{t("Clock out for the day")}</Button></>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Clock in without a scheduled job</DialogTitle></DialogHeader>
+        <DialogContent><DialogHeader><DialogTitle>{t("Clock in without a scheduled job")}</DialogTitle></DialogHeader>
           <form onSubmit={e => { e.preventDefault(); void run("start_work"); }} className="space-y-4">
-            <label className="block text-sm font-medium">Work description<input autoFocus required minLength={3} maxLength={300} value={description} onChange={e => setDescription(e.target.value)} className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" /></label>
-            <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button disabled={busy || description.trim().length < 3}><Play className="size-4" />Clock in</Button></div>
+            <label className="block text-sm font-medium">{t("Work description")}<input autoFocus required minLength={3} maxLength={300} value={description} onChange={e => setDescription(e.target.value)} className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2" /></label>
+            <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>{t("Cancel")}</Button><Button disabled={busy || description.trim().length < 3}><Play className="size-4" />{t("Clock in")}</Button></div>
           </form>
         </DialogContent>
       </Dialog>

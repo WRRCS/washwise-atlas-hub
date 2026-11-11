@@ -3,9 +3,11 @@ import { Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sopDocumentKind } from "@/lib/sop-document";
 import { sopContentIsCovered } from "@/lib/sop-content";
+import { useT } from "@/lib/i18n";
 
 export function SopDocumentPreview({ url, filename, readableText = "", onCovered }: { url: string | null; filename: string; readableText?: string; onCovered?: () => void }) {
   const pages = useRef<HTMLDivElement>(null);
+  const t = useT();
   const [zoom, setZoom] = useState(100);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,17 +101,17 @@ export function SopDocumentPreview({ url, filename, readableText = "", onCovered
   }, [url, kind, filename, readableText, onCovered]);
 
   return (
-    <section aria-label={`Preview of ${filename}`} className="min-w-0 space-y-3">
+    <section aria-label={t("Preview of {filename}").replace("{filename}", filename)} className="min-w-0 space-y-3">
       {!error && (
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" size="icon" title="Zoom out" aria-label="Zoom out" disabled={zoom <= 75} onClick={() => setZoom((v) => Math.max(75, v - 25))}><Minus /></Button>
+          <Button variant="outline" size="icon" title={t("Zoom out")} aria-label={t("Zoom out")} disabled={zoom <= 75} onClick={() => setZoom((v) => Math.max(75, v - 25))}><Minus /></Button>
           <span className="w-12 text-center text-sm tabular-nums">{zoom}%</span>
-          <Button variant="outline" size="icon" title="Zoom in" aria-label="Zoom in" disabled={zoom >= 250} onClick={() => setZoom((v) => Math.min(250, v + 25))}><Plus /></Button>
-          <Button variant="ghost" size="icon" title="Fit to width" aria-label="Fit to width" onClick={() => setZoom(100)}><RotateCcw /></Button>
+          <Button variant="outline" size="icon" title={t("Zoom in")} aria-label={t("Zoom in")} disabled={zoom >= 250} onClick={() => setZoom((v) => Math.min(250, v + 25))}><Plus /></Button>
+          <Button variant="ghost" size="icon" title={t("Fit to width")} aria-label={t("Fit to width")} onClick={() => setZoom(100)}><RotateCcw /></Button>
         </div>
       )}
-      {loading && <p role="status" className="text-sm text-muted-foreground">Loading SOP document…</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {loading && <p role="status" className="text-sm text-muted-foreground">{t("Loading SOP document…")}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{t(error)}</p>}
       <div className="overflow-x-auto overscroll-contain">
         <div style={{ width: `${zoom}%` }} className="mx-auto space-y-3">
           <div ref={pages} className="space-y-3" />

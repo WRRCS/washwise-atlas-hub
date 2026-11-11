@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Loader2, RotateCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import { buildPhotoZip, deliverPhotoFile, preparePhotoExport, triggerDownload, uniquePhotoReferences, zipFilename, type DownloadPhoto, type PhotoExportContext, type PreparedPhoto } from "@/lib/photo-downloads";
 
 export const PHOTO_TYPE_DOWNLOADS = [
@@ -28,6 +29,7 @@ type ZipState = {
  */
 export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportContext, options: { cleanerName?: string; allCleaners?: boolean } = {}) {
   photos = uniquePhotoReferences(photos);
+  const t = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
@@ -42,13 +44,13 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
     if (locked.current) return;
     locked.current = true; setBusy(true); setError("");
     try { await fn(); }
-    catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : "Photo download failed — please try again"); }
+    catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : t("Photo download failed — please try again")); }
     finally { locked.current = false; if (mounted.current) { setBusy(false); setProgress(""); } }
   };
-  const progressFor = (done: number, total: number) => { if (mounted.current) setProgress(`Preparing ${Math.min(done + 1, total)} of ${total} photos…`); };
+  const progressFor = (done: number, total: number) => { if (mounted.current) setProgress(t("Preparing {n} of {total} photos…").replace("{n}", String(Math.min(done + 1, total))).replace("{total}", String(total))); };
 
   const downloadOne = (photo: DownloadPhoto) => run(async () => {
-    setProgress("Preparing photo…");
+    setProgress(t("Preparing photo…"));
     const result = await preparePhotoExport([photo], context, {});
     if (!mounted.current) return;
     await deliverPhotoFile(result.files[0].blob, result.files[0].filename);
@@ -60,7 +62,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
       setZipState({ requested, files, failures, failedPhotos, zip: null, filename, started: false });
       return;
     }
-    setProgress(`Creating ZIP of ${files.length} photos…`);
+    setProgress(t("Creating ZIP of {n} photos…").replace("{n}", String(files.length)));
     const zip = await buildPhotoZip(files);
     if (!mounted.current) return;
     const auto = !touch();
@@ -99,7 +101,7 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
     const state = zipState;
     if (!state) return;
     return run(async () => {
-      setProgress(`Creating ZIP of ${state.files.length} photos…`);
+      setProgress(t("Creating ZIP of {n} photos…").replace("{n}", String(state.files.length)));
       const zip = await buildPhotoZip(state.files);
       if (!mounted.current) return;
       const auto = !touch();
@@ -112,51 +114,51 @@ export function usePhotoDownloads(photos: DownloadPhoto[], context: PhotoExportC
     if (!zipState?.zip || locked.current) return;
     locked.current = true; setBusy(true);
     try { await deliverPhotoFile(zipState.zip, zipState.filename); setZipState({ ...zipState, started: true }); }
-    catch { setError("Could not start the ZIP download — please try again"); }
+    catch { setError(t("Could not start the ZIP download — please try again")); }
     finally { setTimeout(() => { locked.current = false; if (mounted.current) setBusy(false); }, 500); }
   };
 
   const toggle = (id: string) => setSelected(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next; });
-  const singleButton = (photo: DownloadPhoto) => <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadOne(photo)}><Download className="size-4" /> Download</Button>;
+  const singleButton = (photo: DownloadPhoto) => <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadOne(photo)}><Download className="size-4" /> {t("Download")}</Button>;
   const selectedPhotos = photos.filter(p => selected.has(p.id));
-  const allLabel = options.allCleaners ? "Download all cleaners’ photos" : "Download all";
+  const allLabel = t(options.allCleaners ? "Download all cleaners’ photos" : "Download all");
   const total = zipState ? zipState.requested.length : 0;
   // Per-cleaner type downloads: only photos the cleaner labelled with that type; ZIP named property + date only.
   const typeButtons = options.allCleaners ? [] : PHOTO_TYPE_DOWNLOADS.map(({ type, label }) => {
     const items = photosOfType(photos, type);
-    return <Button key={type} variant="outline" size="sm" disabled={busy || items.length === 0} onClick={() => downloadZip(items, zipFilename(context))}><Download className="size-4" /> {label} ({items.length})</Button>;
+    return <Button key={type} variant="outline" size="sm" disabled={busy || items.length === 0} onClick={() => downloadZip(items, zipFilename(context))}><Download className="size-4" /> {t(label)} ({items.length})</Button>;
   });
 
   const toolbar = photos.length > 0 && <div className="space-y-3 mb-4">
     <div className="flex flex-wrap gap-2 items-center">
       {typeButtons}
       <Button size="sm" disabled={busy} onClick={() => downloadZip(photos)}><Download className="size-4" /> {allLabel} ({photos.length})</Button>
-      <Button variant="ghost" size="sm" disabled={busy} onClick={() => setSelected(selectedPhotos.length === photos.length ? new Set() : new Set(photos.map(p => p.id)))}>{selectedPhotos.length === photos.length ? "Clear selection" : "Select all"}</Button>
-      {selectedPhotos.length > 0 && <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadZip(selectedPhotos)}><Download className="size-4" /> Download selected ({selectedPhotos.length})</Button>}
+      <Button variant="ghost" size="sm" disabled={busy} onClick={() => setSelected(selectedPhotos.length === photos.length ? new Set() : new Set(photos.map(p => p.id)))}>{t(selectedPhotos.length === photos.length ? "Clear selection" : "Select all")}</Button>
+      {selectedPhotos.length > 0 && <Button variant="outline" size="sm" disabled={busy} onClick={() => downloadZip(selectedPhotos)}><Download className="size-4" /> {t("Download selected")} ({selectedPhotos.length})</Button>}
     </div>
     {busy && <p role="status" className="flex gap-2 items-center text-sm"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{progress}</p>}
     {error && <p role="alert" className="text-sm text-destructive break-words">{error}</p>}
     {zipState && !busy && <div className="rounded-lg border border-border/60 p-3 space-y-2">
       {zipState.failedPhotos.length > 0 && !zipState.zip && <>
         <p role="alert" className="text-sm font-medium text-destructive">
-          Incomplete: {zipState.files.length} of {total} photos ready. {zipState.failedPhotos.length} could not be retrieved:
+          {t("Incomplete: {n} of {total} photos ready. {missing} could not be retrieved:").replace("{n}", String(zipState.files.length)).replace("{total}", String(total)).replace("{missing}", String(zipState.failedPhotos.length))}
         </p>
         <ul className="text-xs text-destructive list-disc pl-5 space-y-0.5 [overflow-wrap:anywhere]">{zipState.failures.map(f => <li key={f}>{f}</li>)}</ul>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={retryMissing}><RotateCw className="size-4" /> Retry missing photos</Button>
-          <Button size="sm" variant="outline" onClick={downloadIncomplete}><Download className="size-4" /> Download incomplete ZIP ({zipState.files.length} of {total})</Button>
-          <Button size="icon" variant="ghost" aria-label="Dismiss" onClick={() => setZipState(null)}><X className="size-4" /></Button>
+          <Button size="sm" onClick={retryMissing}><RotateCw className="size-4" /> {t("Retry missing photos")}</Button>
+          <Button size="sm" variant="outline" onClick={downloadIncomplete}><Download className="size-4" /> {t("Download incomplete ZIP")} ({zipState.files.length} / {total})</Button>
+          <Button size="icon" variant="ghost" aria-label={t("Dismiss")} onClick={() => setZipState(null)}><X className="size-4" /></Button>
         </div>
       </>}
       {zipState.zip && <>
         <p role="status" className="text-sm [overflow-wrap:anywhere]">
-          {zipState.started ? "Download started: " : "ZIP ready: "}<span className="font-medium">{zipState.filename}</span> — {zipState.files.length} of {total} photos
-          {zipState.failedPhotos.length ? ` (incomplete — ${zipState.failedPhotos.length} missing)` : ""}.
+          {t(zipState.started ? "Download started:" : "ZIP ready:")} <span className="font-medium">{zipState.filename}</span> — {zipState.files.length} / {total} {t("photos")}
+          {zipState.failedPhotos.length ? ` (${t("incomplete")} — ${zipState.failedPhotos.length} ${t("missing")})` : ""}.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={zipState.started ? "outline" : "default"} onClick={saveZip}><Download className="size-4" /> {zipState.started ? "Download ZIP again" : "Save ZIP"}</Button>
-          {zipState.failedPhotos.length > 0 && <Button size="sm" variant="outline" onClick={retryMissing}><RotateCw className="size-4" /> Retry missing photos</Button>}
-          <Button size="icon" variant="ghost" aria-label="Dismiss" onClick={() => setZipState(null)}><X className="size-4" /></Button>
+          <Button size="sm" variant={zipState.started ? "outline" : "default"} onClick={saveZip}><Download className="size-4" /> {t(zipState.started ? "Download ZIP again" : "Save ZIP")}</Button>
+          {zipState.failedPhotos.length > 0 && <Button size="sm" variant="outline" onClick={retryMissing}><RotateCw className="size-4" /> {t("Retry missing photos")}</Button>}
+          <Button size="icon" variant="ghost" aria-label={t("Dismiss")} onClick={() => setZipState(null)}><X className="size-4" /></Button>
         </div>
       </>}
     </div>}

@@ -181,6 +181,8 @@ function SopWizard({
   const [serviceTypeId, setServiceTypeId] = useState<string>("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [nameUk, setNameUk] = useState("");
+  const [descriptionUk, setDescriptionUk] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [steps, setSteps] = useState<WizardStepDraft[]>([]);
   const [attachments, setAttachments] = useState<WizardAttachmentDraft[]>([]);
@@ -193,6 +195,8 @@ function SopWizard({
     setServiceTypeId(sop.service_type_id);
     setName(sop.name);
     setDescription(sop.description ?? "");
+    setNameUk(sop.name_uk ?? "");
+    setDescriptionUk(sop.description_uk ?? "");
     setIsActive(sop.is_active);
     setSteps(sop.steps.map((s) => ({
       id: crypto.randomUUID(),
@@ -246,6 +250,8 @@ function SopWizard({
         service_type_id: serviceTypeId,
         name: name.trim(),
         description: description.trim(),
+        name_uk: nameUk.trim(),
+        description_uk: descriptionUk.trim(),
         is_active: isActive,
         steps: steps.map((s) => ({
           title: s.title.trim(),
@@ -350,6 +356,11 @@ function SopWizard({
               <Label htmlFor="sop-desc">Description</Label>
               <Textarea id="sop-desc" rows={4} value={description} onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief overview of what this SOP covers…" />
+            </div>
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <p className="text-xs font-medium text-muted-foreground">Ukrainian (shown to cleaners using the app in Ukrainian)</p>
+              <Input aria-label="Ukrainian name" value={nameUk} onChange={(e) => setNameUk(e.target.value)} placeholder="Назва інструкції" />
+              <Textarea aria-label="Ukrainian description" rows={3} value={descriptionUk} onChange={(e) => setDescriptionUk(e.target.value)} placeholder="Короткий опис (необов'язково)" />
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />

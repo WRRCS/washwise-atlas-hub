@@ -18,7 +18,7 @@ import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@
 import { Button } from "@/components/ui/button";
 import { SopViewer } from "@/components/sop-viewer";
 import { PushToggle } from "@/components/push-toggle";
-import { useT } from "@/lib/i18n";
+import { useT, activeLocales } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/my-jobs")({
   head: () => ({ meta: [{ title: "My appointments | WRRCS" }, { name: "description", content: "View your assigned cleaning locations and workday." }, { property: "og:title", content: "My appointments | WRRCS" }, { property: "og:description", content: "View your assigned cleaning locations and workday." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -35,10 +35,10 @@ function startOfWeek(d: Date) {
 }
 
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString(activeLocales(), { hour: "numeric", minute: "2-digit" });
 }
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString(activeLocales(), { weekday: "short", month: "short", day: "numeric" });
 }
 function clientName(c: MyJobRow["client"]) {
   if (!c) return "—";
@@ -88,11 +88,12 @@ function tmInitials(name: string | null | undefined) {
 
 function TeamOnJob({ teammates }: { teammates: MyJobRow["teammates"] }) {
   const myId = useMyUserId();
+  const tr = useT();
   const others = teammates.filter((t) => t.id !== myId);
   if (!others.length) return null;
   return (
     <div className="mt-3 flex items-center gap-2 flex-wrap">
-      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">With</span>
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{tr("With")}</span>
       {others.map((t) => (
         <span key={t.id} className="inline-flex items-center gap-1.5 bg-clay-100 rounded-full pl-0.5 pr-2 py-0.5">
           {t.avatar_url ? (
@@ -100,7 +101,7 @@ function TeamOnJob({ teammates }: { teammates: MyJobRow["teammates"] }) {
           ) : (
             <span className="size-5 rounded-full bg-clay-200 grid place-items-center text-[9px] font-medium">{tmInitials(t.full_name)}</span>
           )}
-          <span className="text-xs">{t.full_name ?? "Teammate"}</span>
+          <span className="text-xs">{t.full_name ?? tr("Teammate")}</span>
         </span>
       ))}
     </div>
@@ -109,10 +110,11 @@ function TeamOnJob({ teammates }: { teammates: MyJobRow["teammates"] }) {
 
 function ScheduleTeammates({ teammates }: { teammates: MyJobRow["teammates"] }) {
   const myId = useMyUserId();
+  const tr = useT();
   const others = teammates.filter((t) => t.id !== myId);
   if (!others.length) return null;
   return (
-    <div className="flex -space-x-1 mt-1" title={others.map((t) => t.full_name ?? "Teammate").join(", ")}>
+    <div className="flex -space-x-1 mt-1" title={others.map((t) => t.full_name ?? tr("Teammate")).join(", ")}>
       {others.slice(0, 3).map((t) =>
         t.avatar_url ? (
           <img key={t.id} src={t.avatar_url} alt="" className="size-4 rounded-full object-cover ring-1 ring-clay-50" />
@@ -163,7 +165,7 @@ function UpNextHero({
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h2 className="text-xl md:text-2xl font-semibold leading-tight">{clientName(job.client)}</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{job.service?.name ?? "Service"}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{t(job.service?.name ?? "Service")}</p>
           <div className="mt-3 grid gap-2 text-sm">
             <p className="flex items-center gap-2">
               <Clock className="size-4 text-muted-foreground" />
@@ -181,7 +183,7 @@ function UpNextHero({
                 <span>{location.display}<span className="ml-2 text-xs text-muted-foreground">{t("Tap for directions")}</span></span>
               </a>
             )}
-            {!address && <p className="text-destructive">Location needs review</p>}
+            {!address && <p className="text-destructive">{t("Location needs review")}</p>}
           </div>
           {notes.length > 0 && (
             <div className="mt-4 rounded-lg bg-clay-100/70 p-3">
@@ -260,7 +262,7 @@ export function useClockOutDay(trackGps: boolean) {
       await endFn({ data: { gps } });
       toast.success(t("Clocked out"));
       ["my-shift", "my-jobs", "my-timesheet", "timesheet", "job-visit"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
-    } catch (e: any) { toast.error(e?.message ?? "Something went wrong"); }
+    } catch (e: any) { toast.error(e?.message ?? t("Something went wrong")); }
     finally { setBusy(false); }
   };
   return { clockOut, busy };
@@ -337,7 +339,7 @@ function TodayView() {
   const { clockOut: clockOutDay } = useClockOutDay(trackGps);
 
   const handleClockIn = async (job_id: string, dayOnly = false) => {
-    if (shiftQ.data?.kind === "lunch") { toast.error("End unpaid lunch / Resume work before arriving"); return; }
+    if (shiftQ.data?.kind === "lunch") { toast.error(t("End unpaid lunch / Resume work before arriving")); return; }
     let gps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
     if (trackGps) {
       const res = await captureGps();
@@ -414,7 +416,7 @@ function TodayView() {
             setCompleteFor({ jobId: upNext.id, entryId: null, startedAt: null, serviceTypeId: upNext.service?.id ?? null })
           }
           onOpenSop={() =>
-            setSopFor({ jobId: upNext.id, serviceTypeId: upNext.service?.id ?? null, label: upNext.service?.name ?? "SOP" })
+            setSopFor({ jobId: upNext.id, serviceTypeId: upNext.service?.id ?? null, label: t(upNext.service?.name ?? "SOP") })
           }
         />
       )}
@@ -423,7 +425,7 @@ function TodayView() {
         {[...groups.entries()].map(([day, items]) => (
           <section key={day}>
             <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
-              {new Date(items[0].scheduled_start).toDateString() === new Date().toDateString() ? "Today · " : ""}
+              {new Date(items[0].scheduled_start).toDateString() === new Date().toDateString() ? t("Today") + " · " : ""}
               {fmtDate(items[0].scheduled_start)}
             </h2>
             <div className="space-y-3">
@@ -437,7 +439,7 @@ function TodayView() {
                           style={{ background: j.service?.color ?? "hsl(var(--brand))" }}
                         />
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          {j.service?.name ?? "Service"}
+                          {t(j.service?.name ?? "Service")}
                         </span>
                         <StatusPill status={j.status} />
                       </div>
@@ -451,7 +453,7 @@ function TodayView() {
                         >
                           <MapPin className="size-3" /> {jobLocation(j).display}
                         </a>
-                      ) : <p className="text-sm text-destructive">Location needs review</p>}
+                      ) : <p className="text-sm text-destructive">{t("Location needs review")}</p>}
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                         <Clock className="size-3" /> {fmtTime(j.scheduled_start)} – {fmtTime(j.scheduled_end)}
                       </p>
@@ -460,7 +462,7 @@ function TodayView() {
 
                       <button
                         type="button"
-                        onClick={() => setSopFor({ jobId: j.id, serviceTypeId: j.service?.id ?? null, label: j.service?.name ?? "SOP" })}
+                        onClick={() => setSopFor({ jobId: j.id, serviceTypeId: j.service?.id ?? null, label: t(j.service?.name ?? "SOP") })}
                         className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
                       >
                         <BookOpen className="size-3.5" /> {t("View SOP")}
@@ -540,10 +542,10 @@ function TodayView() {
         <Dialog open onOpenChange={(v) => !v && setSopFor(null)}>
           <DialogContent className="w-[calc(100%-1rem)] max-w-4xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader className="pr-8">
-              <DialogTitle>SOP · {sopFor.label}</DialogTitle>
+              <DialogTitle>{t("SOP")} · {sopFor.label}</DialogTitle>
             </DialogHeader>
             <SopViewer serviceTypeId={sopFor.serviceTypeId} jobId={sopFor.jobId} allowMarkReviewed />
-            <DialogClose asChild><Button variant="outline">Close SOP</Button></DialogClose>
+            <DialogClose asChild><Button variant="outline">{t("Close SOP")}</Button></DialogClose>
           </DialogContent>
         </Dialog>
       )}
@@ -663,12 +665,12 @@ function CompleteJobDialog({
         }
       }
       if (items.some((it) => it.photo_type === "damage" && !it.caption.trim())) {
-        throw new Error("Please describe the damage on each damage photo.");
+        throw new Error(t("Please describe the damage on each damage photo."));
       }
       const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
       for (const it of items) {
         const { data: identity } = await supabase.auth.getUser();
-        if (!identity.user || identity.user.id !== captureIdentity.current) throw new Error("Your login changed. Please reopen this appointment and capture the photos again.");
+        if (!identity.user || identity.user.id !== captureIdentity.current) throw new Error(t("Your login changed. Please reopen this appointment and capture the photos again."));
         const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });
         const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, it.file, {
           contentType: it.file.type,
@@ -706,7 +708,7 @@ function CompleteJobDialog({
         <h3 className="text-lg font-medium mb-1">{t("Leaving")}</h3>
         {hours !== null ? (
           <p className="text-sm text-muted-foreground mb-4">
-            You were at this job <strong className="text-foreground">{hours.toFixed(2)} hours</strong> (since {fmtTime(startedAt!)}). Your clock keeps running for drive time.
+            {t("You were at this job")} <strong className="text-foreground">{hours.toFixed(2)} {t("hours")}</strong> ({t("since")} {fmtTime(startedAt!)}). {t("Your clock keeps running for drive time.")}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground mb-4">{t("Add any before, after or damage photos, then tap Leaving.")}</p>
@@ -737,14 +739,14 @@ function CompleteJobDialog({
               onClick={() => cameraRef.current?.click()}
               className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90"
             >
-              <Camera className="size-4" /> Take photo
+              <Camera className="size-4" /> {t("Take photo")}
             </button>
             <button
               type="button"
               onClick={() => galleryRef.current?.click()}
               className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2 hover:bg-clay-100"
             >
-              <UploadIcon className="size-4" /> Upload
+              <UploadIcon className="size-4" /> {t("Upload")}
             </button>
           </div>
           {items.length > 0 && (
@@ -754,25 +756,25 @@ function CompleteJobDialog({
                   <img src={it.previewUrl} alt="" className="size-20 rounded object-cover shrink-0" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex flex-wrap gap-1">
-                      {(["before", "after", "damage", "other"] as PhotoType[]).map((t) => (
+                      {(["before", "after", "damage", "other"] as PhotoType[]).map((pt) => (
                         <button
-                          key={t}
+                          key={pt}
                           type="button"
-                          onClick={() => update(it.id, { photo_type: t })}
+                          onClick={() => update(it.id, { photo_type: pt })}
                           className={`text-[11px] uppercase tracking-wider px-2 py-1 rounded font-medium ${
-                            it.photo_type === t
+                            it.photo_type === pt
                               ? "bg-brand text-brand-foreground"
                               : "bg-clay-50 text-muted-foreground hover:text-foreground"
                           }`}
                         >
-                          {t}
+                          {t(pt === "before" ? "Before" : pt === "after" ? "After" : pt === "damage" ? "Damage" : "Other")}
                         </button>
                       ))}
                     </div>
                     <input
                       value={it.caption}
                       onChange={(e) => update(it.id, { caption: e.target.value })}
-                      placeholder={it.photo_type === "damage" ? "Describe the damage (required)" : "Caption (optional)"}
+                      placeholder={t(it.photo_type === "damage" ? "Describe the damage (required)" : "Caption (optional)")}
                       className="w-full text-sm border border-border rounded px-2 py-1 bg-clay-50"
                     />
                   </div>
@@ -780,7 +782,7 @@ function CompleteJobDialog({
                     type="button"
                     onClick={() => removeItem(it.id)}
                     className="shrink-0 self-start p-1 text-muted-foreground hover:text-destructive"
-                    aria-label="Remove"
+                    aria-label={t("Remove")}
                   >
                     <X className="size-4" />
                   </button>
@@ -791,23 +793,23 @@ function CompleteJobDialog({
         </div>
 
 
-        <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+        <label className="block text-sm font-medium mb-1">{t("Notes (optional)")}</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-clay-50"
-          placeholder="Anything worth noting?"
+          placeholder={t("Anything worth noting?")}
         />
 
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-3 py-2 text-sm rounded-lg hover:bg-clay-100">Cancel</button>
+          <button onClick={onClose} className="px-3 py-2 text-sm rounded-lg hover:bg-clay-100">{t("Cancel")}</button>
           <button
             disabled={saving}
             onClick={onSubmit}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand text-brand-foreground disabled:opacity-50"
           >
-            {saving ? "Uploading…" : t("Leaving")}
+            {saving ? t("Uploading…") : t("Leaving")}
           </button>
         </div>
       </div>
@@ -824,6 +826,7 @@ function SuppliesUsedSection({
   selected: Record<string, number>;
   onChange: (v: Record<string, number>) => void;
 }) {
+  const t = useT();
   const toggle = (id: string) => {
     const next = { ...selected };
     if (id in next) delete next[id];
@@ -836,7 +839,7 @@ function SuppliesUsedSection({
   if (!items.length) return null;
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium mb-2">Log supplies used (optional)</label>
+      <label className="block text-sm font-medium mb-2">{t("Log supplies used (optional)")}</label>
       <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60 bg-clay-50 divide-y divide-border/60">
         {items.map((it) => {
           const checked = it.id in selected;
@@ -850,7 +853,7 @@ function SuppliesUsedSection({
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate">{it.name}</p>
-                <p className="text-[11px] text-muted-foreground">{it.quantity_on_hand} {it.unit} on hand</p>
+                <p className="text-[11px] text-muted-foreground">{it.quantity_on_hand} {it.unit} {t("on hand")}</p>
               </div>
               {checked && (
                 <input
@@ -877,11 +880,13 @@ function StatusPill({ status }: { status: MyJobRow["status"] }) {
     completed: "bg-green-100 text-green-800",
     canceled: "bg-gray-100 text-gray-600",
   };
-  const label = status === "in_progress" ? "In progress" : status[0].toUpperCase() + status.slice(1);
+  const t = useT();
+  const label = t(status === "in_progress" ? "In progress" : status[0].toUpperCase() + status.slice(1));
   return <span className={`text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded ${map[status]}`}>{label}</span>;
 }
 
 function ScheduleView() {
+  const t = useT();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const list = useServerFn(listMyJobs);
   const from = weekStart.toISOString();
@@ -930,7 +935,7 @@ function ScheduleView() {
             ‹
           </button>
           <button onClick={() => setWeekStart(startOfWeek(new Date()))} className="px-3 py-1.5 text-sm rounded-lg hover:bg-clay-100">
-            Today
+            {t("Today")}
           </button>
           <button
             onClick={() => {
@@ -944,8 +949,8 @@ function ScheduleView() {
           </button>
         </div>
         <span className="text-sm text-muted-foreground">
-          {weekStart.toLocaleDateString([], { month: "short", day: "numeric" })} –{" "}
-          {new Date(weekStart.getTime() + 6 * 86400000).toLocaleDateString([], { month: "short", day: "numeric" })}
+          {weekStart.toLocaleDateString(activeLocales(), { month: "short", day: "numeric" })} –{" "}
+          {new Date(weekStart.getTime() + 6 * 86400000).toLocaleDateString(activeLocales(), { month: "short", day: "numeric" })}
         </span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
@@ -955,7 +960,7 @@ function ScheduleView() {
           return (
             <div key={d.toISOString()} className="border border-border/60 rounded-lg p-2 min-h-32 bg-clay-50">
               <div className={`text-xs font-medium mb-2 ${isToday ? "text-brand" : "text-muted-foreground"}`}>
-                {d.toLocaleDateString([], { weekday: "short" })} {d.getDate()}
+                {d.toLocaleDateString(activeLocales(), { weekday: "short" })} {d.getDate()}
               </div>
               <div className="space-y-1.5">
                 {items.map((j) => (
@@ -976,6 +981,7 @@ function ScheduleView() {
 }
 
 function TimesheetView() {
+  const t = useT();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const list = useServerFn(listMyTimeEntries);
   const from = weekStart.toISOString();
@@ -1007,7 +1013,7 @@ function TimesheetView() {
             ‹
           </button>
           <button onClick={() => setWeekStart(startOfWeek(new Date()))} className="px-3 py-1.5 text-sm rounded-lg hover:bg-clay-100">
-            This week
+            {t("This week")}
           </button>
           <button
             onClick={() => {
@@ -1021,24 +1027,24 @@ function TimesheetView() {
           </button>
         </div>
         <div className="text-sm">
-          <span className="text-muted-foreground">Total: </span>
-          <strong>{totalHours.toFixed(2)} paid hrs</strong><span className="block text-muted-foreground">Unpaid lunch: {(totals.unpaid / 60).toFixed(2)} hrs</span>
+          <span className="text-muted-foreground">{t("Total:")} </span>
+          <strong>{totalHours.toFixed(2)} {t("paid hrs")}</strong><span className="block text-muted-foreground">{t("Unpaid lunch")}: {(totals.unpaid / 60).toFixed(2)} {t("hrs")}</span>
         </div>
       </div>
-      {q.error ? <p className="text-sm text-destructive">{q.error instanceof Error ? q.error.message : "Unable to load timesheet"}</p> : q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      {q.error ? <p className="text-sm text-destructive">{q.error instanceof Error ? q.error.message : t("Unable to load timesheet")}</p> : q.isLoading ? (
+        <p className="text-sm text-muted-foreground">{t("Loading…")}</p>
       ) : !entries.length ? (
-        <p className="text-sm text-muted-foreground">No time entries this week.</p>
+        <p className="text-sm text-muted-foreground">{t("No time entries this week.")}</p>
       ) : (
         <div className="border border-border/60 rounded-xl overflow-hidden bg-clay-50">
           <table className="w-full text-sm">
             <thead className="bg-clay-100 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left px-4 py-2">Date</th>
-                <th className="text-left px-4 py-2">Client</th>
-                <th className="text-left px-4 py-2">Clock in</th>
-                <th className="text-left px-4 py-2">Clock out</th>
-                <th className="text-right px-4 py-2">Hours</th>
+                <th className="text-left px-4 py-2">{t("Date")}</th>
+                <th className="text-left px-4 py-2">{t("Client")}</th>
+                <th className="text-left px-4 py-2">{t("Clock in")}</th>
+                <th className="text-left px-4 py-2">{t("Clock out")}</th>
+                <th className="text-right px-4 py-2">{t("Hours")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1046,14 +1052,14 @@ function TimesheetView() {
                 <tr key={e.id} className="border-t border-border/60">
                   <td className="px-4 py-2">{fmtDate(e.started_at)}</td>
                   <td className="px-4 py-2">
-                    {e.kind === "lunch" ? "Unpaid lunch" : e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : `Unscheduled work · ${e.notes ?? ""}`}
+                    {e.kind === "lunch" ? t("Unpaid lunch") : e.job?.client ? `${e.job.client.first_name ?? ""} ${e.job.client.last_name ?? ""}`.trim() : `${t("Unscheduled work")} · ${e.notes ?? ""}`}
                   </td>
                   <td className="px-4 py-2">
                     {fmtTime(e.started_at)}
                     {e.clock_in_latitude !== null && <span className="ml-1 text-emerald-600" title={`±${Math.round(e.clock_in_accuracy_meters ?? 0)}m`}>📍</span>}
                   </td>
                   <td className="px-4 py-2">
-                    {e.ended_at ? fmtTime(e.ended_at) : <span className="text-orange-600">In progress</span>}
+                    {e.ended_at ? fmtTime(e.ended_at) : <span className="text-orange-600">{t("In progress")}</span>}
                     {e.clock_out_latitude !== null && <span className="ml-1 text-emerald-600">📍</span>}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
