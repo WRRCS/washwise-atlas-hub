@@ -92,6 +92,7 @@ function SchedulePage() {
   const [todayJump, setTodayJump] = useState(0);
   const [flashToday, setFlashToday] = useState(false);
   const handledTodayJump = useRef(0);
+  const autoJumpedToToday = useRef(false);
   const [dialogSeed, setDialogSeed] = useState<{ date: Date; employeeId?: string } | null>(null);
 
   const jobsFn = useServerFn(listJobs);
@@ -133,6 +134,15 @@ function SchedulePage() {
   const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
   // "Today" follows the business time zone, not the device clock.
   const todayKeyTZ = dayKeyTZ(new Date(), tz);
+
+  // Opening Schedule on a phone should put the current day beside the names,
+  // rather than leaving cleaners to scroll from Monday to find their shift.
+  useEffect(() => {
+    if (autoJumpedToToday.current || !window.matchMedia("(max-width: 767px)").matches) return;
+    autoJumpedToToday.current = true;
+    setAnchor(startOfWeek(new Date(`${dayKeyTZ(new Date(), tz)}T12:00:00`), { weekStartsOn: 1 }));
+    setTodayJump((n) => n + 1);
+  }, [tz]);
 
   useEffect(() => {
     if (todayJump === 0 || handledTodayJump.current === todayJump) return;
