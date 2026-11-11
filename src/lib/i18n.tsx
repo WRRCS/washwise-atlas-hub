@@ -383,7 +383,6 @@ const UK: Record<string, string> = {
   "Owners and managers can always see your phone number. Your email, address and pay are never shared with teammates.": "Власники та менеджери завжди бачать ваш номер телефону. Вашу електронну пошту, адресу та оплату колеги ніколи не бачать.",
   "My phone number": "Мій номер телефону",
   "Show my phone number to teammates": "Показувати мій номер колегам",
-  "Save": "Зберегти",
   "Right now: teammates can see your phone number.": "Зараз: колеги бачать ваш номер телефону.",
   "Right now: your phone number is hidden from teammates.": "Зараз: ваш номер телефону приховано від колег.",
   "Your phone number is now shared with the team": "Ваш номер телефону тепер видно команді",
