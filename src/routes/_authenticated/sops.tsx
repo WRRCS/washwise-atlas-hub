@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { queryOptions, useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
@@ -15,33 +15,24 @@ import { Pencil, Trash2, Copy, FileUp, Plus, X, Upload as UploadIcon, GripVertic
 import { supabase } from "@/integrations/supabase/client";
 import { listServiceTypes } from "@/lib/entities.functions";
 import {
-  listSops, createSop, updateSop, deleteSop, duplicateSop, getSop,
+  listSops, getSopLibraryAccess, createSop, updateSop, deleteSop, duplicateSop, getSop,
   createSopUploadUrl, bulkImportSops, deleteSopAttachment,
   type SopListRow, type SopDetail,
 } from "@/lib/sops.functions";
 import { LinkifiedText } from "@/components/linkified-text";
 import { SopDocumentPreview } from "@/components/sop-document-preview";
-import { usePick } from "@/lib/i18n";
+import { usePick, useT } from "@/lib/i18n";
 
 const sopsQO = queryOptions({ queryKey: ["sops"], queryFn: () => listSops() });
 const svcQO = queryOptions({ queryKey: ["service-types"], queryFn: () => listServiceTypes() });
+const accessQO = queryOptions({ queryKey: ["sop-library-access"], queryFn: () => getSopLibraryAccess() });
 
 export const Route = createFileRoute("/_authenticated/sops")({
-  beforeLoad: async () => {
-    // Owners and managers only; cleaners read SOPs from their appointments.
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
-    const { data: roles } = await supabase
-      .from("user_roles").select("role").eq("user_id", data.user.id);
-    const list = (roles ?? []).map((r) => r.role as string);
-    if (!list.includes("owner") && !list.includes("manager") && !list.includes("super_admin")) {
-      throw redirect({ to: "/my-jobs" });
-    }
-  },
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(sopsQO),
       context.queryClient.ensureQueryData(svcQO),
+      context.queryClient.ensureQueryData(accessQO),
     ]),
   component: SopsPage,
 });
@@ -51,6 +42,10 @@ type ServiceType = { id: string; name: string; color: string | null };
 function SopsPage() {
   const { data: sops } = useSuspenseQuery(sopsQO);
   const { data: services } = useSuspenseQuery(svcQO);
+  const { data: access } = useSuspenseQuery(accessQO);
+  const canManage = access.canManage;
+  const t = useT();
+  const pick = usePick();
   const router = useRouter();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -88,21 +83,21 @@ function SopsPage() {
   return (
     <AppShell>
       <PageHeader
-        title="SOPs"
-        subtitle="Standard operating procedures your cleaners follow"
-        action={<BrandButton onClick={() => { setEditId(null); setWizardOpen(true); }}>New SOP</BrandButton>}
+        title={t("SOPs")}
+        subtitle={canManage ? "Standard operating procedures your cleaners follow" : t("Tap any SOP to read it")}
+        action={canManage ? <BrandButton onClick={() => { setEditId(null); setWizardOpen(true); }}>New SOP</BrandButton> : undefined}
       />
       <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-8 space-y-8">
         {(sops as SopListRow[]).length === 0 ? (
           <div className="text-center py-16 text-muted-foreground text-sm">
-            No SOPs yet. Create your first one, or import from paper/Docs.
+            {canManage ? "No SOPs yet. Create your first one, or import from paper/Docs." : t("No SOPs yet.")}
           </div>
         ) : grouped.map((g) => (
           <section key={g.service?.id ?? "unassigned"}>
             <div className="flex items-center gap-2 mb-3">
               <span className="size-2.5 rounded-full" style={{ backgroundColor: g.service?.color ?? "#999" }} />
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                {g.service?.name ?? "No service type"}
+                {t(g.service?.name ?? "No service type")}
               </h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -111,23 +106,23 @@ function SopsPage() {
                   <button
                     type="button"
                     onClick={() => setViewId(s.id)}
-                    aria-label={`Open ${s.name}`}
+                    aria-label={`${t("Open")} ${pick(s.name, s.name_uk)}`}
                     className="flex-1 text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-medium tracking-tight">{s.name}</h3>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider font-medium ${
+                      <h3 className="font-medium tracking-tight">{pick(s.name, s.name_uk)}</h3>
+                      {canManage && <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider font-medium ${
                         s.is_active ? "bg-success/15 text-success" : "bg-clay-200 text-muted-foreground"
                       }`}>
                         {s.is_active ? "Active" : "Draft"}
-                      </span>
+                      </span>}
                     </div>
-                    {s.description && <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{s.description}</p>}
-                    <p className="text-xs text-muted-foreground mb-4">
+                    {pick(s.description, s.description_uk) && <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{pick(s.description, s.description_uk)}</p>}
+                    {canManage && <p className="text-xs text-muted-foreground mb-4">
                       {s.step_count} step{s.step_count === 1 ? "" : "s"} · {s.attachment_count} attachment{s.attachment_count === 1 ? "" : "s"}
-                    </p>
+                    </p>}
                   </button>
-                  <div className="mt-auto flex gap-2">
+                  {canManage && <div className="mt-auto flex gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => { setEditId(s.id); setWizardOpen(true); }}>
                       <Pencil className="size-3.5 mr-1.5" /> Edit
                     </Button>
@@ -137,7 +132,7 @@ function SopsPage() {
                     <Button variant="outline" size="sm" onClick={() => onDelete(s)} className="text-destructive hover:text-destructive" title="Delete">
                       <Trash2 className="size-3.5" />
                     </Button>
-                  </div>
+                  </div>}
                 </article>
               ))}
             </div>
@@ -149,12 +144,12 @@ function SopsPage() {
         <Dialog open onOpenChange={(open) => { if (!open) setViewId(null); }}>
           <DialogContent className="max-w-4xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader className="pr-8">
-              <DialogTitle>{(sops as SopListRow[]).find((s) => s.id === viewId)?.name ?? "SOP"}</DialogTitle>
-              <DialogDescription>Read-only preview</DialogDescription>
+              <DialogTitle>{(() => { const v = (sops as SopListRow[]).find((s) => s.id === viewId); return v ? pick(v.name, v.name_uk) : "SOP"; })()}</DialogTitle>
+              <DialogDescription>{t("Read-only preview")}</DialogDescription>
             </DialogHeader>
             <SopLibraryPreview sopId={viewId} />
             <DialogFooter>
-              <Button variant="outline" onClick={() => setViewId(null)}>Close SOP</Button>
+              <Button variant="outline" onClick={() => setViewId(null)}>{t("Close SOP")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

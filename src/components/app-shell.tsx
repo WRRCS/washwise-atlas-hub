@@ -58,6 +58,7 @@ const EMPLOYEE_NAV = [
   { to: "/caddies", label: "My caddy", icon: PackageOpen },
   { to: "/time-off", label: "Time off & swaps", icon: CalendarClock },
   { to: "/training", label: "Training", icon: GraduationCap },
+  { to: "/sops", label: "SOPs", icon: BookOpen },
   { to: "/settings/language", label: "Language", icon: Globe },
 ] as const;
 

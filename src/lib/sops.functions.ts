@@ -1,3 +1,4 @@
+import { canManageSops } from "@/lib/sop-access";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -6,6 +7,8 @@ export type SopListRow = {
   id: string;
   name: string;
   description: string | null;
+  name_uk: string | null;
+  description_uk: string | null;
   is_active: boolean;
   updated_at: string;
   service: { id: string; name: string; color: string | null } | null;
@@ -54,16 +57,23 @@ async function tenantId(context: any) {
   return prof.tenant_id as string;
 }
 
-// The SOP library (list/detail/edit) is staff-only. Cleaners read SOPs through
-// getSopForJob / getSopForServiceType on their own appointments instead.
-async function requireStaff(context: any) {
+// Everyone on the team can read active SOPs in the library; only owners and
+// managers can see drafts or add, edit, duplicate, import or delete SOPs.
+async function isSopManager(context: any): Promise<boolean> {
   const { data: roles } = await context.supabase
     .from("user_roles").select("role").eq("user_id", context.userId);
-  const list = (roles ?? []).map((r: any) => r.role);
-  if (!list.includes("owner") && !list.includes("manager") && !list.includes("super_admin")) {
-    throw new Error("Only owners and managers can open the SOP library");
+  return canManageSops((roles ?? []).map((r: any) => r.role as string));
+}
+
+async function requireStaff(context: any) {
+  if (!(await isSopManager(context))) {
+    throw new Error("Only owners and managers can change SOPs");
   }
 }
+
+export const getSopLibraryAccess = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => ({ canManage: await isSopManager(context) }));
 
 async function signSopPath(context: any, path: string | null | undefined) {
   if (!path) return null;
@@ -76,11 +86,13 @@ async function signSopPath(context: any, path: string | null | undefined) {
 export const listSops = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SopListRow[]> => {
-    await requireStaff(context);
-    const { data: rows, error } = await context.supabase
+    const canManage = await isSopManager(context);
+    let query = context.supabase
       .from("sops")
-      .select("id, name, description, is_active, updated_at, service:service_types(id,name,color)")
+      .select("id, name, description, name_uk, description_uk, is_active, updated_at, service:service_types(id,name,color)")
       .order("updated_at", { ascending: false });
+    if (!canManage) query = query.eq("is_active", true);
+    const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
     const ids = (rows ?? []).map((r: any) => r.id);
     const counts = new Map<string, { steps: number; atts: number }>();
@@ -103,6 +115,8 @@ export const listSops = createServerFn({ method: "GET" })
       id: r.id,
       name: r.name,
       description: r.description,
+      name_uk: r.name_uk ?? null,
+      description_uk: r.description_uk ?? null,
       is_active: r.is_active,
       updated_at: r.updated_at,
       service: r.service,
@@ -144,8 +158,9 @@ export const getSop = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    await requireStaff(context);
-    return fetchSopDetail(context, data.id);
+    const sop = await fetchSopDetail(context, data.id);
+    if (sop && !sop.is_active && !(await isSopManager(context))) return null;
+    return sop;
   });
 
 // Get the active SOP for a service type (for job detail views)
