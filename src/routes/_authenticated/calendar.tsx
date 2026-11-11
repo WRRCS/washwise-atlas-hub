@@ -11,7 +11,7 @@ import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/
 import { myPermissions } from "@/lib/team.functions";
 import { listClientProperties, upsertClientProperty } from "@/lib/client-properties.functions";
 import { claimOpenShift } from "@/lib/visits.functions";
-import { startOfWeek, addDays, format, startOfDay, endOfDay, isSameDay, differenceInMinutes } from "date-fns";
+import { startOfWeek, addDays, format, startOfDay, endOfDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,10 +131,12 @@ function SchedulePage() {
   );
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
+  // "Today" follows the business time zone, not the device clock.
+  const todayKeyTZ = dayKeyTZ(new Date(), tz);
 
   useEffect(() => {
     if (todayJump === 0 || handledTodayJump.current === todayJump) return;
-    const todayKey = format(new Date(), "yyyy-MM-dd");
+    const todayKey = dayKeyTZ(new Date(), tz);
     // In list view, wait until this week's appointments have loaded.
     if (view === "list" && jobsFetching) return;
     const frame = window.requestAnimationFrame(() => {
@@ -147,7 +149,6 @@ function SchedulePage() {
           const sticky = scroller.querySelector<HTMLElement>(".schedule-row > :first-child")?.offsetWidth ?? 0;
           const cellLeft = target.getBoundingClientRect().left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
           scroller.scrollTo({ left: Math.max(0, cellLeft - sticky), behavior });
-          scroller.scrollIntoView({ block: "nearest", behavior });
         }
       } else {
         const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-schedule-day]"));
@@ -159,7 +160,7 @@ function SchedulePage() {
     });
     const timer = window.setTimeout(() => setFlashToday(false), 1800);
     return () => { window.cancelAnimationFrame(frame); window.clearTimeout(timer); };
-  }, [todayJump, view, jobs, jobsFetching, anchor]);
+  }, [todayJump, view, jobs, jobsFetching, anchor, tz]);
 
   const moveMut = useMutation({
     mutationFn: (v: { id: string; start: Date; end: Date }) =>
@@ -378,7 +379,7 @@ function SchedulePage() {
               </button>
             </div>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, -7))}>←</Button>
-            <Button variant="outline" size="sm" onClick={() => { setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 })); setTodayJump((n) => n + 1); }}>{tr("Today")}</Button>
+            <Button variant="outline" size="sm" onClick={() => { setAnchor(startOfWeek(new Date(`${dayKeyTZ(new Date(), tz)}T12:00:00`), { weekStartsOn: 1 })); setTodayJump((n) => n + 1); }}>{tr("Today")}</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
             {canManageSchedule ? (
               <>
@@ -463,7 +464,7 @@ function SchedulePage() {
                 <Users className="size-4" /> {tr("Team members")} ({cleaners.length})
               </div>
               {days.map((d) => {
-                const today = isSameDay(d, new Date());
+                const today = format(d, "yyyy-MM-dd") === todayKeyTZ;
                 return (
                   <div key={d.toISOString()} data-schedule-today={today ? "" : undefined} aria-current={today ? "date" : undefined} className={`min-w-0 px-1 py-2 text-center border-b border-l border-border/60 transition-shadow ${today ? "bg-brand/5" : "bg-clay-50"} ${today && flashToday ? "ring-2 ring-inset ring-brand" : ""}`}>
                     <p className={`text-[9px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE", dateLocaleOpts())}</p>
@@ -535,7 +536,7 @@ function SchedulePage() {
                     const dayKey = format(d, "yyyy-MM-dd");
                     const shifts = jobsByEmpDay.get(emp.id)?.get(dayKey) ?? [];
                     const unavs = unavByEmpDay.get(emp.id)?.get(dayKey) ?? [];
-                    const today = isSameDay(d, new Date());
+                    const today = format(d, "yyyy-MM-dd") === todayKeyTZ;
                     return (
                       <div
                         key={dayKey}
@@ -788,7 +789,7 @@ function SchedulePage() {
         <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-2">
           {jobs.length === 0 && <p className="text-sm text-muted-foreground">{tr("No jobs scheduled this week.")}</p>}
           {jobs.map((j: any) => (
-            <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} data-schedule-day={format(new Date(j.scheduled_start), "yyyy-MM-dd")} className={`block bg-card rounded-lg ring-1 p-4 hover:ring-brand/30 transition ${flashToday && isSameDay(new Date(j.scheduled_start), new Date()) ? "ring-2 ring-brand" : "ring-black/5"}`}>
+            <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} data-schedule-day={dayKeyTZ(j.scheduled_start, tz)} className={`block bg-card rounded-lg ring-1 p-4 hover:ring-brand/30 transition ${flashToday && dayKeyTZ(j.scheduled_start, tz) === todayKeyTZ ? "ring-2 ring-brand" : "ring-black/5"}`}>
               <div className="flex flex-wrap items-start gap-3 sm:gap-4">
                 <div className="w-full sm:w-28 shrink-0">
                   <p className="text-xs text-muted-foreground">{fmtDateTZ(j.scheduled_start, tz)}</p>
