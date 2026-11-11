@@ -12,6 +12,7 @@ import { SopDocumentPreview } from "@/components/sop-document-preview";
 import { isImportedSopPlaceholder } from "@/lib/sop-document";
 import { getJob } from "@/lib/jobs.functions";
 import { distinctSopAttachments, sopContentIsCovered } from "@/lib/sop-content";
+import { LinkifiedText } from "@/components/linkified-text";
 
 export function SopViewer({ serviceTypeId, jobId, allowMarkReviewed = false, hasTextSop = false, readableText = "" }: {
   serviceTypeId: string | null | undefined;
@@ -96,11 +97,11 @@ export function SopViewer({ serviceTypeId, jobId, allowMarkReviewed = false, has
       )}
       {active === "instructions" && (
         <div className="space-y-5 text-base leading-relaxed">
-          {sopDescription && <p className="whitespace-pre-wrap">{sopDescription}</p>}
+          {sopDescription && <p className="whitespace-pre-wrap"><LinkifiedText text={sopDescription} /></p>}
           <ol className="space-y-5">
             {steps.map((s) => <li key={s.id} className="border-b border-border pb-4">
               <p className="font-semibold">{s.step_number}. {pick(s.title, s.title_uk)}</p>
-              {pick(s.description, s.description_uk) && <p className="mt-2 whitespace-pre-wrap">{pick(s.description, s.description_uk)}</p>}
+              {pick(s.description, s.description_uk) && <p className="mt-2 whitespace-pre-wrap"><LinkifiedText text={pick(s.description, s.description_uk)} /></p>}
               {s.reference_photo_url && <img src={s.reference_photo_url} alt={t("Reference for {title}").replace("{title}", pick(s.title, s.title_uk))} className="mt-3 w-full h-auto rounded-lg" />}
             </li>)}
           </ol>

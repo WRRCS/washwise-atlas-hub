@@ -162,6 +162,7 @@ const UK: Record<string, string> = {
   " · Primary": " · Основний",
   "This SOP has no saved instructions or document yet. Please contact the office.": "Тут ще немає збережених інструкцій або документа. Зверніться до офісу.",
   "Download": "Завантажити",
+  "Open in Maps": "Відкрити на карті",
   "Last reviewed": "Останній перегляд",
   "Reference for {title}": "Зразок: {title}",
   "Zoom out": "Зменшити",
