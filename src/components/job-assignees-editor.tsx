@@ -35,7 +35,7 @@ export function JobAssigneesEditor({ jobId, assignees, recurring }: { jobId: str
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">Tick everyone who should be on this appointment.</p>
       {isLoading ? <p className="text-sm text-muted-foreground">Loading team…</p> : (
-        <ul className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+        <ul className="space-y-1.5">
           {team.map((e) => (
             <li key={e.id}>
               <label className="flex items-center gap-2 text-sm cursor-pointer min-h-8">

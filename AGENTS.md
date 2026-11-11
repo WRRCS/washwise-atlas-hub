@@ -41,3 +41,4 @@
 - Owner pay-rate edits write profiles through the signed-in owner client (the privileged-field trigger resets admin-client writes) and confirm via an admin read, because wage columns are not selectable by authenticated users.
 
 - Employee-reachable UI text goes through useT/translateNow with English source strings as keys in the i18n.tsx UK dictionary (dates via dateLocaleOpts/activeLocales); SOP names, descriptions and steps carry *_uk columns picked with usePick, so missing translations fall back to English instead of breaking screens.
+- Cleaner changes on existing appointments go only through updateJobAssignees (owner/manager, validate all visits before writing); cleaners with recorded visits, time, photos, SOP confirmations or checked steps cannot be removed from that visit, and jobs.assigned_to keeps the current lead while still assigned because RLS reads it.
