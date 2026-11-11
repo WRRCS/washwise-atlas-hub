@@ -3,7 +3,7 @@ import { ScheduleAppointmentDetails, scheduleColorText } from "@/components/sche
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs } from "@/lib/jobs.functions";
 import { CheckCircle2 } from "lucide-react";
@@ -88,6 +88,10 @@ function SchedulePage() {
   const tz = useBusinessTz();
   const [anchor, setAnchor] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [view, setView] = useState<View>("grid");
+  // Bumped by the Today button so the schedule scrolls to and highlights today.
+  const [todayJump, setTodayJump] = useState(0);
+  const [flashToday, setFlashToday] = useState(false);
+  const handledTodayJump = useRef(0);
   const [dialogSeed, setDialogSeed] = useState<{ date: Date; employeeId?: string } | null>(null);
 
   const jobsFn = useServerFn(listJobs);
@@ -117,7 +121,7 @@ function SchedulePage() {
   const from = startOfDay(anchor).toISOString();
   const to = endOfDay(addDays(anchor, 6)).toISOString();
 
-  const { data: jobs = [] } = useQuery({ queryKey: ["jobs", "week", from, to], queryFn: () => jobsFn({ data: { from, to } }) });
+  const { data: jobs = [], isFetching: jobsFetching } = useQuery({ queryKey: ["jobs", "week", from, to], queryFn: () => jobsFn({ data: { from, to } }) });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
   const { data: unavailability = [] } = useQuery({ queryKey: ["unavail", from, to], queryFn: () => unavFn({ data: { from, to } }) });
 
@@ -127,6 +131,35 @@ function SchedulePage() {
   );
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
+
+  useEffect(() => {
+    if (todayJump === 0 || handledTodayJump.current === todayJump) return;
+    const todayKey = format(new Date(), "yyyy-MM-dd");
+    // In list view, wait until this week's appointments have loaded.
+    if (view === "list" && jobsFetching) return;
+    const frame = window.requestAnimationFrame(() => {
+      const behavior: ScrollBehavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      let target: HTMLElement | null = null;
+      if (view === "grid") {
+        target = document.querySelector<HTMLElement>("[data-schedule-today]");
+        const scroller = target?.closest<HTMLElement>(".schedule-scroll");
+        if (target && scroller) {
+          const sticky = scroller.querySelector<HTMLElement>(".schedule-row > :first-child")?.offsetWidth ?? 0;
+          const cellLeft = target.getBoundingClientRect().left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
+          scroller.scrollTo({ left: Math.max(0, cellLeft - sticky), behavior });
+          scroller.scrollIntoView({ block: "nearest", behavior });
+        }
+      } else {
+        const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-schedule-day]"));
+        target = rows.find((r) => (r.dataset.scheduleDay ?? "") >= todayKey) ?? null;
+        target?.scrollIntoView({ block: "center", behavior });
+      }
+      handledTodayJump.current = todayJump;
+      setFlashToday(true);
+    });
+    const timer = window.setTimeout(() => setFlashToday(false), 1800);
+    return () => { window.cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, [todayJump, view, jobs, jobsFetching, anchor]);
 
   const moveMut = useMutation({
     mutationFn: (v: { id: string; start: Date; end: Date }) =>
@@ -345,7 +378,7 @@ function SchedulePage() {
               </button>
             </div>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, -7))}>←</Button>
-            <Button variant="outline" size="sm" onClick={() => setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 }))}>{tr("Today")}</Button>
+            <Button variant="outline" size="sm" onClick={() => { setAnchor(startOfWeek(new Date(), { weekStartsOn: 1 })); setTodayJump((n) => n + 1); }}>{tr("Today")}</Button>
             <Button variant="outline" size="sm" onClick={() => setAnchor(addDays(anchor, 7))}>→</Button>
             {canManageSchedule ? (
               <>
@@ -432,7 +465,7 @@ function SchedulePage() {
               {days.map((d) => {
                 const today = isSameDay(d, new Date());
                 return (
-                  <div key={d.toISOString()} className={`min-w-0 px-1 py-2 text-center border-b border-l border-border/60 ${today ? "bg-brand/5" : "bg-clay-50"}`}>
+                  <div key={d.toISOString()} data-schedule-today={today ? "" : undefined} aria-current={today ? "date" : undefined} className={`min-w-0 px-1 py-2 text-center border-b border-l border-border/60 transition-shadow ${today ? "bg-brand/5" : "bg-clay-50"} ${today && flashToday ? "ring-2 ring-inset ring-brand" : ""}`}>
                     <p className={`text-[9px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE", dateLocaleOpts())}</p>
                     <p className={`text-base font-semibold ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
                   </div>
@@ -508,7 +541,7 @@ function SchedulePage() {
                         key={dayKey}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => onDropOnCell(e, emp.id, d)}
-                        className={`schedule-cell min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[100px] ${today ? "bg-brand/[0.02]" : ""}`}
+                        className={`schedule-cell min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[100px] transition-colors ${today ? (flashToday ? "bg-brand/10" : "bg-brand/[0.02]") : ""}`}
                       >
                         {unavs.map((u: any) => (
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
@@ -755,7 +788,7 @@ function SchedulePage() {
         <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-2">
           {jobs.length === 0 && <p className="text-sm text-muted-foreground">{tr("No jobs scheduled this week.")}</p>}
           {jobs.map((j: any) => (
-            <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} className="block bg-card rounded-lg ring-1 ring-black/5 p-4 hover:ring-brand/30 transition">
+            <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} data-schedule-day={format(new Date(j.scheduled_start), "yyyy-MM-dd")} className={`block bg-card rounded-lg ring-1 p-4 hover:ring-brand/30 transition ${flashToday && isSameDay(new Date(j.scheduled_start), new Date()) ? "ring-2 ring-brand" : "ring-black/5"}`}>
               <div className="flex flex-wrap items-start gap-3 sm:gap-4">
                 <div className="w-full sm:w-28 shrink-0">
                   <p className="text-xs text-muted-foreground">{fmtDateTZ(j.scheduled_start, tz)}</p>
