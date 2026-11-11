@@ -33,6 +33,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { PhotoExportContext } from "@/lib/photo-downloads";
 import { toast } from "sonner";
 import { photoQueryKey } from "@/lib/photo-ownership";
+import { getJobInventory } from "@/lib/property-inventory.functions";
+import { JobInventoryTab, jobInventoryKey } from "@/components/job-inventory-tab";
 
 
 export const Route = createFileRoute("/_authenticated/jobs/$jobId")({
@@ -139,6 +141,12 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
     queryFn: () => fetchJob({ data: { id: jobId } }),
   });
 
+  const inventoryFn = useServerFn(getJobInventory);
+  const { data: inventory } = useQuery({
+    queryKey: jobInventoryKey(jobId),
+    queryFn: () => inventoryFn({ data: { job_id: jobId } }),
+  });
+
   const pick = usePick();
   const t = useT();
   const closeFn = useServerFn(closeJobs);
@@ -216,6 +224,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
             <TabsList className="h-auto flex-wrap gap-2 bg-transparent p-0">
               <TabsTrigger value="sop" className="rounded-lg border-2 border-primary/40 bg-primary/10 text-primary font-semibold px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{t("SOP Checklist")}</TabsTrigger>
               <Button variant="outline" type="button" onClick={() => setSopOpen(true)} className="h-auto rounded-lg border-2 border-brand/40 bg-brand/10 text-brand font-semibold px-3 py-2 hover:bg-brand hover:text-brand-foreground">{t("SOP")}</Button>
+              {inventory && inventory.length > 0 && <TabsTrigger value="inventory" className="rounded-lg border-2 border-inventory/40 bg-inventory/10 text-inventory font-semibold px-3 py-2 data-[state=active]:bg-inventory data-[state=active]:text-inventory-foreground">{t("Inventory")}</TabsTrigger>}
               <TabsTrigger value="photos" className="rounded-lg border-2 border-success/40 bg-success/10 text-success font-semibold px-3 py-2 data-[state=active]:bg-success data-[state=active]:text-primary-foreground">{t("Photos")}</TabsTrigger>
               <TabsTrigger value="gps" className="rounded-lg border-2 border-warning/40 bg-warning/10 text-warning font-semibold px-3 py-2 data-[state=active]:bg-warning data-[state=active]:text-primary-foreground">{t("Location")}</TabsTrigger>
             </TabsList>
@@ -301,6 +310,11 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
                 </>
               )}
             </TabsContent>
+            {inventory && inventory.length > 0 && (
+              <TabsContent value="inventory" className="mt-4">
+                <JobInventoryTab jobId={jobId} items={inventory} readOnly={job.status === "canceled"} />
+              </TabsContent>
+            )}
             <TabsContent value="photos" className="mt-4">
               {isReviewer && employeeId && !combinedPhotos ? (
                 <section>

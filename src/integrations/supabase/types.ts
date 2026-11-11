@@ -1705,6 +1705,65 @@ export type Database = {
           },
         ]
       }
+      job_inventory_checks: {
+        Row: {
+          item_id: string
+          job_id: string
+          level: string | null
+          quantity: number | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          item_id: string
+          job_id: string
+          level?: string | null
+          quantity?: number | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          item_id?: string
+          job_id?: string
+          level?: string | null
+          quantity?: number | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_inventory_checks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "property_inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_inventory_checks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_inventory_checks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_inventory_checks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_photos: {
         Row: {
           attribution_review_reason: string | null
@@ -2534,6 +2593,63 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_inventory_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          name_uk: string | null
+          position: number
+          property_id: string
+          tenant_id: string
+          unit: string | null
+          unit_uk: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name: string
+          name_uk?: string | null
+          position?: number
+          property_id: string
+          tenant_id: string
+          unit?: string | null
+          unit_uk?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          name_uk?: string | null
+          position?: number
+          property_id?: string
+          tenant_id?: string
+          unit?: string | null
+          unit_uk?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_inventory_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "client_properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_inventory_items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -4474,6 +4590,10 @@ export type Database = {
           occurred_on: string
           status: string
         }[]
+      }
+      save_job_inventory: {
+        Args: { _item: string; _job: string; _level: string; _quantity: number }
+        Returns: undefined
       }
       set_my_phone_sharing: {
         Args: { _phone?: string; _share: boolean }

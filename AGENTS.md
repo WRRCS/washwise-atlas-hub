@@ -44,3 +44,4 @@
 - Change cleaners only via updateJobAssignees: validate all visits first, never remove a cleaner with recorded work on that visit, keep the current lead in jobs.assigned_to (RLS reads it).
 - Staff invites create the sign-in account with the existing profile id, so invites never spawn a second empty team member.
 - Schedule paste/cross-cleaner drag joins a matching job via findPasteTarget (same client/property/service/day, overlapping, not open/canceled); only Duplicate job or no match creates one, so a cleaning stays one job/invoice.
+- Airbnb inventory lists live per property in property_inventory_items (level or typed count); per-visit values are shared by all cleaners on that appointment in job_inventory_checks and written only through save_job_inventory, which re-checks assignment and item type.

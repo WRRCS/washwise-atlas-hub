@@ -42,6 +42,8 @@
   --color-clay-200: var(--clay-200);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-inventory: var(--inventory);
+  --color-inventory-foreground: var(--inventory-foreground);
   --color-schedule-ink: var(--schedule-ink);
   --color-schedule-paper: var(--schedule-paper);
 
@@ -105,6 +107,8 @@
 
   --success: oklch(0.7 0.15 150);
   --warning: oklch(0.75 0.15 75);
+  --inventory: oklch(0.52 0.2 300);
+  --inventory-foreground: oklch(0.99 0.006 70);
 }
 
 .dark {
@@ -129,6 +133,8 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.75 0.17 55);
+  --inventory: oklch(0.72 0.16 300);
+  --inventory-foreground: oklch(0.18 0.015 60);
 }
 
 @layer base {
