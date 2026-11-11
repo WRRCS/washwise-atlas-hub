@@ -116,4 +116,4 @@
 - [x] Owners/managers can add, remove or swap cleaners on an existing appointment (this visit or this and future repeats)
 
 - [x] Schedule paste/drag onto a cleaner joins the matching existing job ("Added … to …" / "… is already on this job"); separate Duplicate job action creates a new one. Verified as Zoe on Justin Nov 12 (added, then already-on), test undone.
-- [ ] Merge existing duplicate jobs — preview spreadsheet sent; waiting for Leslie's approval of the 21 "Ready to merge" groups and decisions on the 36 that have recorded work, invoices or different times.
+- [x] Merged 20 green duplicate-job groups into one job each (all cleaners kept, reminders moved, no new alerts); yellow groups left as-is per Leslie. Natalie Miller Nov 5 skipped: Dalton's copy gained a timesheet correction after the preview.
