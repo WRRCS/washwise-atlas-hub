@@ -335,7 +335,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
   );
 }
 
-export function PageHeader({ title, subtitle, action, back }: { title: string; subtitle?: string; action?: ReactNode; back?: () => void }) {
+export function PageHeader({ title, subtitle, subtitleClassName, action, back }: { title: string; subtitle?: string; subtitleClassName?: string; action?: ReactNode; back?: () => void }) {
   return (
     <header className="bg-clay-50 border-b border-border/60 sticky top-0 z-10 backdrop-blur">
       {back && (
@@ -353,7 +353,7 @@ export function PageHeader({ title, subtitle, action, back }: { title: string; s
       <div className={`max-w-6xl mx-auto px-6 md:px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${back ? "pt-1 pb-6" : "py-6"}`}>
         <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight text-balance">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+          {subtitle && <p className={`text-sm mt-1 ${subtitleClassName ?? "text-muted-foreground"}`}>{subtitle}</p>}
         </div>
         {action}
       </div>

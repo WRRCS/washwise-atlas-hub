@@ -30,9 +30,13 @@ export const myPermissions = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data: isOwnerRaw } = await context.supabase.rpc("is_owner");
     const isOwner = !!isOwnerRaw;
+    const { data: ownerOrMgrRaw } = await context.supabase.rpc("is_owner_or_manager");
+    const isOwnerOrManager = isOwner || !!ownerOrMgrRaw;
     if (isOwner) {
       return {
         isOwner: true,
+        isOwnerOrManager: true,
+        userId: context.userId,
         canViewEmployeeContacts: true,
         canViewPricing: true,
       };
@@ -44,6 +48,8 @@ export const myPermissions = createServerFn({ method: "GET" })
       .maybeSingle();
     return {
       isOwner: false,
+      isOwnerOrManager,
+      userId: context.userId,
       canViewEmployeeContacts: !!perm?.can_view_employee_contacts,
       canViewPricing: !!perm?.can_view_pricing,
     };

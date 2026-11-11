@@ -412,6 +412,7 @@ const UK: Record<string, string> = {
   "Uploading…": "Завантаження…",
   "Week grid": "Тижнева сітка",
   "Week total:": "Разом за тиждень:",
+  "Your week total:": "Ваші години за тиждень:",
   "Why do you need this swap?": "Чому вам потрібен цей обмін?",
   "Work, drive & unpaid lunch": "Робота, дорога та неоплачуваний обід",
   "Worked": "Відпрацьовано",

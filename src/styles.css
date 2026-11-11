@@ -161,6 +161,8 @@
 .schedule-card { max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
 .schedule-scroll-controls { display: none; }
 .schedule-scroll { min-width: 0; max-width: 100%; }
+/* Employee view: narrow first-name column so more of each shift fits on screen. */
+.schedule-compact-names { --week-columns: 84px repeat(7, minmax(180px, 1fr)); --week-min-width: 1344px; }
 
 @media (max-width: 1279px) {
   .admin-layout .schedule-scroll-controls { display: flex; }

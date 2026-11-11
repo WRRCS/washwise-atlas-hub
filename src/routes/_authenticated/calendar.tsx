@@ -1,3 +1,4 @@
+import { canSeeScheduleHours, scheduleFirstNames } from "@/lib/schedule-names";
 import { jobLocation } from "@/lib/job-location";
 import { ScheduleAppointmentDetails, scheduleColorText } from "@/components/schedule-appointment-details";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -107,6 +108,11 @@ function SchedulePage() {
   const canManageSchedule = !!headerPerms?.isOwner;
   // Pay/earnings are never shown on the schedule; hours only.
   const canSeeWages = false;
+  // Owners/managers see everyone's hours; employees only their own.
+  const hoursViewer = { isOwnerOrManager: !!headerPerms?.isOwnerOrManager, userId: headerPerms?.userId };
+  const seesAllHours = hoursViewer.isOwnerOrManager;
+  // Employees get a narrow team column with first names so more of their shift fits on screen.
+  const compactNames = !!headerPerms && !headerPerms.isOwnerOrManager;
 
   const colorMut = useMutation({
     mutationFn: (v: { clientId: string; propertyId?: string | null; color: string | null }) =>
@@ -130,6 +136,7 @@ function SchedulePage() {
     () => employees.filter((e: any) => e.is_active !== false && (e.role === "employee" || e.role === "manager" || e.role === "owner")),
     [employees],
   );
+  const firstNames = useMemo(() => scheduleFirstNames(cleaners), [cleaners]);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
   // "Today" follows the business time zone, not the device clock.
@@ -380,6 +387,7 @@ function SchedulePage() {
     <>
       <PageHeader
         title={tr("Schedule")}
+        subtitleClassName="font-bold text-foreground"
         subtitle={`${format(anchor, dateLocaleOpts() ? "d MMM" : "MMM d", dateLocaleOpts())} — ${format(addDays(anchor, 6), dateLocaleOpts() ? "d MMM yyyy" : "MMM d, yyyy", dateLocaleOpts())}`}
         action={
           <div className="flex flex-wrap gap-2 items-center">
@@ -469,12 +477,12 @@ function SchedulePage() {
 
       {view === "grid" ? (
         <div className="w-full px-4 md:px-6 py-4">
-          <ZoomPanSurface scrollClassName="schedule-scroll">
+          <ZoomPanSurface scrollClassName={`schedule-scroll ${compactNames ? "schedule-compact-names" : ""}`}>
             {/* Header row */}
             <div className="schedule-row schedule-head grid w-full">
               <div className="sticky left-0 z-20 px-2 py-2 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
-                <Users className="size-4" /> {tr("Team members")} ({cleaners.length})
+                <Users className="size-4 shrink-0" /> {compactNames ? <span className="truncate">{cleaners.length}</span> : <>{tr("Team members")} ({cleaners.length})</>}
               </div>
               {days.map((d) => {
                 const today = format(d, "yyyy-MM-dd") === todayKeyTZ;
@@ -490,10 +498,10 @@ function SchedulePage() {
             {/* Open shifts row — jobs nobody is assigned to yet */}
             <div className="schedule-row grid w-full border-t border-border/60 bg-accent/10">
               <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
-                <div className="size-9 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>
+                {!compactNames && <div className="size-9 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>}
                 <div className="min-w-0">
-                  <p className="schedule-employee text-base font-medium truncate">{tr("Open shifts")}</p>
-                  <p className="text-xs text-muted-foreground truncate">{tr(canManageSchedule ? "Drag onto a person" : "Tap to pick up")}</p>
+                  <p className={`schedule-employee font-medium ${compactNames ? "text-sm break-words" : "text-base truncate"}`}>{tr("Open shifts")}</p>
+                  {!compactNames && <p className="text-xs text-muted-foreground truncate">{tr(canManageSchedule ? "Drag onto a person" : "Tap to pick up")}</p>}
                 </div>
               </div>
               {days.map((d) => {
@@ -535,14 +543,20 @@ function SchedulePage() {
               return (
                 <div key={emp.id} className="schedule-row grid w-full border-t border-border/60">
                   <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
-                    <div className="size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
-                      {initials(emp.full_name)}
-                    </div>
+                    {!compactNames && (
+                      <div className="size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
+                        {initials(emp.full_name)}
+                      </div>
+                    )}
                     <div className="min-w-0">
-                      <p className="schedule-employee text-base font-medium truncate">{emp.full_name ?? emp.email}</p>
-                      <p className="text-xs text-muted-foreground tabular-nums truncate">
-                        {totals.hours.toFixed(2)} {tr("hrs")}{canSeeWages ? ` / $${totals.wages.toFixed(2)}` : ""}
+                      <p className={`schedule-employee font-medium ${compactNames ? "text-sm break-words" : "text-base truncate"}`} title={emp.full_name ?? undefined}>
+                        {compactNames ? firstNames.get(emp.id) : emp.full_name ?? emp.email}
                       </p>
+                      {canSeeScheduleHours(hoursViewer, emp.id) && (
+                        <p className="text-xs text-muted-foreground tabular-nums truncate">
+                          {totals.hours.toFixed(2)} {tr("hrs")}{canSeeWages ? ` / $${totals.wages.toFixed(2)}` : ""}
+                        </p>
+                      )}
                     </div>
                   </div>
                   {days.map((d) => {
@@ -781,8 +795,8 @@ function SchedulePage() {
               );
             })}
 
-            {/* Wages / hours footer */}
-            <div className="schedule-row grid w-full border-t-2 border-border">
+            {/* Wages / hours footer — everyone's hours, so owners/managers only */}
+            {seesAllHours && <div className="schedule-row grid w-full border-t-2 border-border">
               <div className="sticky left-0 z-10 px-2 py-2 bg-clay-50 border-r border-border/60">
                 {canSeeWages && <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Wages</p>}
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{tr("Hours")}</p>
@@ -793,9 +807,10 @@ function SchedulePage() {
                   <p className="text-[10px] text-muted-foreground truncate">{t.hours.toFixed(2)}</p>
                 </div>
               ))}
-            </div>
+            </div>}
           </ZoomPanSurface>
 
+          {seesAllHours ? (
           <div className="mt-3 flex justify-end text-xs text-muted-foreground tabular-nums">
             <span>
               {tr("Week total:")}{" "}
@@ -807,6 +822,14 @@ function SchedulePage() {
               {weekTotals.hours.toFixed(2)} {tr("hrs")}
             </span>
           </div>
+          ) : headerPerms?.userId && cleaners.some((e: any) => e.id === headerPerms.userId) ? (
+            <div className="mt-3 flex justify-end text-xs text-muted-foreground tabular-nums">
+              <span>
+                {tr("Your week total:")}{" "}
+                <span className="font-semibold text-foreground">{(empWeekTotals.get(headerPerms.userId)?.hours ?? 0).toFixed(2)} {tr("hrs")}</span>
+              </span>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-2">
