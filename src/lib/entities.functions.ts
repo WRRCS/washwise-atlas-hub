@@ -712,25 +712,45 @@ export const sendMagicLinkInvite = createServerFn({ method: "POST" })
       .from("allowed_signins")
       .upsert({ email, tenant_id: tenantId, invited_by: context.userId }, { onConflict: "email" });
 
-    // Employees who have never had app access have no auth account yet;
-    // "magiclink" only works for existing users, so fall back to "signup"
-    // which creates the account and returns a one-tap confirm link.
-    let { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+    // Employees added before they had app access have a team record but no
+    // sign-in account. Create the account with the SAME id as that record, so
+    // the invite signs them into their existing schedule and history instead
+    // of creating a second, empty team member.
+    const { data: existingAuth } = await supabaseAdmin.auth.admin.getUserById(emp.id);
+    if (!existingAuth?.user) {
+      const { error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        id: emp.id,
+        email,
+        // Random throwaway password — never shown or used; sign-in is the one-tap link.
+        password: crypto.randomUUID() + crypto.randomUUID(),
+        email_confirm: true,
+        user_metadata: { full_name: emp.full_name },
+      } as any);
+      if (createErr) {
+        if (/already been registered|already registered|email_exists/i.test(createErr.message)) {
+          throw new Error("This email already belongs to a different sign-in account. Ask for help combining the two entries before sending an invite.");
+        }
+        throw new Error(createErr.message);
+      }
+      const { data: role } = await supabaseAdmin
+        .from("user_roles").select("user_id").eq("user_id", emp.id).maybeSingle();
+      if (!role) {
+        const { error: roleErr } = await supabaseAdmin
+          .from("user_roles").insert({ user_id: emp.id, tenant_id: tenantId, role: "employee" });
+        if (roleErr) {
+          await supabaseAdmin.auth.admin.deleteUser(emp.id);
+          throw new Error(roleErr.message);
+        }
+      }
+    } else if ((existingAuth.user.email ?? "").toLowerCase() !== email) {
+      throw new Error("This team member's sign-in email doesn't match the email on their profile. Update it before sending an invite.");
+    }
+
+    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email,
       options: { redirectTo: data.redirect_to },
     });
-    if (error) {
-      const retry = await supabaseAdmin.auth.admin.generateLink({
-        type: "signup",
-        email,
-        // Random throwaway password — never shown or used; sign-in is the one-tap link.
-        password: crypto.randomUUID() + crypto.randomUUID(),
-        options: { redirectTo: data.redirect_to },
-      });
-      link = retry.data;
-      error = retry.error;
-    }
     if (error) throw new Error(error.message);
     const url = link?.properties?.action_link;
     if (!url) throw new Error("Could not create the sign-in link");

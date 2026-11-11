@@ -42,3 +42,4 @@
 
 - Employee UI text uses useT/translateNow keyed by English source in the i18n.tsx UK dictionary; SOP text uses *_uk columns via usePick, so gaps fall back to English.
 - Change cleaners only via updateJobAssignees: validate all visits first, never remove a cleaner with recorded work on that visit, keep the current lead in jobs.assigned_to (RLS reads it).
+- Staff invites create the sign-in account with the existing profile id, so invites never spawn a second empty team member.
