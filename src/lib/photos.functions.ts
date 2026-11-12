@@ -28,6 +28,8 @@ export type JobPhotoRow = {
   uploaded_at: string;
   uploaded_by: string | null;
   url: string | null;
+  /** Small square preview for grids; full-size `url` stays the original for viewing/downloads. */
+  thumb_url: string | null;
   uploader_name: string | null;
   attribution_review_reason: string | null;
 };
@@ -281,15 +283,23 @@ export const listJobPhotos = createServerFn({ method: "POST" })
       (profs ?? []).forEach((p) => nameMap.set(p.id, p.full_name));
     }
 
-    const signed = await Promise.all((rows ?? []).map(async (p) => {
-      const { data: s } = await context.supabase.storage.from("job-photos").createSignedUrl(p.storage_path, 3600);
+    const list = rows ?? [];
+    const bucket = context.supabase.storage.from("job-photos");
+    const [fullRes, thumbs] = await Promise.all([
+      list.length ? bucket.createSignedUrls(list.map(p => p.storage_path), 3600) : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
+      Promise.all(list.map(p => bucket.createSignedUrl(p.storage_path, 3600, { transform: { width: 400, height: 400, resize: "cover", quality: 70 } })
+        .then(r => r.data?.signedUrl ?? null, () => null))),
+    ]);
+    const fullByPath = new Map((fullRes.data ?? []).map(f => [f.path, f.signedUrl] as const));
+    const signed = list.map((p, i) => {
       return {
         ...p,
         photo_type: p.photo_type as PhotoType,
-        url: s?.signedUrl ?? null,
+        url: fullByPath.get(p.storage_path) || null,
+        thumb_url: thumbs[i],
         uploader_name: nameMap.get(p.uploaded_by ?? "") ?? null,
       } as JobPhotoRow;
-    }));
+    });
     return signed;
   });
 

@@ -12,7 +12,7 @@ import {
 } from "@/lib/photo-share.functions";
 import type { DownloadPhoto } from "@/lib/photo-downloads";
 
-type ShareablePhoto = DownloadPhoto & { url: string | null };
+type ShareablePhoto = DownloadPhoto & { url: string | null; thumb_url?: string | null };
 
 export function PhotoShareDialog({
   jobId,
@@ -177,7 +177,7 @@ export function PhotoShareDialog({
                       className={`relative h-auto p-0 rounded-lg overflow-hidden border-2 ${on ? "border-brand" : "border-transparent opacity-50"}`}
                       aria-pressed={on}
                     >
-                      {p.url && <img src={p.url} alt="" className="aspect-square w-full object-cover" />}
+                      {p.url && <img src={p.thumb_url ?? p.url} alt="" loading="lazy" decoding="async" className="aspect-square w-full object-cover" />}
                       <span
                         className={`absolute top-1 right-1 size-5 rounded-full text-[11px] grid place-items-center ${
                           on ? "bg-brand text-brand-foreground" : "bg-background/80 text-muted-foreground"

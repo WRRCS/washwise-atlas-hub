@@ -13,6 +13,7 @@ import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "
 import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { captureGps } from "@/lib/geolocation";
+import { mapWithConcurrency } from "@/lib/photo-upload-queue";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen, Navigation, StickyNote } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -701,17 +702,22 @@ function CompleteJobDialog({
       if (items.some((it) => it.photo_type === "damage" && !it.caption.trim())) {
         throw new Error(t("Please describe the damage on each damage photo."));
       }
-      const uploaded: { storage_path: string; caption?: string; photo_type: PhotoType }[] = [];
-      for (const it of items) {
+      const loginChanged = t("Your login changed. Please reopen this appointment and capture the photos again.");
+      if (items.length) {
         const { data: identity } = await supabase.auth.getUser();
-        if (!identity.user || identity.user.id !== captureIdentity.current) throw new Error(t("Your login changed. Please reopen this appointment and capture the photos again."));
-        const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name } });
+        if (!identity.user || identity.user.id !== captureIdentity.current) throw new Error(loginChanged);
+      }
+      // Upload a few photos at once instead of one after another.
+      const uploaded = await mapWithConcurrency(items, 3, async (it) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user.id !== captureIdentity.current) throw new Error(loginChanged);
+        const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name || "photo.jpg" } });
         const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, it.file, {
-          contentType: it.file.type,
+          contentType: it.file.type || "image/jpeg",
         });
         if (error) throw new Error(error.message);
-        uploaded.push({ storage_path: path, caption: it.caption || undefined, photo_type: it.photo_type });
-      }
+        return { storage_path: path, caption: it.caption || undefined, photo_type: it.photo_type };
+      });
       await complete({
         data: {
           job_id: jobId,

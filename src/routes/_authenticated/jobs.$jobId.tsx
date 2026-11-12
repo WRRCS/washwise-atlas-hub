@@ -7,7 +7,7 @@ import { CheckCircle2 } from "lucide-react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
 import { listJobGps, getMyShift, clockInDay, endMyShift } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
@@ -33,6 +33,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { PhotoExportContext } from "@/lib/photo-downloads";
 import { toast } from "sonner";
 import { photoQueryKey } from "@/lib/photo-ownership";
+import { photoUploadQueue } from "@/lib/photo-upload-queue";
+import { reuseSignedUrls } from "@/lib/photo-url-reuse";
 import { getJobInventory } from "@/lib/property-inventory.functions";
 import { JobInventoryTab, jobInventoryKey } from "@/components/job-inventory-tab";
 
@@ -588,56 +590,61 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
   const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [photoType, setPhotoType] = useState<PhotoType>("other");
-  const [saving, setSaving] = useState(false);
   const t = useT();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const listKey = photoQueryKey(jobId, viewerId, employeeId, allCleaners);
+  const refreshPhotos = () => { void qc.invalidateQueries({ queryKey: ["job-photos", jobId] }, { cancelRefetch: false }); };
 
-  // Photos save immediately on capture — no per-photo approval step.
-  const addFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setSaving(true);
-    const savedIds: string[] = [];
-    try {
-      for (const file of Array.from(files)) {
-        const { data: identity } = await supabase.auth.getUser();
-        if (identity.user?.id !== viewerId) throw new Error(t("Your login changed. Please reopen the appointment and upload again."));
-        const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: file.name } });
-        const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, {
-          contentType: file.type,
-        });
-        if (error) throw new Error(error.message);
-        const saved = await registerFn({
-          data: {
-            job_id: jobId,
-            storage_path: path,
-            photo_type: photoType,
-            taken_at: new Date().toISOString(),
-          },
-        });
-        savedIds.push(saved.id);
-      }
-      qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
-      toast.success(t("Photo saved"));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("Failed to save photo"));
-    } finally {
-      setSaving(false);
-      qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
-      if (savedIds.length) void finishBatchFn({ data: { job_id: jobId, photo_ids: savedIds } }).catch(() => toast.error(t("Photos saved, but the owner email could not be prepared.")));
-    }
-  };
-
-  const { data: photos = [], isLoading } = useQuery({
-    queryKey: photoQueryKey(jobId, viewerId, employeeId, allCleaners),
-    queryFn: () => listFn({ data: { job_id: jobId, employee_id: employeeId, all_cleaners: allCleaners } }),
-    refetchInterval: 15000,
+  // Photos upload in the background, a couple at a time, so the camera never waits.
+  const queue = photoUploadQueue<{ photo_type: PhotoType; taken_at: string }>(`${viewerId}:${jobId}`, {
+    upload: async (item) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user.id !== viewerId) throw new Error(t("Your login changed. Please reopen the appointment and upload again."));
+      const file = item.file as File;
+      const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: file.name || "photo.jpg" } });
+      const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, { contentType: file.type || "image/jpeg" });
+      if (error) throw new Error(error.message);
+      const saved = await registerFn({ data: { job_id: jobId, storage_path: path, photo_type: item.meta.photo_type, taken_at: item.meta.taken_at } });
+      return saved.id;
+    },
+    onSaved: refreshPhotos,
+    onFailed: (message) => toast.error(`${t("Failed to save photo")}: ${message}`),
+    onDrained: (ids) => {
+      refreshPhotos();
+      toast.success(ids.length === 1 ? t("Photo saved") : `${ids.length} ${t("photos saved")}`);
+      void finishBatchFn({ data: { job_id: jobId, photo_ids: ids } }).catch(() => toast.error(t("Photos saved, but the owner email could not be prepared.")));
+    },
   });
+  const queued = useSyncExternalStore(queue.subscribe, queue.getItems, queue.getItems);
+  const addFiles = (files: FileList | null) => {
+    if (!files?.length) return;
+    const takenAt = new Date().toISOString();
+    queue.add(Array.from(files).filter(f => !f.type || f.type.startsWith("image/")).map(file => ({
+      id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), meta: { photo_type: photoType, taken_at: takenAt },
+    })));
+  };
+  const uploadingCount = queued.filter(i => i.status === "waiting" || i.status === "uploading").length;
+  useEffect(() => {
+    if (!uploadingCount) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [uploadingCount]);
+
+  const urlCache = useRef(new Map<string, { storage_path: string; url: string | null; thumb_url: string | null; at: number }>());
+  const { data: photos = [], isLoading } = useQuery({
+    queryKey: listKey,
+    queryFn: async () => reuseSignedUrls(await listFn({ data: { job_id: jobId, employee_id: employeeId, all_cleaners: allCleaners } }), urlCache.current),
+    refetchInterval: 30000,
+  });
+  useEffect(() => { queue.pruneSaved(new Set(photos.map(p => p.id))); }, [photos, queue]);
+  const pendingTiles = queued.filter(i => i.status !== "saved" || !photos.some(p => p.id === i.savedId));
   const downloads = usePhotoDownloads(photos, exportContext, { cleanerName, allCleaners });
   useEffect(() => {
     const channel = supabase.channel(`photos-${jobId}-${viewerId}-${employeeId ?? "own"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "job_photos", filter: `job_id=eq.${jobId}` }, () => {
-        void qc.invalidateQueries({ queryKey: ["job-photos", jobId] });
+        void qc.invalidateQueries({ queryKey: ["job-photos", jobId] }, { cancelRefetch: false });
       }).subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [qc, jobId, viewerId, employeeId]);
@@ -702,20 +709,42 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
         <button
           type="button"
           onClick={() => cameraRef.current?.click()}
-          disabled={saving}
-          className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90 disabled:opacity-50"
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2.5 hover:opacity-90"
         >
-          <Camera className="size-4" /> {saving ? t("Saving…") : t("Take photo")}
+          <Camera className="size-4" /> {t("Take photo")}
         </button>
         <button
           type="button"
           onClick={() => galleryRef.current?.click()}
-          disabled={saving}
-          className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2.5 hover:bg-clay-100 disabled:opacity-50"
+          className="flex-1 inline-flex items-center justify-center gap-2 border border-border text-sm font-medium rounded-lg px-3 py-2.5 hover:bg-clay-100"
         >
           <ImagePlus className="size-4" /> {t("From gallery")}
         </button>
       </div>
+      {uploadingCount > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground" role="status">
+          {t("Uploading")} {uploadingCount} · {t("you can keep taking photos")}
+        </p>
+      )}
+      {pendingTiles.length > 0 && (
+        <div className="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-2">
+          {pendingTiles.map((it) => (
+            <div key={it.id} className="relative aspect-square rounded-md overflow-hidden bg-clay-200 ring-1 ring-border">
+              {it.previewUrl && <img src={it.previewUrl} alt="" decoding="async" className={`w-full h-full object-cover ${it.status === "failed" ? "opacity-40" : "opacity-70"}`} />}
+              {it.status === "failed" ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-1">
+                  <button type="button" onClick={() => queue.retry(it.id)} className="text-[10px] font-medium rounded bg-brand text-brand-foreground px-1.5 py-0.5">{t("Retry")}</button>
+                  <button type="button" onClick={() => queue.remove(it.id)} className="text-[10px] rounded bg-background/90 text-foreground px-1.5 py-0.5">{t("Remove")}</button>
+                </div>
+              ) : (
+                <span className="absolute bottom-0 inset-x-0 bg-background/85 text-foreground text-[9px] text-center py-0.5">
+                  {it.status === "saved" ? t("Saved") : it.status === "uploading" ? t("Saving…") : t("Waiting")}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -753,7 +782,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
               className="block w-full aspect-square"
             >
               {p.url ? (
-                <img src={p.url} alt={p.caption ?? ""} className="w-full h-full object-cover" />
+                <img src={p.thumb_url ?? p.url} alt={p.caption ?? ""} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full grid place-items-center text-xs text-muted-foreground">{t("No preview")}</div>
               )}
