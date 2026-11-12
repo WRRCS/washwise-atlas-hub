@@ -330,6 +330,7 @@ const UK: Record<string, string> = {
   "Retry": "Повторити",
   "Waiting": "В черзі",
   "No signal": "Немає сигналу",
+  "Your photos are sending in the background. They stay on this phone until they're saved.": "Ваші фото надсилаються у фоновому режимі. Вони залишаються на цьому телефоні, доки не будуть збережені.",
   "photos are kept on this phone": "фото зберігаються на цьому телефоні",
   "Couldn't keep this photo on the phone — send it before closing the app.": "Не вдалося зберегти це фото на телефоні — надішліть його, не закриваючи застосунок.",
   "Photos saved, but the owner email could not be prepared.": "Фото збережено, але лист власнику не вдалося підготувати.",

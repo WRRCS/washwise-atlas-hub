@@ -99,6 +99,33 @@ export async function loadOutbox<M extends OutboxMeta>(scope: string): Promise<O
   return fresh;
 }
 
+/** Every unsent photo this cleaner has on the phone, across appointments. Expired ones are dropped. */
+export async function loadViewerOutbox<M extends OutboxMeta>(viewerId: string): Promise<OutboxRecord<M>[]> {
+  if (!outboxAvailable()) return [];
+  let found: OutboxRecord<M>[] = [];
+  try {
+    const db = await openDb();
+    found = (await result(db.transaction(STORE, "readonly").objectStore(STORE).index("viewerId").getAll(viewerId))) as OutboxRecord<M>[];
+  } catch {
+    return [];
+  }
+  const now = Date.now();
+  const fresh = found.filter(r => r && r.viewerId === viewerId && !isOutboxRecordExpired(r, now)).sort((a, b) => a.createdAt - b.createdAt);
+  const staleIds = found.filter(r => r && r.viewerId === viewerId && isOutboxRecordExpired(r, now)).map(r => r.id);
+  if (staleIds.length) void deleteOutboxItems(staleIds).catch(() => {});
+  return fresh;
+}
+
+/**
+ * The appointment whose photos are ready to send on their own, or null for photos
+ * still sitting on a screen (e.g. the Leaving dialog before the cleaner taps Leaving).
+ */
+export function sendableOutboxJob(scope: string, viewerId: string): string | null {
+  const parts = scope.split(":");
+  if (parts.length !== 2 || parts[0] !== viewerId || !parts[1]) return null;
+  return parts[1];
+}
+
 /** Keeps one captured photo on the phone. Rejects when the phone is out of space. */
 export async function saveOutboxItem<M extends OutboxMeta>(record: OutboxRecord<M>): Promise<void> {
   if (!outboxAvailable()) throw new Error("This phone cannot keep photos offline");

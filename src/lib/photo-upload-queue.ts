@@ -38,6 +38,8 @@ export class UploadQueue<M = unknown> {
   private listeners = new Set<() => void>();
   private savedSinceDrain: string[] = [];
   private active = 0;
+  /** Pending phone-copy writes, so a fast upload never deletes the copy before it is written. */
+  private storing = new Map<string, Promise<unknown>>();
   handlers: QueueHandlers<M>;
   constructor(handlers: QueueHandlers<M>, private concurrency = 2) { this.handlers = handlers; }
 
@@ -63,9 +65,11 @@ export class UploadQueue<M = unknown> {
   }
   /** Anything that failed for a fixable reason is queued again — used when signal returns. */
   resume() {
-    if (!this.hasRetryable()) return;
-    this.set(this.items.map(i => (i.status === "failed" && !i.permanent ? { ...i, status: "waiting" as const, error: undefined } : i)));
-    this.pump();
+    if (this.hasRetryable()) {
+      this.set(this.items.map(i => (i.status === "failed" && !i.permanent ? { ...i, status: "waiting" as const, error: undefined } : i)));
+    }
+    // Photos held back while there was no signal are still waiting — start them too.
+    if (this.items.some(i => i.status === "waiting")) this.pump();
   }
   hasRetryable() {
     return this.items.some(i => i.status === "failed" && !i.permanent);
@@ -95,14 +99,20 @@ export class UploadQueue<M = unknown> {
   private keep(item: QueueItem<M>) {
     const storage = this.handlers.storage;
     if (!storage) return;
-    void Promise.resolve(storage.save(item)).catch((e) => {
-      this.handlers.onStorageError?.(e instanceof Error ? e.message : "Could not keep the photo on this phone");
-    });
+    let started: Promise<unknown>;
+    try { started = Promise.resolve(storage.save(item)); } catch (e) { started = Promise.reject(e); }
+    const write = started.catch((e) => {
+        this.handlers.onStorageError?.(e instanceof Error ? e.message : "Could not keep the photo on this phone");
+      });
+    this.storing.set(item.id, write);
   }
-  private dropStored(id: string) {
+  private async dropStored(id: string) {
     const storage = this.handlers.storage;
-    if (!storage) return Promise.resolve();
-    return Promise.resolve(storage.drop(id)).catch(() => {});
+    if (!storage) return;
+    // Wait for the phone copy to finish writing first, otherwise it would outlive the upload and be sent twice.
+    await this.storing.get(id);
+    this.storing.delete(id);
+    await Promise.resolve(storage.drop(id)).catch(() => {});
   }
 
   private pump() {
@@ -150,6 +160,10 @@ export function photoUploadQueue<M>(key: string, handlers: QueueHandlers<M>): Up
   if (!q) { q = new UploadQueue<M>(handlers); registry.set(key, q); }
   else q.handlers = handlers;
   return q;
+}
+/** Signal is back: every queue sends what failed for a fixable reason. */
+export function resumeAllPhotoQueues() {
+  for (const q of registry.values()) q.resume();
 }
 export function anyPhotoUploadsPending() {
   for (const q of registry.values()) if (q.busy) return true;

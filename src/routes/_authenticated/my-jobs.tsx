@@ -9,12 +9,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { listMyJobs, clockIn, clockInDay, getMyShift, endMyShift, listMyTimeEntries, getTenantGpsSettings, logGpsConsent, type MyJobRow, type TimeEntryRow } from "@/lib/time.functions";
-import { createJobPhotoUploadUrl, completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
+import { completeJobWithPhotos, type PhotoType } from "@/lib/photos.functions";
 import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/inventory.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { captureGps } from "@/lib/geolocation";
-import { mapWithConcurrency } from "@/lib/photo-upload-queue";
 import { deleteOutboxItems, loadOutbox, outboxScope, saveOutboxItem, type OutboxMeta } from "@/lib/photo-outbox";
+import { jobPhotoQueue } from "@/lib/job-photo-queue";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen, Navigation, StickyNote } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -595,6 +595,7 @@ type Pending = {
   previewUrl: string;
   caption: string;
   photo_type: PhotoType;
+  taken_at: string;
 };
 
 function CompleteJobDialog({
@@ -615,7 +616,6 @@ function CompleteJobDialog({
   onDone: () => void;
 }) {
   const t = useT();
-  const createUploadUrl = useServerFn(createJobPhotoUploadUrl);
   const complete = useServerFn(completeJobWithPhotos);
   const doLogConsent = useServerFn(logGpsConsent);
   const fetchInventory = useServerFn(listInventory);
@@ -659,7 +659,7 @@ function CompleteJobDialog({
       scope,
       viewerId,
       file: it.file,
-      meta: { caption: it.caption, photo_type: it.photo_type },
+      meta: { caption: it.caption, photo_type: it.photo_type, taken_at: it.taken_at },
       createdAt: Date.now(),
     }).catch(() => toast.error(t("Couldn't keep this photo on the phone — send it before closing the app.")));
   };
@@ -688,6 +688,7 @@ function CompleteJobDialog({
           previewUrl: URL.createObjectURL(r.file),
           caption: typeof r.meta.caption === "string" ? r.meta.caption : "",
           photo_type: (r.meta.photo_type as PhotoType) ?? "after",
+          taken_at: typeof r.meta.taken_at === "string" ? r.meta.taken_at : new Date(r.createdAt).toISOString(),
         }))];
       });
     });
@@ -706,6 +707,7 @@ function CompleteJobDialog({
   const addFiles = (files: FileList | null) => {
     if (!files) return;
     const next: Pending[] = [];
+    const takenAt = new Date().toISOString();
     for (const file of Array.from(files)) {
       if (!file.type.startsWith("image/")) continue;
       next.push({
@@ -714,6 +716,7 @@ function CompleteJobDialog({
         previewUrl: URL.createObjectURL(file),
         caption: "",
         photo_type: "after",
+        taken_at: takenAt,
       });
     }
     setItems((prev) => [...prev, ...next]);
@@ -758,21 +761,12 @@ function CompleteJobDialog({
         const { data: identity } = await supabase.auth.getUser();
         if (!identity.user || identity.user.id !== captureIdentity.current) throw new Error(loginChanged);
       }
-      // Upload a few photos at once instead of one after another.
-      const uploaded = await mapWithConcurrency(items, 3, async (it) => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user.id !== captureIdentity.current) throw new Error(loginChanged);
-        const { path, token } = await createUploadUrl({ data: { job_id: jobId, file_name: it.file.name || "photo.jpg" } });
-        const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, it.file, {
-          contentType: it.file.type || "image/jpeg",
-        });
-        if (error) throw new Error(error.message);
-        return { storage_path: path, caption: it.caption || undefined, photo_type: it.photo_type };
-      });
+      // Leaving is a small request, so it goes through even on weak signal.
+      // The photos don't hold it up: they send in the background afterwards.
       await complete({
         data: {
           job_id: jobId,
-          photos: uploaded,
+          photos: [],
           entry_id: entryId ?? undefined,
           end_shift: false,
           notes: notes || undefined,
@@ -780,8 +774,20 @@ function CompleteJobDialog({
           supplies_used: [],
         },
       });
-      // The photos are safely stored, so the phone copies are no longer needed.
-      void deleteOutboxItems(items.map((i) => i.id));
+      if (items.length && captureIdentity.current) {
+        // Stop any pending caption saves so they can't move the photo back onto this screen.
+        Object.values(persistTimers.current).forEach(clearTimeout);
+        persistTimers.current = {};
+        // Same photo id: the phone copy moves from this screen to the background sender,
+        // which keeps it until the server has it and resends it when signal returns.
+        jobPhotoQueue(captureIdentity.current, jobId).add(items.map((it) => ({
+          id: it.id,
+          file: it.file,
+          previewUrl: null,
+          meta: { photo_type: it.photo_type, caption: it.caption.trim() || undefined, taken_at: it.taken_at, leaving: true },
+        })));
+        toast.info(t("Your photos are sending in the background. They stay on this phone until they're saved."));
+      }
       toast.success(t("Left job — drive time is counting until you tap Arrived at the next one"));
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       onDone();
@@ -902,7 +908,7 @@ function CompleteJobDialog({
             onClick={onSubmit}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand text-brand-foreground disabled:opacity-50"
           >
-            {saving ? t("Uploading…") : t("Leaving")}
+            {saving ? t("Saving…") : t("Leaving")}
           </button>
         </div>
       </div>

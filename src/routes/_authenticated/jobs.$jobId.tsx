@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getJob, toggleSopItem, updateJobStatus, moveJob, confirmJobSop } from "@/lib/jobs.functions";
 import { listJobGps, getMyShift, clockInDay, endMyShift } from "@/lib/time.functions";
 import { getMyJobVisit, arriveAtJob, leaveJob } from "@/lib/visits.functions";
-import { listJobPhotos, deleteJobPhoto, createJobPhotoUploadUrl, registerJobPhoto, finishPhotoUploadBatch, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
+import { listJobPhotos, deleteJobPhoto, type JobPhotoRow, type PhotoType } from "@/lib/photos.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { myPermissions } from "@/lib/team.functions";
 import { myCapabilities } from "@/lib/entities.functions";
@@ -33,10 +33,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { PhotoExportContext } from "@/lib/photo-downloads";
 import { toast } from "sonner";
 import { photoQueryKey } from "@/lib/photo-ownership";
-import { photoUploadQueue } from "@/lib/photo-upload-queue";
-import { deleteOutboxItems, loadOutbox, outboxScope, saveOutboxItem } from "@/lib/photo-outbox";
-
-type PhotoMeta = { photo_type: PhotoType; taken_at: string };
+import { jobPhotoQueue } from "@/lib/job-photo-queue";
 import { reuseSignedUrls } from "@/lib/photo-url-reuse";
 import { getJobInventory } from "@/lib/property-inventory.functions";
 import { JobInventoryTab, jobInventoryKey } from "@/components/job-inventory-tab";
@@ -587,9 +584,6 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
   const qc = useQueryClient();
   const listFn = useServerFn(listJobPhotos);
   const delFn = useServerFn(deleteJobPhoto);
-  const uploadUrlFn = useServerFn(createJobPhotoUploadUrl);
-  const registerFn = useServerFn(registerJobPhoto);
-  const finishBatchFn = useServerFn(finishPhotoUploadBatch);
   const [lightbox, setLightbox] = useState<JobPhotoRow | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [photoType, setPhotoType] = useState<PhotoType>("other");
@@ -597,61 +591,24 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const listKey = photoQueryKey(jobId, viewerId, employeeId, allCleaners);
-  const refreshPhotos = () => { void qc.invalidateQueries({ queryKey: ["job-photos", jobId] }, { cancelRefetch: false }); };
 
   // Photos upload in the background, a couple at a time, so the camera never waits.
-  // Each one is also kept on the phone until it is safely stored.
-  const scope = outboxScope(viewerId, jobId);
-  const queue = photoUploadQueue<PhotoMeta>(scope, {
-    upload: async (item) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user.id !== viewerId) throw Object.assign(new Error(t("Your login changed. Please reopen the appointment and upload again.")), { permanent: true });
-      const file = item.file as File;
-      const { path, token } = await uploadUrlFn({ data: { job_id: jobId, file_name: file.name || "photo.jpg" } });
-      const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, { contentType: file.type || "image/jpeg" });
-      if (error) throw new Error(error.message);
-      const saved = await registerFn({ data: { job_id: jobId, storage_path: path, photo_type: item.meta.photo_type, taken_at: item.meta.taken_at } });
-      return saved.id;
-    },
-    onSaved: refreshPhotos,
-    onFailed: (message) => toast.error(`${t("Failed to save photo")}: ${message}`),
-    storage: {
-      save: (item) => saveOutboxItem({ id: item.id, scope, viewerId, file: item.file as Blob, meta: item.meta, createdAt: Date.now() }),
-      drop: (id) => deleteOutboxItems([id]),
-    },
-    onStorageError: () => toast.error(t("Couldn't keep this photo on the phone — send it before closing the app.")),
-    onDrained: (ids) => {
-      refreshPhotos();
-      toast.success(ids.length === 1 ? t("Photo saved") : `${ids.length} ${t("photos saved")}`);
-      void finishBatchFn({ data: { job_id: jobId, photo_ids: ids } }).catch(() => toast.error(t("Photos saved, but the owner email could not be prepared.")));
-    },
-  });
+  // Each one is kept on the phone until it is safely stored; the app-wide sender
+  // restores kept photos after a reopen and resends them when signal returns.
+  const queue = jobPhotoQueue(viewerId, jobId);
   const queued = useSyncExternalStore(queue.subscribe, queue.getItems, queue.getItems);
   const [online, setOnline] = useState(true);
-
-  // Photos taken before the app was closed are still on the phone — put them back in the queue.
   useEffect(() => {
-    let cancelled = false;
-    void loadOutbox<PhotoMeta>(scope).then((kept) => {
-      if (cancelled || !kept.length) return;
-      queue.add(kept.map(r => ({ id: r.id, file: r.file, meta: r.meta, previewUrl: URL.createObjectURL(r.file) })), { stored: true });
-    });
-    return () => { cancelled = true; };
-  }, [scope, queue]);
-
-  // Anything that failed for a fixable reason is sent again as soon as signal returns.
-  useEffect(() => {
-    const back = () => { setOnline(true); queue.resume(); };
+    const back = () => setOnline(true);
     const gone = () => setOnline(false);
+    setOnline(navigator.onLine !== false);
     window.addEventListener("online", back);
     window.addEventListener("offline", gone);
-    const timer = window.setInterval(() => { if (typeof navigator === "undefined" || navigator.onLine !== false) queue.resume(); }, 20_000);
     return () => {
       window.removeEventListener("online", back);
       window.removeEventListener("offline", gone);
-      window.clearInterval(timer);
     };
-  }, [queue]);
+  }, []);
 
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { UploadQueue, mapWithConcurrency, type QueueItem } from "../../src/lib/photo-upload-queue";
 import { reuseSignedUrls, PHOTO_URL_REUSE_MS } from "../../src/lib/photo-url-reuse";
-import { isOutboxRecordExpired, outboxScope, OUTBOX_MAX_AGE_MS } from "../../src/lib/photo-outbox";
+import { isOutboxRecordExpired, outboxScope, OUTBOX_MAX_AGE_MS, sendableOutboxJob } from "../../src/lib/photo-outbox";
 
 function fakeStorage() {
   const kept = new Map<string, Blob>();
@@ -63,7 +63,7 @@ describe("unsent photos stay on the phone", () => {
     const q = new UploadQueue({ upload: () => d.promise, storage: s }, 1);
     q.add([{ id: "a", file: new Blob(["x"]), meta: {} }]);
     expect([...s.kept.keys()]).toEqual(["a"]);
-    d.resolve("p1"); await tick();
+    d.resolve("p1"); await tick(); await tick();
     expect(s.kept.size).toBe(0);
   });
 
@@ -81,7 +81,7 @@ describe("unsent photos stay on the phone", () => {
     const q = new UploadQueue({ upload: async () => { throw new Error("no signal"); }, storage: s }, 1);
     q.add([{ id: "a", file: new Blob(["x"]), meta: {} }]);
     await tick(); await tick();
-    q.remove("a");
+    q.remove("a"); await tick();
     expect(s.kept.size).toBe(0);
     expect(q.getItems().length).toBe(0);
   });
@@ -141,5 +141,52 @@ describe("kept-photo keys and expiry", () => {
     const now = Date.now();
     expect(isOutboxRecordExpired({ createdAt: now - OUTBOX_MAX_AGE_MS + 1000 }, now)).toBe(false);
     expect(isOutboxRecordExpired({ createdAt: now - OUTBOX_MAX_AGE_MS - 1000 }, now)).toBe(true);
+  });
+});
+
+describe("Leaving-screen photos send in the background", () => {
+  it("never deletes the phone copy before it has finished writing, so a photo is not sent twice", async () => {
+    const order: string[] = [];
+    let finishWrite!: () => void;
+    const writing = new Promise<void>((r) => { finishWrite = r; });
+    const q = new UploadQueue({
+      upload: async () => "p1",
+      storage: {
+        save: async () => { await writing; order.push("saved"); },
+        drop: async () => { order.push("dropped"); },
+      },
+    }, 1);
+    q.add([{ id: "a", file: new Blob(), meta: {} }]);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(order).toEqual([]);
+    finishWrite();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(order).toEqual(["saved", "dropped"]);
+  });
+
+  it("starts photos held during no signal once signal returns", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    const nav = { onLine: false };
+    Object.defineProperty(globalThis, "navigator", { value: nav, configurable: true });
+    try {
+      let sent = 0;
+      const q = new UploadQueue({ upload: async () => { sent++; return "p1"; } }, 2);
+      q.add([{ id: "a", file: new Blob(), meta: {} }]);
+      expect(sent).toBe(0);
+      nav.onLine = true;
+      q.resume();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(sent).toBe(1);
+      expect(q.getItems()[0].status).toBe("saved");
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis, "navigator", descriptor);
+      else delete (globalThis as { navigator?: unknown }).navigator;
+    }
+  });
+
+  it("sends only this cleaner's appointment photos on its own, not ones still on the Leaving screen", () => {
+    expect(sendableOutboxJob("u1:j1", "u1")).toBe("j1");
+    expect(sendableOutboxJob("u1:j1:leaving", "u1")).toBeNull();
+    expect(sendableOutboxJob("u2:j1", "u1")).toBeNull();
   });
 });

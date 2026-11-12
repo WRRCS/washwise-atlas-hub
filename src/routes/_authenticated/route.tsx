@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
+import { PhotoOutboxSender } from "@/components/photo-outbox-sender";
 import { DunningBanner } from "@/components/DunningBanner";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@supabase/supabase-js";
@@ -117,6 +118,7 @@ function RouteComponent() {
   return (
     <>
       <DunningBanner status={gate?.subscription_status ?? null} />
+      <PhotoOutboxSender />
       <AppShell>
         <Outlet />
       </AppShell>

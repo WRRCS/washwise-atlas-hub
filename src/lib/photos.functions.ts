@@ -7,12 +7,33 @@ export type PhotoType = "before" | "after" | "other" | "damage";
 
 export const finishPhotoUploadBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ job_id: z.string().uuid(), photo_ids: z.array(z.string().uuid()).min(1).max(2000) }).parse(input))
+  .inputValidator((input: unknown) => z.object({
+    job_id: z.string().uuid(),
+    photo_ids: z.array(z.string().uuid()).min(1).max(2000),
+    /** Photos from the Leaving screen, which also belong on the "cleaning is complete" draft. */
+    draft_photo_ids: z.array(z.string().uuid()).max(2000).default([]),
+  }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: profile } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).single();
     const { data: rows, error } = await context.supabase.from("job_photos").select("id").eq("job_id", data.job_id).eq("uploaded_by", context.userId).in("id", data.photo_ids);
     if (error) throw new Error(error.message);
     if (!profile || rows?.length !== new Set(data.photo_ids).size) throw new Error("Photo batch has not been saved by this cleaner");
+    const draftIds = data.draft_photo_ids.filter((id) => data.photo_ids.includes(id));
+    if (draftIds.length) {
+      // Leaving photos now finish sending after the cleaner leaves, so add them to the
+      // unsent draft this cleaner's Leaving created. Cleaners cannot edit drafts themselves.
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const admin = supabaseAdmin as any;
+        const { data: draft } = await admin.from("client_message_drafts").select("id, photo_ids")
+          .eq("tenant_id", profile.tenant_id).eq("job_id", data.job_id).eq("created_by", context.userId).eq("status", "draft")
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (draft) {
+          const merged = [...new Set([...((draft.photo_ids as string[] | null) ?? []), ...draftIds])];
+          await admin.from("client_message_drafts").update({ photo_ids: merged }).eq("id", draft.id);
+        }
+      } catch (e) { console.error("Draft photo attach failed", e instanceof Error ? e.message : "Unknown error"); }
+    }
     const { announceSavedPhotoBatch } = await import("./photo-upload-push.server");
     await announceSavedPhotoBatch(context.supabase, profile.tenant_id, data.job_id, context.userId, data.photo_ids);
     return { ok: true };
