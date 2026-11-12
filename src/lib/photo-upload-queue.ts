@@ -13,6 +13,13 @@ export type QueueItem<M = unknown> = {
   status: QueueStatus;
   error?: string;
   savedId?: string;
+  /** Retrying cannot fix this one (e.g. the login changed), so it is never auto-resent. */
+  permanent?: boolean;
+};
+/** Keeps unsent photos on the phone until they are safely stored. */
+export type QueueStorage<M = unknown> = {
+  save: (item: QueueItem<M>) => Promise<unknown>;
+  drop: (id: string) => Promise<unknown>;
 };
 export type QueueHandlers<M> = {
   /** Uploads and registers one photo; resolves with the saved photo id. */
@@ -21,6 +28,9 @@ export type QueueHandlers<M> = {
   onFailed?: (message: string) => void;
   /** Called once the queue has nothing left to send, with ids saved since the last drain. */
   onDrained?: (savedIds: string[]) => void;
+  storage?: QueueStorage<M>;
+  /** The photo is still uploading, but could not be kept on the phone. */
+  onStorageError?: (message: string) => void;
 };
 
 export class UploadQueue<M = unknown> {
@@ -35,14 +45,30 @@ export class UploadQueue<M = unknown> {
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
   get busy() { return this.items.some(i => i.status === "waiting" || i.status === "uploading"); }
 
-  add(entries: { id: string; file: File | Blob; meta: M; previewUrl?: string | null }[]) {
+  add(entries: { id: string; file: File | Blob; meta: M; previewUrl?: string | null }[], opts?: { stored?: boolean }) {
     if (!entries.length) return;
-    this.set([...this.items, ...entries.map(e => ({ id: e.id, file: e.file, meta: e.meta, previewUrl: e.previewUrl ?? null, status: "waiting" as const }))]);
+    // The same photo can arrive twice (e.g. a screen remount re-reads the phone copy) — never queue it twice.
+    const known = new Set(this.items.map(i => i.id));
+    const fresh = entries.filter(e => !known.has(e.id));
+    if (!fresh.length) return;
+    const items = fresh.map(e => ({ id: e.id, file: e.file, meta: e.meta, previewUrl: e.previewUrl ?? null, status: "waiting" as const }));
+    this.set([...this.items, ...items]);
+    // Photos restored from the phone are already kept there; new ones must be.
+    if (!opts?.stored) items.forEach(i => this.keep(i));
     this.pump();
   }
   retry(id: string) {
     this.set(this.items.map(i => (i.id === id && i.status === "failed" ? { ...i, status: "waiting" as const, error: undefined } : i)));
     this.pump();
+  }
+  /** Anything that failed for a fixable reason is queued again — used when signal returns. */
+  resume() {
+    if (!this.hasRetryable()) return;
+    this.set(this.items.map(i => (i.status === "failed" && !i.permanent ? { ...i, status: "waiting" as const, error: undefined } : i)));
+    this.pump();
+  }
+  hasRetryable() {
+    return this.items.some(i => i.status === "failed" && !i.permanent);
   }
   /** Drop an item that is not currently uploading (failed, waiting, or already saved). */
   remove(id: string) {
@@ -50,6 +76,7 @@ export class UploadQueue<M = unknown> {
     if (!item || item.status === "uploading") return;
     this.release(item);
     this.set(this.items.filter(i => i.id !== id));
+    void this.dropStored(id);
   }
   /** Forget saved items once the photo list shows them. */
   pruneSaved(visibleIds: Set<string>) {
@@ -65,7 +92,22 @@ export class UploadQueue<M = unknown> {
   private set(next: QueueItem<M>[]) { this.items = next; this.listeners.forEach(l => l()); }
   private patch(id: string, p: Partial<QueueItem<M>>) { this.set(this.items.map(i => (i.id === id ? { ...i, ...p } : i))); }
 
+  private keep(item: QueueItem<M>) {
+    const storage = this.handlers.storage;
+    if (!storage) return;
+    void Promise.resolve(storage.save(item)).catch((e) => {
+      this.handlers.onStorageError?.(e instanceof Error ? e.message : "Could not keep the photo on this phone");
+    });
+  }
+  private dropStored(id: string) {
+    const storage = this.handlers.storage;
+    if (!storage) return Promise.resolve();
+    return Promise.resolve(storage.drop(id)).catch(() => {});
+  }
+
   private pump() {
+    // No signal: photos stay queued instead of failing, and send when it returns.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
     while (this.active < this.concurrency) {
       const next = this.items.find(i => i.status === "waiting");
       if (!next) break;
@@ -86,10 +128,13 @@ export class UploadQueue<M = unknown> {
       const savedId = await this.handlers.upload(item);
       this.savedSinceDrain.push(savedId);
       this.patch(id, { status: "saved", savedId });
+      // The copy is safe on the server, so the phone copy is no longer needed.
+      void this.dropStored(id);
       this.handlers.onSaved?.(savedId);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Upload failed";
-      this.patch(id, { status: "failed", error: message });
+      const permanent = e instanceof Error && (e as Error & { permanent?: boolean }).permanent === true;
+      this.patch(id, { status: "failed", error: message, permanent });
       this.handlers.onFailed?.(message);
     } finally {
       this.active--;

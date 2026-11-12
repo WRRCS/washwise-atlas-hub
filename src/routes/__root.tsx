@@ -178,7 +178,9 @@ function RootComponent() {
       const userId = session?.user.id ?? null;
       if (event === "INITIAL_SESSION") { previousUser = userId; setIdentity(userId); return; }
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      if (event === "SIGNED_OUT" || previousUser !== userId) {
+      // A first sign-in (null -> user) is not an account change: kept photos must survive a reload.
+      const switchedAccount = previousUser !== null && previousUser !== undefined && previousUser !== userId;
+      if (event === "SIGNED_OUT" || switchedAccount) {
         void import('@/lib/push-client').then(async m=>{
           await m.setMessagingOwner(null);
           const {clearLocalPushIdentity}=await import('@/lib/push-worker-registration');
@@ -187,6 +189,8 @@ function RootComponent() {
         void queryClient.cancelQueries();
         queryClient.clear();
         window.localStorage.removeItem("atlas-offline-cache");
+        // Photos still waiting to send must not survive an account change.
+        void import("@/lib/photo-outbox").then((m) => m.clearOutbox()).catch(() => {});
       }
       previousUser = userId;
       setIdentity(userId);

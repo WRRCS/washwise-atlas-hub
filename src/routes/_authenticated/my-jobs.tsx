@@ -14,6 +14,7 @@ import { listInventory, getRecipeForService, type InventoryItem } from "@/lib/in
 import { supabase } from "@/integrations/supabase/client";
 import { captureGps } from "@/lib/geolocation";
 import { mapWithConcurrency } from "@/lib/photo-upload-queue";
+import { deleteOutboxItems, loadOutbox, outboxScope, saveOutboxItem, type OutboxMeta } from "@/lib/photo-outbox";
 import { Play, Square, MapPin, Clock, Camera, X, Upload as UploadIcon, BookOpen, Navigation, StickyNote } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -646,6 +647,51 @@ function CompleteJobDialog({
   const pendingItems = useRef(items);
   pendingItems.current = items;
   useEffect(() => () => { pendingItems.current.forEach(item => URL.revokeObjectURL(item.previewUrl)); }, []);
+
+  // Unsent photos stay on this phone until they are safely stored — same appointment, same cleaner only.
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const scope = viewerId ? outboxScope(viewerId, jobId, "leaving") : null;
+  const persistTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const persistItem = (it: Pending) => {
+    if (!scope || !viewerId) return;
+    void saveOutboxItem({
+      id: it.id,
+      scope,
+      viewerId,
+      file: it.file,
+      meta: { caption: it.caption, photo_type: it.photo_type },
+      createdAt: Date.now(),
+    }).catch(() => toast.error(t("Couldn't keep this photo on the phone — send it before closing the app.")));
+  };
+  const persistSoon = (it: Pending) => {
+    clearTimeout(persistTimers.current[it.id]);
+    persistTimers.current[it.id] = setTimeout(() => { delete persistTimers.current[it.id]; persistItem(it); }, 400);
+  };
+  useEffect(() => {
+    const timers = persistTimers.current;
+    return () => Object.values(timers).forEach(clearTimeout);
+  }, []);
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data: { session } }) => setViewerId(session?.user.id ?? null));
+  }, []);
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!scope || restored.current) return;
+    restored.current = true;
+    void loadOutbox<OutboxMeta>(scope).then((kept) => {
+      if (!kept.length) return;
+      setItems((prev) => {
+        const known = new Set(prev.map(p => p.id));
+        return [...prev, ...kept.filter(r => !known.has(r.id)).map(r => ({
+          id: r.id,
+          file: r.file as File,
+          previewUrl: URL.createObjectURL(r.file),
+          caption: typeof r.meta.caption === "string" ? r.meta.caption : "",
+          photo_type: (r.meta.photo_type as PhotoType) ?? "after",
+        }))];
+      });
+    });
+  }, [scope]);
   const hours = startedAt ? hoursBetween(startedAt, new Date().toISOString()) : null;
 
   // Pre-fill supplies from the recipe once loaded
@@ -671,6 +717,7 @@ function CompleteJobDialog({
       });
     }
     setItems((prev) => [...prev, ...next]);
+    next.forEach(persistItem);
   };
 
   const removeItem = (id: string) => {
@@ -679,10 +726,14 @@ function CompleteJobDialog({
       if (item) URL.revokeObjectURL(item.previewUrl);
       return prev.filter((x) => x.id !== id);
     });
+    void deleteOutboxItems([id]);
   };
 
-  const update = (id: string, patch: Partial<Pending>) =>
+  const update = (id: string, patch: Partial<Pending>) => {
+    const changed = items.find((x) => x.id === id);
+    if (changed) persistSoon({ ...changed, ...patch });
     setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  };
 
   const onSubmit = async () => {
     setSaving(true);
@@ -729,6 +780,8 @@ function CompleteJobDialog({
           supplies_used: [],
         },
       });
+      // The photos are safely stored, so the phone copies are no longer needed.
+      void deleteOutboxItems(items.map((i) => i.id));
       toast.success(t("Left job — drive time is counting until you tap Arrived at the next one"));
       items.forEach((i) => URL.revokeObjectURL(i.previewUrl));
       onDone();

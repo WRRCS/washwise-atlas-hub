@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { UploadQueue, mapWithConcurrency } from "../../src/lib/photo-upload-queue";
+import { UploadQueue, mapWithConcurrency, type QueueItem } from "../../src/lib/photo-upload-queue";
 import { reuseSignedUrls, PHOTO_URL_REUSE_MS } from "../../src/lib/photo-url-reuse";
+import { isOutboxRecordExpired, outboxScope, OUTBOX_MAX_AGE_MS } from "../../src/lib/photo-outbox";
+
+function fakeStorage() {
+  const kept = new Map<string, Blob>();
+  return {
+    kept,
+    save: async (item: QueueItem) => { kept.set(item.id, item.file as Blob); },
+    drop: async (id: string) => { kept.delete(id); },
+  };
+}
 
 const tick = () => new Promise(r => setTimeout(r, 0));
 function deferred() { let resolve!: (v: string) => void, reject!: (e: Error) => void; const promise = new Promise<string>((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
@@ -43,5 +53,93 @@ describe("photo URL reuse", () => {
     const cache = new Map();
     reuseSignedUrls([row("first")], cache, 0);
     expect(reuseSignedUrls([row("second")], cache, PHOTO_URL_REUSE_MS + 1)[0].url).toBe("second");
+  });
+});
+
+describe("unsent photos stay on the phone", () => {
+  it("keeps a photo the moment it is taken and forgets it once the server has it", async () => {
+    const s = fakeStorage();
+    const d = deferred();
+    const q = new UploadQueue({ upload: () => d.promise, storage: s }, 1);
+    q.add([{ id: "a", file: new Blob(["x"]), meta: {} }]);
+    expect([...s.kept.keys()]).toEqual(["a"]);
+    d.resolve("p1"); await tick();
+    expect(s.kept.size).toBe(0);
+  });
+
+  it("keeps a photo that failed to send, so it can be sent again", async () => {
+    const s = fakeStorage();
+    const q = new UploadQueue({ upload: async () => { throw new Error("no signal"); }, storage: s }, 1);
+    q.add([{ id: "a", file: new Blob(["x"]), meta: {} }]);
+    await tick(); await tick();
+    expect(q.getItems()[0].status).toBe("failed");
+    expect([...s.kept.keys()]).toEqual(["a"]);
+  });
+
+  it("forgets a photo the cleaner removes", async () => {
+    const s = fakeStorage();
+    const q = new UploadQueue({ upload: async () => { throw new Error("no signal"); }, storage: s }, 1);
+    q.add([{ id: "a", file: new Blob(["x"]), meta: {} }]);
+    await tick(); await tick();
+    q.remove("a");
+    expect(s.kept.size).toBe(0);
+    expect(q.getItems().length).toBe(0);
+  });
+
+  it("queues a photo once even if the screen asks for it again", () => {
+    const q = new UploadQueue({ upload: async () => "p1" }, 1);
+    const entry = { id: "a", file: new Blob(["x"]), meta: {} };
+    q.add([entry], { stored: true });
+    q.add([entry], { stored: true });
+    expect(q.getItems().map(i => i.id)).toEqual(["a"]);
+  });
+
+  it("sends failed photos again when signal returns, but never a photo that cannot work", async () => {
+    const s = fakeStorage();
+    let attempts = 0;
+    const q = new UploadQueue<string>({
+      upload: async (item) => {
+        attempts++;
+        if (item.meta === "login") throw Object.assign(new Error("login changed"), { permanent: true });
+        if (attempts === 1) throw new Error("no signal");
+        return `p${attempts}`;
+      },
+      storage: s,
+    }, 1);
+    q.add([{ id: "a", file: new Blob(), meta: "network" }, { id: "b", file: new Blob(), meta: "login" }]);
+    await tick(); await tick(); await tick();
+    expect(q.getItems().map(i => [i.status, i.permanent])).toEqual([["failed", false], ["failed", true]]);
+    q.resume();
+    await tick(); await tick();
+    expect(q.getItems().map(i => i.status)).toEqual(["saved", "failed"]);
+    q.resume();
+    expect(attempts).toBe(3);
+    // The photo that can never send is still kept on the phone for the cleaner to deal with.
+    expect([...s.kept.keys()]).toEqual(["b"]);
+  });
+
+  it("holds photos in the queue instead of failing them while there is no signal", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    Object.defineProperty(globalThis, "navigator", { value: { onLine: false }, configurable: true });
+    try {
+      const q = new UploadQueue({ upload: async () => "p1" }, 2);
+      q.add([{ id: "a", file: new Blob(), meta: {} }]);
+      expect(q.getItems().map(i => i.status)).toEqual(["waiting"]);
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis, "navigator", descriptor);
+      else delete (globalThis as { navigator?: unknown }).navigator;
+    }
+  });
+});
+
+describe("kept-photo keys and expiry", () => {
+  it("scopes kept photos to the cleaner, the appointment and the screen", () => {
+    expect(outboxScope("u1", "j1")).toBe("u1:j1");
+    expect(outboxScope("u1", "j1", "leaving")).toBe("u1:j1:leaving");
+  });
+  it("drops kept photos older than a week so the phone cannot fill up", () => {
+    const now = Date.now();
+    expect(isOutboxRecordExpired({ createdAt: now - OUTBOX_MAX_AGE_MS + 1000 }, now)).toBe(false);
+    expect(isOutboxRecordExpired({ createdAt: now - OUTBOX_MAX_AGE_MS - 1000 }, now)).toBe(true);
   });
 });
