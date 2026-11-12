@@ -63,14 +63,17 @@ export const arriveAtJob = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const tenantId = await tenantOf(context);
     const sb = context.supabase as any;
-    const {data: lunch} = await context.supabase.from("work_clock_entries").select("id,kind").eq("user_id",context.userId).is("ended_at",null).limit(1);
+    // Independent checks run together so the Arrived tap responds faster.
+    const [{data: lunch}, {data: prof}, {data: mgr}, {data: job}, {count: assigned}, { count }] = await Promise.all([
+      context.supabase.from("work_clock_entries").select("id,kind").eq("user_id",context.userId).is("ended_at",null).limit(1),
+      context.supabase.from("profiles").select("is_active").eq("id",context.userId).maybeSingle(),
+      context.supabase.rpc("is_owner_or_manager"),
+      context.supabase.from("jobs").select("assigned_to,tenant_id,status").eq("id",data.job_id).maybeSingle(),
+      context.supabase.from("job_employees").select("id",{count:"exact",head:true}).eq("job_id",data.job_id).eq("employee_id",context.userId),
+      context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("user_id", context.userId).is("ended_at", null),
+    ]);
     if (lunch?.[0]?.kind === "lunch") throw new Error("End unpaid lunch / Resume work before arriving");
-    const {data: prof} = await context.supabase.from("profiles").select("is_active").eq("id",context.userId).maybeSingle();
-    const {data: mgr} = await context.supabase.rpc("is_owner_or_manager");
-    const {data: job} = await context.supabase.from("jobs").select("assigned_to,tenant_id,status").eq("id",data.job_id).maybeSingle();
-    const {count: assigned} = await context.supabase.from("job_employees").select("id",{count:"exact",head:true}).eq("job_id",data.job_id).eq("employee_id",context.userId);
     if (!prof?.is_active || !job || job.tenant_id !== tenantId || job.status === "canceled" || (!mgr && !assigned && job.assigned_to !== context.userId)) throw new Error("You are not authorized for this appointment");
-    const { count } = await context.supabase.from("time_entries").select("id", { count: "exact", head: true }).eq("user_id", context.userId).is("ended_at", null);
     const stamp = new Date().toISOString();
     let newClockId: string | null = null;
     if (!count && !lunch?.length) {
@@ -78,8 +81,8 @@ export const arriveAtJob = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       newClockId = entry?.id ?? null;
     }
-    await sb.from("job_visits").update({left_at:stamp}).eq("employee_id",context.userId).is("left_at",null);
-    const {data: row,error} = await sb.from("job_visits").insert({tenant_id:tenantId,job_id:data.job_id,employee_id:context.userId,arrived_at:stamp}).select("id,arrived_at,left_at").single();
+    // One locked database step: repeated taps return the visit already open at this appointment.
+    const {data: row, error} = await sb.rpc("record_job_arrival", { _job: data.job_id });
     if (error) throw new Error(error.message);
     await context.supabase.from("jobs").update({ status: "in_progress", actual_start: row.arrived_at })
       .eq("id", data.job_id).eq("status", "scheduled");
@@ -87,7 +90,7 @@ export const arriveAtJob = createServerFn({ method: "POST" })
       const { notifySavedClock } = await import('./clock-email-alerts.server');
       await notifySavedClock(context, newClockId, 'clock_in');
     }
-    return row as JobVisit;
+    return { id: row.id, arrived_at: row.arrived_at, left_at: row.left_at } as JobVisit;
   });
 
 export const leaveJob = createServerFn({ method: "POST" })

@@ -4489,6 +4489,25 @@ export type Database = {
       purge_expired_gps: { Args: { _tenant: string }; Returns: number }
       recalc_invoice_totals: { Args: { _invoice: string }; Returns: undefined }
       recalc_job_hours: { Args: { _job: string }; Returns: undefined }
+      record_job_arrival: {
+        Args: { _job: string }
+        Returns: {
+          arrived_at: string
+          created_at: string
+          employee_id: string
+          id: string
+          job_id: string
+          left_at: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_visits"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       report_client_account: { Args: { _client_id: string }; Returns: Json }
       report_client_balances: {
         Args: never

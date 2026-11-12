@@ -138,7 +138,11 @@ function UpNextHero({
   clockedIn,
   onClockInDay,
   onClockOutDay,
+  pendingLabel,
+  clockOutBusy,
 }: {
+  pendingLabel: string | null;
+  clockOutBusy: boolean;
   job: MyJobRow;
   onClockIn: () => void;
   onClockOut: () => void;
@@ -213,24 +217,30 @@ function UpNextHero({
           ) : clockedIn ? (
             <button
               onClick={onClockIn}
-              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+              disabled={!!pendingLabel}
+              aria-busy={!!pendingLabel}
+              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 active:scale-[0.98] transition-transform shadow-sm disabled:opacity-60"
             >
-              <Play className="size-5" /> {t("Arrived")}
+              <Play className="size-5" /> {pendingLabel ?? t("Arrived")}
             </button>
           ) : (
             <button
               onClick={onClockInDay}
-              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 shadow-sm"
+              disabled={!!pendingLabel}
+              aria-busy={!!pendingLabel}
+              className="inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-base font-semibold rounded-xl px-5 py-3.5 hover:opacity-90 active:scale-[0.98] transition-transform shadow-sm disabled:opacity-60"
             >
-              <Clock className="size-5" /> {t("Clock in")}
+              <Clock className="size-5" /> {pendingLabel ?? t("Clock in")}
             </button>
           )}
           {clockedIn && (
             <button
               onClick={onClockOutDay}
-              className="inline-flex items-center justify-center gap-2 border border-destructive text-destructive text-sm font-semibold rounded-xl px-5 py-2.5 hover:bg-destructive/5"
+              disabled={clockOutBusy}
+              aria-busy={clockOutBusy}
+              className="inline-flex items-center justify-center gap-2 border border-destructive text-destructive text-sm font-semibold rounded-xl px-5 py-2.5 hover:bg-destructive/5 disabled:opacity-60"
             >
-              {t("Clock out for the day")}
+              {clockOutBusy ? t("Saving…") : t("Clock out for the day")}
             </button>
           )}
           <button
@@ -336,12 +346,27 @@ function TodayView() {
 
   const shiftQ = useQuery({ queryKey: ["my-shift"], queryFn: () => getShiftFn(), refetchInterval: 60000 });
   const clockedIn = !!shiftQ.data;
-  const { clockOut: clockOutDay } = useClockOutDay(trackGps);
+  const { clockOut: clockOutDay, busy: clockOutBusy } = useClockOutDay(trackGps);
+  // Ignore extra taps while one clock-in/arrival is still being saved.
+  const clockInLock = useRef(false);
+  const [pending, setPending] = useState<{ jobId: string; label: string } | null>(null);
 
   const handleClockIn = async (job_id: string, dayOnly = false) => {
+    if (clockInLock.current) return;
     if (shiftQ.data?.kind === "lunch") { toast.error(t("End unpaid lunch / Resume work before arriving")); return; }
+    clockInLock.current = true;
+    try {
+      await runClockIn(job_id, dayOnly);
+    } finally {
+      clockInLock.current = false;
+      setPending(null);
+    }
+  };
+
+  const runClockIn = async (job_id: string, dayOnly: boolean) => {
     let gps: { latitude: number; longitude: number; accuracy_meters: number | null } | null = null;
     if (trackGps) {
+      setPending({ jobId: job_id, label: t("Getting location…") });
       const res = await captureGps();
       if (res.status === "ok") {
         gps = res.gps;
@@ -352,13 +377,16 @@ function TodayView() {
         console.warn("[clock-in] GPS unavailable:", res.status);
       }
     }
+    setPending({ jobId: job_id, label: t("Saving…") });
     try {
       if (dayOnly) await doClockInDay({ data: { job_id, gps } });
       else await doClockIn({ data: { job_id, gps } });
       const label = dayOnly ? t("Clocked in") : t("Arrived");
       toast.success(gps ? `${label} · 📍 ${t("Location captured")}` : label);
-      qc.invalidateQueries({ queryKey: ["my-jobs"] });
-      qc.invalidateQueries({ queryKey: ["my-shift"] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-jobs"] }),
+        qc.invalidateQueries({ queryKey: ["my-shift"] }),
+      ]);
     } catch (e: any) {
       toast.error(e?.message ?? t("Failed to clock in"));
     }
@@ -404,6 +432,8 @@ function TodayView() {
           clockedIn={clockedIn}
           onClockInDay={() => handleClockIn(upNext.id, true)}
           onClockOutDay={clockOutDay}
+          pendingLabel={pending ? (pending.jobId === upNext.id ? pending.label : t("Saving…")) : null}
+          clockOutBusy={clockOutBusy}
           onClockOut={() =>
             setCompleteFor({
               jobId: upNext.id,
@@ -493,16 +523,20 @@ function TodayView() {
                           {clockedIn ? (
                             <button
                               onClick={() => handleClockIn(j.id)}
-                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
+                              disabled={!!pending}
+                              aria-busy={pending?.jobId === j.id}
+                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 active:scale-[0.98] transition-transform disabled:opacity-50"
                             >
-                              <Play className="size-4" /> {t("Arrived")}
+                              <Play className="size-4" /> {pending?.jobId === j.id ? pending.label : t("Arrived")}
                             </button>
                           ) : (
                             <button
                               onClick={() => handleClockIn(j.id, true)}
-                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 disabled:opacity-50"
+                              disabled={!!pending}
+                              aria-busy={pending?.jobId === j.id}
+                              className="inline-flex items-center gap-2 bg-brand text-brand-foreground text-sm font-medium rounded-lg px-3 py-2 hover:opacity-90 active:scale-[0.98] transition-transform disabled:opacity-50"
                             >
-                              <Clock className="size-4" /> {t("Clock in")}
+                              <Clock className="size-4" /> {pending?.jobId === j.id ? pending.label : t("Clock in")}
                             </button>
                           )}
                         </>

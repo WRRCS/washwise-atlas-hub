@@ -66,15 +66,20 @@ function VisitButtons({ jobId }: { jobId: string }) {
   const tr = useT();
   const { data: visit } = useQuery({ queryKey: ["job-visit", jobId], queryFn: () => getFn({ data: { job_id: jobId } }) });
   const { data: shift } = useQuery({ queryKey: ["my-shift"], queryFn: () => shiftFn(), refetchInterval: 60000 });
+  const runLock = useRef(false);
   const run = async (f: () => Promise<unknown>, msg: string) => {
+    if (runLock.current) return; // ignore extra taps while this one is saving
+    runLock.current = true;
     setBusy(true);
     try {
       await f(); toast.success(msg);
-      ["job-visit", "timesheet", "my-shift", "my-jobs", "jobs"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       qc.invalidateQueries({ queryKey: ["job", jobId] });
+      ["timesheet", "my-shift", "my-jobs", "jobs"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      // Keep the buttons disabled until this appointment shows the new state.
+      await qc.invalidateQueries({ queryKey: ["job-visit"] });
     }
     catch (e) { toast.error(e instanceof Error ? e.message : tr("Something went wrong")); }
-    finally { setBusy(false); }
+    finally { runLock.current = false; setBusy(false); }
   };
   const t = (iso: string) => new Date(iso).toLocaleTimeString(activeLocales(), { hour: "numeric", minute: "2-digit" });
   const onSite = visit && !visit.left_at;
@@ -167,9 +172,22 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
     : null;
 
 
+  // Tick the box immediately, then save; undo the tick if the save fails.
   const onToggle = async (id: string, completed: boolean) => {
-    await toggle({ data: { id, completed } });
-    qc.invalidateQueries({ queryKey: ["job", jobId] });
+    const key = ["job", jobId];
+    const previous = qc.getQueryData(key);
+    qc.setQueryData(key, (old: any) => old && {
+      ...old,
+      sop: (old.sop ?? []).map((s: any) => (s.id === id ? { ...s, completed } : s)),
+    });
+    try {
+      await toggle({ data: { id, completed } });
+    } catch (e) {
+      qc.setQueryData(key, previous);
+      toast.error(e instanceof Error ? e.message : t("Could not save"));
+    } finally {
+      qc.invalidateQueries({ queryKey: key });
+    }
   };
   const onStatus = async (status: "in_progress" | "completed" | "canceled") => {
     if (status === "canceled" && !confirm("Cancel this job?")) return;

@@ -351,6 +351,7 @@ const UK: Record<string, string> = {
   "SOP confirmed": "Інструкцію підтверджено",
   "Save ZIP": "Зберегти ZIP",
   "Saving…": "Збереження…",
+  "Getting location…": "Визначення місцезнаходження…",
   "Scheduled:": "За графіком:",
   "Search team members": "Пошук членів команди",
   "Search team members…": "Пошук членів команди…",

@@ -10,7 +10,7 @@ export type GpsResult =
   | { status: "denied" }
   | { status: "error"; message: string };
 
-export function captureGps(timeoutMs = 10000): Promise<GpsResult> {
+export function captureGps(timeoutMs = 8000): Promise<GpsResult> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       resolve({ status: "unsupported" });
@@ -30,7 +30,8 @@ export function captureGps(timeoutMs = 10000): Promise<GpsResult> {
         if (err.code === err.PERMISSION_DENIED) resolve({ status: "denied" });
         else resolve({ status: "error", message: err.message });
       },
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 },
+      // Reuse a location from the last 30 seconds so taps don't wait for a fresh GPS fix.
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 30_000 },
     );
   });
 }

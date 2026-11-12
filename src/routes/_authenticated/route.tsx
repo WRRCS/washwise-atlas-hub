@@ -3,13 +3,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
 import { DunningBanner } from "@/components/DunningBanner";
 import { useQuery } from "@tanstack/react-query";
+import type { User } from "@supabase/supabase-js";
 
 const BILLING_PATH = "/settings/billing";
 const ONBOARDING_PATH = "/onboarding";
 
+// A passed account check is reused briefly so moving between pages doesn't wait on
+// five network requests every tap. Only "allowed" results are reused; onboarding and
+// billing redirects are always rechecked, and data access is still enforced server-side.
+const GATE_REUSE_MS = 5 * 60 * 1000;
+let passedGate: { userId: string; at: number; user: User } | null = null;
+
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUser = sessionData.session?.user;
+    if (!sessionUser) {
+      passedGate = null;
+      throw redirect({ to: "/auth", search: { redirect: location.href } });
+    }
+    if (
+      passedGate && passedGate.userId === sessionUser.id &&
+      Date.now() - passedGate.at < GATE_REUSE_MS &&
+      !location.pathname.startsWith(ONBOARDING_PATH)
+    ) {
+      return { user: passedGate.user };
+    }
+    passedGate = null;
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       throw redirect({ to: "/auth", search: { redirect: location.href } });
@@ -24,7 +45,10 @@ export const Route = createFileRoute("/_authenticated")({
       supabase.from("user_roles").select("role").eq("user_id", data.user.id),
     ]);
     const isSuperAdmin = (roles ?? []).some((r: any) => r.role === "super_admin");
-    if (isSuperAdmin || !profile?.tenant_id) return { user: data.user };
+    if (isSuperAdmin || !profile?.tenant_id) {
+      passedGate = { userId: data.user.id, at: Date.now(), user: data.user };
+      return { user: data.user };
+    }
 
     // Onboarding gate
     const { data: tenant } = await supabase
@@ -57,6 +81,7 @@ export const Route = createFileRoute("/_authenticated")({
       }
     }
 
+    passedGate = { userId: data.user.id, at: Date.now(), user: data.user };
     return { user: data.user };
   },
   component: RouteComponent,

@@ -100,15 +100,21 @@ export const listMyJobs = createServerFn({ method: "POST" })
       .order("scheduled_start", { ascending: true });
     if (data.from) q = q.gte("scheduled_start", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);
-    const { data: jobs, error } = await q;
+    // Jobs, open clocks and open visits only depend on the assignment list, so load them together.
+    const [{ data: jobs, error }, { data: entries }, { data: openVisits }] = await Promise.all([
+      q,
+      context.supabase
+        .from("time_entries")
+        .select("id, job_id, started_at, clock_in_latitude")
+        .eq("user_id", uid)
+        .is("ended_at", null)
+        .in("job_id", jobIds),
+      (context.supabase as any)
+        .from("job_visits").select("id, job_id, arrived_at")
+        .eq("employee_id", uid).is("left_at", null).in("job_id", jobIds),
+    ]);
     if (error) throw new Error(error.message);
 
-    const { data: entries } = await context.supabase
-      .from("time_entries")
-      .select("id, job_id, started_at, clock_in_latitude")
-      .eq("user_id", uid)
-      .is("ended_at", null)
-      .in("job_id", jobIds);
     const openMap = new Map<string, { id: string; started_at: string; has_gps: boolean }>();
     for (const e of entries ?? []) {
       openMap.set((e as any).job_id, {
@@ -117,58 +123,48 @@ export const listMyJobs = createServerFn({ method: "POST" })
         has_gps: (e as any).clock_in_latitude !== null,
       });
     }
-
-    const { data: openVisits } = await (context.supabase as any)
-      .from("job_visits").select("id, job_id, arrived_at")
-      .eq("employee_id", uid).is("left_at", null).in("job_id", jobIds);
     const visitMap = new Map<string, { visit_id: string; arrived_at: string }>();
     for (const v of (openVisits ?? []) as any[]) visitMap.set(v.job_id, { visit_id: v.id, arrived_at: v.arrived_at });
 
     const allJobIds = (jobs ?? []).map((j: any) => j.id);
-    const teammatesByJob = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }[]>();
-    if (allJobIds.length) {
-      const { data: crew } = await context.supabase
-        .from("job_employees")
-        .select("job_id, employee:profiles!employee_id(id, full_name, avatar_url)")
-        .in("job_id", allJobIds);
-      for (const row of (crew ?? []) as any[]) {
-        const emp = row.employee;
-        if (!emp) continue;
-        const arr = teammatesByJob.get(row.job_id) ?? [];
-        arr.push({ id: emp.id, full_name: emp.full_name, avatar_url: emp.avatar_url });
-        teammatesByJob.set(row.job_id, arr);
-      }
-    }
-
     const clientIds = Array.from(
       new Set((jobs ?? []).map((j: any) => j?.client?.id).filter(Boolean)),
     ) as string[];
+    const none = Promise.resolve({ data: [] as any[] });
+    const [{ data: crew }, { data: specs }, { data: notes }] = await Promise.all([
+      allJobIds.length
+        ? context.supabase.from("job_employees").select("job_id, employee:profiles!employee_id(id, full_name, avatar_url)").in("job_id", allJobIds)
+        : none,
+      clientIds.length
+        ? context.supabase.from("property_specs").select("client_id, key_location, access_notes, pets, parking_notes, special_instructions").in("client_id", clientIds)
+        : none,
+      clientIds.length
+        ? context.supabase.from("client_notes").select("client_id, note, created_at").in("client_id", clientIds).order("created_at", { ascending: false })
+        : none,
+    ]);
+    const teammatesByJob = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }[]>();
+    for (const row of (crew ?? []) as any[]) {
+      const emp = row.employee;
+      if (!emp) continue;
+      const arr = teammatesByJob.get(row.job_id) ?? [];
+      arr.push({ id: emp.id, full_name: emp.full_name, avatar_url: emp.avatar_url });
+      teammatesByJob.set(row.job_id, arr);
+    }
     const specsByClient = new Map<string, PropertySpecsSummary>();
+    for (const s of (specs ?? []) as any[]) {
+      specsByClient.set(s.client_id, {
+        key_location: s.key_location,
+        access_notes: s.access_notes,
+        pets: s.pets,
+        parking_notes: s.parking_notes,
+        special_instructions: s.special_instructions,
+      });
+    }
     const notesByClient = new Map<string, { note: string; created_at: string }[]>();
-    if (clientIds.length) {
-      const { data: specs } = await context.supabase
-        .from("property_specs")
-        .select("client_id, key_location, access_notes, pets, parking_notes, special_instructions")
-        .in("client_id", clientIds);
-      for (const s of (specs ?? []) as any[]) {
-        specsByClient.set(s.client_id, {
-          key_location: s.key_location,
-          access_notes: s.access_notes,
-          pets: s.pets,
-          parking_notes: s.parking_notes,
-          special_instructions: s.special_instructions,
-        });
-      }
-      const { data: notes } = await context.supabase
-        .from("client_notes")
-        .select("client_id, note, created_at")
-        .in("client_id", clientIds)
-        .order("created_at", { ascending: false });
-      for (const n of (notes ?? []) as any[]) {
-        const arr = notesByClient.get(n.client_id) ?? [];
-        arr.push({ note: n.note, created_at: n.created_at });
-        notesByClient.set(n.client_id, arr);
-      }
+    for (const n of (notes ?? []) as any[]) {
+      const arr = notesByClient.get(n.client_id) ?? [];
+      arr.push({ note: n.note, created_at: n.created_at });
+      notesByClient.set(n.client_id, arr);
     }
 
     return (jobs ?? []).map((j: any) => ({
@@ -187,21 +183,25 @@ export type MyShift = { kind: "scheduled" | "work" | "lunch"; description: strin
 export const getMyShift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<MyShift> => {
-    const { data: rows } = await context.supabase.from("time_entries").select("id, started_at")
-      .eq("user_id", context.userId).is("ended_at", null).order("started_at", { ascending: false }).limit(1);
+    const [{ data: rows }, { data: records, error: clockError }] = await Promise.all([
+      context.supabase.from("time_entries").select("id, started_at")
+        .eq("user_id", context.userId).is("ended_at", null).order("started_at", { ascending: false }).limit(1),
+      context.supabase.from("work_clock_entries").select("id,kind,description,started_at").eq("user_id",context.userId).is("ended_at",null).limit(1),
+    ]);
     const e = rows?.[0];
-    const { data: records, error: clockError } = await context.supabase.from("work_clock_entries").select("id,kind,description,started_at").eq("user_id",context.userId).is("ended_at",null).limit(1);
     if (clockError) throw new Error(clockError.message);
     const record = records?.[0];
     if (record?.kind === "lunch") return { kind: "lunch", description: record.description, entry_id: record.id, started_at: record.started_at, on_site_since: null, last_left_at: null };
     const active = e ?? record;
     if (!active) return null;
     const sb = context.supabase as any;
-    const { data: open } = await sb.from("job_visits").select("arrived_at")
-      .eq("employee_id", context.userId).is("left_at", null).order("arrived_at", { ascending: false }).limit(1);
-    const { data: last } = await sb.from("job_visits").select("left_at")
-      .eq("employee_id", context.userId).not("left_at", "is", null).gte("left_at", active.started_at)
-      .order("left_at", { ascending: false }).limit(1);
+    const [{ data: open }, { data: last }] = await Promise.all([
+      sb.from("job_visits").select("arrived_at")
+        .eq("employee_id", context.userId).is("left_at", null).order("arrived_at", { ascending: false }).limit(1),
+      sb.from("job_visits").select("left_at")
+        .eq("employee_id", context.userId).not("left_at", "is", null).gte("left_at", active.started_at)
+        .order("left_at", { ascending: false }).limit(1),
+    ]);
     return { kind: e ? "scheduled" : "work", description: record?.description ?? null, entry_id: active.id, started_at: active.started_at, on_site_since: open?.[0]?.arrived_at ?? null, last_left_at: last?.[0]?.left_at ?? null };
   });
 
@@ -233,10 +233,11 @@ export const clockInDay = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     // Clock in also counts as Arrived at this appointment.
     await context.supabase.from("jobs").update({ status: "in_progress", actual_start: now })
-      .eq("id", data.job_id).in("status", ["scheduled", "in_progress"]);
+      .eq("id", data.job_id).eq("status", "scheduled");
     const sb = context.supabase as any;
-    await sb.from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
-    await sb.from("job_visits").insert({ tenant_id: (prof as any).tenant_id, job_id: data.job_id, employee_id: context.userId, arrived_at: now });
+    // One locked database step: repeated taps return the visit already open at this appointment.
+    const { error: ve } = await sb.rpc("record_job_arrival", { _job: data.job_id });
+    if (ve) throw new Error(ve.message);
     if (!other?.length && entry) {
       const { notifySavedClock } = await import('./clock-email-alerts.server');
       await notifySavedClock(context, entry.id, 'clock_in');
@@ -393,12 +394,13 @@ export const clockIn = createServerFn({ method: "POST" })
       .from("jobs")
       .update({ status: "in_progress", actual_start: now })
       .eq("id", data.job_id)
-      .in("status", ["scheduled", "in_progress"]);
+      .eq("status", "scheduled");
     if (ue) throw new Error(ue.message);
     // "Arrived" and clock-in are one action: also record the visit at this appointment.
     const sb = context.supabase as any;
-    await sb.from("job_visits").update({ left_at: now }).eq("employee_id", context.userId).is("left_at", null);
-    await sb.from("job_visits").insert({ tenant_id: (prof as any).tenant_id, job_id: data.job_id, employee_id: context.userId, arrived_at: now });
+    // One locked database step: repeated taps return the visit already open at this appointment.
+    const { error: ve } = await sb.rpc("record_job_arrival", { _job: data.job_id });
+    if (ve) throw new Error(ve.message);
     if (!existing && entry) {
       const { notifySavedClock } = await import('./clock-email-alerts.server');
       await notifySavedClock(context, entry.id, 'clock_in');
