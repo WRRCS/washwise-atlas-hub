@@ -28,6 +28,7 @@ import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/l
 import { ZoomPanSurface } from "@/components/zoom-pan-surface";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
 import { JobDetailView } from "./jobs.$jobId";
+import { canOpenAppointment } from "@/lib/appointment-access";
 import { PropertyTypeField } from "@/components/property-type-field";
 import { selectedPropertyType, defaultServiceTypeId, serviceDefaultOverridden, type PropertyTypeDraft } from "@/lib/property-type";
 
@@ -113,6 +114,14 @@ function SchedulePage() {
   const seesAllHours = hoursViewer.isOwnerOrManager;
   // Employees get a narrow team column with first names so more of their shift fits on screen.
   const compactNames = !!headerPerms && !headerPerms.isOwnerOrManager;
+  // Everyone sees the whole schedule; only their own appointments can be tapped open.
+  const canOpen = (j: any, rowEmployeeId?: string) => canOpenAppointment({
+    viewerId: headerPerms?.userId,
+    isReviewer: !!headerPerms?.isOwnerOrManager,
+    assigneeIds: (j.assignees ?? []).map((a: any) => a.id),
+    assignedTo: j.assigned_to,
+    rowEmployeeId,
+  });
 
   const colorMut = useMutation({
     mutationFn: (v: { clientId: string; propertyId?: string | null; color: string | null }) =>
@@ -606,6 +615,18 @@ function SchedulePage() {
                                 {!jobLocation(j).label && <p className="mt-1 text-xs font-medium break-words">{label}</p>}
                               </>
                             );
+                            if (!canManageSchedule && !canOpen(j, emp.id)) {
+                              return (
+                                <div
+                                  key={j.id}
+                                  className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
+                                  style={{ backgroundColor: c }}
+                                  title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? ` (${tr("draft")})` : ""}`}
+                                >
+                                  {cardBody}
+                                </div>
+                              );
+                            }
                             if (!canManageSchedule) {
                               return (
                                 <button
@@ -834,8 +855,9 @@ function SchedulePage() {
       ) : (
         <div className="max-w-4xl mx-auto w-full px-6 md:px-8 py-6 space-y-2">
           {jobs.length === 0 && <p className="text-sm text-muted-foreground">{tr("No jobs scheduled this week.")}</p>}
-          {jobs.map((j: any) => (
-            <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} data-schedule-day={dayKeyTZ(j.scheduled_start, tz)} className={`block bg-card rounded-lg ring-1 p-4 hover:ring-brand/30 transition ${flashToday && dayKeyTZ(j.scheduled_start, tz) === todayKeyTZ ? "ring-2 ring-brand" : "ring-black/5"}`}>
+          {jobs.map((j: any) => {
+            const rowClass = `block bg-card rounded-lg ring-1 p-4 transition ${flashToday && dayKeyTZ(j.scheduled_start, tz) === todayKeyTZ ? "ring-2 ring-brand" : "ring-black/5"}`;
+            const body = (
               <div className="flex flex-wrap items-start gap-3 sm:gap-4">
                 <div className="w-full sm:w-28 shrink-0">
                   <p className="text-xs text-muted-foreground">{fmtDateTZ(j.scheduled_start, tz)}</p>
@@ -854,8 +876,14 @@ function SchedulePage() {
                   {j.assignees.length === 0 && <span className="text-xs text-muted-foreground">{tr("Unassigned")}</span>}
                 </div>
               </div>
-            </Link>
-          ))}
+            );
+            // Other cleaners' appointments are visible on the schedule but cannot be opened.
+            return canOpen(j) ? (
+              <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }} data-schedule-day={dayKeyTZ(j.scheduled_start, tz)} className={`${rowClass} hover:ring-brand/30`}>{body}</Link>
+            ) : (
+              <div key={j.id} data-schedule-day={dayKeyTZ(j.scheduled_start, tz)} className={rowClass}>{body}</div>
+            );
+          })}
         </div>
       )}
 

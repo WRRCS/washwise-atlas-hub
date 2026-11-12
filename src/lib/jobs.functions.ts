@@ -6,6 +6,7 @@ import { clientContact, staffDirectory } from "@/lib/privacy";
 import { planAssigneeChange, blockedRemovals, findPasteTarget, type PasteCandidate } from "@/lib/job-assignees";
 import { DEFAULT_TZ, dayKeyTZ } from "@/lib/tz";
 import { ownSopConfirmation } from "@/lib/sop-confirmation";
+import { canOpenAppointment } from "@/lib/appointment-access";
 import { requirePropertyType } from "@/lib/property-type";
 import {
   addMonthsISO,
@@ -270,6 +271,19 @@ export const getJob = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!job) return null;
+    // Everyone sees the schedule, but only assigned cleaners (and owners/managers) may open an appointment.
+    const [{ data: reviewer, error: reviewerError }, { data: assignedLinks, error: linkError }] = await Promise.all([
+      context.supabase.rpc("is_owner_or_manager" as never),
+      context.supabase.from("job_employees").select("employee_id").eq("job_id", data.id),
+    ]);
+    if (reviewerError) throw new Error(reviewerError.message);
+    if (linkError) throw new Error(linkError.message);
+    if (!canOpenAppointment({
+      viewerId: context.userId,
+      isReviewer: !!reviewer,
+      assigneeIds: (assignedLinks ?? []).map((l) => l.employee_id),
+      assignedTo: (job as { assigned_to?: string | null }).assigned_to,
+    })) throw new Error("This appointment belongs to another cleaner, so it can't be opened.");
     const { data: ownConfirmation, error: confirmationError } = await context.supabase
       .from("job_sop_confirmations").select("job_id, employee_id, confirmed_at")
       .eq("job_id", data.id).eq("employee_id", context.userId).maybeSingle();
@@ -337,7 +351,7 @@ export const getJob = createServerFn({ method: "POST" })
       employee_id: string | null;
     };
     let sopRows = ((job as { sop?: SopItem[] }).sop ?? []) as SopItem[];
-    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    const isMgr = reviewer;
     let sopByEmployee: { employee_id: string; name: string; items: SopItem[] }[] | null = null;
 
     if (isMgr) {

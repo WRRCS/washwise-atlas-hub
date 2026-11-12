@@ -143,9 +143,11 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
   const canMessageClient = !!(caps?.isOwner || caps?.isStaff);
   const canSeePricing = !!(perms?.isOwner || perms?.canViewPricing);
 
-  const { data: job, isLoading } = useQuery({
+  const { data: job, isLoading, error: jobError } = useQuery({
     queryKey: ["job", jobId],
     queryFn: () => fetchJob({ data: { id: jobId } }),
+    // A blocked appointment stays blocked; don't keep asking.
+    retry: (count, e) => !/another cleaner/.test((e as Error)?.message ?? "") && count < 2,
   });
 
   const inventoryFn = useServerFn(getJobInventory);
@@ -159,6 +161,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
   const closeFn = useServerFn(closeJobs);
 
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">{t("Loading…")}</div>;
+  if (jobError && /another cleaner/.test((jobError as Error).message)) return <div className="p-8 text-sm text-muted-foreground">{t("This appointment belongs to another cleaner, so it can't be opened.")}</div>;
   if (!job) return <div className="p-8">{t("Not found.")}</div>;
 
   const sop = (job.sop ?? []).slice().sort((a, b) => a.position - b.position);
