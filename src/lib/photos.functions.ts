@@ -13,8 +13,8 @@ export const finishPhotoUploadBatch = createServerFn({ method: "POST" })
     const { data: rows, error } = await context.supabase.from("job_photos").select("id").eq("job_id", data.job_id).eq("uploaded_by", context.userId).in("id", data.photo_ids);
     if (error) throw new Error(error.message);
     if (!profile || rows?.length !== new Set(data.photo_ids).size) throw new Error("Photo batch has not been saved by this cleaner");
-    const { notifySavedPhotoBatch } = await import("./photo-upload-alerts.server");
-    await notifySavedPhotoBatch(context.supabase, profile.tenant_id, data.job_id, context.userId, data.photo_ids);
+    const { announceSavedPhotoBatch } = await import("./photo-upload-push.server");
+    await announceSavedPhotoBatch(context.supabase, profile.tenant_id, data.job_id, context.userId, data.photo_ids);
     return { ok: true };
   });
 
@@ -246,8 +246,8 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
 
     if (newlySavedPhotoIds.length) {
       try {
-        const { notifySavedPhotoBatch } = await import("./photo-upload-alerts.server");
-        await notifySavedPhotoBatch(context.supabase, prof.tenant_id, data.job_id, context.userId, newlySavedPhotoIds);
+        const { announceSavedPhotoBatch } = await import("./photo-upload-push.server");
+        await announceSavedPhotoBatch(context.supabase, prof.tenant_id, data.job_id, context.userId, newlySavedPhotoIds);
       } catch (error) { console.error("Photo email preparation failed", error instanceof Error ? error.message : "Unknown error"); }
     }
     return { ok: true };
