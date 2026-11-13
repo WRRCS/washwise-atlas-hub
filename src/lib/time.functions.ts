@@ -87,10 +87,13 @@ export const listMyJobs = createServerFn({ method: "POST" })
     const uid = context.userId;
     const { data: links, error: le } = await context.supabase
       .from("job_employees")
-      .select("job_id")
+      .select("job_id, scheduled_start, scheduled_end")
       .eq("employee_id", uid);
     if (le) throw new Error(le.message);
     const jobIds = (links ?? []).map((l: any) => l.job_id);
+    // A cleaner's own hours on a shared cleaning replace the cleaning's time on their schedule.
+    const ownHours = new Map<string, { start: string; end: string }>();
+    for (const l of (links ?? []) as any[]) if (l.scheduled_start && l.scheduled_end) ownHours.set(l.job_id, { start: l.scheduled_start, end: l.scheduled_end });
     if (!jobIds.length) return [];
 
     let q = context.supabase
@@ -98,7 +101,7 @@ export const listMyJobs = createServerFn({ method: "POST" })
       .select("id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, notes, property:client_properties!jobs_property_id_fkey(label,address), client:clients(id,first_name,last_name,service_address), service:service_types(id,name,color)")
       .in("id", jobIds)
       .order("scheduled_start", { ascending: true });
-    if (data.from) q = q.gte("scheduled_start", data.from);
+    if (data.from) q = q.gt("scheduled_end", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);
     // Jobs, open clocks and open visits only depend on the assignment list, so load them together.
     const [{ data: jobs, error }, { data: entries }, { data: openVisits }] = await Promise.all([
@@ -114,6 +117,17 @@ export const listMyJobs = createServerFn({ method: "POST" })
         .eq("employee_id", uid).is("left_at", null).in("job_id", jobIds),
     ]);
     if (error) throw new Error(error.message);
+    for (const j of (jobs ?? []) as any[]) {
+      const own = ownHours.get(j.id);
+      if (own) { j.scheduled_start = own.start; j.scheduled_end = own.end; }
+    }
+    // Keep only cleanings whose (own) hours fall in the requested range, in time order.
+    const inRange = (j: any) =>
+      (!data.from || Date.parse(j.scheduled_end) > Date.parse(data.from)) && (!data.to || Date.parse(j.scheduled_start) < Date.parse(data.to));
+    if (jobs) {
+      const kept = (jobs as any[]).filter(inRange).sort((a, b) => Date.parse(a.scheduled_start) - Date.parse(b.scheduled_start));
+      (jobs as any[]).splice(0, jobs.length, ...kept);
+    }
 
     const openMap = new Map<string, { id: string; started_at: string; has_gps: boolean }>();
     for (const e of entries ?? []) {

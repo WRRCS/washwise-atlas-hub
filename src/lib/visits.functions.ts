@@ -234,14 +234,14 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<DailyTimesheet> => {
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
     const sb = context.supabase as any;
-    const jobSel = "id, service_location_label,service_address, scheduled_start, scheduled_end, status, assigned_to, client:clients(first_name,last_name), property:client_properties(label,address), job_employees(employee_id)";
+    const jobSel = "id, service_location_label,service_address, scheduled_start, scheduled_end, status, assigned_to, client:clients(first_name,last_name), property:client_properties(label,address), job_employees(employee_id, scheduled_start, scheduled_end)";
     let te = sb.from("time_entries").select("id, user_id, job_id, started_at, ended_at").lt("started_at", data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
     let cr = sb.from("work_clock_entries").select("id,user_id,kind,activity_type,description,job_id,started_at,ended_at").lt("started_at",data.to).or(`ended_at.is.null,ended_at.gt.${data.from}`);
     let jv = sb.from("job_visits").select("id, job_id, employee_id, arrived_at, left_at").lt("arrived_at",data.to).or(`left_at.is.null,left_at.gt.${data.from}`);
     if (!isMgr) { te = te.eq("user_id", context.userId); cr = cr.eq("user_id",context.userId); jv = jv.eq("employee_id", context.userId); }
     const [{ data: entries, error: teError }, { data: visits }, { data: jobs }, { data: profs }, {data: clockRows,error: crError}, {data: attendance,error:attendanceError}] = await Promise.all([
       te, jv,
-      sb.from("jobs").select(jobSel).gte("scheduled_start", data.from).lt("scheduled_start", data.to).neq("status", "canceled"),
+      sb.from("jobs").select(jobSel).gt("scheduled_end", data.from).lt("scheduled_start", data.to).neq("status", "canceled"),
       context.supabase.rpc("staff_directory"), cr, sb.from("attendance_corrections").select("job_id,employee_id,status"),
     ]);
     if (teError || crError || attendanceError) throw new Error(teError?.message ?? crError?.message ?? attendanceError?.message);
@@ -259,6 +259,11 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
       return [c?.first_name, c?.last_name].filter(Boolean).join(" ") || "Appointment";
     };
     const prop = (j: any) => j?.service_location_label || j?.service_address || null;
+    // Each cleaner's scheduled time is their own hours on a shared cleaning.
+    const own = (j: any, emp: string) => {
+      const l = (j?.job_employees ?? []).find((x: any) => x.employee_id === emp);
+      return { start: l?.scheduled_start ?? j?.scheduled_start ?? null, end: l?.scheduled_end ?? j?.scheduled_end ?? null };
+    };
     const rows: DailyRow[] = [];
     const seen = new Set<string>();
     for (const v of (visits ?? []) as any[]) {
@@ -267,7 +272,7 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
       rows.push({
         key: v.id, employee_id: v.employee_id, employee_name: names.get(v.employee_id) ?? "Unknown",
         job_id: v.job_id, client: label(j), property: prop(j),
-        scheduled_start: j?.scheduled_start ?? null, scheduled_end: j?.scheduled_end ?? null,
+        scheduled_start: own(j, v.employee_id).start, scheduled_end: own(j, v.employee_id).end,
         visit_id: v.id, arrived_at: v.arrived_at, left_at: v.left_at, drive_min: 0,
       });
     }
@@ -276,10 +281,13 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
       for (const e of emps) {
         if (!isMgr && e !== context.userId) continue;
         if (seen.has(`${e}|${j.id}`)) continue;
+        const hours = own(j, e);
+        // Only the day this cleaner is scheduled; a cleaning across days lists each cleaner on their own day.
+        if (!(Date.parse(hours.start) < Date.parse(data.to) && Date.parse(hours.start) >= Date.parse(data.from))) continue;
         rows.push({
           key: `${j.id}|${e}`, employee_id: e, employee_name: names.get(e) ?? "Unknown",
           job_id: j.id, client: label(j), property: prop(j),
-          scheduled_start: j.scheduled_start, scheduled_end: j.scheduled_end,
+          scheduled_start: hours.start, scheduled_end: hours.end,
           visit_id: null, arrived_at: null, left_at: null, drive_min: 0,
         });
       }

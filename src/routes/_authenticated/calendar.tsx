@@ -6,7 +6,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs } from "@/lib/jobs.functions";
+import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs, setCleanerHours, moveCleanerToDay, type CleanerHoursResult } from "@/lib/jobs.functions";
+import { withOwnHours, needsSplitChoice } from "@/lib/cleaner-hours";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
@@ -198,6 +200,46 @@ function SchedulePage() {
     onError: (e: any) => toast.error(e?.message ?? "Move failed"),
   });
 
+  // A cleaner's hours went outside the cleaning, so its overall (client-facing) time grew.
+  const [grownAlert, setGrownAlert] = useState<{ cleaner: string; result: CleanerHoursResult } | null>(null);
+  // Moving one of several cleaners to another day: ask whether it's a separate invoice.
+  const [splitAsk, setSplitAsk] = useState<{ jobId: string; employeeId: string; cleaner: string; start: Date; end: Date } | null>(null);
+  const hoursFn = useServerFn(setCleanerHours);
+  const hoursMut = useMutation({
+    mutationFn: (v: { jobId: string; employeeId: string; cleaner: string; start: Date; end: Date }) =>
+      hoursFn({ data: { job_id: v.jobId, employee_id: v.employeeId, scheduled_start: v.start.toISOString(), scheduled_end: v.end.toISOString() } }),
+    onSuccess: (r, v) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success(r.single ? "Shift moved" : `${v.cleaner}'s hours saved — everyone else stays the same`);
+      if (r.grew) setGrownAlert({ cleaner: v.cleaner, result: r });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save hours"),
+  });
+  const splitFn = useServerFn(moveCleanerToDay);
+  const splitMut = useMutation({
+    mutationFn: (v: { jobId: string; employeeId: string; cleaner: string; start: Date; end: Date; invoice: "same" | "separate" }) =>
+      splitFn({ data: { job_id: v.jobId, employee_id: v.employeeId, scheduled_start: v.start.toISOString(), scheduled_end: v.end.toISOString(), invoice: v.invoice } }),
+    onSuccess: (r, v) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      setSplitAsk(null);
+      toast.success(v.invoice === "same"
+        ? `${v.cleaner} moved — still one cleaning and one invoice`
+        : r.result === "separate" && r.placed.result === "added"
+          ? `${v.cleaner} moved and joined that day's cleaning for ${r.placed.client}`
+          : `${v.cleaner} moved to a separate cleaning with its own invoice`);
+      if (r.cleaning?.grew) setGrownAlert({ cleaner: v.cleaner, result: r.cleaning });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not move cleaner"),
+  });
+  /** Change one cleaner's hours; a different day on a shared cleaning asks about the invoice first. */
+  const changeCleanerHours = (j: any, employeeId: string, cleaner: string, start: Date, end: Date) => {
+    if (needsSplitChoice(j.assignees?.length ?? 0, dayKeyTZ(withOwnHours(j, employeeId).scheduled_start, tz), dayKeyTZ(start, tz))) {
+      setSplitAsk({ jobId: j.id, employeeId, cleaner, start, end });
+      return;
+    }
+    hoursMut.mutate({ jobId: j.id, employeeId, cleaner, start, end });
+  };
+
   const dupFn = useServerFn(duplicateJobToEmployee);
   const dupMut = useMutation({
     mutationFn: (v: { id: string; employeeId: string; start: Date; end: Date; mode?: "auto" | "new" }) =>
@@ -207,6 +249,7 @@ function SchedulePage() {
       const when = format(new Date(r.start), "EEE, MMM d");
       if (r.result === "already") toast.info(`${r.cleaner} is already on this job`);
       else if (r.result === "added") toast.success(`Added ${r.cleaner} to ${r.client} — ${when}`);
+      if (r.result === "added" && r.cleaning?.grew) setGrownAlert({ cleaner: r.cleaner, result: r.cleaning });
       else toast.success(`New job created for ${r.cleaner} — ${r.client}, ${when}`);
     },
     onError: (e: any) => toast.error(e?.message ?? "Copy failed"),
@@ -274,12 +317,14 @@ function SchedulePage() {
   const jobsByEmpDay = useMemo(() => {
     const m = new Map<string, Map<string, any[]>>();
     for (const j of jobs) {
-      const dayKey = dayKeyTZ(j.scheduled_start, tz);
       for (const a of j.assignees) {
+        // Each cleaner's block shows their own hours on a shared cleaning.
+        const own = withOwnHours(j, a.id);
+        const dayKey = dayKeyTZ(own.scheduled_start, tz);
         if (!m.has(a.id)) m.set(a.id, new Map());
         const dm = m.get(a.id)!;
         if (!dm.has(dayKey)) dm.set(dayKey, []);
-        dm.get(dayKey)!.push(j);
+        dm.get(dayKey)!.push(own);
       }
     }
     return m;
@@ -386,7 +431,11 @@ function SchedulePage() {
     const newEnd = new Date(newStart.getTime() + (oldEnd.getTime() - oldStart.getTime()));
     if (!canManageSchedule) return;
     if (sameEmp) {
-      moveMut.mutate({ id, start: newStart, end: newEnd });
+      const job = (jobs as any[]).find((x) => x.id === id);
+      const cleaner = cleaners.find((c: any) => c.id === employeeId)?.full_name ?? "This cleaner";
+      // Only this cleaner moves; a shared cleaning asks whether the new day is a separate invoice.
+      if (job && srcEmpId && (job.assignees?.length ?? 0) > 1) changeCleanerHours(job, employeeId, cleaner, newStart, newEnd);
+      else moveMut.mutate({ id, start: newStart, end: newEnd });
     } else {
       dupMut.mutate({ id, employeeId, start: newStart, end: newEnd });
     }
@@ -724,11 +773,16 @@ function SchedulePage() {
                                         tz={tz}
                                         startISO={j.scheduled_start}
                                         endISO={j.scheduled_end}
-                                        saving={moveMut.isPending}
+                                        saving={hoursMut.isPending || splitMut.isPending}
                                         onSave={(startISO, endISO) =>
-                                          moveMut.mutate({ id: j.id, start: new Date(startISO), end: new Date(endISO) })
+                                          changeCleanerHours((jobs as any[]).find((x) => x.id === j.id) ?? j, emp.id, emp.full_name ?? "This cleaner", new Date(startISO), new Date(endISO))
                                         }
                                       />
+                                      {(j.assignees?.length ?? 0) > 1 && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Changes only {firstNames.get(emp.id) ?? emp.full_name ?? "this cleaner"}'s hours. Whole cleaning: {fmtTimeTZ(j.job_start, tz)}–{fmtTimeTZ(j.job_end, tz)}
+                                        </p>
+                                      )}
                                        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                                          <Copy className="size-3" /> Drag onto another team member to add them to this cleaning.
                                        </p>
@@ -886,6 +940,46 @@ function SchedulePage() {
           })}
         </div>
       )}
+
+      <AlertDialog open={!!splitAsk} onOpenChange={(o) => { if (!o && !splitMut.isPending) setSplitAsk(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move {splitAsk?.cleaner} to {splitAsk ? fmtDateTZ(splitAsk.start.toISOString(), tz) : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Only {splitAsk?.cleaner} moves; everyone else stays on the original day. Should this day be billed on its own invoice, or stay part of the same cleaning with one invoice for the whole job?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+            <Button disabled={splitMut.isPending} onClick={() => splitAsk && splitMut.mutate({ ...splitAsk, invoice: "separate" })}>
+              Separate cleaning — its own invoice
+            </Button>
+            <Button variant="outline" disabled={splitMut.isPending} onClick={() => splitAsk && splitMut.mutate({ ...splitAsk, invoice: "same" })}>
+              Same cleaning across days — one invoice
+            </Button>
+            <AlertDialogCancel disabled={splitMut.isPending} className="mt-0">Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!grownAlert} onOpenChange={(o) => { if (!o) setGrownAlert(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="mx-auto sm:mx-0 grid size-11 place-items-center rounded-full bg-destructive/15 text-destructive" aria-hidden>
+              <span className="text-2xl font-black leading-none">!</span>
+            </div>
+            <AlertDialogTitle className="text-destructive">Check the cleaning's time</AlertDialogTitle>
+            <AlertDialogDescription>
+              {grownAlert?.cleaner}'s hours go outside this cleaning, so its overall time — what the client sees — changed
+              from <strong>{grownAlert ? `${fmtDateTZ(grownAlert.result.old_start, tz)} ${fmtTimeTZ(grownAlert.result.old_start, tz)}–${fmtTimeTZ(grownAlert.result.old_end, tz)}` : ""}</strong>
+              {" "}to <strong>{grownAlert ? `${fmtDateTZ(grownAlert.result.new_start, tz)} ${fmtTimeTZ(grownAlert.result.new_start, tz)}–${dayKeyTZ(grownAlert.result.new_start, tz) === dayKeyTZ(grownAlert.result.new_end, tz) ? "" : `${fmtDateTZ(grownAlert.result.new_end, tz)} `}${fmtTimeTZ(grownAlert.result.new_end, tz)}` : ""}</strong>.
+              If that's a mistake, change {grownAlert?.cleaner}'s hours back. No one was notified about this.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setGrownAlert(null)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {dialogSeed && (
         <NewJobDialog

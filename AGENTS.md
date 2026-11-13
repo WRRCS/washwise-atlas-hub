@@ -28,7 +28,7 @@
 - Employee reminder pilots use manager-selected participants and a database delivery gate; claims lock the employee and recheck eligibility, keeping nonparticipants and other queues isolated.
 - Offline registration keeps root scope while Web Push uses a distinct messaging scope and verified browser registration; signed-in ownership checks and sign-out cleanup prevent worker replacement and shared-device identity reuse.
 - Admin desktop density is scoped through admin-layout and shared CSS sizing tokens; keep mobile employee typography unchanged and preserve schedule drag/drop handlers.
-- Week-grid columns/min width live only in shared .schedule-row CSS tokens (no inline templates or row min-w); desktop tracks use minmax(0,1fr), narrow screens keep readable minimums with overflow-aware arrows, and min-width:0 children stay inside a bounded .schedule-scroll so cards cannot push Sunday out.
+- Week-grid columns live only in .schedule-row CSS tokens (no inline templates/row min-w); desktop minmax(0,1fr), narrow screens keep minimums with overflow arrows, min-width:0 children in a bounded .schedule-scroll so Sunday stays visible.
 - Sidebar collapse is a per-device browser preference read through a useSyncExternalStore module store (server snapshot expanded), because AppShell remounts per page and must not flash or re-expand on navigation.
 - PhotoShareDialog uses a bounded flex layout with fixed header/link actions/footer and one scrolling photo body; employee groups are keyed by uploader ID, not display name.
 - Shared DialogContent bounds viewport height and provides sticky direct headers/footers so long forms retain accessible actions.
@@ -42,5 +42,5 @@
 - Employee UI text uses useT/translateNow keyed by English source in the i18n.tsx UK dictionary; SOP text uses *_uk columns via usePick, so gaps fall back to English.
 - Change cleaners only via updateJobAssignees: validate all visits first, never remove a cleaner with recorded work on that visit, keep the current lead in jobs.assigned_to (RLS reads it).
 - Staff invites create the sign-in account with the existing profile id, so invites never spawn a second empty team member.
-- Schedule paste/cross-cleaner drag joins a matching job via findPasteTarget (same client/property/service/day, overlapping, not open/canceled); only Duplicate job or no match creates one, so a cleaning stays one job/invoice.
+- Paste/cross-cleaner drag joins a findPasteTarget match (same client/property/service/day, overlapping) else creates a job. Per-cleaner hours: job_employees times (null=follow job), set only via set_cleaner_hours (pins teammates, job window only grows).
 - Property inventory: lists in property_inventory_items; per-visit values shared by the appointment's cleaners in job_inventory_checks, written only via save_job_inventory (rechecks assignment and item type).

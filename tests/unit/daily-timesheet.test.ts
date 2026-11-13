@@ -16,7 +16,7 @@ describe("daily timesheet editable clock records", () => {
       rpc: async (name: string) => ({ data: name === "staff_directory" ? [{ id: "employee", full_name: "Test Cleaner" }] : true }),
       from: (table: string) => {
         const query: any = { then: (resolve: (result: unknown) => unknown) => Promise.resolve({ data: table === "time_entries" ? [stored] : [], error: null }).then(resolve) };
-        for (const method of ["select", "lt", "or", "gte", "neq", "eq"]) query[method] = () => query;
+        for (const method of ["select", "lt", "gt", "or", "gte", "neq", "eq"]) query[method] = () => query;
         return query;
       },
     };

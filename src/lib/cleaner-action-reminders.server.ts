@@ -5,7 +5,7 @@ export async function loadActionState(db:Db,jobId:string,userId:string,pilot=fal
     db.from("jobs").select("id,tenant_id,scheduled_start,scheduled_end,status,assigned_to,service_location_label,service_address").eq("id",jobId).maybeSingle(),
     db.from("profiles").select("tenant_id,is_active").eq("id",userId).maybeSingle(),
     db.from("cleaner_action_reminder_settings").select("*").eq("user_id",userId).maybeSingle(),
-    db.from("job_employees").select("id").eq("job_id",jobId).eq("employee_id",userId),
+    db.from("job_employees").select("id,scheduled_start,scheduled_end").eq("job_id",jobId).eq("employee_id",userId),
     db.from("time_entries").select("id").eq("user_id",userId).is("ended_at",null),
     db.from("work_clock_entries").select("kind").eq("user_id",userId).is("ended_at",null),
     db.from("job_visits").select("id").eq("job_id",jobId).eq("employee_id",userId).limit(1),
@@ -16,7 +16,10 @@ export async function loadActionState(db:Db,jobId:string,userId:string,pilot=fal
   if(failure)throw new Error(failure.error.message);
   const [{data:job},{data:profile},{data:settings},{data:links},{data:clock},{data:other},{data:visits}] = results;
   if(!job || (!settings && !pilot) || profile?.tenant_id!==job.tenant_id || (settings && settings.tenant_id!==job.tenant_id))return null;
-  return {job,settings,userId,assigned:job.assigned_to===userId || !!links?.length,active:!!profile.is_active,clockedIn:!!clock?.length || !!other?.some((r:any)=>r.kind==="work"),onLunch:!!other?.some((r:any)=>r.kind==="lunch"),arrived:!!visits?.length};
+  // Remind a cleaner for their own hours on a shared cleaning.
+  const own=links?.find((l:any)=>l.scheduled_start&&l.scheduled_end);
+  const ownJob=own?{...job,scheduled_start:own.scheduled_start,scheduled_end:own.scheduled_end}:job;
+  return {job:ownJob,settings,userId,assigned:job.assigned_to===userId || !!links?.length,active:!!profile.is_active,clockedIn:!!clock?.length || !!other?.some((r:any)=>r.kind==="work"),onLunch:!!other?.some((r:any)=>r.kind==="lunch"),arrived:!!visits?.length};
 }
 export async function enqueueActionReminders(db:Db,now=Date.now()) {
   const {data:pilots,error:pilotError}=await db.from("employee_reminder_pilots").select("tenant_id,participant_ids,delivery_enabled").eq("delivery_enabled",true);

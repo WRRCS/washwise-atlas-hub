@@ -302,6 +302,13 @@
       "when": 1794543717839,
       "tag": "0042_timesheet_line_any_client",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794547331763,
+      "tag": "0043_per_cleaner_hours",
+      "breakpoints": true
     }
   ]
 }

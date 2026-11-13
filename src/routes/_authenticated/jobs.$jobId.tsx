@@ -25,7 +25,7 @@ import { usePick, useT, activeLocales, dateLocaleOpts } from "@/lib/i18n";
 import { JobGpsMap } from "@/components/job-gps-map";
 import { format } from "date-fns";
 import { useBusinessTz } from "@/hooks/use-business-tz";
-import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
+import { dayKeyTZ, hourMinuteTZ, zonedToUTCISO, fmtTimeTZ } from "@/lib/tz";
 import { Camera, Check, ImagePlus, MessageSquare, Navigation, Send, Trash2, X, Link2 } from "lucide-react";
 import { PhotoShareDialog } from "@/components/photo-share-dialog";
 import { usePhotoDownloads } from "@/components/photo-download-controls";
@@ -471,7 +471,14 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Assignment")}</h4>
             {job.assignees && job.assignees.length ? (
-              <ul className="space-y-1">{job.assignees.map((a: any) => <li key={a.id} className="text-sm">{a.full_name ?? "—"}</li>)}</ul>
+              <ul className="space-y-1">{job.assignees.map((a: any) => (
+                <li key={a.id} className="text-sm">
+                  {a.full_name ?? "—"}
+                  {a.scheduled_start && a.scheduled_end && (
+                    <span className="text-muted-foreground"> · {fmtTimeTZ(a.scheduled_start, "America/Los_Angeles")}–{fmtTimeTZ(a.scheduled_end, "America/Los_Angeles")}</span>
+                  )}
+                </li>
+              ))}</ul>
             ) : <p className="text-sm text-muted-foreground">{t("Unassigned")}</p>}
             {canMessageClient && <JobAssigneesEditor jobId={jobId} assignees={job.assignees ?? []} recurring={!!job.recurrence_group_id} />}
           </div>

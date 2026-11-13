@@ -1665,6 +1665,8 @@ export type Database = {
           employee_id: string
           id: string
           job_id: string
+          scheduled_end: string | null
+          scheduled_start: string | null
           tenant_id: string
         }
         Insert: {
@@ -1672,6 +1674,8 @@ export type Database = {
           employee_id: string
           id?: string
           job_id: string
+          scheduled_end?: string | null
+          scheduled_start?: string | null
           tenant_id: string
         }
         Update: {
@@ -1679,6 +1683,8 @@ export type Database = {
           employee_id?: string
           id?: string
           job_id?: string
+          scheduled_end?: string | null
+          scheduled_start?: string | null
           tenant_id?: string
         }
         Relationships: [
@@ -4250,6 +4256,15 @@ export type Database = {
     }
     Functions: {
       _client_name: { Args: { _client_id: string }; Returns: string }
+      _enqueue_employee_appointment_reminder: {
+        Args: {
+          _employee: string
+          _job: string
+          _start: string
+          _tenant: string
+        }
+        Returns: undefined
+      }
       _reports_can_cpni: { Args: never; Returns: boolean }
       _reports_guard: { Args: never; Returns: undefined }
       admin_correct_timesheet: {
@@ -4642,6 +4657,10 @@ export type Database = {
       save_job_inventory: {
         Args: { _item: string; _job: string; _level: string; _quantity: number }
         Returns: undefined
+      }
+      set_cleaner_hours: {
+        Args: { _employee: string; _end: string; _job: string; _start: string }
+        Returns: Json
       }
       set_my_phone_sharing: {
         Args: { _phone?: string; _share: boolean }

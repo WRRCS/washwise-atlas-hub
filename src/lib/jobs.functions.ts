@@ -16,7 +16,8 @@ import {
 } from "@/lib/recurrence";
 
 
-export type JobAssignee = { id: string; full_name: string | null };
+/** scheduled_start/end are this cleaner's own hours; null = they follow the cleaning's time. */
+export type JobAssignee = { id: string; full_name: string | null; scheduled_start?: string | null; scheduled_end?: string | null };
 export type JobRow = {
   id: string;
   status: "scheduled" | "in_progress" | "completed" | "canceled";
@@ -41,13 +42,13 @@ async function loadAssignees(supabase: any, jobIds: string[]) {
   if (!jobIds.length) return new Map<string, JobAssignee[]>();
   const { data: links } = await supabase
     .from("job_employees")
-    .select("job_id, employee_id, profile:profiles!job_employees_employee_id_fkey(id, full_name)")
+    .select("job_id, employee_id, scheduled_start, scheduled_end, profile:profiles!job_employees_employee_id_fkey(id, full_name)")
     .in("job_id", jobIds);
   const map = new Map<string, JobAssignee[]>();
   for (const l of links ?? []) {
     const arr = map.get(l.job_id) ?? [];
     const p = (l as any).profile;
-    if (p) arr.push({ id: p.id, full_name: p.full_name });
+    if (p) arr.push({ id: p.id, full_name: p.full_name, scheduled_start: (l as any).scheduled_start ?? null, scheduled_end: (l as any).scheduled_end ?? null });
     map.set(l.job_id, arr);
   }
   return map;
@@ -61,7 +62,8 @@ export const listJobs = createServerFn({ method: "POST" })
       .from("jobs")
       .select("id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, client:clients(id,first_name,last_name,service_address,color), property:client_properties!jobs_property_id_fkey(id,label,address,color), service:service_types(id,kind,name,color)")
       .order("scheduled_start", { ascending: true });
-    if (data.from) q = q.gte("scheduled_start", data.from);
+    // Overlap, not start: a cleaning that runs across days still shows its later cleaners.
+    if (data.from) q = q.gt("scheduled_end", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
@@ -103,7 +105,7 @@ export const checkConflicts = createServerFn({ method: "POST" })
     if (!data.employee_ids.length) return { conflicts: [] as { employee_id: string; job_id: string }[] };
     const { data: links } = await context.supabase
       .from("job_employees")
-      .select("employee_id, job:jobs!inner(id, scheduled_start, scheduled_end, status)")
+      .select("employee_id, scheduled_start, scheduled_end, job:jobs!inner(id, scheduled_start, scheduled_end, status)")
       .in("employee_id", data.employee_ids);
     const s = new Date(data.scheduled_start).getTime();
     const e = new Date(data.scheduled_end).getTime();
@@ -111,9 +113,11 @@ export const checkConflicts = createServerFn({ method: "POST" })
     for (const l of links ?? []) {
       const j: any = (l as any).job;
       if (!j || j.status === "canceled" || j.id === data.ignore_job_id) continue;
-      const js = new Date(j.scheduled_start).getTime();
-      const je = new Date(j.scheduled_end).getTime();
-      if (js < e && je > s) conflicts.push({ employee_id: (l as any).employee_id, job_id: j.id, scheduled_start: j.scheduled_start, scheduled_end: j.scheduled_end });
+      // Each cleaner is busy only for their own hours on a shared cleaning.
+      const own = { start: (l as any).scheduled_start ?? j.scheduled_start, end: (l as any).scheduled_end ?? j.scheduled_end };
+      const js = new Date(own.start).getTime();
+      const je = new Date(own.end).getTime();
+      if (js < e && je > s) conflicts.push({ employee_id: (l as any).employee_id, job_id: j.id, scheduled_start: own.start, scheduled_end: own.end });
     }
     return { conflicts };
   });
@@ -274,7 +278,7 @@ export const getJob = createServerFn({ method: "POST" })
     // Everyone sees the schedule, but only assigned cleaners (and owners/managers) may open an appointment.
     const [{ data: reviewer, error: reviewerError }, { data: assignedLinks, error: linkError }] = await Promise.all([
       context.supabase.rpc("is_owner_or_manager" as never),
-      context.supabase.from("job_employees").select("employee_id").eq("job_id", data.id),
+      context.supabase.from("job_employees").select("employee_id, scheduled_start, scheduled_end").eq("job_id", data.id),
     ]);
     if (reviewerError) throw new Error(reviewerError.message);
     if (linkError) throw new Error(linkError.message);
@@ -284,6 +288,12 @@ export const getJob = createServerFn({ method: "POST" })
       assigneeIds: (assignedLinks ?? []).map((l) => l.employee_id),
       assignedTo: (job as { assigned_to?: string | null }).assigned_to,
     })) throw new Error("This appointment belongs to another cleaner, so it can't be opened.");
+    // A cleaner sees their own hours on a shared cleaning; owners/managers see the cleaning's time.
+    const ownLink = (assignedLinks ?? []).find((l: any) => l.employee_id === context.userId) as any;
+    if (!reviewer && ownLink?.scheduled_start && ownLink?.scheduled_end) {
+      job.scheduled_start = ownLink.scheduled_start;
+      job.scheduled_end = ownLink.scheduled_end;
+    }
     const { data: ownConfirmation, error: confirmationError } = await context.supabase
       .from("job_sop_confirmations").select("job_id, employee_id, confirmed_at")
       .eq("job_id", data.id).eq("employee_id", context.userId).maybeSingle();
@@ -322,7 +332,7 @@ export const getJob = createServerFn({ method: "POST" })
     const [{ data: links }, { data: specs }, { data: clientNotes }] = await Promise.all([
       context.supabase
         .from("job_employees")
-        .select("employee_id, profile:profiles!job_employees_employee_id_fkey(id, full_name)")
+        .select("employee_id, scheduled_start, scheduled_end, profile:profiles!job_employees_employee_id_fkey(id, full_name)")
         .eq("job_id", data.id),
       job.client_id
         ? context.supabase
@@ -340,7 +350,11 @@ export const getJob = createServerFn({ method: "POST" })
             .limit(5)
         : Promise.resolve({ data: [] as Array<{ id: string; note: string; created_at: string }> }),
     ]);
-    const assignees: JobAssignee[] = (links ?? []).map((l: any) => l.profile).filter(Boolean);
+    const assignees: JobAssignee[] = (links ?? []).filter((l: any) => l.profile).map((l: any) => ({
+      ...l.profile,
+      scheduled_start: reviewer ? l.scheduled_start ?? null : null,
+      scheduled_end: reviewer ? l.scheduled_end ?? null : null,
+    }));
     const canViewPricing = await resolveCanViewPricing(context);
 
     // Per-cleaner checklists: rows with employee_id set belong to that cleaner;
@@ -542,6 +556,19 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     const { data: allowed } = await sb.rpc("is_owner_or_manager");
     if (!allowed) throw new Error("Only owners and managers can copy shifts");
+    return placeCleanerOnCleaning(sb, data);
+  });
+
+
+type PlaceInput = { id: string; employee_id: string; scheduled_start?: string; scheduled_end?: string; mode: "auto" | "new"; exclude_source?: boolean };
+type PlaceResult = { result: "already" | "added" | "created"; id: string; cleaner: string; client: string; start: string; cleaning?: CleanerHoursResult | null };
+
+/**
+ * Put a cleaner on a cleaning at the given hours: join the matching cleaning
+ * (same client/property/service/day, overlapping) or create one. Joining with
+ * different hours gives that cleaner their own hours without moving anyone else.
+ */
+async function placeCleanerOnCleaning(sb: any, data: PlaceInput): Promise<PlaceResult> {
     const { data: src, error: srcErr } = await sb
       .from("jobs")
       .select("id, tenant_id, client_id, property_id, service_address, service_location_label, service_type_id, scheduled_start, scheduled_end, notes, price_cents, client:clients(first_name, last_name)")
@@ -567,6 +594,7 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
         .select("id, client_id, property_id, service_type_id, status, scheduled_start, scheduled_end, assigned_to, links:job_employees(employee_id)")
         .eq("tenant_id", src.tenant_id).eq("client_id", src.client_id).neq("status", "canceled")
         .lt("scheduled_start", end).gt("scheduled_end", start);
+      if (data.exclude_source) q = q.neq("id", src.id);
       q = src.property_id ? q.eq("property_id", src.property_id) : q.is("property_id", null);
       const { data: rows, error: cErr } = await q;
       if (cErr) throw new Error(cErr.message);
@@ -585,7 +613,11 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
           throw new Error(insErr.message);
         }
         if (!match.assigned_to) await sb.from("jobs").update({ assigned_to: data.employee_id }).eq("id", match.id);
-        return { result: "added" as const, id: match.id, cleaner: cleanerName, client: clientName, start: match.scheduled_start };
+        let cleaning: CleanerHoursResult | null = null;
+        if (Date.parse(match.scheduled_start) !== Date.parse(start) || Date.parse(match.scheduled_end) !== Date.parse(end)) {
+          cleaning = await setHoursRpc(sb, match.id, data.employee_id, start, end);
+        }
+        return { result: "added" as const, id: match.id, cleaner: cleanerName, client: clientName, start, cleaning };
       }
     }
 
@@ -620,6 +652,87 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
       );
     }
     return { result: "created" as const, id: job.id as string, cleaner: cleanerName, client: clientName, start };
+}
+
+export type CleanerHoursResult = { single: boolean; grew: boolean; old_start: string; old_end: string; new_start: string; new_end: string };
+
+async function setHoursRpc(sb: any, jobId: string, employeeId: string, start: string, end: string): Promise<CleanerHoursResult> {
+  const { data, error } = await sb.rpc("set_cleaner_hours", { _job: jobId, _employee: employeeId, _start: start, _end: end });
+  if (error) throw new Error(error.message);
+  return data as CleanerHoursResult;
+}
+
+/**
+ * Owner/manager: change one cleaner's hours on a cleaning. Everyone else keeps
+ * their hours; the cleaning's overall time only grows, and `grew` says so.
+ */
+export const setCleanerHours = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      job_id: z.string().uuid(),
+      employee_id: z.string().uuid(),
+      scheduled_start: z.string().datetime({ offset: true }),
+      scheduled_end: z.string().datetime({ offset: true }),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => setHoursRpc(context.supabase, data.job_id, data.employee_id, data.scheduled_start, data.scheduled_end));
+
+/**
+ * Owner/manager: move one cleaner of a shared cleaning to another day.
+ * "same" keeps them on this cleaning (one invoice across days); "separate"
+ * moves them onto that day's cleaning (its own invoice) and off this one.
+ */
+export const moveCleanerToDay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      job_id: z.string().uuid(),
+      employee_id: z.string().uuid(),
+      scheduled_start: z.string().datetime({ offset: true }),
+      scheduled_end: z.string().datetime({ offset: true }),
+      invoice: z.enum(["same", "separate"]),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { data: allowed } = await sb.rpc("is_owner_or_manager");
+    if (!allowed) throw new Error("Only owners and managers can change the schedule");
+    if (data.invoice === "same") {
+      const cleaning = await setHoursRpc(sb, data.job_id, data.employee_id, data.scheduled_start, data.scheduled_end);
+      return { result: "same" as const, cleaning };
+    }
+    const { data: job, error } = await sb.from("jobs").select("id, assigned_to, status").eq("id", data.job_id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!job) throw new Error("Appointment not found");
+    const [links, visits, times, photos, confirmations, checked] = await Promise.all([
+      sb.from("job_employees").select("employee_id").eq("job_id", data.job_id),
+      sb.from("job_visits").select("id").eq("job_id", data.job_id).eq("employee_id", data.employee_id).limit(1),
+      sb.from("time_entries").select("id").eq("job_id", data.job_id).eq("user_id", data.employee_id).limit(1),
+      sb.from("job_photos").select("id").eq("job_id", data.job_id).eq("uploaded_by", data.employee_id).limit(1),
+      sb.from("job_sop_confirmations").select("job_id").eq("job_id", data.job_id).eq("employee_id", data.employee_id).limit(1),
+      sb.from("job_sop_items").select("id").eq("job_id", data.job_id).eq("employee_id", data.employee_id).eq("completed", true).limit(1),
+    ]);
+    for (const r of [links, visits, times, photos, confirmations, checked]) if (r.error) throw new Error(r.error.message);
+    const current: string[] = (links.data ?? []).map((l: any) => l.employee_id);
+    if (!current.includes(data.employee_id)) throw new Error("That cleaner is not on this appointment");
+    if ([visits, times, photos, confirmations, checked].some((r) => (r.data ?? []).length)) {
+      throw new Error("This cleaner already recorded time, photos or checklist work on this day, so they stay on it. Paste them onto the other day instead.");
+    }
+    const placed = await placeCleanerOnCleaning(sb, {
+      id: data.job_id, employee_id: data.employee_id,
+      scheduled_start: data.scheduled_start, scheduled_end: data.scheduled_end,
+      mode: "auto", exclude_source: true,
+    });
+    const plan = planAssigneeChange(current, current.filter((id) => id !== data.employee_id), job.assigned_to ?? null);
+    const { error: delErr } = await sb.from("job_employees").delete().eq("job_id", data.job_id).eq("employee_id", data.employee_id);
+    if (delErr) throw new Error(delErr.message);
+    await sb.from("job_sop_items").delete().eq("job_id", data.job_id).eq("employee_id", data.employee_id).eq("completed", false);
+    if (plan.primary !== (job.assigned_to ?? null)) {
+      const { error: upErr } = await sb.from("jobs").update({ assigned_to: plan.primary }).eq("id", data.job_id);
+      if (upErr) throw new Error(upErr.message);
+    }
+    return { result: "separate" as const, placed, cleaning: placed.cleaning ?? null };
   });
 
 /**
