@@ -118,4 +118,4 @@
 - [x] Schedule paste/drag onto a cleaner joins the matching existing job ("Added … to …" / "… is already on this job"); separate Duplicate job action creates a new one. Verified as Zoe on Justin Nov 12 (added, then already-on), test undone.
 - [x] Merged 20 green duplicate-job groups into one job each (all cleaners kept, reminders moved, no new alerts); yellow groups left as-is per Leslie. Natalie Miller Nov 5 skipped: Dalton's copy gained a timesheet correction after the preview.
 
-- [ ] Per-cleaner hours on shared cleanings: changing one cleaner's times or dragging one cleaner to another day/time affects only that cleaner; others stay put. Waiting on Leslie's answers (billing for a split cleaning, where own hours count).
+- [ ] Per-cleaner hours on shared cleanings: changing one cleaner's times or dragging one cleaner to another day/time affects only that cleaner; others stay put. When a cleaner is moved to another day, ask then: separate invoice for that day, or one cleaning/one invoice across days. Waiting on Leslie's answers (where own hours count, client's shown time).
