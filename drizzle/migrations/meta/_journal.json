@@ -288,6 +288,13 @@
       "when": 1794511755440,
       "tag": "0040_record_job_arrival_once",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794541895692,
+      "tag": "0041_timesheet_quick_line_edits",
+      "breakpoints": true
     }
   ]
 }

@@ -4266,6 +4266,10 @@ export type Database = {
         }
         Returns: string
       }
+      admin_delete_visit: {
+        Args: { _expected: Json; _reason: string; _visit: string }
+        Returns: Json
+      }
       admin_get_tenant: { Args: { _tenant: string }; Returns: Json }
       admin_list_tenants: {
         Args: never
@@ -4286,6 +4290,18 @@ export type Database = {
         }[]
       }
       admin_platform_stats: { Args: never; Returns: Json }
+      admin_quick_edit_visit: {
+        Args: {
+          _arrived: string
+          _employee: string
+          _expected: Json
+          _job: string
+          _left: string
+          _reason: string
+          _visit: string
+        }
+        Returns: string
+      }
       can_view_client_specs: { Args: { _client_id: string }; Returns: boolean }
       claim_employee_reminder: {
         Args: {

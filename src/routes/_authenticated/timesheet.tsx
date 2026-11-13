@@ -1,5 +1,7 @@
 import { useT, translateNow as tn, activeLocales, dateLocaleOpts } from "@/lib/i18n";
 import { TimesheetCorrectionDialog } from "@/components/timesheet-correction-dialog";
+import { DeleteLineConfirm, TimesheetLineDialog } from "@/components/timesheet-line-dialog";
+import { repeatedLineKeys } from "@/lib/timesheet-quick-edit";
 import { attendanceIssue } from "@/lib/timesheet-corrections";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { dailyIntervalMinutes } from "@/lib/clock-totals";
@@ -10,7 +12,7 @@ import { myCapabilities } from "@/lib/entities.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { addDays, format, startOfDay, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, Download, Pencil, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +49,7 @@ const shortDur = (m: number) => {
   return r < 60 ? `${r} ${tn("min")}` : `${Math.floor(r / 60)}${tn("h")} ${String(r % 60).padStart(2, "0")}${tn("m")}`;
 };
 
-type Issue = "No-Show" | "Missing punch" | "Late" | "Clocked in" | null;
+type Issue = "No-Show" | "Missing punch" | "Late" | "Clocked in" | "Repeated" | null;
 
 function TimesheetPage() {
   const tz = useBusinessTz();
@@ -55,6 +57,7 @@ function TimesheetPage() {
   const [day, setDay] = useState(() => startOfDay(new Date()));
   const [view, setView] = useState<"day" | "week">("day");
   const [correction,setCorrection]=useState<{employeeId?:string;jobId?:string|null}|null>(null);
+  const [line,setLine]=useState<DailyRow|null>(null);
   const from = zonedToUTCISO(format(day, "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const to = zonedToUTCISO(format(addDays(day, 1), "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const fn = useServerFn(listDailyTimesheet);
@@ -69,7 +72,9 @@ function TimesheetPage() {
   const rows = q.data?.rows ?? [];
   const entries = q.data?.entries ?? [];
   const now = Date.now();
+  const repeated = useMemo(() => repeatedLineKeys(rows), [rows]);
   const issueOf = (r: DailyRow): Issue => {
+    if (repeated.has(r.key)) return "Repeated";
     const attendance=attendanceIssue(r,now);
     if(attendance)return attendance;
     if(r.attendance_status==="worked" && rows.some(other=>other.employee_id===r.employee_id&&other.job_id===r.job_id&&other.arrived_at&&r.arrived_at&&other.arrived_at<r.arrived_at))return null;
@@ -149,7 +154,7 @@ function TimesheetPage() {
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t("No jobs or time recorded this day.")}</td></tr>
               )}
               {rows.map((r) => (
-                <TimesheetRow key={r.key} row={r} issue={issueOf(r)} time={time} isMgr={isMgr} from={from} to={to} onEdit={()=>setCorrection({employeeId:r.employee_id,jobId:r.job_id})} />
+                <TimesheetRow key={r.key} row={r} issue={issueOf(r)} time={time} isMgr={isMgr} from={from} to={to} onEdit={()=>setLine(r)} />
               ))}
             </tbody>
           </table>
@@ -202,6 +207,7 @@ function TimesheetPage() {
           </section>
         )}
       </div>
+      {line&&<TimesheetLineDialog key={line.key} row={line} dayKey={format(day,"yyyy-MM-dd")} from={from} to={to} onClose={()=>setLine(null)} onMoreCorrections={()=>{setCorrection({employeeId:line.employee_id,jobId:line.job_id});setLine(null);}}/>}
       {correction&&<TimesheetCorrectionDialog {...correction} from={from} to={to} onClose={()=>setCorrection(null)}/>}
     </>
   );
@@ -216,6 +222,7 @@ const ISSUE_STYLE: Record<Exclude<Issue, null>, string> = {
   "Missing punch": "bg-warning/15 text-foreground",
   "Late": "bg-amber-100 text-amber-800",
   "Clocked in": "bg-green-100 text-green-700",
+  "Repeated": "bg-destructive/10 text-destructive",
 };
 
 function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
@@ -226,9 +233,13 @@ function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
   const diff = useMemo(() => (r.arrived_at && r.left_at && sched != null ? onSite - sched : null), [r, onSite, sched]);
   const lateBy = issue === "Late" && r.scheduled_start && r.arrived_at ? mins(r.scheduled_start, r.arrived_at) : 0;
   const t = useT();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <tr className="border-b border-border/40 last:border-0 align-top">
+    <tr
+      className={`border-b border-border/40 last:border-0 align-top ${isMgr ? "cursor-pointer hover:bg-muted/40" : ""}`}
+      onClick={isMgr ? onEdit : undefined}
+    >
       <td className="px-4 py-4">
         <div className="flex items-center gap-3">
           <div className="size-8 shrink-0 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold">{initials(r.employee_name)}</div>
@@ -269,8 +280,12 @@ function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
         {issue && <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${ISSUE_STYLE[issue]}`}>{t(issue)}</span>}
       </td>
       {isMgr && (
-        <td className="px-4 py-4 text-right whitespace-nowrap">
+        <td className="px-4 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
           <Button size="sm" variant="ghost" aria-label={t("Edit times")} onClick={onEdit}><Pencil className="size-3.5" /></Button>
+          {r.visit_id && (
+            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" aria-label={t("Delete line")} onClick={() => setConfirmDelete(true)}><Trash2 className="size-3.5" /></Button>
+          )}
+          {r.visit_id && <DeleteLineConfirm row={r} open={confirmDelete} onOpenChange={setConfirmDelete} />}
         </td>
       )}
     </tr>
