@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
+import { SendClientScheduleButton } from "@/components/send-client-schedule-dialog";
 import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs, setCleanerHours, moveCleanerToDay, type CleanerHoursResult } from "@/lib/jobs.functions";
 import { withOwnHours, needsSplitChoice } from "@/lib/cleaner-hours";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -300,7 +301,6 @@ function SchedulePage() {
 
   const [publishOpen, setPublishOpen] = useState(false);
   const [pubNotify, setPubNotify] = useState<"everyone" | "impacted" | "none">("impacted");
-  const [pubClient, setPubClient] = useState<"none" | "email" | "sms">("none");
   const publishMut = useMutation({
     mutationFn: (o: { notify: "everyone" | "impacted" | "none"; client_channel: "none" | "email" | "sms" }) =>
       publishFn({ data: { from, to, ...o } }),
@@ -489,6 +489,7 @@ function SchedulePage() {
                   <DialogContent>
                     <DialogHeader><DialogTitle>Publish {draftCount} shift{draftCount === 1 ? "" : "s"}</DialogTitle></DialogHeader>
                     <div className="space-y-4 text-sm">
+                      <p className="text-xs text-muted-foreground">Publishing only tells your team. Clients are never notified — use Send schedule to clients when you're ready.</p>
                       <div className="space-y-2">
                         <Label>Notify employees</Label>
                         {([["impacted","Only people on these shifts"],["everyone","Everyone on the team"],["none","No one"]] as const).map(([v,l]) => (
@@ -497,27 +498,17 @@ function SchedulePage() {
                           </label>
                         ))}
                       </div>
-                      <div className="space-y-2">
-                        <Label>Clients</Label>
-                        {([["none","Don't message clients"],["email","Email draft for each client"],["sms","Text draft for each client"]] as const).map(([v,l]) => (
-                          <label key={v} className="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="pubClient" checked={pubClient === v} onChange={() => setPubClient(v)} /> {l}
-                          </label>
-                        ))}
-                        {pubClient !== "none" && (
-                          <p className="text-xs text-muted-foreground">Drafts go to Message drafts — nothing is sent until you review and send them.</p>
-                        )}
-                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setPublishOpen(false)}>Cancel</Button>
                       <Button className="bg-brand text-brand-foreground hover:opacity-90" disabled={publishMut.isPending}
-                        onClick={() => publishMut.mutate({ notify: pubNotify, client_channel: pubClient })}>
+                        onClick={() => publishMut.mutate({ notify: pubNotify, client_channel: "none" })}>
                         Publish
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                <SendClientScheduleButton from={from} to={to} weekLabel={`${format(anchor, "MMM d")} – ${format(addDays(anchor, 6), "MMM d")}`} />
                 <Button size="sm" className="bg-brand text-brand-foreground hover:opacity-90" onClick={() => setDialogSeed({ date: new Date() })}>
                   <Plus className="size-4" /> New Job
                 </Button>

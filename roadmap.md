@@ -120,3 +120,4 @@
 
 - [x] Per-cleaner hours on shared cleanings: editing one cleaner's times or dragging them to another day changes only that cleaner; other day asks separate invoice vs one cleaning; cleaning's overall time only grows, with a red ! alert; clients see only the overall time and get nothing on cleaner changes. Own hours used for reminders, week totals, timesheet scheduled time, cleaner's own schedule. Rollback DB test + browser dialog check passed.
 - [ ] Real save of the "Separate cleaning" choice not exercised on live data (would create a real cleaning); recurring series don't copy per-cleaner hours to future visits.
+- [x] Clients get no automatic schedule notices; "Send schedule to clients" button on Schedule emails each chosen client their upcoming cleanings (overall time only), skips repeats. Publish is team-only.

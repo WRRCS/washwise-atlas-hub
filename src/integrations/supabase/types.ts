@@ -617,6 +617,60 @@ export type Database = {
           },
         ]
       }
+      client_schedule_sends: {
+        Row: {
+          body: string
+          client_id: string
+          fingerprint: string
+          id: string
+          period_end: string
+          period_start: string
+          sent_at: string
+          sent_by: string
+          sent_to: string | null
+          tenant_id: string
+        }
+        Insert: {
+          body: string
+          client_id: string
+          fingerprint: string
+          id?: string
+          period_end: string
+          period_start: string
+          sent_at?: string
+          sent_by: string
+          sent_to?: string | null
+          tenant_id: string
+        }
+        Update: {
+          body?: string
+          client_id?: string
+          fingerprint?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          sent_at?: string
+          sent_by?: string
+          sent_to?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_schedule_sends_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_schedule_sends_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_service_requests: {
         Row: {
           client_id: string
