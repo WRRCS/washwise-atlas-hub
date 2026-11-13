@@ -103,7 +103,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
   });
 
 // Public: create a Stripe embedded checkout session for an invoice
-const ALLOWED_RETURN_HOSTS = ["lovable.app", "lovableproject.com", "localhost"];
+const ALLOWED_RETURN_HOSTS = ["wrrcs.com", "lovable.app", "lovableproject.com", "localhost"];
 function isAllowedReturnUrl(raw: string): boolean {
   try {
     const u = new URL(raw);

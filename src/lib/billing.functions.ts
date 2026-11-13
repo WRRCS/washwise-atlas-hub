@@ -82,7 +82,7 @@ export const previewPlanChange = createServerFn({ method: "POST" })
     return res as PlanChangePreview;
   });
 
-const CHECKOUT_ALLOWED_HOSTS = ["lovable.app", "lovableproject.com", "localhost"];
+const CHECKOUT_ALLOWED_HOSTS = ["wrrcs.com", "lovable.app", "lovableproject.com", "localhost"];
 function safeReturnUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
