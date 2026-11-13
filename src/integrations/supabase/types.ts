@@ -4302,6 +4302,19 @@ export type Database = {
         }
         Returns: string
       }
+      admin_quick_edit_visit_at_place: {
+        Args: {
+          _arrived: string
+          _client: string
+          _employee: string
+          _expected: Json
+          _left: string
+          _property: string
+          _reason: string
+          _visit: string
+        }
+        Returns: Json
+      }
       can_view_client_specs: { Args: { _client_id: string }; Returns: boolean }
       claim_employee_reminder: {
         Args: {

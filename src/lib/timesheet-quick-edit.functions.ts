@@ -7,25 +7,29 @@ type Rpc = { rpc: (name: string, args: Record<string, unknown>) => Promise<{ dat
 const ts = z.string().datetime({ offset: true });
 const expected = z.object({ job_id: z.string().uuid().nullable(), arrived_at: ts, left_at: ts.nullable() });
 
-export type LineAppointment = { id: string; label: string; scheduled_start: string; scheduled_end: string | null; assigned: boolean };
+export type LineAppointment = { id: string; client_id: string; property_id: string | null; label: string; scheduled_start: string; scheduled_end: string | null; assigned: boolean };
+/** Any active client location, so a line can move to a cleaning that was never scheduled that day. */
+export type LinePlace = { key: string; client_id: string; property_id: string | null; label: string };
 export type LineHistory = { id: string; corrected_at: string; editor: string; reason: string; original_values: Json; corrected_values: Json };
 
 /** Appointments to pick from for one cleaner's line, plus that line's correction history. */
 export const getTimesheetLineContext = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ employee_id: z.string().uuid(), job_id: z.string().uuid().nullable(), from: ts, to: ts }).parse(input))
-  .handler(async ({ data, context }): Promise<{ appointments: LineAppointment[]; history: LineHistory[] }> => {
+  .handler(async ({ data, context }): Promise<{ appointments: LineAppointment[]; places: LinePlace[]; history: LineHistory[] }> => {
     const { data: allowed } = await context.supabase.rpc("is_owner_or_manager");
     if (!allowed) throw new Error("Only owners and managers can correct timesheets");
     const sb = context.supabase;
-    const [jobs, history, directory] = await Promise.all([
-      sb.from("jobs").select("id, scheduled_start, scheduled_end, assigned_to, service_location_label, service_address, client:clients(first_name,last_name), job_employees(employee_id)")
+    const [jobs, history, directory, clients] = await Promise.all([
+      sb.from("jobs").select("id, client_id, property_id, scheduled_start, scheduled_end, assigned_to, service_location_label, service_address, client:clients(first_name,last_name), job_employees(employee_id)")
         .gte("scheduled_start", data.from).lt("scheduled_start", data.to).neq("status", "canceled").order("scheduled_start"),
       data.job_id
         ? sb.from("timesheet_correction_history").select("id, corrected_at, editor_id, reason, original_values, corrected_values").eq("employee_id", data.employee_id).eq("job_id", data.job_id).order("corrected_at", { ascending: false }).limit(20)
         : Promise.resolve({ data: [], error: null }),
       sb.rpc("staff_directory"),
+      sb.from("clients").select("id, first_name, last_name, company_name, service_address, client_properties(id, label, address, is_active)").eq("is_active", true),
     ]);
+    if (clients.error) throw new Error(clients.error.message);
     if (jobs.error) throw new Error(jobs.error.message);
     if (history.error) throw new Error(history.error.message);
     const names = new Map(((directory.data ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name ?? "Someone"]));
@@ -33,10 +37,19 @@ export const getTimesheetLineContext = createServerFn({ method: "POST" })
       const client = [j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || "Appointment";
       const place = j.service_location_label || j.service_address;
       const assigned = j.assigned_to === data.employee_id || (j.job_employees ?? []).some((e) => e.employee_id === data.employee_id);
-      return { id: j.id, label: place ? `${client} · ${place}` : client, scheduled_start: j.scheduled_start, scheduled_end: j.scheduled_end, assigned };
+      return { id: j.id, client_id: j.client_id, property_id: j.property_id, label: place ? `${client} · ${place}` : client, scheduled_start: j.scheduled_start, scheduled_end: j.scheduled_end, assigned };
     });
+    const places: LinePlace[] = [];
+    for (const c of clients.data ?? []) {
+      const name = [c.first_name, c.last_name].filter(Boolean).join(" ").trim() || c.company_name || "Client";
+      const props = (c.client_properties ?? []).filter((p) => p.is_active);
+      if (props.length) for (const p of props) places.push({ key: `${c.id}:${p.id}`, client_id: c.id, property_id: p.id, label: `${name} · ${p.label || p.address}` });
+      else if (c.service_address?.trim()) places.push({ key: `${c.id}:`, client_id: c.id, property_id: null, label: `${name} · ${c.service_address.trim()}` });
+    }
+    places.sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
     return {
       appointments,
+      places,
       history: (history.data ?? []).map((h) => ({ id: h.id, corrected_at: h.corrected_at, editor: names.get(h.editor_id) ?? "Someone", reason: h.reason, original_values: h.original_values, corrected_values: h.corrected_values })),
     };
   });
@@ -46,16 +59,28 @@ export const quickEditTimesheetLine = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({
     visit_id: z.string().uuid().nullable(), employee_id: z.string().uuid(), expected: expected.nullable(),
-    job_id: z.string().uuid(), arrived_at: ts, left_at: ts.nullable(), reason: z.string().trim().max(1000).default(""),
-  }).parse(input))
-  .handler(async ({ data, context }) => {
+    job_id: z.string().uuid().nullable().default(null),
+    place: z.object({ client_id: z.string().uuid(), property_id: z.string().uuid().nullable() }).nullable().default(null),
+    arrived_at: ts, left_at: ts.nullable(), reason: z.string().trim().max(1000).default(""),
+  }).refine((d) => !!d.job_id !== !!d.place, "Choose the appointment").parse(input))
+  .handler(async ({ data, context }): Promise<{ id: string; created: boolean }> => {
     if (data.left_at && Date.parse(data.left_at) <= Date.parse(data.arrived_at)) throw new Error("Clock-out must be after clock-in");
+    if (data.place) {
+      // Any client location: reuses that location's appointment on this day, or adds one for these times.
+      const { data: res, error } = await (context.supabase as unknown as Rpc).rpc("admin_quick_edit_visit_at_place", {
+        _visit: data.visit_id, _employee: data.employee_id, _expected: data.expected, _client: data.place.client_id,
+        _property: data.place.property_id, _arrived: data.arrived_at, _left: data.left_at, _reason: data.reason,
+      });
+      if (error) throw new Error(error.message);
+      const r = res as { visit_id: string; created: boolean };
+      return { id: r.visit_id, created: r.created };
+    }
     const { data: id, error } = await (context.supabase as unknown as Rpc).rpc("admin_quick_edit_visit", {
       _visit: data.visit_id, _employee: data.employee_id, _expected: data.expected, _job: data.job_id,
       _arrived: data.arrived_at, _left: data.left_at, _reason: data.reason,
     });
     if (error) throw new Error(error.message);
-    return { id: id as string };
+    return { id: id as string, created: false };
   });
 
 /** Remove one line (e.g. a repeated tap). Paid time goes only if it belonged to this line alone. */

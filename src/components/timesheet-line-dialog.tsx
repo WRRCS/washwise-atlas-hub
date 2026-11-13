@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDown, ArrowUp, Check, ChevronDown, Clock, History, Trash2, Wrench } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Clock, History, Plus, Trash2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -28,6 +29,12 @@ const clock = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleTimeString(activeLocales()[0] ?? "en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ }).toLowerCase() : "—";
 const firstName = (n: string) => n.split(/\s+/)[0] || n;
 const expectedOf = (r: DailyRow) => ({ job_id: r.job_id, arrived_at: r.arrived_at!, left_at: r.left_at });
+
+/** Plain word match on the visible name (ignores the hidden id after "|"), so "ryan" finds only Ryans. */
+function matchWords(value: string, search: string) {
+  const text = value.split("|")[0].toLowerCase();
+  return search.toLowerCase().split(/\s+/).filter(Boolean).every((w) => text.includes(w)) ? 1 : 0;
+}
 
 async function refresh(qc: ReturnType<typeof useQueryClient>) {
   await Promise.all(REFRESH.map((key) => qc.invalidateQueries({ queryKey: [key] })));
@@ -100,7 +107,9 @@ export function TimesheetLineDialog({ row, dayKey, from, to, onClose, onMoreCorr
   });
   const initialIn = wallTime(row.arrived_at, TZ);
   const initialOut = wallTime(row.left_at, TZ);
+  // An appointment id, or "place:<client>:<property>" for any client location.
   const [jobId, setJobId] = useState(row.job_id ?? "");
+  const [picking, setPicking] = useState(false);
   const [inTime, setInTime] = useState(initialIn);
   const [outTime, setOutTime] = useState(initialOut);
   const [note, setNote] = useState("");
@@ -113,7 +122,14 @@ export function TimesheetLineDialog({ row, dayKey, from, to, onClose, onMoreCorr
   const mine = appointments.filter((a) => a.assigned);
   const others = appointments.filter((a) => !a.assigned);
   const currentMissing = row.job_id && !appointments.some((a) => a.id === row.job_id);
+  const scheduledPlaces = new Set(appointments.map((a) => `${a.client_id}:${a.property_id ?? ""}`));
+  const places = (ctx.data?.places ?? []).filter((p) => !scheduledPlaces.has(p.key));
+  const place = jobId.startsWith("place:") ? places.find((p) => `place:${p.key}` === jobId) : undefined;
   const selected = appointments.find((a) => a.id === jobId);
+  const selectedLabel = selected
+    ? `${clock(selected.scheduled_start)} · ${selected.label}`
+    : place?.label ?? (jobId && jobId === row.job_id ? `${row.client}${row.property ? ` · ${row.property}` : ""}` : t("Choose the appointment"));
+  const choose = (value: string) => { setJobId(value); setPicking(false); };
   const schedStart = selected?.scheduled_start ?? (jobId === row.job_id ? row.scheduled_start : null);
   const schedEnd = selected?.scheduled_end ?? (jobId === row.job_id ? row.scheduled_end : null);
   const schedMin = schedStart && schedEnd ? (Date.parse(schedEnd) - Date.parse(schedStart)) / 60000 : null;
@@ -136,9 +152,10 @@ export function TimesheetLineDialog({ row, dayKey, from, to, onClose, onMoreCorr
     catch (e) { setError(t(e instanceof Error ? e.message : "Check the times")); return; }
     setBusy(true);
     try {
-      await save({ data: { visit_id: row.visit_id, employee_id: row.employee_id, expected: row.visit_id && row.arrived_at ? expectedOf(row) : null, job_id: jobId, ...times, reason: note } });
-      await refresh(qc);
-      toast.success(t("Timesheet updated"));
+      const target = place ? { job_id: null, place: { client_id: place.client_id, property_id: place.property_id } } : { job_id: jobId, place: null };
+      const res = await save({ data: { visit_id: row.visit_id, employee_id: row.employee_id, expected: row.visit_id && row.arrived_at ? expectedOf(row) : null, ...target, ...times, reason: note } });
+      await Promise.all([refresh(qc), res.created ? qc.invalidateQueries({ queryKey: ["jobs"] }) : null]);
+      toast.success(res.created ? t("Timesheet updated — appointment added to the schedule") : t("Timesheet updated"));
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("Unable to save"));
@@ -146,7 +163,6 @@ export function TimesheetLineDialog({ row, dayKey, from, to, onClose, onMoreCorr
   };
 
   const day = new Date(`${dayKey}T12:00:00`).toLocaleDateString(activeLocales()[0] ?? "en-US", { weekday: "short", month: "short", day: "numeric" });
-  const selectCls = "h-11 w-full appearance-none rounded-lg border border-input bg-background pl-3 pr-9 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring";
 
   return (
     <>
@@ -165,22 +181,59 @@ export function TimesheetLineDialog({ row, dayKey, from, to, onClose, onMoreCorr
                 </Button>
               )}
             </div>
-            <div className="relative mt-4">
-              <select aria-label={t("Appointment")} value={jobId} onChange={(e) => setJobId(e.target.value)} className={selectCls} disabled={ctx.isLoading}>
-                {!jobId && <option value="">{t("Choose the appointment")}</option>}
-                {currentMissing && <option value={row.job_id!}>{row.client}{row.property ? ` · ${row.property}` : ""}</option>}
-                {mine.length > 0 && (
-                  <optgroup label={`${firstName(row.employee_name)} — ${t("assigned this day")}`}>
-                    {mine.map((a) => <option key={a.id} value={a.id}>{clock(a.scheduled_start)} · {a.label}</option>)}
-                  </optgroup>
-                )}
-                {others.length > 0 && (
-                  <optgroup label={t("Other appointments this day")}>
-                    {others.map((a) => <option key={a.id} value={a.id}>{clock(a.scheduled_start)} · {a.label}</option>)}
-                  </optgroup>
-                )}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <div className="mt-4">
+              <button type="button" aria-label={t("Appointment")} aria-expanded={picking} disabled={ctx.isLoading} onClick={() => setPicking((o) => !o)}
+                className="flex h-11 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60">
+                <span className="flex-1 truncate">{ctx.isLoading ? t("Loading…") : selectedLabel}</span>
+                <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${picking ? "rotate-180" : ""}`} />
+              </button>
+              {picking && (
+                <Command filter={matchWords} className="mt-2 h-auto rounded-lg border border-input">
+                  <CommandInput autoFocus placeholder={t("Search clients or appointments…")} />
+                  <CommandList className="max-h-72">
+                    <CommandEmpty>{t("No matches")}</CommandEmpty>
+                    {currentMissing && (
+                      <CommandGroup heading={t("Current")}>
+                        <CommandItem value={`${row.client} ${row.property ?? ""}|${row.job_id}`} onSelect={() => choose(row.job_id!)}>
+                          {jobId === row.job_id && <Check className="size-4" />}{row.client}{row.property ? ` · ${row.property}` : ""}
+                        </CommandItem>
+                      </CommandGroup>
+                    )}
+                    {mine.length > 0 && (
+                      <CommandGroup heading={`${firstName(row.employee_name)} — ${t("assigned this day")}`}>
+                        {mine.map((a) => (
+                          <CommandItem key={a.id} value={`${a.label}|${a.id}`} onSelect={() => choose(a.id)}>
+                            {jobId === a.id && <Check className="size-4" />}<span className="tabular-nums text-muted-foreground">{clock(a.scheduled_start)}</span> {a.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                    {others.length > 0 && (
+                      <CommandGroup heading={t("Other appointments this day")}>
+                        {others.map((a) => (
+                          <CommandItem key={a.id} value={`${a.label}|${a.id}`} onSelect={() => choose(a.id)}>
+                            {jobId === a.id && <Check className="size-4" />}<span className="tabular-nums text-muted-foreground">{clock(a.scheduled_start)}</span> {a.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                    {places.length > 0 && (
+                      <CommandGroup heading={t("All clients — not scheduled this day")}>
+                        {places.map((p) => (
+                          <CommandItem key={p.key} value={`${p.label}|${p.key}`} onSelect={() => choose(`place:${p.key}`)}>
+                            {jobId === `place:${p.key}` ? <Check className="size-4" /> : <Plus className="size-4 text-muted-foreground" />}{p.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              )}
+              {place && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t("Not on the schedule this day. Saving adds this appointment for these times, assigned to")} {firstName(row.employee_name)}.
+                </p>
+              )}
             </div>
           </DialogHeader>
 
