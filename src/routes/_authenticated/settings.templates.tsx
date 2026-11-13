@@ -33,6 +33,7 @@ const SAMPLE_VARS: Record<string, string> = {
   amount: "$180.00",
   service_type: "Residential Cleaning",
   company_name: COMPANY_NAME,
+  pay_link: "https://wrrcs.com/pay/2f1c8a6e-9b7d-4c3a-8f21-0d5e6a7b8c9d",
 };
 
 const EVENT_LABELS: Record<TriggerEvent, string> = {
@@ -340,7 +341,7 @@ function EmailTemplateCard({ tpl, onSave }: {
               <Label className="text-xs">Body HTML</Label>
               <Textarea rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
               <p className="text-[11px] text-muted-foreground">
-                Variables: {"{{client_name}}"}, {"{{date}}"}, {"{{invoice_number}}"}, {"{{amount}}"}, {"{{service_type}}"}, {"{{company_name}}"}
+                Variables: {"{{client_name}}"}, {"{{date}}"}, {"{{invoice_number}}"}, {"{{amount}}"}, {"{{service_type}}"}, {"{{company_name}}"}, {"{{pay_link}}"} (card payment page)
               </p>
             </div>
             <div className="flex justify-end gap-2">

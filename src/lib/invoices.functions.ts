@@ -5,6 +5,7 @@ import { renderEmailForClientContext } from "@/lib/templates.functions";
 import { clientContact } from "@/lib/privacy";
 import { dueDateFrom } from "@/lib/payment-terms";
 import { computeInvoiceTotals, calcCardSurcharge } from "@/lib/invoice-totals";
+import { invoicePayUrl } from "@/lib/invoice-pay-link";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
@@ -156,6 +157,10 @@ export const sendInvoice = createServerFn({ method: "POST" })
       }
     } catch { /* non-fatal */ }
 
+    // Card-payment link: the app's own public pay page for this invoice.
+    const { getAppOrigin } = await import("@/lib/app-url.server");
+    const payLink = invoicePayUrl(getAppOrigin(), inv.id);
+
     // Render email via template + enqueue
     const c = (inv.client as { first_name?: string; last_name?: string } | null);
     const rendered = await renderEmailForClientContext({
@@ -169,6 +174,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
         amount: `$${((inv.total_cents ?? 0) / 100).toFixed(2)}`,
         date: new Date().toLocaleDateString(),
         venmo_link: venmoLink,
+        pay_link: payLink,
       },
     });
     // Recipient: the address typed in the Send box, else the client's saved email.
@@ -184,7 +190,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
     const amountStr = `$${((inv.total_cents ?? 0) / 100).toFixed(2)}`;
     const subject = rendered?.subject || `Invoice ${inv.number ?? ""} from Wash Rinse Repeat Cleaning`.replace("  ", " ");
     const html = rendered?.body_html ||
-      `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222">Hi ${[c?.first_name, c?.last_name].filter(Boolean).join(" ") || "there"},<br><br>Your invoice ${inv.number ?? ""} for ${amountStr} is ready.${venmoLink ? `<br><br><a href="${venmoLink}">Pay with Venmo</a>` : ""}<br><br>Thank you,<br>Wash Rinse Repeat Cleaning</div>`;
+      `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222">Hi ${[c?.first_name, c?.last_name].filter(Boolean).join(" ") || "there"},<br><br>Your invoice ${inv.number ?? ""} for ${amountStr} is ready.<br><br><a href="${payLink}">Pay by card</a>${venmoLink ? `<br><br><a href="${venmoLink}">Pay with Venmo</a>` : ""}<br><br>Thank you,<br>Wash Rinse Repeat Cleaning</div>`;
 
     const { sendLovableEmail } = await import("@lovable.dev/email-js");
     const result: any = await sendLovableEmail(
