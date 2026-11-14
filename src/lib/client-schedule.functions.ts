@@ -92,7 +92,7 @@ export const sendClientSchedules = createServerFn({ method: "POST" })
     channel: z.enum(["email", "text", "both"]).default("email"),
   }).parse(input))
   .handler(async ({ data, context }) => {
-    const { tenantId, businessName, savedTextNumber, schedules, last, byId } = await loadWeek(context, data.from, data.to);
+    const { tenantId, savedTextNumber, schedules, last, byId } = await loadWeek(context, data.from, data.to);
     const wantEmail = channelIncludes(data.channel, "email"), wantText = channelIncludes(data.channel, "text");
     const { sendLovableEmail } = await import("@lovable.dev/email-js");
     const { normalizePhoneE164 } = await import("@/lib/phone");
@@ -122,7 +122,7 @@ export const sendClientSchedules = createServerFn({ method: "POST" })
         if (!to) skipped.push(`${name} (no email)`);
         else if (scheduleSendStatus(s.fingerprint, last.get(`${id}:email`)?.fingerprint) === "sent") skipped.push(`${name} (already emailed this schedule)`);
         else {
-          const { subject, body } = composeScheduleEmail(c.first_name, s.lines, businessName);
+          const { subject, body } = composeScheduleEmail(c.first_name, s.lines);
           try {
             await sendLovableEmail(
               {
@@ -155,7 +155,7 @@ export const sendClientSchedules = createServerFn({ method: "POST" })
         if (!to) skipped.push(`${name} (no mobile number)`);
         else if (scheduleSendStatus(s.fingerprint, last.get(`${id}:text`)?.fingerprint) === "sent") skipped.push(`${name} (already texted this schedule)`);
         else {
-          const body = composeScheduleText(c.first_name, s.lines, businessName);
+          const body = composeScheduleText(c.first_name, s.lines);
           try {
             const sid = await sendViaTwilio({ to, from: fromNumber, body });
             texted++;

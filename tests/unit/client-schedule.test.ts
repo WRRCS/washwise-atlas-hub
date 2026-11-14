@@ -9,9 +9,14 @@ const job = (over: Record<string, unknown> = {}) => ({
 });
 
 describe("send schedule to clients", () => {
-  it("shows the cleaning's overall time in business time, one line per cleaning", () => {
+  it("shows the cleaning's overall time in business time, one sentence per cleaning", () => {
     const s = buildClientSchedules([job()], tz).get("c1")!;
-    expect(s.lines).toEqual(["Wed, Nov 18 · 10am–12pm · Standard clean · Main house"]);
+    expect(s.lines).toEqual(["We're scheduled to clean your home on Wednesday, November 18, at 10:00 AM and 12:00 PM at Main house."]);
+  });
+
+  it("uses the appointment's address when it has one", () => {
+    const s = buildClientSchedules([job({ service_address: "6155 Semiahmoo Lane, Blaine, WA", scheduled_start: "2026-11-09T18:00:00Z", scheduled_end: "2026-11-09T21:00:00Z" })], tz).get("c1")!;
+    expect(s.lines[0]).toBe("We're scheduled to clean your home on Monday, November 9, at 10:00 AM and 1:00 PM at 6155 Semiahmoo Lane, Blaine, WA.");
   });
 
   it("leaves canceled cleanings out", () => {
@@ -46,17 +51,21 @@ describe("send schedule to clients", () => {
   });
 });
 
-import { channelIncludes, composeScheduleText } from "../../src/lib/client-schedule";
+import { channelIncludes, composeScheduleEmail, composeScheduleText } from "../../src/lib/client-schedule";
 describe("schedule text option", () => {
   it("both sends email and text; each single option sends only itself", () => {
     expect([channelIncludes("both","email"), channelIncludes("both","text")]).toEqual([true, true]);
     expect([channelIncludes("email","email"), channelIncludes("email","text")]).toEqual([true, false]);
     expect([channelIncludes("text","email"), channelIncludes("text","text")]).toEqual([false, true]);
   });
-  it("text lists every cleaning and lets clients opt out", () => {
-    const t = composeScheduleText("Ann", ["Mon · 9:00 AM–11:00 AM", "Thu · 1:00 PM–3:00 PM"], "WRRC");
-    expect(t).toContain("• Mon · 9:00 AM–11:00 AM");
-    expect(t).toContain("• Thu · 1:00 PM–3:00 PM");
-    expect(t).toContain("STOP");
+  const line = "We're scheduled to clean your home on Monday, November 9, at 10:00 AM and 1:00 PM at 6155 Semiahmoo Lane, Blaine, WA.";
+  it("text uses Leslie's wording and lets clients opt out", () => {
+    expect(composeScheduleText("Angela", [line])).toBe(
+      "Hi Angela,\nThis is Wash Rinse Repeat Cleaning. " + line + " Reply to this message if anything needs to change.\nThank you!\n\nReply STOP to opt out.",
+    );
+  });
+  it("email uses the same wording without the text opt-out line", () => {
+    const { body } = composeScheduleEmail("Angela", [line]);
+    expect(body).toBe("Hi Angela,\nThis is Wash Rinse Repeat Cleaning. " + line + " Reply to this message if anything needs to change.\nThank you!");
   });
 });

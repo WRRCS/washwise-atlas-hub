@@ -16,7 +16,12 @@ export type ClientScheduleJob = {
 
 export type ScheduleSendStatus = "new" | "changed" | "sent";
 
-/** Group a week's cleanings by client into the lines a client would receive. */
+const longDate = (iso: string, tz: string) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric" }).format(new Date(iso));
+const longTime = (iso: string, tz: string) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(iso));
+
+/** Group a week's cleanings by client into the sentences a client would receive (one per cleaning). */
 export function buildClientSchedules(jobs: ClientScheduleJob[], tz: string) {
   const out = new Map<string, { lines: string[]; fingerprint: string }>();
   const sorted = [...jobs]
@@ -25,16 +30,19 @@ export function buildClientSchedules(jobs: ClientScheduleJob[], tz: string) {
   for (const j of sorted) {
     const loc = j.location_needs_review ? null : jobLocation(j);
     const where = loc ? loc.label || loc.address : null;
-    const line = [
+    // Short form only for detecting changes between sends (kept stable across wording changes).
+    const key = [
       fmtDateTZ(j.scheduled_start, tz),
       `${fmtTimeTZ(j.scheduled_start, tz)}–${fmtTimeTZ(j.scheduled_end, tz)}`,
       j.service_name?.trim() || "Cleaning",
       where,
     ].filter(Boolean).join(" · ");
+    const place = loc ? loc.address || loc.label : null;
+    const line = `We're scheduled to clean your home on ${longDate(j.scheduled_start, tz)}, at ${longTime(j.scheduled_start, tz)} and ${longTime(j.scheduled_end, tz)}${place ? ` at ${place}` : ""}.`;
     const entry = out.get(j.client_id!) ?? { lines: [], fingerprint: "" };
     entry.lines.push(line);
-    // Each line carries its start so already-past cleanings can be ignored later.
-    entry.fingerprint = [entry.fingerprint, `${new Date(j.scheduled_start).toISOString()}|${line}`].filter(Boolean).join("\n");
+    // Each entry carries its start so already-past cleanings can be ignored later.
+    entry.fingerprint = [entry.fingerprint, `${new Date(j.scheduled_start).toISOString()}|${key}`].filter(Boolean).join("\n");
     out.set(j.client_id!, entry);
   }
   return out;
@@ -49,28 +57,23 @@ export function scheduleSendStatus(fingerprint: string, lastSent: string | null 
   return upcoming(lastSent, now) === upcoming(fingerprint, now) ? "sent" : "changed";
 }
 
-export function composeScheduleEmail(firstName: string | null | undefined, lines: string[], businessName: string) {
-  const subject = "Your upcoming cleaning schedule";
-  const body = [
+const BUSINESS = "Wash Rinse Repeat Cleaning";
+
+function scheduleBody(firstName: string | null | undefined, lines: string[]) {
+  return [
     `Hi ${firstName?.trim() || "there"},`,
-    "",
-    "Here are your upcoming cleanings:",
-    ...lines.map((l) => `• ${l}`),
-    "",
-    "Reply to this email if anything needs to change. Thank you!",
-    "",
-    businessName,
-  ].join("\n");
-  return { subject, body };
+    `This is ${BUSINESS}. ${lines.join(" ")} Reply to this message if anything needs to change.`,
+    "Thank you!",
+  ];
 }
 
-/** Short text-message version of the schedule. */
-export function composeScheduleText(firstName: string | null | undefined, lines: string[], businessName: string) {
-  return [
-    `Hi ${firstName?.trim() || "there"}, your upcoming cleanings with ${businessName}:`,
-    ...lines.map((l) => `• ${l}`),
-    "Reply here if anything needs to change. Reply STOP to opt out.",
-  ].join("\n");
+export function composeScheduleEmail(firstName: string | null | undefined, lines: string[]) {
+  return { subject: "Your upcoming cleaning schedule", body: scheduleBody(firstName, lines).join("\n") };
+}
+
+/** Text-message version: same wording plus the opt-out line. */
+export function composeScheduleText(firstName: string | null | undefined, lines: string[]) {
+  return [...scheduleBody(firstName, lines), "", "Reply STOP to opt out."].join("\n");
 }
 
 export type ScheduleChannel = "email" | "text" | "both";
