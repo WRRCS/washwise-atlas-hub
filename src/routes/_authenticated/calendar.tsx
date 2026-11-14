@@ -250,8 +250,8 @@ function SchedulePage() {
       const when = format(new Date(r.start), "EEE, MMM d");
       if (r.result === "already") toast.info(`${r.cleaner} is already on this job`);
       else if (r.result === "added") toast.success(`Added ${r.cleaner} to ${r.client} — ${when}`);
-      if (r.result === "added" && r.cleaning?.grew) setGrownAlert({ cleaner: r.cleaner, result: r.cleaning });
       else toast.success(`New job created for ${r.cleaner} — ${r.client}, ${when}`);
+      if (r.result === "added" && r.cleaning?.grew) setGrownAlert({ cleaner: r.cleaner, result: r.cleaning });
     },
     onError: (e: any) => toast.error(e?.message ?? "Copy failed"),
   });
