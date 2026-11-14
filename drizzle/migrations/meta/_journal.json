@@ -323,6 +323,13 @@
       "when": 1794586297956,
       "tag": "0045_invoice_email_pay_link",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794688915653,
+      "tag": "0046_staff_invites",
+      "breakpoints": true
     }
   ]
 }

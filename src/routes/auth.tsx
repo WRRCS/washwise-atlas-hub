@@ -131,7 +131,8 @@ function AuthPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Employees: tap the sign-in link your manager emailed you — no password needed.
+          Employees: tap the sign-in link your manager emailed you — no password needed.{" "}
+          <a href="/welcome" className="underline hover:text-foreground">Email me a sign-in link</a>
         </p>
 
       </div>

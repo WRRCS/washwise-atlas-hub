@@ -16,6 +16,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthenticatedCaddiesRouteImport } from './routes/_authenticated/caddies'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedClientChatRouteImport } from './routes/_authenticated/client-chat'
@@ -121,6 +122,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedCaddiesRoute = AuthenticatedCaddiesRouteImport.update({
@@ -531,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/welcome': typeof WelcomeRoute
   '/caddies': typeof AuthenticatedCaddiesRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
@@ -611,6 +618,7 @@ export interface FileRoutesByTo {
   '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/welcome': typeof WelcomeRoute
   '/caddies': typeof AuthenticatedCaddiesRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/client-chat': typeof AuthenticatedClientChatRoute
@@ -691,6 +699,7 @@ export interface FileRoutesById {
   '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/welcome': typeof WelcomeRoute
   '/_authenticated/caddies': typeof AuthenticatedCaddiesRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/client-chat': typeof AuthenticatedClientChatRoute
@@ -773,6 +782,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/reset-password'
     | '/signup'
+    | '/welcome'
     | '/caddies'
     | '/calendar'
     | '/client-chat'
@@ -853,6 +863,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/reset-password'
     | '/signup'
+    | '/welcome'
     | '/caddies'
     | '/calendar'
     | '/client-chat'
@@ -932,6 +943,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/reset-password'
     | '/signup'
+    | '/welcome'
     | '/_authenticated/caddies'
     | '/_authenticated/calendar'
     | '/_authenticated/client-chat'
@@ -1014,6 +1026,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  WelcomeRoute: typeof WelcomeRoute
   PayInvoiceIdRoute: typeof PayInvoiceIdRoute
   PayReturnRoute: typeof PayReturnRoute
   PhotosShareIdRoute: typeof PhotosShareIdRoute
@@ -1083,6 +1096,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/caddies': {
@@ -1764,6 +1784,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  WelcomeRoute: WelcomeRoute,
   PayInvoiceIdRoute: PayInvoiceIdRoute,
   PayReturnRoute: PayReturnRoute,
   PhotosShareIdRoute: PhotosShareIdRoute,

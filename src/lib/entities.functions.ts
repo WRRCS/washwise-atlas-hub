@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { clientContact, clientContactMap, staffDirectory } from "@/lib/privacy";
+import { accessState, type AccessState, type InviteRecordStatus } from "@/lib/staff-invite";
 
 // ============= Clients =============
 
@@ -518,27 +519,57 @@ export const listEmployees = createServerFn({ method: "GET" })
     }));
 
     const { data: isStaff } = await context.supabase.rpc("is_owner_or_manager");
-    if (!isStaff) return list.map((p) => ({ ...p, has_app_access: false, has_push: false, last_sign_in_at: null as string | null }));
+    const noAccess = { has_app_access: false, has_push: false, last_sign_in_at: null as string | null, access_state: "none" as AccessState, invite_status: null as InviteRecordStatus | null, invite_attempt_at: null as string | null };
+    if (!isStaff) return list.map((p) => ({ ...p, ...noAccess }));
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const [{ data: users }, { data: pushRows }] = await Promise.all([
+      const [{ data: users }, { data: pushRows }, { data: invites }] = await Promise.all([
         supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 }),
         supabaseAdmin.from("push_subscriptions" as any).select("user_id"),
+        supabaseAdmin.from("staff_invites").select("profile_id, status, last_attempt_at"),
       ]);
       const signMap = new Map<string, string | null>();
-      (users?.users ?? []).forEach((u) => signMap.set(u.id, u.last_sign_in_at ?? null));
+      const banMap = new Map<string, string | null>();
+      (users?.users ?? []).forEach((u) => { signMap.set(u.id, u.last_sign_in_at ?? null); banMap.set(u.id, u.banned_until ?? null); });
+      const inviteMap = new Map<string, { status: InviteRecordStatus; last_attempt_at: string }>();
+      (invites ?? []).forEach((r: any) => inviteMap.set(r.profile_id, r));
       const pushSet = new Set<string>((pushRows ?? []).map((r: any) => r.user_id).filter(Boolean));
       return list.map((p) => ({
         ...p,
         has_app_access: signMap.has(p.id),
         has_push: pushSet.has(p.id),
         last_sign_in_at: signMap.get(p.id) ?? null,
+        access_state: accessState({
+          hasAccount: signMap.has(p.id),
+          lastSignInAt: signMap.get(p.id) ?? null,
+          bannedUntil: banMap.get(p.id) ?? null,
+          inviteStatus: inviteMap.get(p.id)?.status ?? null,
+        }),
+        invite_status: inviteMap.get(p.id)?.status ?? null,
+        invite_attempt_at: inviteMap.get(p.id)?.last_attempt_at ?? null,
       }));
     } catch {
-      return list.map((p) => ({ ...p, has_app_access: false, has_push: false, last_sign_in_at: null as string | null }));
+      return list.map((p) => ({ ...p, ...noAccess }));
     }
   });
 
+async function inviterTenant(context: { supabase: any; userId: string }) {
+  const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
+  if (!allowed) throw new Error("You don't have permission to invite employees");
+  const { data: me } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
+  if (!me?.tenant_id) throw new Error("Could not resolve your business");
+  return me.tenant_id as string;
+}
+
+async function sendViaLovable(payload: any, options: any) {
+  const { sendLovableEmail } = await import("@lovable.dev/email-js");
+  return sendLovableEmail(payload, options);
+}
+
+/**
+ * Create (or link) an employee's passwordless sign-in and email the WRRCS
+ * welcome link in one step. Returns whether the email service accepted it.
+ */
 export const inviteEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -546,257 +577,57 @@ export const inviteEmployee = createServerFn({ method: "POST" })
       email: z.string().trim().email(),
       full_name: z.string().trim().min(1).max(120),
       phone: z.string().trim().max(40).optional(),
-      temporary_password: z.string().min(8).max(128).optional(),
       profile_id: z.string().uuid().optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
-    if (!allowed) throw new Error("You don't have permission to invite employees");
-
-    // Resolve the inviter's tenant so we can attach the new user to it
-    // (the auth trigger only knows about the default tenant).
-    const { data: inviterProfile, error: profErr } = await context.supabase
-      .from("profiles")
-      .select("tenant_id")
-      .eq("id", context.userId)
-      .maybeSingle();
-    if (profErr || !inviterProfile?.tenant_id) throw new Error("Could not resolve your tenant");
-    const tenantId = inviterProfile.tenant_id as string;
-
-    // Pre-check employee cap for a friendlier error than a raw trigger throw.
-    const [{ data: tenantRow }, { count: currentEmployees }] = await Promise.all([
-      context.supabase.from("tenants").select("plan_tier").eq("id", tenantId).maybeSingle(),
-      context.supabase
-        .from("user_roles")
-        .select("user_id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .eq("role", "employee"),
-    ]);
-    if (tenantRow?.plan_tier) {
-      const { data: planRow } = await context.supabase
-        .from("plan_limits")
-        .select("max_employees,display_name")
-        .eq("plan_tier", tenantRow.plan_tier)
-        .maybeSingle();
-      const cap = planRow?.max_employees ?? null;
-      if (cap != null && (currentEmployees ?? 0) >= cap) {
-        throw new Error(
-          `Employee limit reached (${currentEmployees}/${cap} on the ${planRow?.display_name ?? tenantRow.plan_tier} plan). Upgrade to invite more employees.`,
-        );
-      }
-    }
-
+    const tenantId = await inviterTenant(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Invitation-only sign-in: put the email on the allowlist first, otherwise
-    // the auth trigger refuses to create staff accounts.
-    await supabaseAdmin
-      .from("allowed_signins")
-      .upsert(
-        { email: data.email.trim().toLowerCase(), tenant_id: tenantId, invited_by: context.userId },
-        { onConflict: "email" },
-      );
-
-    let userId: string | undefined;
-    let createdNewUser = false;
-    // If this person was already added without app access, reuse their
-    // record id so the login links to their existing shifts and history.
-    let existingProfileId: string | undefined;
-    if (data.profile_id) {
-      const { data: p } = await supabaseAdmin
-        .from("profiles").select("id, tenant_id").eq("id", data.profile_id).maybeSingle();
-      if (!p || p.tenant_id !== tenantId) throw new Error("Employee not found in your business");
-      existingProfileId = p.id;
-    }
-    // Staff sign in with an emailed one-tap link, so no starter password is
-    // shared in the app: the account just gets an unusable random secret.
-    const temporaryPassword =
-      data.temporary_password ?? `wrr-${crypto.randomUUID()}${crypto.randomUUID()}`;
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      ...(existingProfileId ? { id: existingProfileId } : {}),
-      email: data.email,
-      password: temporaryPassword,
-      email_confirm: true,
-      user_metadata: { full_name: data.full_name },
-    } as any);
-    if (error) {
-      const alreadyExists = /already been registered|already registered|email_exists/i.test(error.message);
-      if (!alreadyExists) throw new Error(error.message);
-      // Find an existing app user so an owner can restore employee access
-      // without sending them through an external account-verification flow.
-      const target = data.email.toLowerCase();
-      let page = 1;
-      while (!userId && page <= 20) {
-        const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
-        if (listErr) throw new Error(listErr.message);
-        const match = (list?.users ?? []).find((u) => (u.email ?? "").toLowerCase() === target);
-        if (match) userId = match.id;
-        if (!list || (list.users?.length ?? 0) < 200) break;
-        page += 1;
-      }
-      if (!userId) throw new Error("That email is already registered, but the account could not be found.");
-
-      const { data: existingRole } = await supabaseAdmin
-        .from("user_roles")
-        .select("tenant_id")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (existingRole?.tenant_id && existingRole.tenant_id !== tenantId) {
-        throw new Error("That email already belongs to another workspace.");
-      }
-
-      const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: temporaryPassword,
-        email_confirm: true,
-      });
-      if (passwordError) throw new Error(passwordError.message);
-    } else {
-      userId = created.user?.id;
-      createdNewUser = true;
-    }
-    if (!userId) return { ok: true, id: undefined };
-
-
-    // The auth trigger placed the new user in the default tenant via the
-    // legacy path. Re-parent the profile to the inviter's tenant and move
-    // the user_roles row to the correct tenant with the employee role.
-    await supabaseAdmin.from("profiles").update({
-      tenant_id: tenantId,
-      full_name: data.full_name,
-      phone: data.phone || null,
-    }).eq("id", userId);
-
-    // Delete any auto-created role row(s) and insert a clean employee row
-    // on the correct tenant. The employee-limit trigger runs on this INSERT.
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-    const { error: roleErr } = await supabaseAdmin
-      .from("user_roles")
-      .insert({ user_id: userId, tenant_id: tenantId, role: "employee" });
-    if (roleErr) {
-      // Roll back the invite if the limit trigger (or anything else) rejects.
-      if (createdNewUser) await supabaseAdmin.auth.admin.deleteUser(userId);
-      throw new Error(roleErr.message);
-    }
-
-    return { ok: true, id: userId };
+    const { ensureStaffAccount, deliverStaffInvite } = await import("@/lib/staff-invite.server");
+    const account = await ensureStaffAccount(supabaseAdmin, {
+      tenantId, invitedBy: context.userId, email: data.email, fullName: data.full_name,
+      phone: data.phone || null, profileId: data.profile_id,
+    });
+    return deliverStaffInvite(supabaseAdmin, {
+      profileId: account.id, tenantId, email: data.email, fullName: account.fullName, invitedBy: context.userId,
+    }, sendViaLovable);
   });
 
-/**
- * Email an employee a one-tap magic sign-in link. Owners/managers with
- * can_manage_clients_employees only. The employee must already have app
- * access (an auth account); the email is allowlisted so sign-in is permitted.
- */
+/** Resend: email a fresh one-tap link; any earlier unused link stops working. */
 export const sendMagicLinkInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ employee_id: z.string().uuid(), redirect_to: z.string().url().optional() }).parse(input),
-  )
+  .inputValidator((input: unknown) => z.object({ employee_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
-    if (!allowed) throw new Error("You don't have permission to invite employees");
-
-    const { data: me } = await context.supabase
-      .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
-    if (!me?.tenant_id) throw new Error("Could not resolve your business");
-    const tenantId = me.tenant_id as string;
-
+    const tenantId = await inviterTenant(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: emp } = await supabaseAdmin
       .from("profiles").select("id, email, full_name, tenant_id").eq("id", data.employee_id).maybeSingle();
     if (!emp || emp.tenant_id !== tenantId) throw new Error("Employee not found in your business");
     if (!emp.email) throw new Error("This employee has no email address — add one first");
-
-    const email = emp.email.toLowerCase();
-    await supabaseAdmin
-      .from("allowed_signins")
-      .upsert({ email, tenant_id: tenantId, invited_by: context.userId }, { onConflict: "email" });
-
-    // Employees added before they had app access have a team record but no
-    // sign-in account. Create the account with the SAME id as that record, so
-    // the invite signs them into their existing schedule and history instead
-    // of creating a second, empty team member.
-    const { data: existingAuth } = await supabaseAdmin.auth.admin.getUserById(emp.id);
-    if (!existingAuth?.user) {
-      const { error: createErr } = await supabaseAdmin.auth.admin.createUser({
-        id: emp.id,
-        email,
-        // Random throwaway password — never shown or used; sign-in is the one-tap link.
-        password: crypto.randomUUID() + crypto.randomUUID(),
-        email_confirm: true,
-        user_metadata: { full_name: emp.full_name },
-      } as any);
-      if (createErr) {
-        if (/already been registered|already registered|email_exists/i.test(createErr.message)) {
-          throw new Error("This email already belongs to a different sign-in account. Ask for help combining the two entries before sending an invite.");
-        }
-        throw new Error(createErr.message);
-      }
-      const { data: role } = await supabaseAdmin
-        .from("user_roles").select("user_id").eq("user_id", emp.id).maybeSingle();
-      if (!role) {
-        const { error: roleErr } = await supabaseAdmin
-          .from("user_roles").insert({ user_id: emp.id, tenant_id: tenantId, role: "employee" });
-        if (roleErr) {
-          await supabaseAdmin.auth.admin.deleteUser(emp.id);
-          throw new Error(roleErr.message);
-        }
-      }
-    } else if ((existingAuth.user.email ?? "").toLowerCase() !== email) {
-      throw new Error("This team member's sign-in email doesn't match the email on their profile. Update it before sending an invite.");
-    }
-
-    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-      options: { redirectTo: data.redirect_to },
+    const { ensureStaffAccount, deliverStaffInvite } = await import("@/lib/staff-invite.server");
+    const account = await ensureStaffAccount(supabaseAdmin, {
+      tenantId, invitedBy: context.userId, email: emp.email, fullName: emp.full_name ?? emp.email, profileId: emp.id,
     });
-    if (error) throw new Error(error.message);
-    const url = link?.properties?.action_link;
-    if (!url) throw new Error("Could not create the sign-in link");
+    return deliverStaffInvite(supabaseAdmin, {
+      profileId: account.id, tenantId, email: emp.email, fullName: account.fullName, invitedBy: context.userId,
+    }, sendViaLovable);
+  });
 
-    const firstName = (emp.full_name ?? "").split(" ")[0] || "there";
-    const bodyHtml = `
-      <p>Hi ${firstName},</p>
-      <p>You've been added to our team app. Tap the button below on your phone to sign in — no password needed.</p>
-      <p style="margin:24px 0"><a href="${url}" style="background:#0f172a;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Sign in to the team app</a></p>
-      <p>To keep the app on your phone like a regular app:</p>
-      <ul>
-        <li><b>iPhone/iPad:</b> open the link in Safari, tap Share, then "Add to Home Screen".</li>
-        <li><b>Android:</b> open the link in Chrome, tap the three-dot menu, then "Add to Home screen" or "Install app".</li>
-      </ul>
-      <p>Once installed, open it from the icon — you'll stay signed in and can see your schedule, clock in/out, and job notes.</p>
-      <p style="color:#64748b;font-size:12px">This sign-in link expires soon and can only be used once. If it stops working, ask your manager to send a new one.</p>
-    `;
-
-    const { sendLovableEmail } = await import("@lovable.dev/email-js");
-    const emailResult = await sendLovableEmail(
-      {
-        to: email,
-        from: "Wash Rinse Repeat Cleaning <info@washrinserepeatcleaning.com>",
-        sender_domain: "notify.washrinserepeatcleaning.com",
-        subject: "Your team app sign-in link",
-        html: bodyHtml,
-        text: [
-          `Hi ${firstName},`,
-          "",
-          "You've been added to our team app. Open this one-time sign-in link:",
-          url,
-          "",
-          "The link expires soon and can only be used once.",
-        ].join("\n"),
-        purpose: "transactional",
-        idempotency_key: `employee-invite-${tenantId}-${emp.id}-${crypto.randomUUID()}`,
-        label: "employee_magic_link_invite",
-      },
-      {
-        apiKey: process.env['LOVABLE_API_KEY']!,
-        sendUrl: process.env['LOVABLE_SEND_URL'],
-      },
-    );
-    if (!emailResult.success) throw new Error("The sign-in email could not be sent. Please try again.");
-
-    return { ok: true, message_id: emailResult.message_id };
+/** Cancel an invite nobody has used yet. */
+export const revokeEmployeeInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ employee_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const tenantId = await inviterTenant(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: emp } = await supabaseAdmin
+      .from("profiles").select("id, email, tenant_id").eq("id", data.employee_id).maybeSingle();
+    if (!emp || emp.tenant_id !== tenantId) throw new Error("Employee not found in your business");
+    const { data: ownerRole } = await supabaseAdmin
+      .from("user_roles").select("user_id").eq("user_id", emp.id).eq("role", "owner").maybeSingle();
+    if (ownerRole) throw new Error("Owners can't have their access revoked here");
+    const { revokeStaffInvite } = await import("@/lib/staff-invite.server");
+    return revokeStaffInvite(supabaseAdmin, { profileId: emp.id, tenantId, email: emp.email ?? "", invitedBy: context.userId });
   });
 
 /**

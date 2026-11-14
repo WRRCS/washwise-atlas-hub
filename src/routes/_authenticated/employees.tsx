@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail, MoreHorizontal, Check, Smartphone, Bell, BellOff } from "lucide-react";
+import { LogIn, Pencil, ShieldCheck, Trash2, Copy, Archive, ArchiveRestore, Mail, MoreHorizontal, Check, Smartphone, Bell, BellOff, Ban, CheckCircle2, AlertTriangle, HelpCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -20,8 +20,9 @@ import { Switch } from "@/components/ui/switch";
 import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
   listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
-  sendMagicLinkInvite, getEmployeeJobDetails, updateEmployeeJobDetails,
+  sendMagicLinkInvite, revokeEmployeeInvite, getEmployeeJobDetails, updateEmployeeJobDetails,
 } from "@/lib/entities.functions";
+import { STAFF_APP_URL, inviteResultMessage, type AccessState, type InviteSendStatus } from "@/lib/staff-invite";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -40,7 +41,28 @@ type Employee = {
   has_push: boolean;
   last_sign_in_at: string | null;
   hourly_rate_cents: number | null;
+  access_state: AccessState;
+  invite_status: string | null;
+  invite_attempt_at: string | null;
 };
+
+type InviteOutcome = { status: InviteSendStatus; email: string; error?: string };
+
+// A request that never got an answer can't tell us whether the email went out.
+function outcomeFromError(err: unknown, email: string): InviteOutcome {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (err instanceof TypeError || /failed to fetch|network|load failed|timeout/i.test(msg)) {
+    return { status: "unknown", email, error: "The app lost contact with the server before it could confirm." };
+  }
+  return { status: "failed", email, error: msg };
+}
+
+function toastOutcome(o: InviteOutcome) {
+  const text = inviteResultMessage(o.status, o.email);
+  if (o.status === "sent") toast.success(text);
+  else if (o.status === "failed") toast.error(o.error ? `${text}: ${o.error}` : text);
+  else toast.warning(`${text} — check the Access column before resending`);
+}
 
 
 function Employees() {
@@ -79,8 +101,9 @@ function Employees() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [invite, setInvite] = useState<{ full_name: string; email: string; phone: string; profile_id?: string }>({ full_name: "", email: "", phone: "" });
+  const [invite, setInvite] = useState<{ full_name: string; email: string; profile_id?: string }>({ full_name: "", email: "" });
   const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<InviteOutcome | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState({ phone: "", is_active: true, full_name: "" });
   const [job, setJob] = useState({ start_date: "", job_title: "", rate: "", address: "" });
@@ -91,7 +114,7 @@ function Employees() {
   const archived = staff.filter((e) => !e.is_active);
   const owners = (data as Employee[]).filter((e) => e.role === "owner");
 
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "https://wrrcs.com";
+  const appUrl = STAFF_APP_URL;
   const inviteText = (e?: Employee) =>
     [
       "You've been added to our team app.",
@@ -110,16 +133,30 @@ function Employees() {
   };
 
   const magicLinkFn = useServerFn(sendMagicLinkInvite);
+  const revokeFn = useServerFn(revokeEmployeeInvite);
   const emailSignInLink = async (e: Employee) => {
     if (!e.email) {
       toast.error("This employee has no email address — add one first");
       return;
     }
     try {
-      await magicLinkFn({ data: { employee_id: e.id, redirect_to: `${appUrl}/` } });
-      toast.success(`Sign-in link emailed to ${e.email}`);
+      const res = await magicLinkFn({ data: { employee_id: e.id } });
+      toastOutcome(res);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't send the sign-in link");
+      toastOutcome(outcomeFromError(err, e.email));
+    } finally {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+    }
+  };
+  const revokeInvite = async (e: Employee) => {
+    if (!confirm(`Revoke the pending invite for ${e.full_name ?? e.email}? Their emailed link stops working. You can resend an invite later.`)) return;
+    try {
+      await revokeFn({ data: { employee_id: e.id } });
+      toast.success("Pending invite revoked");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't revoke the invite");
+    } finally {
+      qc.invalidateQueries({ queryKey: ["employees"] });
     }
   };
 
@@ -145,27 +182,22 @@ function Employees() {
 
   const submitInvite = async () => {
     setInviting(true);
-    const email = invite.email;
+    setInviteResult(null);
+    const email = invite.email.trim().toLowerCase();
     try {
       const res = await inviteFn({ data: invite });
-      setInviteOpen(false);
-      setInvite({ full_name: "", email: "", phone: "" });
-      qc.invalidateQueries({ queryKey: ["employees"] });
-      if (res?.id) {
-        try {
-          await magicLinkFn({ data: { employee_id: res.id, redirect_to: `${appUrl}/` } });
-          toast.success(`Access created — sign-in link emailed to ${email}`);
-        } catch {
-          toast.warning("Access created, but the sign-in link couldn't be sent — press Invite on their row to try again");
-        }
-      } else {
-        toast.success("Employee app access created");
-      }
+      setInviteResult(res);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to invite");
+      setInviteResult(outcomeFromError(err, email));
     } finally {
       setInviting(false);
+      qc.invalidateQueries({ queryKey: ["employees"] });
     }
+  };
+  const openInvite = (next: { full_name: string; email: string; profile_id?: string }) => {
+    setInvite(next);
+    setInviteResult(null);
+    setInviteOpen(true);
   };
 
   const openEdit = (e: Employee) => {
@@ -283,7 +315,7 @@ function Employees() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setAddOpen(true)}>Add employee</Button>
-            <BrandButton onClick={() => { setInvite({ full_name: "", email: "", phone: "", profile_id: undefined }); setInviteOpen(true); }}>Create employee access</BrandButton>
+            <BrandButton onClick={() => openInvite({ full_name: "", email: "" })}>Create employee access</BrandButton>
           </div>
         }
       />
@@ -302,10 +334,8 @@ function Employees() {
               onImpersonate={() => impersonate(e)}
               onCopyInvite={() => copyInvite(e)}
               onEmailLink={() => emailSignInLink(e)}
-              onGiveAccess={() => {
-                setInvite({ full_name: e.full_name ?? "", email: e.email ?? "", phone: e.phone ?? "", profile_id: e.id });
-                setInviteOpen(true);
-              }}
+              onGiveAccess={() => openInvite({ full_name: e.full_name ?? "", email: e.email ?? "", profile_id: e.id })}
+              onRevoke={() => revokeInvite(e)}
               onDeactivate={() => (e.is_active ? deactivate(e) : reactivate(e))}
               onDelete={() => removeEmployee(e)}
               onChangeRole={(r) => changeRole(e, r)}
@@ -326,6 +356,7 @@ function Employees() {
                 onImpersonate={() => impersonate(e)}
                 onCopyInvite={() => copyInvite(e)}
                 onEmailLink={() => emailSignInLink(e)}
+                onRevoke={() => revokeInvite(e)}
                 onDeactivate={() => reactivate(e)}
                 onDelete={() => removeEmployee(e)}
                 onChangeRole={(r) => changeRole(e, r)}
@@ -360,31 +391,39 @@ function Employees() {
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create employee app access</DialogTitle>
-            <DialogDescription>We'll create their sign-in and email them a one-tap link right away — no password needed and no Lovable account required.</DialogDescription>
+            <DialogTitle>Create employee access</DialogTitle>
+            <DialogDescription>They get a WRRCS welcome email with one button that signs them in to My Jobs — no password, code or form.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="fn">Full name</Label>
-              <Input id="fn" value={invite.full_name} onChange={(e) => setInvite({ ...invite, full_name: e.target.value })} />
+          {inviteResult ? (
+            <InviteResultPanel result={inviteResult} />
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="fn">Employee name</Label>
+                <Input id="fn" value={invite.full_name} onChange={(e) => setInvite({ ...invite, full_name: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="em">Email</Label>
+                <Input id="em" type="email" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="em">Email</Label>
-              <Input id="em" type="email" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
-            </div>
-            <div>
-              <Label htmlFor="ph">Phone</Label>
-              <Input id="ph" value={invite.phone} onChange={(e) => setInvite({ ...invite, phone: e.target.value })} />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Pressing “Create access” emails them a one-tap sign-in link straight away — nothing for you to copy and nothing for them to remember.
-            </p>
-          </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={submitInvite} disabled={inviting || !invite.email || !invite.full_name}>
-              {inviting ? "Sending invite..." : "Send invite"}
-            </Button>
+            {inviteResult?.status === "sent" ? (
+              <Button onClick={() => setInviteOpen(false)}>Done</Button>
+            ) : inviteResult ? (
+              <>
+                <Button variant="outline" onClick={() => setInviteOpen(false)}>Close</Button>
+                <Button onClick={submitInvite} disabled={inviting}>{inviting ? "Sending…" : "Retry"}</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+                <Button onClick={submitInvite} disabled={inviting || !invite.email.trim() || !invite.full_name.trim()}>
+                  {inviting ? "Sending…" : "Invite"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -487,7 +526,7 @@ const EMPTY_PERMS = {
   can_view_wages: false,
 };
 
-function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onEmailLink, onGiveAccess, onDeactivate, onDelete, onChangeRole }: {
+function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, onImpersonate, onCopyInvite, onEmailLink, onGiveAccess, onRevoke, onDeactivate, onDelete, onChangeRole }: {
   e: Employee;
   showWages: boolean;
   isOwnerViewer: boolean;
@@ -498,6 +537,7 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
   onCopyInvite: () => void;
   onEmailLink: () => void;
   onGiveAccess?: () => void;
+  onRevoke?: () => void;
   onDeactivate: () => void;
   onDelete?: () => void;
 
@@ -629,13 +669,7 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
           <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${e.is_active ? "bg-emerald-50 text-emerald-700" : "bg-clay-200 text-muted-foreground"}`}>
             {e.is_active ? "Active" : "Archived"}
           </span>
-          <span
-            className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ${e.has_app_access ? "bg-brand-cyan/10 text-brand-cyan ring-brand-cyan/30" : "bg-clay-100 text-muted-foreground ring-black/10"}`}
-            title={e.has_app_access ? "This person has a sign-in account for the app" : "No app access yet — press Invite to email them a one-tap link"}
-          >
-            <Smartphone className="size-3" />
-            {e.has_app_access ? "Has app" : "No app yet"}
-          </span>
+          <AccessBadge state={e.access_state} inviteStatus={e.invite_status} attemptAt={e.invite_attempt_at} />
         </div>
       </div>
 
@@ -663,8 +697,9 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
           <Pencil className="size-3.5 mr-1.5" /> Edit
         </Button>
         {e.email ? (
-          <Button size="sm" onClick={onEmailLink} title="Email this person a one-tap sign-in link (no password needed)">
-            <Mail className="size-3.5 mr-1.5" /> Invite
+          <Button size="sm" onClick={onEmailLink} title="Email a fresh one-tap sign-in link — any earlier unused link stops working">
+            <Mail className="size-3.5 mr-1.5" />
+            {e.access_state === "pending" || e.access_state === "revoked" ? "Resend invite" : e.access_state === "activated" ? "Email sign-in link" : "Invite"}
           </Button>
         ) : (
           <Button size="sm" variant="outline" onClick={onCopyInvite} title="No email on file — copy the app link and sign-in steps instead">
@@ -681,6 +716,11 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
             {onGiveAccess && !e.has_app_access && e.role !== "owner" && (
               <DropdownMenuItem onClick={onGiveAccess}>
                 <ShieldCheck className="size-4 mr-2" /> Create app access
+              </DropdownMenuItem>
+            )}
+            {onRevoke && e.access_state === "pending" && e.role !== "owner" && (
+              <DropdownMenuItem onClick={onRevoke} className="text-destructive focus:text-destructive">
+                <Ban className="size-4 mr-2" /> Revoke pending invite
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={onEdit}>
@@ -716,6 +756,53 @@ function EmployeeRow({ e, isOwnerViewer, showWages, perms, onSavePerms, onEdit, 
         </DropdownMenu>
       </div>
     </div>
+  );
+}
+
+function InviteResultPanel({ result }: { result: InviteOutcome }) {
+  const text = inviteResultMessage(result.status, result.email);
+  if (result.status === "sent") {
+    return (
+      <div role="status" className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800 ring-1 ring-emerald-200">
+        <div className="flex items-center gap-2 font-medium"><CheckCircle2 className="size-4" /> {text}</div>
+        <p className="mt-1 text-emerald-800/80">The email service accepted it. That doesn't guarantee it reached their inbox — if they can't find it, ask them to check spam, then use Resend invite.</p>
+      </div>
+    );
+  }
+  if (result.status === "failed") {
+    return (
+      <div role="alert" className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive ring-1 ring-destructive/30">
+        <div className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" /> {text}</div>
+        <p className="mt-1">{result.error ?? "Nothing was sent."} It's safe to retry — it won't create a second employee.</p>
+      </div>
+    );
+  }
+  return (
+    <div role="status" className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
+      <div className="flex items-center gap-2 font-medium"><HelpCircle className="size-4" /> {text}</div>
+      <p className="mt-1">We couldn't confirm whether the email went out to {result.email}. Retrying sends a new link and the earlier one stops working.</p>
+    </div>
+  );
+}
+
+function AccessBadge({ state, inviteStatus, attemptAt }: { state: AccessState; inviteStatus: string | null; attemptAt: string | null }) {
+  const when = attemptAt ? ` · last invite ${formatLast(attemptAt)}` : "";
+  const cfg: Record<AccessState, { label: string; cls: string; title: string }> = {
+    activated: { label: "Activated", cls: "bg-brand-cyan/10 text-brand-cyan ring-brand-cyan/30", title: "Has signed in to the app" },
+    pending: {
+      label: inviteStatus === "failed" ? "Pending · send failed" : inviteStatus === "unknown" ? "Pending · send unknown" : "Pending",
+      cls: inviteStatus === "failed" ? "bg-destructive/10 text-destructive ring-destructive/30" : "bg-amber-50 text-amber-800 ring-amber-200",
+      title: `Invited but hasn't signed in yet${when}`,
+    },
+    revoked: { label: "Invite revoked", cls: "bg-clay-100 text-muted-foreground ring-black/10", title: `Invite cancelled — Resend invite to let them in${when}` },
+    none: { label: "No app yet", cls: "bg-clay-100 text-muted-foreground ring-black/10", title: "No app access yet — press Invite" },
+  };
+  const c = cfg[state] ?? cfg.none;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ring-1 ${c.cls}`} title={c.title}>
+      <Smartphone className="size-3" />
+      {c.label}
+    </span>
   );
 }
 

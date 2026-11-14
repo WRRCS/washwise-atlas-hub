@@ -3365,6 +3365,60 @@ export type Database = {
           },
         ]
       }
+      staff_invites: {
+        Row: {
+          email: string
+          error: string | null
+          invited_by: string | null
+          last_attempt_at: string
+          message_id: string | null
+          profile_id: string
+          revoked_at: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          email: string
+          error?: string | null
+          invited_by?: string | null
+          last_attempt_at?: string
+          message_id?: string | null
+          profile_id: string
+          revoked_at?: string | null
+          sent_at?: string | null
+          status: string
+          tenant_id: string
+        }
+        Update: {
+          email?: string
+          error?: string | null
+          invited_by?: string | null
+          last_attempt_at?: string
+          message_id?: string | null
+          profile_id?: string
+          revoked_at?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invites_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_invoices: {
         Row: {
           amount_due_cents: number
