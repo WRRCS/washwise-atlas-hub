@@ -242,6 +242,7 @@ function TimesheetPage() {
                   <span className="font-medium w-40 truncate">{en.employee_name}</span>
                   <span>{t(en.kind==="lunch"?"Unpaid lunch": "activity_type" in en&&en.activity_type==="drive"?"Drive":en.job_id?"Paid work":"Unscheduled work")}</span>
                   <span>{time(en.started_at)} – {en.ended_at?time(en.ended_at):t("Missing clock-out")}</span>
+                  <span className="font-semibold tabular-nums">{(dailyIntervalMinutes(en,{from,to})/60).toFixed(2)} {t("hrs")}</span>
                   <Button size="icon" variant="ghost" aria-label={t("Edit time record")} onClick={()=>setCorrection({employeeId:en.employee_id,jobId:en.job_id})}><Pencil className="size-4"/></Button>
                 </div>
               ))}
@@ -414,14 +415,16 @@ function WeekView({ day, who, isMgr, picker, time, onBack, onPickDay, setDay }: 
     <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, -7))}><ChevronLeft className="size-4 mr-1" />{tt("Prev week")}</Button>
-        <Button variant="outline" size="sm" onClick={() => setDay(startOfDay(new Date()))}>{tt("This week")}</Button>
+        <span className="flex flex-col gap-1">
+          <Button variant="outline" size="sm" onClick={() => setDay(startOfDay(new Date()))}>{tt("This week")}</Button>
+          <Button size="sm" className="bg-brand text-brand-foreground hover:bg-brand/90" onClick={onBack}>{tt("Day view")}</Button>
+        </span>
         <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, 7))}>{tt("Next week")}<ChevronRight className="size-4 ml-1" /></Button>
         <span className="text-sm font-medium ml-2">{format(start, "MMM d", dateLocaleOpts())} – {format(addDays(start, 6), "MMM d, yyyy", dateLocaleOpts())}</span>
         {picker}
         <span className="ml-auto flex gap-2">
           {list.length > 0 && <Button variant="ghost" size="sm" onClick={() => setOpen(allOpen ? new Set() : new Set(list.map((g) => g.id)))}>{tt(allOpen ? "Collapse all" : "Expand all")}</Button>}
           <Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />{tt("Download")}</Button>
-          <Button size="sm" className="bg-success text-primary-foreground hover:bg-success/90" onClick={onBack}>{tt("Day view")}</Button>
         </span>
       </div>
       <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
