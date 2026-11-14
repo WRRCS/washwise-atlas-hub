@@ -330,6 +330,13 @@
       "when": 1794688915653,
       "tag": "0046_staff_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794696226333,
+      "tag": "0047_timesheet_correction_no_arrival_required",
+      "breakpoints": true
     }
   ]
 }

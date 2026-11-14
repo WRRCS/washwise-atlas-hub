@@ -24,10 +24,15 @@ export function validateCorrectionIntervals(records: CorrectionInterval[], visit
     if (prev && next && (!prev.ended_at || Date.parse(prev.ended_at)>Date.parse(next.started_at))) throw new Error("Work, drive and unpaid lunch cannot overlap");
   }
   if (status === "no_show" && visits.length) throw new Error("Confirmed no-show cannot contain arrival intervals");
-  if (status === "worked" && jobId && !visits.length) throw new Error("Enter actual arrival times or choose missing punch");
   for (const visit of visits) {
     if (!Number.isFinite(Date.parse(visit.arrived_at)) || (visit.left_at && (!Number.isFinite(Date.parse(visit.left_at)) || Date.parse(visit.left_at)<=Date.parse(visit.arrived_at)))) throw new Error("Leave time must be after arrival");
   }
+}
+
+/** When a worked appointment has no arrival times, use the paid work intervals tagged to it as the arrival/leave times. */
+export function visitsFromWork(records: CorrectionInterval[], visits: CorrectionVisit[], status: AttendanceStatus, jobId: string | null, newId: () => string): CorrectionVisit[] {
+  if (status !== "worked" || !jobId || visits.length) return visits;
+  return records.filter(r => r.kind === "work" && r.job_id === jobId).map(r => ({ id: newId(), arrived_at: r.started_at, left_at: r.ended_at }));
 }
 
 /** Lunch cuts paid work and arrival intervals; the original IDs stay on the first segment. */

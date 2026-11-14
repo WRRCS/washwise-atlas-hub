@@ -1,5 +1,5 @@
 import { describe,expect,it } from "vitest";
-import { attendanceIssue,insertLunch,adjustLunch,validateCorrectionIntervals,type CorrectionInterval } from "../../src/lib/timesheet-corrections";
+import { attendanceIssue,insertLunch,adjustLunch,validateCorrectionIntervals,visitsFromWork,type CorrectionInterval } from "../../src/lib/timesheet-corrections";
 import { clockTotals } from "../../src/lib/clock-totals";
 const at=(h:string)=>`2026-10-20T${h}:00Z`;
 const work:CorrectionInterval={id:"work",source:"clock",kind:"work",started_at:at("09:00"),ended_at:at("17:00"),job_id:"job",description:"Work"};
@@ -8,6 +8,7 @@ describe("admin timesheet corrections",()=>{
  it("missing data is not a confirmed no-show",()=>expect(attendanceIssue({arrived_at:null,left_at:null,scheduled_end:at("17:00")},Date.parse(at("18:00")))).toBe("Missing punch"));
  it("a confirmed no-show remains absent without fabricated hours",()=>{expect(attendanceIssue({attendance_status:"no_show",arrived_at:null,left_at:null,scheduled_end:at("17:00")})).toBe("No-Show");expect(()=>validateCorrectionIntervals([],[],"no_show","job")).not.toThrow();expect(()=>validateCorrectionIntervals([work],[],"no_show","job")).toThrow("cannot contain work");});
  it("allows no-show-to-worked actual punches",()=>expect(()=>validateCorrectionIntervals([work],[{id:"visit",arrived_at:work.started_at,left_at:work.ended_at}],"worked","job")).not.toThrow());
+ it("worked appointment with clock in/out saves without typed arrival times",()=>{expect(()=>validateCorrectionIntervals([work],[],"worked","job")).not.toThrow();expect(visitsFromWork([work],[],"worked","job",()=>"v")).toEqual([{id:"v",arrived_at:work.started_at,left_at:work.ended_at}]);expect(visitsFromWork([work],[],"missing_punch","job",()=>"v")).toEqual([]);});
  it("splits lunch from paid work and arrival exactly once",()=>{const result=insertLunch([work],[{id:"visit",arrived_at:work.started_at,left_at:work.ended_at}],lunch,()=>"second");expect(clockTotals(result.records)).toEqual({paid:450,unpaid:30});expect(result.visits).toHaveLength(2);expect(result.records[0]?.id).toBe("work");});
  it("edits lunch and adjacent paid edges",()=>{const result=insertLunch([work],[],lunch,()=>"second");const edited=adjustLunch(result.records,[],lunch,{...lunch,ended_at:at("12:45")});expect(clockTotals(edited.records)).toEqual({paid:435,unpaid:45});});
  it("removes incorrect lunch and restores paid time",()=>{const result=insertLunch([work],[],lunch,()=>"second");expect(clockTotals(adjustLunch(result.records,[],lunch,null).records)).toEqual({paid:480,unpaid:0});});

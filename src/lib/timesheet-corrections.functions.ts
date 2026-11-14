@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { validateCorrectionIntervals, type CorrectionInterval, type CorrectionVisit, type AttendanceStatus } from "@/lib/timesheet-corrections";
+import { validateCorrectionIntervals, visitsFromWork, type CorrectionInterval, type CorrectionVisit, type AttendanceStatus } from "@/lib/timesheet-corrections";
 import type { Json } from "@/integrations/supabase/types";
 
 const reviewSchema=z.object({employee_id:z.string().uuid(),job_id:z.string().uuid().nullable(),from:z.string().datetime({offset:true}),to:z.string().datetime({offset:true})});
@@ -40,8 +40,9 @@ const intervalSchema=z.object({id:z.string().uuid(),source:z.enum(["time","clock
 export const saveTimesheetCorrection=createServerFn({method:"POST"})
   .middleware([requireSupabaseAuth]).inputValidator((input:unknown)=>reviewSchema.extend({original:z.unknown(),records:z.array(intervalSchema).max(100),visits:z.array(z.object({id:z.string().uuid(),arrived_at:z.string().datetime({offset:true}),left_at:z.string().datetime({offset:true}).nullable()})).max(50),status:z.enum(["worked","no_show","missing_punch"]),reason:z.string().trim().max(1000).default("")}).parse(input))
   .handler(async({data,context})=>{
-    validateCorrectionIntervals(data.records,data.visits,data.status,data.job_id);
-    const args={_employee:data.employee_id,_job:data.job_id,_from:data.from,_to:data.to,_original:data.original as Json,_records:data.records,_visits:data.visits,_status:data.status,_reason:data.reason};
+    const visits=visitsFromWork(data.records,data.visits,data.status,data.job_id,()=>crypto.randomUUID());
+    validateCorrectionIntervals(data.records,visits,data.status,data.job_id);
+    const args={_employee:data.employee_id,_job:data.job_id,_from:data.from,_to:data.to,_original:data.original as Json,_records:data.records,_visits:visits,_status:data.status,_reason:data.reason};
     const {data:id,error}=await (context.supabase as unknown as {rpc:(name:"admin_correct_timesheet",parameters:typeof args)=>Promise<{data:string|null;error:{message:string}|null}>}).rpc("admin_correct_timesheet",args);
     if(error)throw new Error(error.message);return {id};
   });
