@@ -141,7 +141,7 @@ function TimesheetPage() {
     return (
       <>
         <PageHeader title={t("Timesheet")} subtitle={`${t("Pay period (week)")} · ${t("Pacific time")}`} />
-        <WeekView day={day} who={who} picker={picker} time={time} onBack={() => setView("day")} onPickDay={(d) => { setDay(d); setView("day"); }} setDay={setDay} />
+        <WeekView day={day} who={who} isMgr={isMgr} picker={picker} time={time} onBack={() => setView("day")} onPickDay={(d) => { setDay(d); setView("day"); }} setDay={setDay} />
       </>
     );
   }
@@ -347,8 +347,8 @@ function EmployeePicker({ people, value, onChange }: { people: { id: string; nam
   );
 }
 
-function WeekView({ day, who, picker, time, onBack, onPickDay, setDay }: {
-  day: Date; who: string; picker: ReactNode; time: (iso: string | null) => string;
+function WeekView({ day, who, isMgr, picker, time, onBack, onPickDay, setDay }: {
+  day: Date; who: string; isMgr: boolean; picker: ReactNode; time: (iso: string | null) => string;
   onBack: () => void; onPickDay: (d: Date) => void; setDay: (d: Date) => void;
 }) {
   const start = startOfWeek(day, { weekStartsOn: 1 });
@@ -370,6 +370,23 @@ function WeekView({ day, who, picker, time, onBack, onPickDay, setDay }: {
   const lineTime = (l: PayGroup["lines"][number]) => (l.arrived_at ? `${time(l.arrived_at)} – ${l.left_at ? time(l.left_at) : tt("now")}` : "--");
   const sum = (f: (g: PayGroup) => number) => list.reduce((s, g) => s + f(g), 0);
   const priced = list.some((g) => g.cents != null);
+  // Tapping unscheduled time opens the same line editor as the day view, ready to pick the job.
+  const [fix, setFix] = useState<{ row: DailyRow; dayKey: string; from: string; to: string } | null>(null);
+  const [more, setMore] = useState<{ employeeId: string; from: string; to: string } | null>(null);
+  const openFix = (g: PayGroup, l: PayGroup["lines"][number]) => {
+    if (!l.unscheduled) return;
+    const d = days[l.dayIndex];
+    const dayKey = format(d, "yyyy-MM-dd");
+    setFix({
+      dayKey,
+      from: zonedToUTCISO(dayKey, "00:00", "America/Los_Angeles"),
+      to: zonedToUTCISO(format(addDays(d, 1), "yyyy-MM-dd"), "00:00", "America/Los_Angeles"),
+      row: {
+        key: l.key, employee_id: g.id, employee_name: g.name, job_id: null, client: tt("Unscheduled work"), property: l.unscheduled.description,
+        scheduled_start: null, scheduled_end: null, visit_id: null, arrived_at: l.unscheduled.started_at, left_at: l.unscheduled.ended_at, drive_min: 0,
+      },
+    });
+  };
 
   const download = () => {
     const head = ["Employee", "Date", "Cleaning", "Wage rate", "Time card", "Scheduled hours", "Total paid hours"];
@@ -445,11 +462,18 @@ function WeekView({ day, who, picker, time, onBack, onPickDay, setDay }: {
                       </td>
                     )}
                   </tr>
-                  {isOpen && g.lines.map((l) => (
-                    <tr key={l.key} className="border-b border-border/40">
-                      <td className="px-4 py-3 whitespace-nowrap"><button type="button" className="hover:underline" onClick={() => onPickDay(days[l.dayIndex])}>{format(days[l.dayIndex], "EEE MMM d", dateLocaleOpts())}</button></td>
+                  {isOpen && g.lines.map((l) => {
+                    const tappable = isMgr && !!l.unscheduled;
+                    return (
+                    <tr key={l.key} className={`border-b border-border/40 ${tappable ? "cursor-pointer bg-warning/10 hover:bg-warning/20" : ""}`}
+                      onClick={tappable ? () => openFix(g, l) : undefined}>
+                      <td className="px-4 py-3 whitespace-nowrap"><button type="button" className="hover:underline" onClick={(e) => { e.stopPropagation(); onPickDay(days[l.dayIndex]); }}>{format(days[l.dayIndex], "EEE MMM d", dateLocaleOpts())}</button></td>
                       <td className="px-4 py-3">
-                        {l.other ? <span className="text-muted-foreground">{tt("Drive / other work")}</span> : <>
+                        {l.unscheduled ? <>
+                          <div className="font-medium">{tt("Unscheduled work")}</div>
+                          {l.property && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{l.property}</div>}
+                          {tappable && <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand"><Plus className="size-3.5" />{tt("Tap to add the job")}</div>}
+                        </> : l.other ? <span className="text-muted-foreground">{tt("Drive / other work")}</span> : <>
                           <div className="font-medium">{l.client}</div>
                           {l.property && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{l.property}</div>}
                         </>}
@@ -460,7 +484,8 @@ function WeekView({ day, who, picker, time, onBack, onPickDay, setDay }: {
                       <td className="px-4 py-3 text-right">{hours2(l.paidMin)}</td>
                       {rates && <td className="px-4 py-3 text-right">{l.cents != null ? dollars(l.cents) : "—"}</td>}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </Fragment>
               );
             })}
@@ -480,6 +505,10 @@ function WeekView({ day, who, picker, time, onBack, onPickDay, setDay }: {
       </div>
       <p className="text-xs text-muted-foreground">{tt("Tap a name to show or hide each cleaning. Tap a date to open that day.")}</p>
       {rates && <p className="text-xs text-muted-foreground">{tt("Earned = hourly rate, with 1.5× for hours over 40 in the week (Mon–Sun). Tips not included.")}</p>}
+      {isMgr && <p className="text-xs text-muted-foreground">{tt("Tap an Unscheduled work line to add the job. Hours go on that job's draft invoice when it bills by the hour.")}</p>}
+      {fix && <TimesheetLineDialog key={fix.row.key} row={fix.row} dayKey={fix.dayKey} from={fix.from} to={fix.to} onClose={() => setFix(null)}
+        onMoreCorrections={() => { setMore({ employeeId: fix.row.employee_id, from: fix.from, to: fix.to }); setFix(null); }} />}
+      {more && <TimesheetCorrectionDialog employeeId={more.employeeId} jobId={null} from={more.from} to={more.to} onClose={() => setMore(null)} />}
     </div>
   );
 }

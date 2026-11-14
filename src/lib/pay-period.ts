@@ -6,7 +6,7 @@ type Row = {
   scheduled_start: string | null; scheduled_end: string | null; arrived_at: string | null; left_at: string | null;
   drive_min: number; attendance_status?: string | null;
 };
-type Entry = { employee_id: string; employee_name: string; started_at: string; ended_at: string | null; job_id?: string | null; activity_type?: string };
+type Entry = { employee_id: string; employee_name: string; started_at: string; ended_at: string | null; job_id?: string | null; activity_type?: string; description?: string | null };
 export type DayData = { from: string; to: string; rows: Row[]; entries: Entry[]; clockRecords?: { employee_id: string; employee_name: string; kind: string; started_at: string; ended_at: string | null }[] };
 
 /** Paid total = clock in → clock out (open entry counts to now); falls back to on-site + drive when no clock entry exists. */
@@ -33,6 +33,8 @@ export type PayLine = {
   key: string; dayIndex: number; client: string; property: string | null;
   scheduled_start: string | null; arrived_at: string | null; left_at: string | null;
   scheduledMin: number; paidMin: number; cents: number | null; other: boolean;
+  /** Clocked time not tied to any cleaning that day; an owner can tap it to pick the job. */
+  unscheduled?: { started_at: string; ended_at: string | null; description: string | null };
 };
 export type PayGroup = {
   id: string; name: string; rateCents: number | null; lines: PayLine[];
@@ -40,6 +42,14 @@ export type PayGroup = {
   cents: number | null; overtimeMin: number;
 };
 
+type Interval = { started_at: string; ended_at: string | null };
+/** Minutes two intervals share inside the day window (open ends count to now). */
+function overlapMin(a: Interval, b: Interval, win: { from: string; to: string }, now: number) {
+  const end = (x: Interval) => (x.ended_at ? Date.parse(x.ended_at) : now);
+  const lo = Math.max(Date.parse(a.started_at), Date.parse(b.started_at), Date.parse(win.from));
+  const hi = Math.min(end(a), end(b), Date.parse(win.to));
+  return Math.max(0, (hi - lo) / 60000);
+}
 const span = (a: string | null, b: string | null) => (a && b ? Math.max(0, (Date.parse(b) - Date.parse(a)) / 60000) : 0);
 
 /**
@@ -67,6 +77,27 @@ export function buildPayPeriod(days: (DayData | undefined)[], rates: Record<stri
       const hasClock = !!tot?.hasClock;
       const byJob = new Map<string, Row[]>();
       for (const r of rows) { const k = r.job_id ?? `row-${byJob.size}`; byJob.set(k, [...(byJob.get(k) ?? []), r]); }
+      // Paid clock time per cleaning: an entry tagged with one of this cleaner's cleanings goes to it;
+      // otherwise it goes to whichever of her cleanings it overlaps, and anything left is unscheduled work.
+      const paidByJob = new Map<string, number>();
+      const unscheduled: PayLine[] = [];
+      if (hasClock) {
+        const visits = rows.filter((r) => r.arrived_at && r.job_id);
+        for (const e of data.entries.filter((x) => x.employee_id === emp)) {
+          const total = dailyIntervalMinutes(e, data, now);
+          if (e.job_id && byJob.has(e.job_id)) { paidByJob.set(e.job_id, (paidByJob.get(e.job_id) ?? 0) + total); continue; }
+          let left = total;
+          for (const v of visits) {
+            const ov = Math.min(left, overlapMin(e, { started_at: v.arrived_at!, ended_at: v.left_at }, data, now));
+            if (ov > 0) { paidByJob.set(v.job_id!, (paidByJob.get(v.job_id!) ?? 0) + ov); left -= ov; }
+          }
+          if (left >= 0.5 && e.activity_type !== "drive") unscheduled.push({
+            key: `${dayIndex}|${emp}|u|${e.started_at}`, dayIndex, client: "Unscheduled work", property: e.description?.trim() || null,
+            scheduled_start: null, arrived_at: e.started_at, left_at: e.ended_at, scheduledMin: 0, paidMin: left, cents: null, other: true,
+            unscheduled: { started_at: e.started_at, ended_at: e.ended_at, description: e.description?.trim() || null },
+          });
+        }
+      }
       const dayLines: PayLine[] = [];
       for (const [job, list] of byJob) {
         const first = list[0];
@@ -74,7 +105,7 @@ export function buildPayPeriod(days: (DayData | undefined)[], rates: Record<stri
         const lefts = list.map((r) => r.left_at);
         const left = arrived && lefts.every(Boolean) ? (lefts as string[]).sort().at(-1)! : null;
         const paidMin = hasClock
-          ? data.entries.filter((e) => e.employee_id === emp && e.job_id === job).reduce((s, e) => s + dailyIntervalMinutes(e, data, now), 0)
+          ? paidByJob.get(job) ?? 0
           : list.reduce((s, r) => s + (r.arrived_at ? dailyIntervalMinutes({ started_at: r.arrived_at, ended_at: r.left_at }, data, now) : 0) + (r.drive_min ?? 0), 0);
         dayLines.push({
           key: `${dayIndex}|${emp}|${job}`, dayIndex, client: first.client, property: first.property, scheduled_start: first.scheduled_start,
@@ -82,6 +113,7 @@ export function buildPayPeriod(days: (DayData | undefined)[], rates: Record<stri
           paidMin, cents: null, other: false,
         });
       }
+      dayLines.push(...unscheduled);
       dayLines.sort((a, b) => (a.arrived_at ?? a.scheduled_start ?? "").localeCompare(b.arrived_at ?? b.scheduled_start ?? ""));
       const dayTotal = tot?.total ?? 0;
       const rest = dayTotal - dayLines.reduce((s, l) => s + l.paidMin, 0);

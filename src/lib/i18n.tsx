@@ -340,6 +340,8 @@ const UK: Record<string, string> = {
   "Expand all": "Розгорнути все",
   "Collapse all": "Згорнути все",
   "Drive / other work": "Дорога / інша робота",
+  "Tap to add the job": "Торкніться, щоб додати роботу",
+  "Tap an Unscheduled work line to add the job. Hours go on that job's draft invoice when it bills by the hour.": "Торкніться рядка «Робота поза розкладом», щоб додати роботу. Години додаються до чернетки рахунку, якщо робота погодинна.",
   "Tap a name to show or hide each cleaning. Tap a date to open that day.": "Торкніться імені, щоб показати або сховати прибирання. Торкніться дати, щоб відкрити день.",
   "Earned = hourly rate, with 1.5× for hours over 40 in the week (Mon–Sun). Tips not included.": "Зароблено = погодинна ставка, 1,5× за години понад 40 на тиждень (пн–нд). Чайові не враховано.",
   "Paid work": "Оплачувана робота",

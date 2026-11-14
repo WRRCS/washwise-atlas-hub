@@ -62,3 +62,32 @@ describe("pay period by employee", () => {
     expect(g.lines[0].cents).toBeNull();
   });
 });
+
+describe("unscheduled work on the pay period", () => {
+  it("shows clocked time with no cleaning as a tappable Unscheduled work line with its times", () => {
+    const wed = day("2026-11-11", {
+      entries: [{ ...entry("other-job", "2026-11-12T01:55:00Z", "2026-11-12T03:00:00Z"), description: "Chuck A Nut Bay Foods" }],
+    });
+    const [g] = buildPayPeriod([wed], { alina: 2400 });
+    expect(g.lines).toHaveLength(1);
+    expect(g.lines[0]).toMatchObject({ client: "Unscheduled work", property: "Chuck A Nut Bay Foods", paidMin: 65,
+      unscheduled: { started_at: "2026-11-12T01:55:00Z", ended_at: "2026-11-12T03:00:00Z" } });
+  });
+
+  it("moves that time onto the cleaning once a visit for those times is added", () => {
+    const wed = day("2026-11-11", {
+      rows: [row("chuck", "Chuckanut Bay Foods", ["2026-11-12T02:00:00Z", "2026-11-12T04:00:00Z"], "2026-11-12T01:55:00Z", "2026-11-12T03:00:00Z")],
+      entries: [{ ...entry("unrelated", "2026-11-12T01:55:00Z", "2026-11-12T03:00:00Z"), description: "Chuck A Nut Bay Foods" }],
+    });
+    const [g] = buildPayPeriod([wed], { alina: 2400 });
+    expect(g.lines.map((l) => [l.client, l.paidMin, !!l.unscheduled])).toEqual([["Chuckanut Bay Foods", 65, false]]);
+    expect(g.timeCards).toBe(1);
+  });
+
+  it("never offers drive time as a job to pick", () => {
+    const wed = day("2026-11-11", { entries: [{ ...entry(null, "2026-11-11T18:00:00Z", "2026-11-11T18:30:00Z"), activity_type: "drive" }] });
+    const [g] = buildPayPeriod([wed], null);
+    expect(g.lines[0]).toMatchObject({ client: "Drive / other work", paidMin: 30 });
+    expect(g.lines[0].unscheduled).toBeUndefined();
+  });
+});

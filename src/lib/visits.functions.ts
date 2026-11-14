@@ -223,7 +223,7 @@ export type DailyTimesheet = {
   from: string;
   to: string;
   rows: DailyRow[];
-  entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null; kind?: string; job_id?:string|null; activity_type?:string }[];
+  entries: { id: string; employee_id: string; employee_name: string; started_at: string; ended_at: string | null; kind?: string; job_id?:string|null; activity_type?:string; description?: string | null }[];
   clockRecords: (ClockRecord & {employee_id: string})[];
 };
 
@@ -295,7 +295,7 @@ export const listDailyTimesheet = createServerFn({ method: "POST" })
     // Drive/other time = gap since the cleaner clocked in or left their previous job.
     const paidRows = [...(entries ?? []), ...(clockRows ?? []).filter((r:any)=>r.kind === "work")];
     const entryList = (paidRows as any[]).map((e) => ({
-      id: e.id, kind: e.kind, activity_type:e.activity_type, job_id:e.job_id, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at, ended_at: e.ended_at,
+      id: e.id, kind: e.kind, activity_type:e.activity_type, description: e.description ?? null, job_id:e.job_id, employee_id: e.user_id, employee_name: names.get(e.user_id) ?? "Unknown", started_at: e.started_at, ended_at: e.ended_at,
     }));
     const byEmp = new Map<string, DailyRow[]>();
     for (const r of rows) if (r.arrived_at) byEmp.set(r.employee_id, [...(byEmp.get(r.employee_id) ?? []), r]);
