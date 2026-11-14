@@ -16,9 +16,11 @@ import { myCapabilities } from "@/lib/entities.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { addDays, format, startOfDay, startOfWeek } from "date-fns";
-import { ChevronDown, ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   listDailyTimesheet, type DailyRow,
 } from "@/lib/visits.functions";
@@ -162,12 +164,14 @@ function TimesheetPage() {
           <Button size="sm" className="bg-brand text-brand-foreground hover:bg-brand/90" onClick={() => setView("week")}>{t("Pay period (week)")}</Button>
           {isMgr&&<Button variant="outline" size="sm" onClick={()=>setCorrection({})}><Plus className="size-4 mr-1"/>{t("Add / correct time")}</Button>}
           {picker}
-          <input
-            type="date"
-            className="ml-auto h-9 rounded-md border border-input bg-background px-2 text-sm"
-            value={format(day, "yyyy-MM-dd")}
-            onChange={(e) => e.target.value && setDay(startOfDay(new Date(e.target.value + "T12:00:00")))}
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="ml-auto"><CalendarIcon className="size-4 mr-1.5"/>{format(day, "EEE, MMM d, yyyy", dateLocaleOpts())}</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar mode="single" selected={day} defaultMonth={day} onSelect={(d) => d && setDay(startOfDay(d))} initialFocus className="p-3 pointer-events-auto" />
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
