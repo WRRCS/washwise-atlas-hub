@@ -159,7 +159,7 @@ function TimesheetPage() {
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, -1))}><ChevronLeft className="size-4 mr-1" />{t("Prev")}</Button>
           <Button variant="outline" size="sm" disabled={isToday} onClick={() => setDay(startOfDay(new Date()))}>{t("Today")}</Button>
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, 1))}>{t("Next")}<ChevronRight className="size-4 ml-1" /></Button>
-          <Button variant="secondary" size="sm" onClick={() => setView("week")}>{t("Pay period (week)")}</Button>
+          <Button size="sm" className="bg-brand text-brand-foreground hover:bg-brand/90" onClick={() => setView("week")}>{t("Pay period (week)")}</Button>
           {isMgr&&<Button variant="outline" size="sm" onClick={()=>setCorrection({})}><Plus className="size-4 mr-1"/>{t("Add / correct time")}</Button>}
           {picker}
           <input
