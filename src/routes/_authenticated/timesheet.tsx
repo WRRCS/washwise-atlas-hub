@@ -8,13 +8,15 @@ import { dailyIntervalMinutes } from "@/lib/clock-totals";
 import { zonedToUTCISO } from "@/lib/tz";
 import { visiblePayRates } from "@/lib/pay-rates.functions";
 import { dollars, weeklyPay } from "@/lib/pay-calc";
+import { buildPayPeriod, computeTotals, hours2, type PayGroup } from "@/lib/pay-period";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { myCapabilities } from "@/lib/entities.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { addDays, format, startOfDay, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,6 +62,7 @@ function TimesheetPage() {
   const [view, setView] = useState<"day" | "week">("day");
   const [correction,setCorrection]=useState<{employeeId?:string;jobId?:string|null}|null>(null);
   const [line,setLine]=useState<DailyRow|null>(null);
+  const [who, setWho] = useState<string>("all");
   const from = zonedToUTCISO(format(day, "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const to = zonedToUTCISO(format(addDays(day, 1), "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
   const fn = useServerFn(listDailyTimesheet);
@@ -105,13 +108,29 @@ function TimesheetPage() {
   const isToday = startOfDay(new Date()).getTime() === day.getTime();
 
   const dayTotals = useMemo(() => computeTotals(q.data), [q.data]);
+  const dayTotalsShown = who === "all" ? dayTotals : dayTotals.filter((x) => x.id === who);
   const rates = usePayRates();
   const weekStart = startOfWeek(day, { weekStartsOn: 1 });
-  const priorDays = Array.from({ length: Math.round((day.getTime() - weekStart.getTime()) / 86400000) }, (_, i) => addDays(weekStart, i));
-  const priorResults = useQueries({ queries: priorDays.map((d) => dayQuery(fn, d)) });
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const dayIndex = Math.round((day.getTime() - weekStart.getTime()) / 86400000);
+  const weekResults = useQueries({ queries: weekDays.map((d) => dayQuery(fn, d)) });
+  const priorResults = weekResults.slice(0, dayIndex);
   const priorMin = new Map<string, number>();
   for (const res of priorResults) for (const t of computeTotals(res.data)) priorMin.set(t.id, (priorMin.get(t.id) ?? 0) + t.total);
   const priorLoading = priorResults.some((r) => r.isLoading);
+  // Everyone with time or cleanings this week, for the "show one employee" picker.
+  const weekStamp = weekResults.map((r) => r.dataUpdatedAt).join(",");
+  const people = useMemo(() => {
+    const m = new Map<string, string>();
+    const all = [...weekResults.map((r) => r.data), q.data];
+    for (const d of all) for (const r of d?.rows ?? []) m.set(r.employee_id, r.employee_name);
+    for (const d of all) for (const e of d?.entries ?? []) if (!m.has(e.employee_id)) m.set(e.employee_id, e.employee_name);
+    return [...m.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStamp, q.dataUpdatedAt]);
+  const pickerPeople = who !== "all" && !people.some((p) => p.id === who) ? [...people, { id: who, name: t("Employee") }] : people;
+  const picker = isMgr && pickerPeople.length > 1 ? <EmployeePicker people={pickerPeople} value={who} onChange={setWho} /> : null;
+  const shown = <T extends { employee_id: string }>(list: T[]) => (who === "all" ? list : list.filter((x) => x.employee_id === who));
   const dayEarned = (id: string, minutes: number) => {
     const rate = rates?.[id];
     if (!rate) return null;
@@ -122,7 +141,7 @@ function TimesheetPage() {
     return (
       <>
         <PageHeader title={t("Timesheet")} subtitle={`${t("Pay period (week)")} · ${t("Pacific time")}`} />
-        <WeekView day={day} onBack={() => setView("day")} onPickDay={(d) => { setDay(d); setView("day"); }} setDay={setDay} />
+        <WeekView day={day} who={who} picker={picker} time={time} onBack={() => setView("day")} onPickDay={(d) => { setDay(d); setView("day"); }} setDay={setDay} />
       </>
     );
   }
@@ -142,6 +161,7 @@ function TimesheetPage() {
           <Button variant="outline" size="sm" onClick={() => setDay(addDays(day, 1))}>{t("Next")}<ChevronRight className="size-4 ml-1" /></Button>
           <Button variant="secondary" size="sm" onClick={() => setView("week")}>{t("Pay period (week)")}</Button>
           {isMgr&&<Button variant="outline" size="sm" onClick={()=>setCorrection({})}><Plus className="size-4 mr-1"/>{t("Add / correct time")}</Button>}
+          {picker}
           <input
             type="date"
             className="ml-auto h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -164,17 +184,17 @@ function TimesheetPage() {
             </thead>
             <tbody>
               {q.isLoading && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t("Loading…")}</td></tr>}
-              {!q.isLoading && rows.length === 0 && (
+              {!q.isLoading && shown(rows).length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t("No jobs or time recorded this day.")}</td></tr>
               )}
-              {rows.map((r) => (
+              {shown(rows).map((r) => (
                 <TimesheetRow key={r.key} row={r} issue={issueOf(r)} time={time} isMgr={isMgr} from={from} to={to} onEdit={()=>setLine(r)} />
               ))}
             </tbody>
           </table>
         </div>
 
-        {dayTotals.length > 0 && (
+        {dayTotalsShown.length > 0 && (
           <section className="rounded-xl border border-border/60 bg-card">
             <div className="px-4 py-3 border-b border-border/60">
               <h2 className="font-semibold text-sm">{t("Total hours for the day")}</h2>
@@ -190,7 +210,7 @@ function TimesheetPage() {
                 {rates && <th className="text-right px-4 py-2 font-medium">{t("Earned")}</th>}
               </tr></thead>
               <tbody>
-                {dayTotals.map((tot) => (
+                {dayTotalsShown.map((tot) => (
                   <tr key={tot.name} className="border-t border-border/40 tabular-nums">
                     <td className="px-4 py-2">{tot.name}</td>
                     <td className="px-4 py-2 text-right">{shortDur(tot.total-tot.drive)}</td>
@@ -211,13 +231,13 @@ function TimesheetPage() {
           </section>
         )}
 
-        {isMgr && (entries.length>0 || (q.data?.clockRecords.length??0)>0) && (
+        {isMgr && (shown(entries).length>0 || shown(q.data?.clockRecords??[]).length>0) && (
           <section className="rounded-xl border border-border/60 bg-card">
             <div className="px-4 py-3 border-b border-border/60">
               <h2 className="font-semibold text-sm">{t("Work, drive & unpaid lunch")}</h2>
             </div>
             <div className="divide-y divide-border/40">
-              {[...entries,...(q.data?.clockRecords??[]).filter(e=>e.kind==="lunch")].map((en) => (
+              {shown([...entries,...(q.data?.clockRecords??[]).filter(e=>e.kind==="lunch")]).map((en) => (
                 <div key={en.id} className="px-4 py-2 flex flex-wrap items-center gap-3 text-sm">
                   <span className="font-medium w-40 truncate">{en.employee_name}</span>
                   <span>{t(en.kind==="lunch"?"Unpaid lunch": "activity_type" in en&&en.activity_type==="drive"?"Drive":en.job_id?"Paid work":"Unscheduled work")}</span>
@@ -314,27 +334,23 @@ function TimesheetRow({ row: r, issue, time, isMgr,from,to,onEdit }: {
   );
 }
 
-/** Paid total = clock in → clock out (open entry counts to now); falls back to on-site + drive when no clock entry exists. */
-function computeTotals(data: { from: string; to: string; rows: any[]; entries: { employee_id: string; employee_name: string; started_at: string; ended_at: string | null }[]; clockRecords?: {employee_id:string;employee_name:string;kind:string;started_at:string;ended_at:string|null}[] } | undefined) {
-  const m = new Map<string, { id: string; name: string; onSite: number; clocked: number; unpaid: number; hasClock: boolean; legacy: number; explicitDrive:number; corrected:boolean }>();
-  const get = (id: string, name: string) => { const t = m.get(id) ?? { id, name, onSite: 0, clocked: 0, unpaid: 0, hasClock: false, legacy: 0, explicitDrive:0, corrected:false }; m.set(id, t); return t; };
-  for (const r of data?.rows ?? []) {
-    const t = get(r.employee_id, r.employee_name);
-    const on = r.arrived_at && data ? dailyIntervalMinutes({ started_at: r.arrived_at, ended_at: r.left_at }, data) : 0;
-    t.onSite += on; if(r.attendance_status) t.corrected=true;
-    t.legacy += on + (r.drive_min ?? 0);
-  }
-  if (data) {
-    for (const e of data.entries) { const t=get(e.employee_id,e.employee_name); t.clocked += dailyIntervalMinutes(e, data); if("activity_type" in e && e.activity_type==="drive") t.explicitDrive += dailyIntervalMinutes(e,data); t.hasClock=true; }
-    for (const e of data.clockRecords ?? []) if(e.kind === "lunch") { const t=get(e.employee_id,e.employee_name); t.unpaid += dailyIntervalMinutes(e, data); t.hasClock=true; }
-  }
-  return Array.from(m.values())
-    .map((t) => { const total = t.hasClock ? t.clocked : t.legacy; return { ...t, total, drive: t.corrected || t.explicitDrive>0 ? t.explicitDrive : Math.max(0, total - t.onSite) }; })
-    .filter((t) => t.total > 0 || t.unpaid > 0)
-    .sort((a, b) => a.name.localeCompare(b.name));
+function EmployeePicker({ people, value, onChange }: { people: { id: string; name: string }[]; value: string; onChange: (v: string) => void }) {
+  const t = useT();
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-9 w-[200px]" aria-label={t("Show employee")}><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{t("All employees")}</SelectItem>
+        {people.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 }
 
-function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () => void; onPickDay: (d: Date) => void; setDay: (d: Date) => void }) {
+function WeekView({ day, who, picker, time, onBack, onPickDay, setDay }: {
+  day: Date; who: string; picker: ReactNode; time: (iso: string | null) => string;
+  onBack: () => void; onPickDay: (d: Date) => void; setDay: (d: Date) => void;
+}) {
   const start = startOfWeek(day, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const fn = useServerFn(listDailyTimesheet);
@@ -342,27 +358,33 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   const results = useQueries({ queries: days.map((d) => dayQuery(fn, d)) });
   const rates = usePayRates();
   const loading = results.some((r) => r.isLoading);
-  const people = new Map<string, { id: string; name: string; perDay: number[]; unpaid: number }>();
-  results.forEach((res, i) => {
-    for (const t of computeTotals(res.data)) {
-      const p = people.get(t.id) ?? { id: t.id, name: t.name, perDay: Array(7).fill(0), unpaid: 0 };
-      p.perDay[i] += t.total;
-      p.unpaid += t.unpaid;
-      people.set(t.id, p);
-    }
-  });
-  const list = Array.from(people.values()).filter((p) => p.unpaid > 0 || p.perDay.some((v) => v > 0)).sort((a, b) => a.name.localeCompare(b.name));
-  const hrs = (m: number) => (m ? (m / 60).toFixed(2) : "—");
-  const payOf = (p: { id: string; perDay: number[] }) => (rates?.[p.id] ? weeklyPay(p.perDay, rates[p.id]) : null);
+  const all = useMemo(() => buildPayPeriod(results.map((r) => r.data), rates),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [results.map((r) => r.dataUpdatedAt).join(","), rates]);
+  const list = who === "all" ? all : all.filter((g) => g.id === who);
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const toggle = (id: string) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const allOpen = list.length > 0 && list.every((g) => open.has(g.id));
+  const rateText = (c: number | null) => (c ? `${dollars(c)}/${tt("hr")}` : "—");
+  const cardText = (n: number) => `${n} ${tt(n === 1 ? "time card" : "time cards")}`;
+  const lineTime = (l: PayGroup["lines"][number]) => (l.arrived_at ? `${time(l.arrived_at)} – ${l.left_at ? time(l.left_at) : tt("now")}` : "--");
+  const sum = (f: (g: PayGroup) => number) => list.reduce((s, g) => s + f(g), 0);
+  const priced = list.some((g) => g.cents != null);
 
   const download = () => {
-    const head = ["Employee", ...days.map((d) => format(d, "EEE MM/dd")), "Unpaid lunch hours", "Paid total hours"];
-    if (rates) head.push(...days.map((d) => `Earned ${format(d, "EEE MM/dd")}`), "Overtime hours", "Earned total");
+    const head = ["Employee", "Date", "Cleaning", "Wage rate", "Time card", "Scheduled hours", "Total paid hours"];
+    if (rates) head.push("Est. wages");
     const lines = [head.join(",")];
-    for (const p of list) {
-      const row = [p.name, ...p.perDay.map((v) => (v / 60).toFixed(2)),(p.unpaid/60).toFixed(2), (p.perDay.reduce((a, b) => a + b, 0) / 60).toFixed(2)];
-      if (rates) { const pay = payOf(p); row.push(...p.perDay.map((_, i) => (pay ? (pay.days[i].cents / 100).toFixed(2) : "")), pay ? (pay.overtimeMin / 60).toFixed(2) : "", pay ? (pay.totalCents / 100).toFixed(2) : ""); }
-      lines.push(row.map((v) => `"${v}"`).join(","));
+    for (const g of list) {
+      for (const l of g.lines) {
+        const row = [g.name, format(days[l.dayIndex], "EEE MM/dd"), l.other ? "Drive / other work" : `${l.client}${l.property ? ` · ${l.property}` : ""}`,
+          g.rateCents ? (g.rateCents / 100).toFixed(2) : "", lineTime(l), hours2(l.scheduledMin), hours2(l.paidMin)];
+        if (rates) row.push(l.cents != null ? (l.cents / 100).toFixed(2) : "");
+        lines.push(row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(","));
+      }
+      const tot = [g.name, "Total", "", "", cardText(g.timeCards), hours2(g.scheduledMin), hours2(g.paidMin)];
+      if (rates) tot.push(g.cents != null ? (g.cents / 100).toFixed(2) : "");
+      lines.push(tot.map((v) => `"${v}"`).join(","));
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
@@ -370,6 +392,7 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
     a.click();
   };
 
+  const cols = rates ? 7 : 6;
   return (
     <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -377,54 +400,85 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
         <Button variant="outline" size="sm" onClick={() => setDay(startOfDay(new Date()))}>{tt("This week")}</Button>
         <Button variant="outline" size="sm" onClick={() => setDay(addDays(start, 7))}>{tt("Next week")}<ChevronRight className="size-4 ml-1" /></Button>
         <span className="text-sm font-medium ml-2">{format(start, "MMM d", dateLocaleOpts())} – {format(addDays(start, 6), "MMM d, yyyy", dateLocaleOpts())}</span>
+        {picker}
         <span className="ml-auto flex gap-2">
+          {list.length > 0 && <Button variant="ghost" size="sm" onClick={() => setOpen(allOpen ? new Set() : new Set(list.map((g) => g.id)))}>{tt(allOpen ? "Collapse all" : "Expand all")}</Button>}
           <Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />{tt("Download")}</Button>
           <Button variant="secondary" size="sm" onClick={onBack}>{tt("Day view")}</Button>
         </span>
       </div>
       <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
-        <table className="w-full text-sm min-w-[760px]">
+        <table className="w-full text-sm min-w-[820px]">
           <thead className="text-xs text-muted-foreground border-b border-border/60">
             <tr>
-              <th className="text-left px-4 py-3 font-medium">{tt("Team member")}</th>
-              {days.map((d) => (
-                <th key={d.toISOString()} className="text-right px-3 py-3 font-medium">
-                  <button className="hover:underline" onClick={() => onPickDay(d)}>{format(d, "EEE M/d", dateLocaleOpts())}</button>
-                </th>
-              ))}
-              <th className="text-right px-4 py-3 font-medium">{tt("Unpaid lunch")}</th>
-              <th className="text-right px-4 py-3 font-medium">{tt("Paid total hrs")}</th>
-              {rates && <th className="text-right px-4 py-3 font-medium">{tt("Earned")}</th>}
+              <th className="text-left px-4 py-3 font-medium">{tt("Date")}</th>
+              <th className="text-left px-4 py-3 font-medium">{tt("Cleaning")}</th>
+              <th className="text-left px-4 py-3 font-medium">{tt("Wage rate")}</th>
+              <th className="text-left px-4 py-3 font-medium">{tt("Time card")}</th>
+              <th className="text-right px-4 py-3 font-medium">{tt("Scheduled hrs")}</th>
+              <th className="text-right px-4 py-3 font-medium">{tt("Total paid hrs")}</th>
+              {rates && <th className="text-right px-4 py-3 font-medium">{tt("Est. wages")}</th>}
             </tr>
           </thead>
-          <tbody>
-            {loading && <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">{tt("Loading…")}</td></tr>}
-            {!loading && list.length === 0 && <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">{tt("No time recorded this week.")}</td></tr>}
-            {list.map((p) => {
-              const pay = payOf(p);
+          <tbody className="tabular-nums">
+            {loading && <tr><td colSpan={cols} className="px-4 py-8 text-center text-muted-foreground">{tt("Loading…")}</td></tr>}
+            {!loading && list.length === 0 && <tr><td colSpan={cols} className="px-4 py-8 text-center text-muted-foreground">{tt("No time recorded this week.")}</td></tr>}
+            {!loading && list.map((g) => {
+              const isOpen = open.has(g.id);
               return (
-              <tr key={p.id} className="border-b border-border/40 last:border-0 tabular-nums align-top">
-                <td className="px-4 py-3 font-medium">{p.name}</td>
-                {p.perDay.map((v, i) => (
-                  <td key={i} className="px-3 py-3 text-right">
-                    {hrs(v)}
-                    {pay && v > 0 && <div className="text-xs text-muted-foreground">{dollars(pay.days[i].cents)}</div>}
-                  </td>
-                ))}
-                <td className="px-4 py-3 text-right">{hrs(p.unpaid)}</td>
-                <td className="px-4 py-3 text-right font-semibold">{hrs(p.perDay.reduce((a, b) => a + b, 0))}</td>
-                {rates && (
-                  <td className="px-4 py-3 text-right font-semibold">
-                    {pay ? <>{dollars(pay.totalCents)}{pay.overtimeMin > 0 && <div className="text-xs font-normal text-muted-foreground">{(pay.overtimeMin / 60).toFixed(2)} {tt("overtime hrs")}</div>}</> : <span className="text-xs font-normal text-muted-foreground">{tt("No rate set")}</span>}
-                  </td>
-                )}
-              </tr>
+                <Fragment key={g.id}>
+                  <tr className="border-b border-border/60 bg-muted/40 cursor-pointer hover:bg-muted/60" onClick={() => toggle(g.id)}>
+                    <td className="px-4 py-3" colSpan={2}>
+                      <button type="button" className="flex items-center gap-3 font-semibold text-[15px]" aria-expanded={isOpen} onClick={(e) => { e.stopPropagation(); toggle(g.id); }}>
+                        <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+                        <span className="size-8 shrink-0 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold">{initials(g.name)}</span>
+                        {g.name}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">{rateText(g.rateCents)}</td>
+                    <td className="px-4 py-3 font-semibold">{cardText(g.timeCards)}</td>
+                    <td className="px-4 py-3 text-right font-semibold">{hours2(g.scheduledMin)}</td>
+                    <td className="px-4 py-3 text-right font-semibold">{hours2(g.paidMin)}</td>
+                    {rates && (
+                      <td className="px-4 py-3 text-right font-semibold">
+                        {g.cents != null ? <>{dollars(g.cents)}{g.overtimeMin > 0 && <div className="text-xs font-normal text-muted-foreground">{hours2(g.overtimeMin)} {tt("overtime hrs")}</div>}</> : <span className="text-xs font-normal text-muted-foreground">{tt("No rate set")}</span>}
+                      </td>
+                    )}
+                  </tr>
+                  {isOpen && g.lines.map((l) => (
+                    <tr key={l.key} className="border-b border-border/40">
+                      <td className="px-4 py-3 whitespace-nowrap"><button type="button" className="hover:underline" onClick={() => onPickDay(days[l.dayIndex])}>{format(days[l.dayIndex], "EEE MMM d", dateLocaleOpts())}</button></td>
+                      <td className="px-4 py-3">
+                        {l.other ? <span className="text-muted-foreground">{tt("Drive / other work")}</span> : <>
+                          <div className="font-medium">{l.client}</div>
+                          {l.property && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{l.property}</div>}
+                        </>}
+                      </td>
+                      <td className="px-4 py-3">{rateText(g.rateCents)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{lineTime(l)}</td>
+                      <td className="px-4 py-3 text-right">{l.scheduledMin ? hours2(l.scheduledMin) : "--"}</td>
+                      <td className="px-4 py-3 text-right">{hours2(l.paidMin)}</td>
+                      {rates && <td className="px-4 py-3 text-right">{l.cents != null ? dollars(l.cents) : "—"}</td>}
+                    </tr>
+                  ))}
+                </Fragment>
               );
             })}
           </tbody>
+          {!loading && list.length > 0 && (
+            <tfoot className="tabular-nums border-t-2 border-border">
+              <tr className="font-semibold">
+                <td className="px-4 py-3" colSpan={3}>{tt("Totals")}</td>
+                <td className="px-4 py-3">{cardText(sum((g) => g.timeCards))}</td>
+                <td className="px-4 py-3 text-right">{hours2(sum((g) => g.scheduledMin))}</td>
+                <td className="px-4 py-3 text-right">{hours2(sum((g) => g.paidMin))}</td>
+                {rates && <td className="px-4 py-3 text-right">{priced ? dollars(sum((g) => g.cents ?? 0)) : "—"}</td>}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
-      <p className="text-xs text-muted-foreground">{tt("Hours include on-site and drive / other time. Tap a day to see its details.")}</p>
+      <p className="text-xs text-muted-foreground">{tt("Tap a name to show or hide each cleaning. Tap a date to open that day.")}</p>
       {rates && <p className="text-xs text-muted-foreground">{tt("Earned = hourly rate, with 1.5× for hours over 40 in the week (Mon–Sun). Tips not included.")}</p>}
     </div>
   );
