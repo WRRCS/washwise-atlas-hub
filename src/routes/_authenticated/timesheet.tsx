@@ -404,7 +404,7 @@ function WeekView({ day, who, picker, time, onBack, onPickDay, setDay }: {
         <span className="ml-auto flex gap-2">
           {list.length > 0 && <Button variant="ghost" size="sm" onClick={() => setOpen(allOpen ? new Set() : new Set(list.map((g) => g.id)))}>{tt(allOpen ? "Collapse all" : "Expand all")}</Button>}
           <Button variant="outline" size="sm" onClick={download}><Download className="size-4 mr-1.5" />{tt("Download")}</Button>
-          <Button variant="secondary" size="sm" onClick={onBack}>{tt("Day view")}</Button>
+          <Button size="sm" className="bg-success text-primary-foreground hover:bg-success/90" onClick={onBack}>{tt("Day view")}</Button>
         </span>
       </div>
       <div className="rounded-xl border border-border/60 bg-card overflow-x-auto">
