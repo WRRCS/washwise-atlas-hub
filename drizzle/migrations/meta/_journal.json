@@ -337,6 +337,13 @@
       "when": 1794696226333,
       "tag": "0047_timesheet_correction_no_arrival_required",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794697610634,
+      "tag": "0048_client_schedule_send_channel",
+      "breakpoints": true
     }
   ]
 }

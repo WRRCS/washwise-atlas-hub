@@ -45,3 +45,18 @@ describe("send schedule to clients", () => {
     expect(scheduleSendStatus(nowFp, sentFp, Date.parse("2026-11-17T00:00:00Z"))).toBe("changed");
   });
 });
+
+import { channelIncludes, composeScheduleText } from "../../src/lib/client-schedule";
+describe("schedule text option", () => {
+  it("both sends email and text; each single option sends only itself", () => {
+    expect([channelIncludes("both","email"), channelIncludes("both","text")]).toEqual([true, true]);
+    expect([channelIncludes("email","email"), channelIncludes("email","text")]).toEqual([true, false]);
+    expect([channelIncludes("text","email"), channelIncludes("text","text")]).toEqual([false, true]);
+  });
+  it("text lists every cleaning and lets clients opt out", () => {
+    const t = composeScheduleText("Ann", ["Mon · 9:00 AM–11:00 AM", "Thu · 1:00 PM–3:00 PM"], "WRRC");
+    expect(t).toContain("• Mon · 9:00 AM–11:00 AM");
+    expect(t).toContain("• Thu · 1:00 PM–3:00 PM");
+    expect(t).toContain("STOP");
+  });
+});

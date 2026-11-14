@@ -63,3 +63,15 @@ export function composeScheduleEmail(firstName: string | null | undefined, lines
   ].join("\n");
   return { subject, body };
 }
+
+/** Short text-message version of the schedule. */
+export function composeScheduleText(firstName: string | null | undefined, lines: string[], businessName: string) {
+  return [
+    `Hi ${firstName?.trim() || "there"}, your upcoming cleanings with ${businessName}:`,
+    ...lines.map((l) => `• ${l}`),
+    "Reply here if anything needs to change. Reply STOP to opt out.",
+  ].join("\n");
+}
+
+export type ScheduleChannel = "email" | "text" | "both";
+export const channelIncludes = (c: ScheduleChannel, x: "email" | "text") => c === "both" || c === x;

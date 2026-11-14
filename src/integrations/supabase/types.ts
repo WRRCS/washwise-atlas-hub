@@ -620,6 +620,7 @@ export type Database = {
       client_schedule_sends: {
         Row: {
           body: string
+          channel: string
           client_id: string
           fingerprint: string
           id: string
@@ -632,6 +633,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          channel?: string
           client_id: string
           fingerprint: string
           id?: string
@@ -644,6 +646,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          channel?: string
           client_id?: string
           fingerprint?: string
           id?: string

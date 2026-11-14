@@ -1,0 +1,2 @@
+ALTER TABLE public.client_schedule_sends ADD COLUMN channel text NOT NULL DEFAULT 'email' CHECK (channel IN ('email','text'));
+CREATE INDEX client_schedule_sends_channel_lookup ON public.client_schedule_sends (tenant_id, period_start, client_id, channel, sent_at DESC);
