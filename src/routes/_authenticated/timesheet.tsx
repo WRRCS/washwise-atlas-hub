@@ -6,6 +6,8 @@ import { attendanceIssue } from "@/lib/timesheet-corrections";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { dailyIntervalMinutes } from "@/lib/clock-totals";
 import { zonedToUTCISO } from "@/lib/tz";
+import { visiblePayRates } from "@/lib/pay-rates.functions";
+import { dollars, weeklyPay } from "@/lib/pay-calc";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { myCapabilities } from "@/lib/entities.functions";
@@ -103,6 +105,18 @@ function TimesheetPage() {
   const isToday = startOfDay(new Date()).getTime() === day.getTime();
 
   const dayTotals = useMemo(() => computeTotals(q.data), [q.data]);
+  const rates = usePayRates();
+  const weekStart = startOfWeek(day, { weekStartsOn: 1 });
+  const priorDays = Array.from({ length: Math.round((day.getTime() - weekStart.getTime()) / 86400000) }, (_, i) => addDays(weekStart, i));
+  const priorResults = useQueries({ queries: priorDays.map((d) => dayQuery(fn, d)) });
+  const priorMin = new Map<string, number>();
+  for (const res of priorResults) for (const t of computeTotals(res.data)) priorMin.set(t.id, (priorMin.get(t.id) ?? 0) + t.total);
+  const priorLoading = priorResults.some((r) => r.isLoading);
+  const dayEarned = (id: string, minutes: number) => {
+    const rate = rates?.[id];
+    if (!rate) return null;
+    return weeklyPay([minutes], rate, priorMin.get(id) ?? 0).days[0];
+  };
 
   if (view === "week") {
     return (
@@ -173,6 +187,7 @@ function TimesheetPage() {
                 <th className="text-right px-4 py-2 font-medium">{t("Drive")}</th>
                 <th className="text-right px-4 py-2 font-medium">{t("Unpaid lunch")}</th>
                 <th className="text-right px-4 py-2 font-medium">{t("Paid total")}</th>
+                {rates && <th className="text-right px-4 py-2 font-medium">{t("Earned")}</th>}
               </tr></thead>
               <tbody>
                 {dayTotals.map((tot) => (
@@ -182,10 +197,17 @@ function TimesheetPage() {
                     <td className="px-4 py-2 text-right">{shortDur(tot.drive)}</td>
                     <td className="px-4 py-2 text-right">{shortDur(tot.unpaid)}</td>
                     <td className="px-4 py-2 text-right font-semibold">{shortDur(tot.total)}</td>
+                    {rates && (() => {
+                      const e = dayEarned(tot.id, tot.total);
+                      return <td className="px-4 py-2 text-right font-semibold">
+                        {priorLoading ? "…" : e ? <>{dollars(e.cents)}{e.overtimeMin > 0 && <div className="text-xs font-normal text-muted-foreground">{(e.overtimeMin / 60).toFixed(2)} {t("overtime hrs")}</div>}</> : <span className="text-xs font-normal text-muted-foreground">{t("No rate set")}</span>}
+                      </td>;
+                    })()}
                   </tr>
                 ))}
               </tbody>
             </table>
+            {rates && <p className="px-4 py-2 text-xs text-muted-foreground border-t border-border/40">{t("Earned = hourly rate, with 1.5× for hours over 40 in the week (Mon–Sun). Tips not included.")}</p>}
           </section>
         )}
 
@@ -317,17 +339,13 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const fn = useServerFn(listDailyTimesheet);
   const tt = useT();
-  const results = useQueries({
-    queries: days.map((d) => {
-      const from = zonedToUTCISO(format(d,"yyyy-MM-dd"), "00:00", "America/Los_Angeles");
-      return { queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to: zonedToUTCISO(format(addDays(d,1),"yyyy-MM-dd"),"00:00","America/Los_Angeles") } }) };
-    }),
-  });
+  const results = useQueries({ queries: days.map((d) => dayQuery(fn, d)) });
+  const rates = usePayRates();
   const loading = results.some((r) => r.isLoading);
-  const people = new Map<string, { name: string; perDay: number[]; unpaid: number }>();
+  const people = new Map<string, { id: string; name: string; perDay: number[]; unpaid: number }>();
   results.forEach((res, i) => {
     for (const t of computeTotals(res.data)) {
-      const p = people.get(t.id) ?? { name: t.name, perDay: Array(7).fill(0), unpaid: 0 };
+      const p = people.get(t.id) ?? { id: t.id, name: t.name, perDay: Array(7).fill(0), unpaid: 0 };
       p.perDay[i] += t.total;
       p.unpaid += t.unpaid;
       people.set(t.id, p);
@@ -335,10 +353,17 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
   });
   const list = Array.from(people.values()).filter((p) => p.unpaid > 0 || p.perDay.some((v) => v > 0)).sort((a, b) => a.name.localeCompare(b.name));
   const hrs = (m: number) => (m ? (m / 60).toFixed(2) : "—");
+  const payOf = (p: { id: string; perDay: number[] }) => (rates?.[p.id] ? weeklyPay(p.perDay, rates[p.id]) : null);
 
   const download = () => {
-    const lines = [["Employee", ...days.map((d) => format(d, "EEE MM/dd")), "Unpaid lunch hours", "Paid total hours"].join(",")];
-    for (const p of list) lines.push([p.name, ...p.perDay.map((v) => (v / 60).toFixed(2)),(p.unpaid/60).toFixed(2), (p.perDay.reduce((a, b) => a + b, 0) / 60).toFixed(2)].map((v) => `"${v}"`).join(","));
+    const head = ["Employee", ...days.map((d) => format(d, "EEE MM/dd")), "Unpaid lunch hours", "Paid total hours"];
+    if (rates) head.push(...days.map((d) => `Earned ${format(d, "EEE MM/dd")}`), "Overtime hours", "Earned total");
+    const lines = [head.join(",")];
+    for (const p of list) {
+      const row = [p.name, ...p.perDay.map((v) => (v / 60).toFixed(2)),(p.unpaid/60).toFixed(2), (p.perDay.reduce((a, b) => a + b, 0) / 60).toFixed(2)];
+      if (rates) { const pay = payOf(p); row.push(...p.perDay.map((_, i) => (pay ? (pay.days[i].cents / 100).toFixed(2) : "")), pay ? (pay.overtimeMin / 60).toFixed(2) : "", pay ? (pay.totalCents / 100).toFixed(2) : ""); }
+      lines.push(row.map((v) => `"${v}"`).join(","));
+    }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
     a.download = `timesheet-week-${format(start, "yyyy-MM-dd")}.csv`;
@@ -369,23 +394,52 @@ function WeekView({ day, onBack, onPickDay, setDay }: { day: Date; onBack: () =>
               ))}
               <th className="text-right px-4 py-3 font-medium">{tt("Unpaid lunch")}</th>
               <th className="text-right px-4 py-3 font-medium">{tt("Paid total hrs")}</th>
+              {rates && <th className="text-right px-4 py-3 font-medium">{tt("Earned")}</th>}
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">{tt("Loading…")}</td></tr>}
-            {!loading && list.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">{tt("No time recorded this week.")}</td></tr>}
-            {list.map((p) => (
-              <tr key={p.name} className="border-b border-border/40 last:border-0 tabular-nums">
+            {loading && <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">{tt("Loading…")}</td></tr>}
+            {!loading && list.length === 0 && <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">{tt("No time recorded this week.")}</td></tr>}
+            {list.map((p) => {
+              const pay = payOf(p);
+              return (
+              <tr key={p.id} className="border-b border-border/40 last:border-0 tabular-nums align-top">
                 <td className="px-4 py-3 font-medium">{p.name}</td>
-                {p.perDay.map((v, i) => <td key={i} className="px-3 py-3 text-right">{hrs(v)}</td>)}
+                {p.perDay.map((v, i) => (
+                  <td key={i} className="px-3 py-3 text-right">
+                    {hrs(v)}
+                    {pay && v > 0 && <div className="text-xs text-muted-foreground">{dollars(pay.days[i].cents)}</div>}
+                  </td>
+                ))}
                 <td className="px-4 py-3 text-right">{hrs(p.unpaid)}</td>
                 <td className="px-4 py-3 text-right font-semibold">{hrs(p.perDay.reduce((a, b) => a + b, 0))}</td>
+                {rates && (
+                  <td className="px-4 py-3 text-right font-semibold">
+                    {pay ? <>{dollars(pay.totalCents)}{pay.overtimeMin > 0 && <div className="text-xs font-normal text-muted-foreground">{(pay.overtimeMin / 60).toFixed(2)} {tt("overtime hrs")}</div>}</> : <span className="text-xs font-normal text-muted-foreground">{tt("No rate set")}</span>}
+                  </td>
+                )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
       <p className="text-xs text-muted-foreground">{tt("Hours include on-site and drive / other time. Tap a day to see its details.")}</p>
+      {rates && <p className="text-xs text-muted-foreground">{tt("Earned = hourly rate, with 1.5× for hours over 40 in the week (Mon–Sun). Tips not included.")}</p>}
     </div>
   );
+}
+
+/** Same query key as the day view so day and week screens share cached data. */
+function dayQuery(fn: (args: { data: { from: string; to: string } }) => Promise<any>, d: Date) {
+  const from = zonedToUTCISO(format(d, "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
+  const to = zonedToUTCISO(format(addDays(d, 1), "yyyy-MM-dd"), "00:00", "America/Los_Angeles");
+  return { queryKey: ["timesheet", "day", from], queryFn: () => fn({ data: { from, to } }) };
+}
+
+/** Rates the signed-in person may see (everyone for owners/managers, only their own otherwise); null hides pay. */
+function usePayRates() {
+  const fn = useServerFn(visiblePayRates);
+  const { data } = useQuery({ queryKey: ["visible-pay-rates"], queryFn: () => fn(), staleTime: 5 * 60_000 });
+  return data && Object.keys(data).length ? data : null;
 }
