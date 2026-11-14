@@ -126,6 +126,29 @@ export function sendableOutboxJob(scope: string, viewerId: string): string | nul
   return parts[1];
 }
 
+/** Leaving-screen photos left this long are treated as abandoned on that screen. */
+export const LEAVING_STRANDED_MS = 1000 * 60 * 60 * 6;
+
+/**
+ * Photos added on the Leaving screen wait there until the cleaner taps Leaving.
+ * If she can no longer do that — a manager clocked her out, the cleaning was
+ * finished by a teammate, or the screen was abandoned hours ago — nothing would
+ * ever show them again, so they go to the background sender instead of being
+ * lost. Returns the appointment to send them to, or null to leave them be.
+ */
+export function strandedLeavingJob(
+  record: { scope: string; createdAt: number },
+  viewerId: string,
+  state: { openJobIds: ReadonlySet<string>; finishedJobIds: ReadonlySet<string>; now?: number },
+): string | null {
+  const parts = record.scope.split(":");
+  if (parts.length !== 3 || parts[0] !== viewerId || parts[2] !== "leaving" || !parts[1]) return null;
+  const jobId = parts[1];
+  if (state.openJobIds.has(jobId)) return null;
+  const old = (state.now ?? Date.now()) - record.createdAt > LEAVING_STRANDED_MS;
+  return state.finishedJobIds.has(jobId) || old ? jobId : null;
+}
+
 /** Keeps one captured photo on the phone. Rejects when the phone is out of space. */
 export async function saveOutboxItem<M extends OutboxMeta>(record: OutboxRecord<M>): Promise<void> {
   if (!outboxAvailable()) throw new Error("This phone cannot keep photos offline");

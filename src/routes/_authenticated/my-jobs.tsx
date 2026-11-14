@@ -1,3 +1,4 @@
+import { LocalPhotoThumb } from "@/components/local-photo-thumb";
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { EmployeeReminderBanner } from "@/components/employee-reminder-banner";
 import { clockTotals } from "@/lib/clock-totals";
@@ -852,7 +853,7 @@ function CompleteJobDialog({
             <div className="space-y-3">
               {items.map((it) => (
                 <div key={it.id} className="flex gap-3 bg-clay-100 rounded-lg p-2">
-                  <img src={it.previewUrl} alt="" className="size-20 rounded object-cover shrink-0" />
+                  <LocalPhotoThumb file={it.file} className="size-20 rounded object-cover shrink-0" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex flex-wrap gap-1">
                       {(["before", "after", "damage", "other"] as PhotoType[]).map((pt) => (
