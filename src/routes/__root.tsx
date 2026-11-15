@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { OfflineBanner } from "@/components/offline-banner";
 import { AppSplash } from "@/components/app-splash";
 import { LanguageProvider } from "@/lib/i18n";
+import { installSelectableClicks } from "@/lib/text-selection";
 
 type IOSSplash = { device: string; w: number; h: number; ratio: number; dw: number; dh: number };
 const IOS_SPLASH: IOSSplash[] = [
@@ -200,6 +201,8 @@ function RootComponent() {
     void import("@/lib/register-sw").then((m) => m.registerAppSW());
     return () => sub.subscription.unsubscribe();
   }, [router, queryClient]);
+
+  useEffect(() => installSelectableClicks(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

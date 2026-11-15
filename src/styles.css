@@ -149,6 +149,14 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
+  /* Mouse users can highlight and copy any text, including inside buttons and links. */
+  @media (hover: hover) and (pointer: fine) {
+    button, a, [role="button"], [role="tab"], summary, label {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    a { -webkit-user-drag: none; }
+  }
 }
 
 /* Bounded dialogs share sticky actions; the gallery uses a separate body scroll. */
