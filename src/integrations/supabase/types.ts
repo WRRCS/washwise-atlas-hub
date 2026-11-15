@@ -3906,9 +3906,16 @@ export type Database = {
         Row: {
           created_at: string
           employee_id: string
+          employee_reply: string | null
+          employee_reply_en: string | null
           end_date: string
           id: string
+          owner_question: string | null
+          questioned_at: string | null
+          questioned_by: string | null
           reason: string
+          reason_en: string | null
+          replied_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           start_date: string
@@ -3918,9 +3925,16 @@ export type Database = {
         Insert: {
           created_at?: string
           employee_id: string
+          employee_reply?: string | null
+          employee_reply_en?: string | null
           end_date: string
           id?: string
+          owner_question?: string | null
+          questioned_at?: string | null
+          questioned_by?: string | null
           reason: string
+          reason_en?: string | null
+          replied_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date: string
@@ -3930,9 +3944,16 @@ export type Database = {
         Update: {
           created_at?: string
           employee_id?: string
+          employee_reply?: string | null
+          employee_reply_en?: string | null
           end_date?: string
           id?: string
+          owner_question?: string | null
+          questioned_at?: string | null
+          questioned_by?: string | null
           reason?: string
+          reason_en?: string | null
+          replied_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date?: string
@@ -4694,6 +4715,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      reply_time_off_question: {
+        Args: { _id: string; _reply: string }
+        Returns: string
       }
       report_client_account: { Args: { _client_id: string }; Returns: Json }
       report_client_balances: {

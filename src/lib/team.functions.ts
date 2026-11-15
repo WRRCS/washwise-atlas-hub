@@ -273,12 +273,27 @@ export const sendTeamMessage = createServerFn({ method: "POST" })
       .maybeSingle();
     if (pErr || !prof?.tenant_id) throw new Error("Could not resolve tenant");
 
-    const { error } = await context.supabase.from("team_messages").insert({
+    const { data: msg, error } = await context.supabase.from("team_messages").insert({
       tenant_id: prof.tenant_id,
       sender_id: context.userId,
       recipient_id: data.recipient_id,
       body: data.body,
-    });
+    }).select("id, created_at").single();
     if (error) throw new Error(error.message);
+    // The owner's own messages don't email the owner; everyone else's do.
+    const { data: senderIsOwner } = await context.supabase.rpc("is_owner");
+    if (!senderIsOwner) {
+      const ids = [context.userId, ...(data.recipient_id ? [data.recipient_id] : [])];
+      const { data: people } = await context.supabase.from("profiles").select("id, full_name").in("id", ids);
+      const nameOf = (id: string) => people?.find((p) => p.id === id)?.full_name?.trim() || null;
+      const { notifyOwnerInbox } = await import("@/lib/owner-inbox-alerts.server");
+      await notifyOwnerInbox({
+        tenantId: prof.tenant_id, actorId: context.userId, entityType: "team_message", entityId: msg.id,
+        eventKey: `team_message:${msg.id}`, kind: "employee_message", from: nameOf(context.userId) ?? "Employee",
+        receivedAt: msg.created_at,
+        details: [["Sent to", data.recipient_id ? `${nameOf(data.recipient_id) ?? "A teammate"} (private message)` : "Everyone (team chat)"]],
+        message: data.body, link: "https://wrrcs.com/team", linkLabel: "Open team chat",
+      });
+    }
     return { ok: true };
   });

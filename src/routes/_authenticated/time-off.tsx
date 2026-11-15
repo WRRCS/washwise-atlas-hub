@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   listMyTimeOff,
   createTimeOff,
+  replyTimeOffQuestion,
+  type TimeOffRow,
   listMyShiftSwaps,
   createShiftSwap,
   listMyUpcomingAssignedJobs,
@@ -130,13 +132,7 @@ function TimeOffPage() {
             ) : (
               <ul className="divide-y divide-border/60">
                 {(timeOffQ.data ?? []).map((r) => (
-                  <li key={r.id} className="py-3 flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium">{r.start_date} → {r.end_date}</p>
-                      <p className="text-sm text-muted-foreground mt-0.5">{r.reason}</p>
-                    </div>
-                    {statusBadge(r.status, t)}
-                  </li>
+                  <MyTimeOffItem key={r.id} r={r} />
                 ))}
               </ul>
             )}
@@ -225,5 +221,47 @@ function TimeOffPage() {
         </Card>
       </div>
     </>
+  );
+}
+
+function MyTimeOffItem({ r }: { r: TimeOffRow }) {
+  const t = useT();
+  const qc = useQueryClient();
+  const replyFn = useServerFn(replyTimeOffQuestion);
+  const [reply, setReply] = useState("");
+  const mut = useMutation({
+    mutationFn: () => replyFn({ data: { id: r.id, reply: reply.trim() } }),
+    onSuccess: () => {
+      toast.success(t("Answer sent"));
+      setReply("");
+      qc.invalidateQueries({ queryKey: ["my-time-off"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <li className="py-3 space-y-2">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">{r.start_date} → {r.end_date}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{r.reason}</p>
+        </div>
+        {statusBadge(r.status, t)}
+      </div>
+      {r.owner_question && (
+        <div className="rounded-md border border-border bg-muted/40 p-3 text-sm space-y-2">
+          <p><span className="font-medium">{t("Question from your manager:")}</span> {r.owner_question}</p>
+          {r.employee_reply ? (
+            <p><span className="font-medium">{t("Your answer:")}</span> {r.employee_reply}</p>
+          ) : r.status === "pending" ? (
+            <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (reply.trim()) mut.mutate(); }}>
+              <Textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder={t("Type your answer")} />
+              <Button size="sm" type="submit" disabled={mut.isPending || !reply.trim()}>
+                {mut.isPending ? t("Sending…") : t("Send answer")}
+              </Button>
+            </form>
+          ) : null}
+        </div>
+      )}
+    </li>
   );
 }

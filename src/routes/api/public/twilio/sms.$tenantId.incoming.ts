@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/public/twilio/sms/$tenantId/incoming"
           clientId = match?.id ?? null;
         }
 
-        await (admin as any).from("sms_messages").insert({
+        const { data: saved } = await (admin as any).from("sms_messages").insert({
           tenant_id: tenantId,
           client_id: clientId,
           direction: "inbound",
@@ -71,7 +71,23 @@ export const Route = createFileRoute("/api/public/twilio/sms/$tenantId/incoming"
           body,
           status: "received",
           twilio_sid: sid || null,
-        } as never);
+        } as never).select("id, created_at").single();
+
+        if (saved?.id) {
+          let sender = from;
+          if (clientId) {
+            const { data: c } = await admin.from("clients").select("first_name, last_name").eq("id", clientId).maybeSingle();
+            const name = [c?.first_name, c?.last_name].filter(Boolean).join(" ").trim();
+            if (name) sender = `${name} (${from})`;
+          }
+          const { notifyOwnerInbox } = await import("@/lib/owner-inbox-alerts.server");
+          await notifyOwnerInbox({
+            tenantId, actorId: null, entityType: "sms_message", entityId: saved.id,
+            eventKey: `sms:${sid || saved.id}`, kind: "client_message", from: sender, receivedAt: saved.created_at,
+            details: [["Sent through", clientId ? "Text message" : "Text message from a number that isn't saved on a client"]],
+            message: body, link: "https://wrrcs.com/messages", linkLabel: "Open messages",
+          });
+        }
 
         // Unmatched numbers still get stored (client_id null) and surface in
         // the inbox as "unmatched" — same idea as the existing leads webhook,

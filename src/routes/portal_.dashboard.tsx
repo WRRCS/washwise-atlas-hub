@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import { PushToggle } from "@/components/push-toggle";
 import { ReminderPrefsEditor } from "@/components/reminder-prefs-editor";
 import type { ReminderChannel } from "@/lib/reminder-prefs.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { portalSendMessage, portalRequestService } from "@/lib/portal-inbox.functions";
 
 export const Route = createFileRoute("/portal_/dashboard")({
   ssr: false,
@@ -70,10 +72,11 @@ function PortalDashboard() {
     if (data?.clients?.length && !activeClientId) setActiveClientId(data.clients[0].id);
   }, [data, activeClientId]);
 
+  const sendMessageFn = useServerFn(portalSendMessage);
+  const requestServiceFn = useServerFn(portalRequestService);
   const sendMessage = useMutation({
     mutationFn: async (body: string) => {
-      const { error } = await supabase.rpc("portal_send_message", { _client_id: activeClientId!, _body: body });
-      if (error) throw error;
+      await sendMessageFn({ data: { client_id: activeClientId!, body } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["portal-data"] });
@@ -83,13 +86,7 @@ function PortalDashboard() {
 
   const requestService = useMutation({
     mutationFn: async (input: { requested_date: string | null; notes: string }) => {
-      const { error } = await supabase.rpc("portal_request_service", {
-        _client_id: activeClientId!,
-        _service_type_id: null as unknown as string,
-        _requested_date: (input.requested_date ?? null) as unknown as string,
-        _notes: input.notes,
-      });
-      if (error) throw error;
+      await requestServiceFn({ data: { client_id: activeClientId!, requested_date: input.requested_date ?? null, notes: input.notes } });
     },
     onSuccess: () => {
       toast.success("Request sent — we'll be in touch shortly.");
