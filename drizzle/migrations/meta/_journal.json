@@ -344,6 +344,13 @@
       "when": 1794697610634,
       "tag": "0048_client_schedule_send_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794714819201,
+      "tag": "0049_schedule_team_order",
+      "breakpoints": true
     }
   ]
 }

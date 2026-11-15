@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy, ClipboardPaste, X } from "lucide-react";
+import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy, ClipboardPaste, X, GripHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { useT, dateLocaleOpts } from "@/lib/i18n";
 import { useBusinessTz } from "@/hooks/use-business-tz";
@@ -33,6 +33,8 @@ import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndV
 import { JobDetailView } from "./jobs.$jobId";
 import { canOpenAppointment } from "@/lib/appointment-access";
 import { PropertyTypeField } from "@/components/property-type-field";
+import { getScheduleTeamOrder, saveScheduleTeamOrder } from "@/lib/schedule-order.functions";
+import { applyTeamOrder, moveTeamMember } from "@/lib/schedule-order";
 import { selectedPropertyType, defaultServiceTypeId, serviceDefaultOverridden, type PropertyTypeDraft } from "@/lib/property-type";
 
 
@@ -144,10 +146,49 @@ function SchedulePage() {
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
   const { data: unavailability = [] } = useQuery({ queryKey: ["unavail", from, to], queryFn: () => unavFn({ data: { from, to } }) });
 
+  const orderFn = useServerFn(getScheduleTeamOrder);
+  const saveOrderFn = useServerFn(saveScheduleTeamOrder);
+  const { data: teamOrder = [] } = useQuery({ queryKey: ["schedule-team-order"], queryFn: () => orderFn() });
   const cleaners = useMemo(
-    () => employees.filter((e: any) => e.is_active !== false && (e.role === "employee" || e.role === "manager" || e.role === "owner")),
-    [employees],
+    () => applyTeamOrder(
+      employees.filter((e: any) => e.is_active !== false && (e.role === "employee" || e.role === "manager" || e.role === "owner")),
+      teamOrder,
+    ),
+    [employees, teamOrder],
   );
+  const orderMut = useMutation({
+    mutationFn: (ids: string[]) => saveOrderFn({ data: { employee_ids: ids } }),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: ["schedule-team-order"] });
+      const prev = qc.getQueryData<string[]>(["schedule-team-order"]);
+      qc.setQueryData(["schedule-team-order"], ids);
+      return { prev };
+    },
+    onError: (e: Error, _ids, ctx) => {
+      qc.setQueryData(["schedule-team-order"], ctx?.prev ?? []);
+      toast.error(e.message);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["schedule-team-order"] }),
+  });
+  const [memberDrag, setMemberDrag] = useState<{ id: string; place: "before" | "after" } | null>(null);
+  const memberDropPlace = (e: React.DragEvent): "before" | "after" => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return e.clientY < r.top + r.height / 2 ? "before" : "after";
+  };
+  const onMemberDrop = (e: React.DragEvent, targetId: string) => {
+    const movingId = e.dataTransfer.getData("application/x-atlas-member");
+    setMemberDrag(null);
+    if (!movingId || !canManageSchedule) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const next = moveTeamMember(cleaners.map((c: any) => c.id as string), movingId, targetId, memberDropPlace(e));
+    if (next.join() !== cleaners.map((c: any) => c.id).join()) orderMut.mutate(next);
+  };
+  // Only one shift pop-up is open at a time; it can be dragged by its top bar.
+  const [openShiftKey, setOpenShiftKey] = useState<string | null>(null);
+  const [popOffset, setPopOffset] = useState({ x: 0, y: 0 });
+  const popDrag = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
+  useEffect(() => { setPopOffset({ x: 0, y: 0 }); }, [openShiftKey]);
   const firstNames = useMemo(() => scheduleFirstNames(cleaners), [cleaners]);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
@@ -590,10 +631,33 @@ function SchedulePage() {
             {cleaners.map((emp: any) => {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
               return (
-                <div key={emp.id} className="schedule-row grid w-full border-t border-border/60">
+                <div
+                  key={emp.id}
+                  className={`schedule-row grid w-full border-t border-border/60 ${memberDrag?.id === emp.id ? (memberDrag?.place === "before" ? "!border-t-2 !border-t-brand" : "border-b-2 border-b-brand") : ""}`}
+                  onDragOver={canManageSchedule ? (e) => {
+                    if (!e.dataTransfer.types.includes("application/x-atlas-member")) return;
+                    e.preventDefault();
+                    const place = memberDropPlace(e);
+                    if (memberDrag?.id !== emp.id || memberDrag?.place !== place) setMemberDrag({ id: emp.id, place });
+                  } : undefined}
+                  onDragLeave={canManageSchedule ? (e) => {
+                    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) setMemberDrag((m) => (m?.id === emp.id ? null : m));
+                  } : undefined}
+                  onDrop={canManageSchedule ? (e) => onMemberDrop(e, emp.id) : undefined}
+                >
                   <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                     {!compactNames && (
-                      <div className="size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0">
+                      <div
+                        draggable={canManageSchedule}
+                        onDragStart={canManageSchedule ? (e) => {
+                          e.dataTransfer.setData("application/x-atlas-member", emp.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        } : undefined}
+                        onDragEnd={() => setMemberDrag(null)}
+                        title={canManageSchedule ? "Drag to move this person up or down" : undefined}
+                        aria-label={canManageSchedule ? `Move ${emp.full_name ?? "team member"}` : undefined}
+                        className={`size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0 ${canManageSchedule ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-brand/40" : ""}`}
+                      >
                         {initials(emp.full_name)}
                       </div>
                     )}
@@ -682,7 +746,7 @@ function SchedulePage() {
                               );
                             }
                             return (
-                              <Popover key={j.id}>
+                              <Popover key={j.id} open={openShiftKey === `${j.id}:${emp.id}`} onOpenChange={(o) => setOpenShiftKey(o ? `${j.id}:${emp.id}` : null)}>
                                 <PopoverTrigger asChild>
                                   <button
                                     type="button"
@@ -701,7 +765,26 @@ function SchedulePage() {
                                     {cardBody}
                                   </button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-64 p-3" align="start">
+                                <PopoverContent className="w-64 p-3 pt-0" align="start" style={{ translate: `${popOffset.x}px ${popOffset.y}px` }}>
+                                  <div
+                                    role="presentation"
+                                    title="Drag to move"
+                                    className="-mx-3 mb-2 flex h-6 cursor-grab touch-none select-none items-center justify-center rounded-t-md text-muted-foreground hover:bg-clay-100 active:cursor-grabbing"
+                                    onPointerDown={(e) => {
+                                      e.preventDefault();
+                                      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                                      popDrag.current = { px: e.clientX, py: e.clientY, ox: popOffset.x, oy: popOffset.y };
+                                    }}
+                                    onPointerMove={(e) => {
+                                      const d = popDrag.current;
+                                      if (!d) return;
+                                      setPopOffset({ x: d.ox + e.clientX - d.px, y: d.oy + e.clientY - d.py });
+                                    }}
+                                    onPointerUp={() => { popDrag.current = null; }}
+                                    onPointerCancel={() => { popDrag.current = null; }}
+                                  >
+                                    <GripHorizontal className="size-4" />
+                                  </div>
                                   <div className="mb-3"><ScheduleAppointmentDetails job={j} tz={tz} /></div>
                                   <p className="text-xs text-muted-foreground mb-2 break-words">{label}</p>
                                   {canManageSchedule && colorEditId === j.id && (
@@ -781,6 +864,7 @@ function SchedulePage() {
                                          type="button"
                                          onClick={() => {
                                            setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label, mode: "auto" });
+                                           setOpenShiftKey(null);
                                            toast.success("Shift copied — tap \"Paste here\" on a team member to add them to this cleaning.");
                                          }}
                                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
@@ -791,6 +875,7 @@ function SchedulePage() {
                                          type="button"
                                          onClick={() => {
                                            setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label, mode: "new" });
+                                           setOpenShiftKey(null);
                                            toast.success("Ready to duplicate — tap \"Paste here\" to create a separate new job.");
                                          }}
                                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
