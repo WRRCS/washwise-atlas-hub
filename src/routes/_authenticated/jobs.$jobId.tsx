@@ -412,7 +412,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
             </DialogContent>
           </Dialog>
         </section>
-        <aside className="space-y-6">
+        <aside className="contents md:block md:space-y-6">
           <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Client")}</h4>
             <div>
@@ -427,7 +427,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
               )}
             </div>
           </div>
-          <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3">
+          <div className="bg-card p-5 rounded-xl ring-1 ring-black/5 space-y-3 order-first md:order-none">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground">{t("Service address")}</h4>
             {jobLocation(job).address ? (
               <a
