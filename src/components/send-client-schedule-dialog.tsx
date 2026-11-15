@@ -19,7 +19,7 @@ export function SendClientScheduleButton({ from, to, weekLabel }: { from: string
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+      <Button size="sm" className="bg-sunny text-sunny-foreground hover:opacity-90" onClick={() => setOpen(true)}>
         <Mail className="size-3.5 mr-1" /> Send schedule to clients
       </Button>
       {open && <SendDialog from={from} to={to} weekLabel={weekLabel} onClose={() => setOpen(false)} />}

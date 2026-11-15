@@ -42,6 +42,8 @@
   --color-clay-200: var(--clay-200);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-sunny: var(--sunny);
+  --color-sunny-foreground: var(--sunny-foreground);
   --color-inventory: var(--inventory);
   --color-inventory-foreground: var(--inventory-foreground);
   --color-schedule-ink: var(--schedule-ink);
@@ -107,6 +109,8 @@
 
   --success: oklch(0.7 0.15 150);
   --warning: oklch(0.75 0.15 75);
+  --sunny: oklch(0.88 0.17 95);
+  --sunny-foreground: oklch(0.25 0.03 80);
   --inventory: oklch(0.52 0.2 300);
   --inventory-foreground: oklch(0.99 0.006 70);
 }
