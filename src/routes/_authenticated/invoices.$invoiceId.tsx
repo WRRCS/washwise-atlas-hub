@@ -12,7 +12,7 @@ import { InvoicePhotosCard } from "@/components/invoice-photos-card";
 import { InvoiceEditor } from "@/components/invoice-editor";
 import { format } from "date-fns";
 import {
-  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, deleteInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours,
+  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, deleteInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours, setLineItemUnitPrice,
 } from "@/lib/invoices.functions";
 import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
@@ -137,6 +137,9 @@ function InvoiceDetailPage() {
               })),
             }}
             lockedLines={jobLines.map((li: any) => ({
+              id: li.id,
+              quantity: li.quantity ?? 1,
+              unit_price_cents: li.unit_price_cents ?? 0,
               description: li.description,
               details: li.details ?? null,
               line_total_cents: li.line_total_cents,
@@ -246,7 +249,13 @@ function InvoiceDetailPage() {
                       <HoursCell line={li as any} editable={inv.status === "draft"} invoiceId={inv.id} />
                     ) : li.quantity}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{money(li.unit_price_cents)}{(li as any).hours != null ? "/hr" : ""}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    {inv.status === "draft" ? (
+                      <UnitPriceCell line={li as any} />
+                    ) : (
+                      <>{money(li.unit_price_cents)}{(li as any).hours != null ? "/hr" : ""}</>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium">{money(li.line_total_cents)}</td>
                 </tr>
               ))}
@@ -736,6 +745,46 @@ function HoursCell({ line, editable, invoiceId }: { line: { id: string; hours: n
       {line.hours_manual ? (
         <button type="button" className="text-xs text-primary underline" disabled={busy} onClick={() => run(null)}>Use clocked time</button>
       ) : <span className="text-xs text-muted-foreground">from clocked time</span>}
+    </div>
+  );
+}
+
+/** Type-in unit price (or hourly rate) for any line on a draft invoice. */
+function UnitPriceCell({ line }: { line: { id: string; unit_price_cents: number; hours: number | null } }) {
+  const qc = useQueryClient();
+  const save = useServerFn(setLineItemUnitPrice);
+  const saved = (line.unit_price_cents / 100).toFixed(2);
+  const [val, setVal] = useState(saved);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setVal(saved); }, [saved]);
+  const commit = async () => {
+    const n = parseFloat(val);
+    if (Number.isNaN(n) || n < 0) { setVal(saved); return; }
+    const cents = Math.round(n * 100);
+    if (cents === line.unit_price_cents) { setVal(saved); return; }
+    setBusy(true);
+    try {
+      await save({ data: { id: line.id, unit_price_cents: cents } });
+      await qc.invalidateQueries();
+      toast.success("Price updated");
+    } catch (e) {
+      toast.error((e as Error).message);
+      setVal(saved);
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <span className="text-xs">$</span>
+      <input
+        type="number" step="0.01" min="0" inputMode="decimal"
+        aria-label={line.hours != null ? "Hourly rate" : "Unit price"}
+        className="w-24 rounded-md border border-input bg-background px-2 py-1 text-right text-foreground"
+        value={val} disabled={busy}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      />
+      {line.hours != null && <span className="text-xs">/hr</span>}
     </div>
   );
 }

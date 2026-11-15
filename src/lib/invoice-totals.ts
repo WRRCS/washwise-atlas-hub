@@ -42,3 +42,14 @@ export function computeInvoiceTotals(
     total_cents: taxable + tax + surcharge,
   };
 }
+
+/** A line's total for a given unit price: hourly lines bill hours × rate,
+ *  every other line bills quantity × price. */
+export function lineTotalForPrice(
+  line: { quantity: number | null; hours: number | null },
+  unitPriceCents: number,
+) {
+  return line.hours != null
+    ? Math.round(Number(line.hours) * unitPriceCents)
+    : Math.round((line.quantity ?? 1) * unitPriceCents);
+}

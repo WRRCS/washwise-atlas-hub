@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInvoiceTotals, calcCardSurcharge } from "../../src/lib/invoice-totals";
+import { computeInvoiceTotals, calcCardSurcharge, lineTotalForPrice } from "../../src/lib/invoice-totals";
 
 describe("invoice editor totals", () => {
   it("sums quantity × unit price across lines", () => {
@@ -64,5 +64,14 @@ describe("invoice editor totals", () => {
     const t = computeInvoiceTotals([{ quantity: 1, unit_price_cents: 12500 }], 0, 0, false);
     expect(t.subtotal_cents).toBe(12500);
     expect(t.total_cents).toBe(12500);
+  });
+});
+
+describe("typed-in unit prices", () => {
+  it("hourly lines bill hours times the typed rate", () => {
+    expect(lineTotalForPrice({ quantity: 1, hours: 2.5 }, 5000)).toBe(12500);
+  });
+  it("flat lines bill quantity times the typed price", () => {
+    expect(lineTotalForPrice({ quantity: 2, hours: null }, 15000)).toBe(30000);
   });
 });

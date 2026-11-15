@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { renderEmailForClientContext } from "@/lib/templates.functions";
 import { clientContact } from "@/lib/privacy";
 import { dueDateFrom } from "@/lib/payment-terms";
-import { computeInvoiceTotals, calcCardSurcharge } from "@/lib/invoice-totals";
+import { computeInvoiceTotals, calcCardSurcharge, lineTotalForPrice } from "@/lib/invoice-totals";
 import { invoicePayUrl } from "@/lib/invoice-pay-link";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
@@ -532,18 +532,48 @@ export const setLineItemHours = createServerFn({ method: "POST" })
     const { error: ue } = await sb.from("invoice_line_items")
       .update({ hours, hours_manual: manual, line_total_cents: lineTotal }).eq("id", data.id);
     if (ue) throw new Error(ue.message);
-    const { data: lines } = await sb.from("invoice_line_items").select("line_total_cents").eq("invoice_id", li.invoice_id);
-    const subtotal = (lines ?? []).reduce((s: number, l: any) => s + (l.line_total_cents ?? 0), 0);
-    const { data: invRow } = await sb.from("invoices").select("discount_cents, tax_rate_bp").eq("id", li.invoice_id).maybeSingle();
-    const taxable = Math.max(subtotal - (invRow?.discount_cents ?? 0), 0);
-    const tax = Math.round((taxable * (invRow?.tax_rate_bp ?? 0)) / 10000);
-    const surcharge = li.invoice?.card_surcharge ? calcSurcharge(subtotal) : 0;
-    const total = taxable + tax + surcharge;
-    const { error: ie } = await sb.from("invoices")
-      .update({ subtotal_cents: subtotal, tax_cents: tax, surcharge_cents: surcharge, total_cents: total, amount_cents: total })
-      .eq("id", li.invoice_id);
-    if (ie) throw new Error(ie.message);
+    await refreshInvoiceTotals(sb, li.invoice_id, !!li.invoice?.card_surcharge);
     return { ok: true, hours };
+  });
+
+/** Re-add a draft invoice's line totals into its subtotal, tax, surcharge and total. */
+async function refreshInvoiceTotals(sb: any, invoiceId: string, cardSurcharge: boolean) {
+  const { data: lines } = await sb.from("invoice_line_items").select("line_total_cents").eq("invoice_id", invoiceId);
+  const subtotal = (lines ?? []).reduce((s: number, l: any) => s + (l.line_total_cents ?? 0), 0);
+  const { data: invRow } = await sb.from("invoices").select("discount_cents, tax_rate_bp").eq("id", invoiceId).maybeSingle();
+  const taxable = Math.max(subtotal - (invRow?.discount_cents ?? 0), 0);
+  const tax = Math.round((taxable * (invRow?.tax_rate_bp ?? 0)) / 10000);
+  const surcharge = cardSurcharge ? calcSurcharge(subtotal) : 0;
+  const total = taxable + tax + surcharge;
+  const { error: ie } = await sb.from("invoices")
+    .update({ subtotal_cents: subtotal, tax_cents: tax, surcharge_cents: surcharge, total_cents: total, amount_cents: total })
+    .eq("id", invoiceId);
+  if (ie) throw new Error(ie.message);
+}
+
+/** Type in a new unit price (or hourly rate) for any line on a draft invoice,
+ *  including lines created from completed cleanings. Owners/managers only. */
+export const setLineItemUnitPrice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), unit_price_cents: z.number().int().min(0).max(100_000_000) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await requireInvoiceManager(context);
+    const sb = context.supabase as any;
+    const { data: li, error } = await sb
+      .from("invoice_line_items")
+      .select("id, invoice_id, quantity, hours, invoice:invoices(status, card_surcharge)")
+      .eq("id", data.id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!li) throw new Error("Line not found");
+    if (li.invoice?.status !== "draft") throw new Error("Prices can only be changed while the invoice is a draft. Un-send it first.");
+    const { error: ue } = await sb.from("invoice_line_items")
+      .update({ unit_price_cents: data.unit_price_cents, line_total_cents: lineTotalForPrice(li, data.unit_price_cents) })
+      .eq("id", data.id);
+    if (ue) throw new Error(ue.message);
+    await refreshInvoiceTotals(sb, li.invoice_id, !!li.invoice?.card_surcharge);
+    return { ok: true };
   });
 
 // ============= Invoice editor (create / edit drafts) =============
@@ -721,7 +751,14 @@ export const updateInvoice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ id: z.string().uuid() })
-      .merge(invoiceEditorSchema.extend({ line_items: z.array(editorLineSchema) }))
+      .merge(invoiceEditorSchema.extend({
+        line_items: z.array(editorLineSchema),
+        // Typed-in prices for lines that came from completed cleanings.
+        job_line_prices: z.array(z.object({
+          id: z.string().uuid(),
+          unit_price_cents: z.number().int().min(0).max(100_000_000),
+        })).max(500).default([]),
+      }))
       .parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -735,9 +772,22 @@ export const updateInvoice = createServerFn({ method: "POST" })
     const propertyId = await verifyProperty(sb, tenantId, data.client_id, data.property_id);
     // Job-linked lines stay untouched; include them in the totals.
     const { data: jobLines, error: jlErr } = await sb.from("invoice_line_items")
-      .select("id, line_total_cents, sort_order").eq("invoice_id", data.id).not("job_id", "is", null);
+      .select("id, quantity, hours, unit_price_cents, line_total_cents, sort_order").eq("invoice_id", data.id).not("job_id", "is", null);
     if (jlErr) throw new Error(jlErr.message);
     const kept = jobLines ?? [];
+    // Apply typed-in prices to cleaning lines; hours and links stay as they are.
+    const priceById = new Map(data.job_line_prices.map((p) => [p.id, p.unit_price_cents]));
+    for (const l of kept as any[]) {
+      const price = priceById.get(l.id);
+      if (price === undefined || price === l.unit_price_cents) continue;
+      const total = lineTotalForPrice(l, price);
+      const { error: pe } = await sb.from("invoice_line_items")
+        .update({ unit_price_cents: price, line_total_cents: total })
+        .eq("id", l.id).eq("invoice_id", data.id);
+      if (pe) throw new Error(pe.message);
+      l.unit_price_cents = price;
+      l.line_total_cents = total;
+    }
     if (!kept.length && !data.line_items.length) {
       throw new Error("Add at least one line item");
     }

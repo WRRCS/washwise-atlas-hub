@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { listClients } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
 import { createInvoice, updateInvoice, getInvoiceEditorDefaults } from "@/lib/invoices.functions";
-import { computeInvoiceTotals } from "@/lib/invoice-totals";
+import { computeInvoiceTotals, lineTotalForPrice } from "@/lib/invoice-totals";
 import { PAYMENT_TERMS, termsLabel, dueDateFrom } from "@/lib/payment-terms";
 
 export type EditorLine = {
@@ -42,9 +42,12 @@ export type InvoiceEditorInitial = {
   line_items: EditorLine[];
 };
 
-/** Job-linked lines created automatically when a job is completed. Shown
- *  read-only in the editor; their hours stay managed from the invoice page. */
+/** Job-linked lines created automatically when a job is completed. Their unit
+ *  price (or hourly rate) can be typed in; hours stay managed from the invoice page. */
 export type LockedLine = {
+  id: string;
+  quantity: number;
+  unit_price_cents: number;
   description: string;
   details: string | null;
   line_total_cents: number;
@@ -94,6 +97,14 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel, onSaved }: 
   const [saveDefaults, setSaveDefaults] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [lockedPrices, setLockedPrices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(lockedLines.map((l) => [l.id, (l.unit_price_cents / 100).toFixed(2)])),
+  );
+  const lockedPriceCents = (l: LockedLine) => {
+    const v = lockedPrices[l.id];
+    return v === undefined ? l.unit_price_cents : Math.round((parseFloat(v) || 0) * 100);
+  };
+  const lockedTotal = (l: LockedLine) => lineTotalForPrice(l, lockedPriceCents(l));
 
   // Apply reusable business defaults on the create form once they load.
   useEffect(() => {
@@ -119,14 +130,14 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel, onSaved }: 
     () =>
       computeInvoiceTotals(
         [
-          ...lockedLines.map((l) => ({ quantity: 1, unit_price_cents: l.line_total_cents })),
+          ...lockedLines.map((l) => ({ quantity: 1, unit_price_cents: lockedTotal(l) })),
           ...lines.map((l) => ({ quantity: l.quantity || 0, unit_price_cents: Math.round((parseFloat(l.unitPriceStr) || 0) * 100) })),
         ],
         discountCents,
         taxRateBp,
         cardSurcharge,
       ),
-    [lines, lockedLines, discountCents, taxRateBp, cardSurcharge],
+    [lines, lockedLines, lockedPrices, discountCents, taxRateBp, cardSurcharge], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const setLine = (i: number, patch: Partial<EditorLine>) =>
@@ -152,6 +163,7 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel, onSaved }: 
       unit_price_cents: Math.round((parseFloat(l.unitPriceStr) || 0) * 100),
       service_date: l.service_date || null,
     })),
+    job_line_prices: lockedLines.map((l) => ({ id: l.id, unit_price_cents: lockedPriceCents(l) })),
     save_defaults: saveDefaults,
   });
 
@@ -244,16 +256,29 @@ export function InvoiceEditor({ initial, lockedLines = [], onCancel, onSaved }: 
         <h3 className="text-sm font-semibold">Products / Services</h3>
         {lockedLines.length > 0 && (
           <div className="space-y-2">
-            {lockedLines.map((l, i) => (
-              <div key={i} className="rounded-lg bg-muted/40 ring-1 ring-border/60 p-4 flex items-start justify-between gap-4">
+            {lockedLines.map((l) => (
+              <div key={l.id} className="rounded-lg bg-muted/40 ring-1 ring-border/60 p-4 grid grid-cols-1 md:grid-cols-[1fr_140px_120px] gap-3 items-end">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{l.description}</p>
                   {l.details && <p className="text-xs text-muted-foreground mt-0.5">{l.details}</p>}
                   <p className="text-xs text-muted-foreground mt-1">
-                    From a completed job{l.hours != null ? ` — ${l.hours} hrs billed` : ""}. Edit hours from the invoice page.
+                    From a completed job{l.hours != null ? ` — ${l.hours} hrs billed` : ` — qty ${l.quantity}`}. Edit hours from the invoice page.
                   </p>
                 </div>
-                <span className="text-sm font-medium tabular-nums shrink-0">{money(l.line_total_cents)}</span>
+                <div className="space-y-1.5">
+                  <Label htmlFor={`locked-price-${l.id}`}>{l.hours != null ? "Rate ($/hr)" : "Unit price ($)"}</Label>
+                  <Input
+                    id={`locked-price-${l.id}`}
+                    type="number" min={0} step="0.01" inputMode="decimal"
+                    value={lockedPrices[l.id] ?? ""}
+                    onChange={(e) => setLockedPrices((prev) => ({ ...prev, [l.id]: e.target.value }))}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Line total</Label>
+                  <p className="h-9 flex items-center justify-end text-sm font-medium tabular-nums">{money(lockedTotal(l))}</p>
+                </div>
               </div>
             ))}
           </div>
