@@ -22,7 +22,9 @@ type InvoiceSummary = {
   property_address: string | null;
   client_message: string | null;
   terms_text: string | null;
-  line_items: { description: string; details: string | null; quantity: number; unit_price_cents: number; line_total_cents: number; service_date: string | null }[];
+  line_items: { description: string; details: string | null; quantity: number; hours: number | null; unit_price_cents: number; line_total_cents: number; service_date: string | null }[];
+  business_phone: string | null;
+  business_email: string | null;
   photos: { url: string; caption: string | null; photo_type: string }[];
   allow_card: boolean;
   venmo_link: string | null;
@@ -43,7 +45,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
     if (inv.status === "draft") return { error: "This invoice is not available for payment." };
     const { data: lineRows } = await supabaseAdmin
       .from("invoice_line_items")
-      .select("description, details, quantity, unit_price_cents, line_total_cents, service_date")
+      .select("description, details, quantity, hours, unit_price_cents, line_total_cents, service_date")
       .eq("invoice_id", inv.id)
       .order("sort_order")
       .order("service_date");
@@ -70,13 +72,18 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       const handle = ((vr?.settings as { handle?: string } | null)?.handle ?? "").replace(/^@/, "");
       if (vr?.is_connected && handle) {
         // Venmo amount excludes the card surcharge.
-        const amount = (((inv.subtotal_cents ?? inv.total_cents) ?? 0) / 100).toFixed(2);
+        const amount = (Math.max((inv.total_cents ?? 0) - (inv.surcharge_cents ?? 0), 0) / 100).toFixed(2);
         const params = new URLSearchParams({ txn: "pay", amount, note: `Invoice ${inv.number ?? ""}`.trim() });
         venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
       }
     }
     const prop = (inv as any).property as { label?: string; address?: string } | null;
+    // Public business contact details, shown so clients know how to reach customer service.
+    const { data: biz } = await (supabaseAdmin as any)
+      .from("tenants").select("business_phone, business_email").eq("id", (inv as any).tenant_id).maybeSingle();
     return {
+      business_phone: (biz?.business_phone as string | null) ?? null,
+      business_email: ((biz?.business_email as string | null) ?? null)?.toLowerCase() ?? null,
       photos,
       allow_card: allowCard,
       venmo_link: venmoLink,
@@ -98,7 +105,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       property_address: prop ? `${prop.label ?? ""} — ${prop.address ?? ""}`.replace(/^— | —$/g, "").trim() : null,
       client_message: (inv as any).client_message ?? null,
       terms_text: (inv as any).terms_text ?? null,
-      line_items: (lineRows ?? []) as { description: string; details: string | null; quantity: number; unit_price_cents: number; line_total_cents: number; service_date: string | null }[],
+      line_items: (lineRows ?? []) as { description: string; details: string | null; quantity: number; hours: number | null; unit_price_cents: number; line_total_cents: number; service_date: string | null }[],
     };
   });
 

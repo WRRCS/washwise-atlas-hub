@@ -6,6 +6,7 @@ import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { getPublicInvoice, createInvoiceCheckout } from "@/lib/invoice-checkout.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { formatDate, formatPhone } from "@/lib/invoice-email";
 
 export const Route = createFileRoute("/pay/$invoiceId")({
   component: PayInvoicePage,
@@ -66,6 +67,13 @@ function PayInvoicePage() {
             {inv.subject && <p className="text-sm mt-1">{inv.subject}</p>}
             <p className="text-sm text-muted-foreground mt-1">Billed to {inv.client_name}</p>
             {inv.property_address && <p className="text-xs text-muted-foreground">Service at {inv.property_address}</p>}
+            {(inv.issue_date || inv.due_date) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {inv.issue_date && <>Issued {formatDate(inv.issue_date)}</>}
+                {inv.issue_date && inv.due_date && " · "}
+                {inv.due_date && <>Due <span className="font-medium text-foreground">{formatDate(inv.due_date)}</span></>}
+              </p>
+            )}
           </div>
 
           {inv.line_items?.length > 0 && (
@@ -79,7 +87,7 @@ function PayInvoicePage() {
                         {li.details && <p className="text-xs text-muted-foreground">{li.details}</p>}
                         {li.service_date && <p className="text-xs text-muted-foreground">Service date: {li.service_date}</p>}
                       </td>
-                      <td className="py-2 text-right tabular-nums text-muted-foreground">{li.quantity} × {money(li.unit_price_cents, inv.currency)}</td>
+                      <td className="py-2 text-right tabular-nums text-muted-foreground">{li.hours != null && Number(li.hours) > 0 ? `${Number(Number(li.hours).toFixed(2))} hrs × ${money(li.unit_price_cents, inv.currency)}/hr` : `${li.quantity} × ${money(li.unit_price_cents, inv.currency)}`}</td>
                       <td className="py-2 text-right tabular-nums font-medium">{money(li.line_total_cents, inv.currency)}</td>
                     </tr>
                   ))}
@@ -172,6 +180,22 @@ function PayInvoicePage() {
 
           {inv.terms_text && (
             <div className="mt-6 text-xs text-muted-foreground whitespace-pre-wrap border-t border-border/40 pt-4">{inv.terms_text}</div>
+          )}
+
+          {(inv.business_phone || inv.business_email) && (
+            <div className="mt-6 bg-card rounded-xl ring-1 ring-black/5 p-5 text-sm">
+              <p className="font-medium">Questions about this invoice?</p>
+              <p className="text-muted-foreground mt-1">
+                We're always happy to help.{" "}
+                {inv.business_phone && (
+                  <>Call or text <a className="text-brand underline" href={`tel:${inv.business_phone.replace(/\D/g, "")}`}>{formatPhone(inv.business_phone)}</a></>
+                )}
+                {inv.business_phone && inv.business_email && " or email "}
+                {!inv.business_phone && inv.business_email && "Email "}
+                {inv.business_email && <a className="text-brand underline" href={`mailto:${inv.business_email}`}>{inv.business_email}</a>}
+                .
+              </p>
+            </div>
           )}
         </div>
       </div>

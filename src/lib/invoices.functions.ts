@@ -159,7 +159,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
       if ((inv as any).allow_venmo !== false && venmoRow?.is_connected && vs.handle) {
         const handle = vs.handle.replace(/^@/, "");
         // Venmo payers pay the invoice without the card processing fee.
-        const amount = (((inv.subtotal_cents ?? 0) - (inv.discount_cents ?? 0) + (inv.tax_cents ?? 0) || inv.total_cents || 0) / 100).toFixed(2);
+        const amount = (Math.max((inv.total_cents ?? 0) - (inv.surcharge_cents ?? 0), 0) / 100).toFixed(2);
         const note = vs.test_mode ? `[TEST] Invoice ${inv.number ?? ""}` : `Invoice ${inv.number ?? ""}`;
         const params = new URLSearchParams({ txn: "pay", amount, note: note.trim() });
         venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
