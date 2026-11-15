@@ -14,6 +14,7 @@ export type ClientProperty = {
   default_service_type_id: string | null;
   service_frequency: string | null;
   price_cents: number | null;
+  pricing_type: string | null;
   sop: string | null;
   sop_id: string | null;
 };
@@ -24,7 +25,7 @@ export const listClientProperties = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ClientProperty[]> => {
     const { data: rows, error } = await context.supabase
       .from("client_properties")
-      .select("id, client_id, label, address, notes, is_primary, is_active, property_type, default_service_type_id, service_frequency, price_cents, sop, sop_id")
+      .select("id, client_id, label, address, notes, is_primary, is_active, property_type, default_service_type_id, service_frequency, price_cents, pricing_type, sop, sop_id")
       .eq("client_id", data.client_id)
       .eq("is_active", true)
       .order("is_primary", { ascending: false })
@@ -45,6 +46,7 @@ const upsertSchema = z.object({
   default_service_type_id: z.string().uuid().nullable().optional(),
   service_frequency: z.string().trim().max(60).optional(),
   price_cents: z.number().int().nonnegative().nullable().optional(),
+  pricing_type: z.enum(["hourly", "flat"]).nullable().optional(),
   sop: z.string().trim().max(12000).optional(),
   sop_id: z.string().uuid().nullable().optional(),
 });
@@ -76,6 +78,7 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
           property_type: data.property_type ?? null,
           service_frequency: data.service_frequency ?? null,
           price_cents: data.price_cents ?? null,
+        ...(data.pricing_type !== undefined ? { pricing_type: data.pricing_type } : {}),
         sop: data.sop || null,
         ...(data.sop_id !== undefined ? { sop_id: data.sop_id } : {}),
         ...(data.default_service_type_id !== undefined ? { default_service_type_id: data.default_service_type_id } : {}),
@@ -97,6 +100,7 @@ export const upsertClientProperty = createServerFn({ method: "POST" })
         property_type: data.property_type ?? null,
         service_frequency: data.service_frequency ?? null,
         price_cents: data.price_cents ?? null,
+        ...(data.pricing_type !== undefined ? { pricing_type: data.pricing_type } : {}),
         sop: data.sop || null,
         ...(data.sop_id !== undefined ? { sop_id: data.sop_id } : {}),
         ...(data.default_service_type_id !== undefined ? { default_service_type_id: data.default_service_type_id } : {}),

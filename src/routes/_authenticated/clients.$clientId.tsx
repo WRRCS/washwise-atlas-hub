@@ -19,7 +19,8 @@ import {
   createPhotoUploadUrl, registerClientPhoto, deleteClientPhoto,
 } from "@/lib/entities.functions";
 import { listClientProperties, upsertClientProperty, deleteClientProperty, type ClientProperty } from "@/lib/client-properties.functions";
-import { listServiceTypes } from "@/lib/entities.functions";
+import { listServiceTypes, createServiceType } from "@/lib/entities.functions";
+import { FREQUENCY_OPTIONS, normalizeFrequency, pricingTypeOf, describePropertyPrice, type PricingType } from "@/lib/property-pricing";
 import { getClientSummary, listClientJobs } from "@/lib/client-page.functions";
 import { listInvoices } from "@/lib/invoices.functions";
 import { listQuoteTemplates, listEmailTemplates, getClientPreference, setClientQuotePreference, sendClientEmail, renderTemplate, COMPANY_NAME } from "@/lib/templates.functions";
@@ -1051,23 +1052,46 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
   const { data: sopOptions = [] } = useQuery({ queryKey: ["sops"], queryFn: () => listSopsFn() });
   const svcFn = useServerFn(listServiceTypes);
   const { data: serviceOptions = [] } = useQuery({ queryKey: ["services"], queryFn: () => svcFn({}) });
+  const createSvcFn = useServerFn(createServiceType);
+  const [newService, setNewService] = useState<string | null>(null);
+  const [addingService, setAddingService] = useState(false);
+  const addService = async () => {
+    const name = (newService ?? "").trim();
+    if (!name) { toast.error("Type the new service name"); return; }
+    const existing = serviceOptions.find((s: any) => s.name.trim().toLowerCase() === name.toLowerCase());
+    if (existing) { setForm((f) => ({ ...f, default_service_type_id: existing.id })); setNewService(null); return; }
+    setAddingService(true);
+    try {
+      const row = await createSvcFn({ data: { name, default_duration_minutes: 120, color: "#6366f1" } });
+      await qc.invalidateQueries({ queryKey: ["services"] });
+      setForm((f) => ({ ...f, default_service_type_id: row.id }));
+      setNewService(null);
+      toast.success(`Service "${name}" added`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add service");
+    } finally {
+      setAddingService(false);
+    }
+  };
   const [editing, setEditing] = useState<ClientProperty | null>(null);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", priceStr: "", sop: "", sop_id: "", default_service_type_id: "" };
+  const empty = { label: "", address: "", notes: "", is_primary: false, property_type: "", service_frequency: "", pricing_type: "hourly" as PricingType, priceStr: "", sop: "", sop_id: "", default_service_type_id: "" };
   const [form, setForm] = useState(empty);
 
-  const startAdd = () => { setForm(empty); setEditing(null); setAdding(true); };
+  const startAdd = () => { setForm(empty); setEditing(null); setNewService(null); setAdding(true); };
   const startEdit = (p: ClientProperty) => {
     setEditing(p);
     setForm({
       label: p.label, address: p.address, notes: p.notes ?? "", is_primary: p.is_primary,
-      property_type: p.property_type ?? "", service_frequency: p.service_frequency ?? "",
+      property_type: p.property_type ?? "", service_frequency: normalizeFrequency(p.service_frequency),
+      pricing_type: pricingTypeOf(p),
       priceStr: p.price_cents != null ? String(p.price_cents / 100) : "",
       sop: p.sop ?? "",
       sop_id: p.sop_id ?? "",
       default_service_type_id: p.default_service_type_id ?? "",
     });
+    setNewService(null);
     setAdding(true);
   };
   const cancel = () => { setAdding(false); setEditing(null); };
@@ -1091,6 +1115,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
           property_type: form.property_type.trim() || undefined,
           service_frequency: form.service_frequency.trim() || undefined,
           price_cents: form.priceStr.trim() !== "" ? Math.round((parseFloat(form.priceStr) || 0) * 100) : null,
+          pricing_type: form.pricing_type,
           sop: form.sop.trim(),
           sop_id: form.sop_id || null,
           default_service_type_id: form.default_service_type_id || null,
@@ -1148,22 +1173,76 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
               <Input value={form.property_type} onChange={(e) => setForm({ ...form, property_type: e.target.value })} placeholder="Residence, Airbnb, Office…" />
             </FieldRow>
             <FieldRow label="Service frequency">
-              <Input value={form.service_frequency} onChange={(e) => setForm({ ...form, service_frequency: e.target.value })} placeholder="Weekly, bi-weekly, monthly…" />
-            </FieldRow>
-            <FieldRow label="Price ($)">
-              <Input type="number" min={0} step="0.01" placeholder="Set price for this property" value={form.priceStr} onChange={(e) => setForm({ ...form, priceStr: e.target.value })} />
-            </FieldRow>
-            <FieldRow label="Default service">
               <select
-                value={form.default_service_type_id}
-                onChange={(e) => setForm({ ...form, default_service_type_id: e.target.value })}
+                aria-label="Service frequency"
+                value={form.service_frequency}
+                onChange={(e) => setForm({ ...form, service_frequency: e.target.value })}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
               >
-                <option value="">None — ask each time</option>
-                {serviceOptions.map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                <option value="">Not set</option>
+                {[...FREQUENCY_OPTIONS, ...(form.service_frequency && !(FREQUENCY_OPTIONS as readonly string[]).includes(form.service_frequency) ? [form.service_frequency] : [])].map((f) => (
+                  <option key={f} value={f}>{f}</option>
                 ))}
               </select>
+            </FieldRow>
+            <FieldRow label="Pricing">
+              <select
+                aria-label="Pricing"
+                value={form.pricing_type}
+                onChange={(e) => setForm({ ...form, pricing_type: e.target.value as PricingType })}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="hourly">Hourly</option>
+                <option value="flat">Flat rate</option>
+              </select>
+            </FieldRow>
+            <FieldRow label="Default service">
+              {newService === null ? (
+                <select
+                  aria-label="Default service"
+                  value={form.default_service_type_id}
+                  onChange={(e) => {
+                    if (e.target.value === "__new") { setNewService(""); return; }
+                    setForm({ ...form, default_service_type_id: e.target.value });
+                  }}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">None — ask each time</option>
+                  {serviceOptions.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                  <option value="__new">+ Add a new service…</option>
+                </select>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    aria-label="New service name"
+                    placeholder="Type the new service name"
+                    value={newService}
+                    onChange={(e) => setNewService(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addService(); } if (e.key === "Escape") setNewService(null); }}
+                  />
+                  <Button type="button" size="sm" disabled={addingService} onClick={() => void addService()}>Add</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setNewService(null)}>Cancel</Button>
+                </div>
+              )}
+            </FieldRow>
+            <FieldRow label={form.pricing_type === "flat" ? "Flat price per cleaning ($)" : "Hourly rate ($ per hour)"}>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  className="pl-7"
+                  aria-label={form.pricing_type === "flat" ? "Flat price per cleaning" : "Hourly rate"}
+                  placeholder={form.pricing_type === "flat" ? "Type the price for each cleaning" : "Leave blank for your usual hourly rate"}
+                  value={form.priceStr}
+                  onChange={(e) => setForm({ ...form, priceStr: e.target.value })}
+                />
+              </div>
             </FieldRow>
             <div className="md:col-span-2">
               <FieldRow label="SOP document (from the SOP library)">
@@ -1236,7 +1315,7 @@ function PropertiesTab({ clientId, spec, onSpecSaved }: { clientId: string; spec
                       </div>
                       <div className="text-sm text-muted-foreground truncate">{p.address}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {p.price_cents != null && <span className="text-foreground font-medium">${(p.price_cents / 100).toFixed(2)} · </span>}
+                        <span className="text-foreground font-medium">{describePropertyPrice(p)} · </span>
                         {p.service_frequency ? `${p.service_frequency} · ` : ""}
                         {next ? `Next service ${format(new Date(next.scheduled_start), "PP p")}` : "No upcoming service"}
                       </div>

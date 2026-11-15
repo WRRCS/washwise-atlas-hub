@@ -457,7 +457,7 @@ export const createServiceType = createServerFn({ method: "POST" })
       .from("service_types")
       .insert({
         tenant_id: prof.tenant_id,
-        kind: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40) as never,
+        kind: "custom",
         name: data.name,
         default_duration_minutes: data.default_duration_minutes,
         default_price_cents: 0,

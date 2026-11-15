@@ -351,6 +351,20 @@
       "when": 1794714819201,
       "tag": "0049_schedule_team_order",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794720276776,
+      "tag": "0050_custom_service_kind",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1794720311398,
+      "tag": "0051_property_pricing_type",
+      "breakpoints": true
     }
   ]
 }

@@ -541,6 +541,7 @@ export type Database = {
           label: string
           notes: string | null
           price_cents: number | null
+          pricing_type: string | null
           property_type: string | null
           service_frequency: string | null
           sop: string | null
@@ -560,6 +561,7 @@ export type Database = {
           label: string
           notes?: string | null
           price_cents?: number | null
+          pricing_type?: string | null
           property_type?: string | null
           service_frequency?: string | null
           sop?: string | null
@@ -579,6 +581,7 @@ export type Database = {
           label?: string
           notes?: string | null
           price_cents?: number | null
+          pricing_type?: string | null
           property_type?: string | null
           service_frequency?: string | null
           sop?: string | null
@@ -4862,6 +4865,7 @@ export type Database = {
         | "post_construction"
         | "window_cleaning"
         | "carpet_cleaning"
+        | "custom"
       supply_request_status: "pending" | "fulfilled" | "denied"
       supply_request_urgency: "low" | "normal" | "high"
     }
@@ -5028,6 +5032,7 @@ export const Constants = {
         "post_construction",
         "window_cleaning",
         "carpet_cleaning",
+        "custom",
       ],
       supply_request_status: ["pending", "fulfilled", "denied"],
       supply_request_urgency: ["low", "normal", "high"],

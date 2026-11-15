@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { listClients, createClient, myCapabilities, setClientArchived, deleteClient } from "@/lib/entities.functions";
 import { listClientProperties } from "@/lib/client-properties.functions";
+import { FREQUENCY_OPTIONS } from "@/lib/property-pricing";
 import { Plus, Search, MapPin, Mail, Phone, MoreHorizontal, Archive, RotateCcw, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 
 
@@ -322,7 +323,7 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
     }
   };
 
-  const upd = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const upd = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   return (
@@ -356,7 +357,12 @@ function NewClientDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Field label="Property name"><Input value={form.property_label} onChange={upd("property_label")} placeholder="Home, Beach Bum…" /></Field>
               <Field label="Property type"><Input value={form.property_type} onChange={upd("property_type")} placeholder="Residence, Airbnb…" /></Field>
-              <Field label="Service frequency"><Input value={form.service_frequency} onChange={upd("service_frequency")} placeholder="Weekly, bi-weekly…" /></Field>
+              <Field label="Service frequency">
+                <select aria-label="Service frequency" value={form.service_frequency} onChange={upd("service_frequency")} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">Not set</option>
+                  {FREQUENCY_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </Field>
             </div>
             <Field label="Service address *"><Textarea rows={2} value={form.service_address} onChange={upd("service_address")} /></Field>
             <Field label="Billing address"><Textarea rows={2} value={form.billing_address} onChange={upd("billing_address")} placeholder="Leave blank if same as service" /></Field>

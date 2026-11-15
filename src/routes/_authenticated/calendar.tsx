@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
+import { newJobPriceCents } from "@/lib/property-pricing";
 import { listClientProperties, upsertClientProperty } from "@/lib/client-properties.functions";
 import { claimOpenShift } from "@/lib/visits.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, differenceInMinutes } from "date-fns";
@@ -1203,8 +1204,10 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   // Pre-fill the price from the property's set price when one is selected.
   useEffect(() => {
-    if (selectedProperty?.price_cents != null) {
-      setPriceStr(String(selectedProperty.price_cents / 100));
+    // Flat-rate properties carry their price; hourly ones stay blank so the cleaning bills by the hour.
+    if (selectedProperty) {
+      const cents = newJobPriceCents(selectedProperty);
+      setPriceStr(cents != null ? String(cents / 100) : "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId]);
@@ -1361,7 +1364,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
           </Field>
           {canSeePricing && (
             <Field label="Price ($)">
-              <Input type="number" min={0} step="0.01" placeholder="0.00" value={priceStr} onChange={(e) => setPriceStr(e.target.value)} />
+              <Input type="number" min={0} step="0.01" placeholder="Blank = billed hourly" value={priceStr} onChange={(e) => setPriceStr(e.target.value)} />
             </Field>
           )}
         </div>
