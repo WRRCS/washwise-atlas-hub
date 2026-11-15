@@ -34,6 +34,12 @@ const SAMPLE_VARS: Record<string, string> = {
   service_type: "Residential Cleaning",
   company_name: COMPANY_NAME,
   pay_link: "https://wrrcs.com/pay/2f1c8a6e-9b7d-4c3a-8f21-0d5e6a7b8c9d",
+  greeting_name: "Jamie",
+  first_name: "Jamie",
+  property_name: "your home",
+  service_summary: "your cleaning on July 4, 2026",
+  due_date: "July 18, 2026",
+  business_phone: "(360) 200-8892",
 };
 
 const EVENT_LABELS: Record<TriggerEvent, string> = {
@@ -342,6 +348,12 @@ function EmailTemplateCard({ tpl, onSave }: {
               <Textarea rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
               <p className="text-[11px] text-muted-foreground">
                 Variables: {"{{client_name}}"}, {"{{date}}"}, {"{{invoice_number}}"}, {"{{amount}}"}, {"{{service_type}}"}, {"{{company_name}}"}, {"{{pay_link}}"} (card payment page)
+                {tpl.trigger_event === "invoice_sent" && (
+                  <>
+                    <br />
+                    Invoice note: {"{{greeting_name}}"} (first name for homes, full name for businesses), {"{{property_name}}"}, {"{{service_summary}}"}, {"{{due_date}}"}, {"{{business_phone}}"}. The full invoice, payment buttons and contact details are added below this note automatically.
+                  </>
+                )}
               </p>
             </div>
             <div className="flex justify-end gap-2">

@@ -1,0 +1,5 @@
+UPDATE public.email_templates
+SET body_html = '<p>Hi {{greeting_name}},</p><p>Thank you for choosing Wash Rinse Repeat Cleaning to care for {{property_name}}. Your invoice for {{service_summary}} is below. The total of <strong>{{amount}}</strong> is due by <strong>{{due_date}}</strong>.</p><p>Your satisfaction matters to us. If anything about your cleaning or this invoice doesn''t look right, just reply to this email or call or text us at {{business_phone}}. We''re always happy to help.</p><p>We truly appreciate your business.<br>Warm regards,<br>The Wash Rinse Repeat Cleaning team</p>',
+    updated_at = now()
+WHERE trigger_event = 'invoice_sent'
+  AND body_html = '<p>Hi {{client_name}},</p><p>Invoice <strong>{{invoice_number}}</strong> for <strong>{{amount}}</strong> is ready.</p><p>You can pay by card here: <a href="{{pay_link}}">{{pay_link}}</a></p><p>Thank you! — {{company_name}}</p>';

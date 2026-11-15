@@ -6,6 +6,7 @@ import { clientContact } from "@/lib/privacy";
 import { dueDateFrom } from "@/lib/payment-terms";
 import { computeInvoiceTotals, calcCardSurcharge, lineTotalForPrice } from "@/lib/invoice-totals";
 import { invoicePayUrl } from "@/lib/invoice-pay-link";
+import { buildInvoiceEmailHtml, buildInvoiceEmailText, invoiceTemplateVars, renderIntro, type InvoiceEmailInput } from "@/lib/invoice-email";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "void";
 
@@ -134,11 +135,18 @@ export const sendInvoice = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: inv, error: ge } = await context.supabase
       .from("invoices")
-      .select("id, tenant_id, client_id, number, total_cents, allow_venmo, client:clients(first_name, last_name)")
+      .select("id, tenant_id, client_id, property_id, number, currency, issue_date, due_date, subtotal_cents, discount_cents, tax_cents, surcharge_cents, total_cents, allow_card, allow_venmo, client_message, terms_text, client:clients(first_name, last_name, company_name, pays_by_check), property:client_properties(label, address, property_type)")
       .eq("id", data.id).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!inv) throw new Error("Invoice not found");
 
+    const { data: items, error: ie } = await context.supabase
+      .from("invoice_line_items")
+      .select("description, details, quantity, hours, unit_price_cents, line_total_cents, service_date")
+      .eq("invoice_id", inv.id)
+      .order("sort_order")
+      .order("service_date");
+    if (ie) throw new Error(ie.message);
 
     // Build Venmo pay link if the tenant has Venmo configured.
     let venmoLink = "";
@@ -150,7 +158,8 @@ export const sendInvoice = createServerFn({ method: "POST" })
       const vs = (venmoRow?.settings as { handle?: string; test_mode?: boolean } | null) ?? {};
       if ((inv as any).allow_venmo !== false && venmoRow?.is_connected && vs.handle) {
         const handle = vs.handle.replace(/^@/, "");
-        const amount = ((inv.total_cents ?? 0) / 100).toFixed(2);
+        // Venmo payers pay the invoice without the card processing fee.
+        const amount = (((inv.subtotal_cents ?? 0) - (inv.discount_cents ?? 0) + (inv.tax_cents ?? 0) || inv.total_cents || 0) / 100).toFixed(2);
         const note = vs.test_mode ? `[TEST] Invoice ${inv.number ?? ""}` : `Invoice ${inv.number ?? ""}`;
         const params = new URLSearchParams({ txn: "pay", amount, note: note.trim() });
         venmoLink = `https://venmo.com/${encodeURIComponent(handle)}?${params.toString()}`;
@@ -161,22 +170,6 @@ export const sendInvoice = createServerFn({ method: "POST" })
     const { getAppOrigin } = await import("@/lib/app-url.server");
     const payLink = invoicePayUrl(getAppOrigin(), inv.id);
 
-    // Render email via template + enqueue
-    const c = (inv.client as { first_name?: string; last_name?: string } | null);
-    const rendered = await renderEmailForClientContext({
-      supabase: context.supabase,
-      tenantId: inv.tenant_id,
-      event: "invoice_sent",
-      clientId: inv.client_id,
-      vars: {
-        client_name: [c?.first_name, c?.last_name].filter(Boolean).join(" ") || "there",
-        invoice_number: inv.number ?? "",
-        amount: `$${((inv.total_cents ?? 0) / 100).toFixed(2)}`,
-        date: new Date().toLocaleDateString(),
-        venmo_link: venmoLink,
-        pay_link: payLink,
-      },
-    });
     // Recipient: the address typed in the Send box, else the client's saved email.
     let to = data.to_email ?? null;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -187,10 +180,69 @@ export const sendInvoice = createServerFn({ method: "POST" })
     }
     if (!to) throw new Error("Enter an email address to send this invoice to.");
 
-    const amountStr = `$${((inv.total_cents ?? 0) / 100).toFixed(2)}`;
-    const subject = rendered?.subject || `Invoice ${inv.number ?? ""} from Wash Rinse Repeat Cleaning`.replace("  ", " ");
-    const html = rendered?.body_html ||
-      `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#222">Hi ${[c?.first_name, c?.last_name].filter(Boolean).join(" ") || "there"},<br><br>Your invoice ${inv.number ?? ""} for ${amountStr} is ready.<br><br><a href="${payLink}">Pay by card</a>${venmoLink ? `<br><br><a href="${venmoLink}">Pay with Venmo</a>` : ""}<br><br>Thank you,<br>Wash Rinse Repeat Cleaning</div>`;
+    const { data: biz } = await (supabaseAdmin as any)
+      .from("tenants")
+      .select("name, legal_name, business_email, business_phone, address, invoice_footer, primary_color")
+      .eq("id", inv.tenant_id).maybeSingle();
+
+    const c = inv.client as { first_name?: string | null; last_name?: string | null; company_name?: string | null; pays_by_check?: boolean | null } | null;
+    const pr = inv.property as { label?: string | null; address?: string | null; property_type?: string | null } | null;
+    const emailInput: InvoiceEmailInput = {
+      invoiceNumber: inv.number ?? "",
+      issueDate: inv.issue_date ?? null,
+      dueDate: inv.due_date ?? null,
+      currency: inv.currency ?? "usd",
+      subtotalCents: inv.subtotal_cents ?? 0,
+      discountCents: inv.discount_cents ?? 0,
+      taxCents: inv.tax_cents ?? 0,
+      surchargeCents: inv.surcharge_cents ?? 0,
+      totalCents: inv.total_cents ?? 0,
+      lines: (items ?? []).map((l) => ({
+        description: l.description ?? "",
+        details: (l as any).details ?? null,
+        quantity: l.quantity == null ? null : Number(l.quantity),
+        hours: (l as any).hours == null ? null : Number((l as any).hours),
+        unitPriceCents: l.unit_price_cents ?? 0,
+        lineTotalCents: l.line_total_cents ?? 0,
+        serviceDate: l.service_date ?? null,
+      })),
+      client: {
+        firstName: c?.first_name ?? null,
+        lastName: c?.last_name ?? null,
+        companyName: c?.company_name ?? null,
+        paysByCheck: !!c?.pays_by_check,
+      },
+      property: pr ? { label: pr.label ?? null, address: pr.address ?? null, propertyType: pr.property_type ?? null } : null,
+      clientMessage: (inv as any).client_message ?? null,
+      termsText: (inv as any).terms_text ?? null,
+      payLink,
+      allowCard: (inv as any).allow_card !== false,
+      venmoLink: venmoLink || null,
+      business: {
+        name: "Wash Rinse Repeat Cleaning",
+        legalName: biz?.legal_name ?? null,
+        phone: biz?.business_phone ?? null,
+        email: biz?.business_email ?? null,
+        address: biz?.address ?? null,
+        footer: biz?.invoice_footer ?? null,
+        color: biz?.primary_color ?? null,
+      },
+    };
+
+    // The personal note at the top is the "Invoice sent" wording on the Templates page.
+    const vars = invoiceTemplateVars(emailInput);
+    const rendered = await renderEmailForClientContext({
+      supabase: context.supabase,
+      tenantId: inv.tenant_id,
+      event: "invoice_sent",
+      clientId: inv.client_id,
+      vars,
+    });
+    const introHtml = renderIntro(rendered ? rendered.body_html : null, vars);
+    const subject = rendered?.subject?.replace(/\{\{\s*\w+\s*\}\}/g, "").trim() ||
+      `Invoice ${inv.number ?? ""} from Wash Rinse Repeat Cleaning`.replace("  ", " ");
+    const html = buildInvoiceEmailHtml(emailInput, introHtml);
+    const text = buildInvoiceEmailText(emailInput, introHtml);
 
     const { sendLovableEmail } = await import("@lovable.dev/email-js");
     const result: any = await sendLovableEmail(
@@ -198,9 +250,9 @@ export const sendInvoice = createServerFn({ method: "POST" })
         to,
         from: "Wash Rinse Repeat Cleaning <info@washrinserepeatcleaning.com>",
         sender_domain: "notify.washrinserepeatcleaning.com",
-        subject,
+        subject: subject.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
         html,
-        text: html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").trim(),
+        text,
         purpose: "transactional",
         idempotency_key: `invoice-sent-${inv.id}-${Date.now()}`,
         label: "invoice_sent",
