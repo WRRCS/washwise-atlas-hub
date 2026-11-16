@@ -240,10 +240,13 @@ export const completeJobWithPhotos = createServerFn({ method: "POST" })
     try {
       const { data: job } = await context.supabase
         .from("jobs")
-        .select("client_id, scheduled_start")
+        .select("client_id, scheduled_start, client:clients(bill_monthly)")
         .eq("id", data.job_id)
         .maybeSingle();
-      if (job?.client_id) {
+      // Month-end-only clients hear from us once a month with their invoice, not after each visit.
+      const { wantsPerVisitClientDraft } = await import("./month-end-billing");
+      const client = (job as { client?: { bill_monthly?: boolean | null } | null } | null)?.client;
+      if (job?.client_id && wantsPerVisitClientDraft(client)) {
         const when = job.scheduled_start
           ? new Date(job.scheduled_start).toLocaleDateString("en-US", {
               month: "long",

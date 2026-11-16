@@ -241,7 +241,7 @@ function OverviewTab({ client, clientId, isManagement, onSaved }: {
             <Info label="Lead source" value={client.lead_source ?? null} />
             <Info label="Billing address" value={client.billing_address} />
             <Info label="Payment terms" value={client.payment_terms_days == null ? "Business default" : termsLabel(client.payment_terms_days)} />
-            <Info label="Billing" value={client.bill_monthly ? "One invoice per month" : "Invoice each visit"} />
+            <Info label="Billing" value={client.bill_monthly ? "One invoice at end of month" : "Invoice each visit"} />
             <Info label="Preferred contact" value={client.email ? "Email" : client.phone ? "Phone" : null} />
           </dl>
         ) : (
@@ -384,7 +384,7 @@ function ProfileForm({ client, onSaved, onCancel }: {
       </FieldRow>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={form.bill_monthly} onChange={(e) => setForm({ ...form, bill_monthly: e.target.checked })} />
-        Bill monthly — put every completed cleaning in the month on one invoice
+        Month-end invoice only — every completed cleaning that month goes on one invoice (no invoice or "cleaning complete" draft after each visit)
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
