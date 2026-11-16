@@ -4631,6 +4631,7 @@ export type Database = {
       is_owner: { Args: never; Returns: boolean }
       is_owner_or_manager: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      job_visible_to_staff: { Args: { _job: string }; Returns: boolean }
       log_platform_action: {
         Args: {
           _action: string

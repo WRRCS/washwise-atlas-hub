@@ -77,10 +77,15 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
             }
             // Existing appointment reminders must not survive cancellation, completion or reassignment.
             if(n.template_name==="appointment_reminder_employee" && typeof n.payload.job_id==="string") {
-              const {data: job}=await supabaseAdmin.from("jobs").select("status,scheduled_start,assigned_to").eq("id",n.payload.job_id).eq("tenant_id",n.tenant_id).maybeSingle();
+              const {data: job}=await supabaseAdmin.from("jobs").select("status,scheduled_start,assigned_to,published_at").eq("id",n.payload.job_id).eq("tenant_id",n.tenant_id).maybeSingle();
               const {data: links}=await supabaseAdmin.from("job_employees").select("id").eq("job_id",n.payload.job_id).eq("employee_id",n.recipient_id);
-              const stale=!job || ["canceled","completed"].includes(job.status) || (!links?.length && job.assigned_to!==n.recipient_id) || (typeof n.payload.scheduled_start==="string" && Date.parse(n.payload.scheduled_start)!==Date.parse(job.scheduled_start));
+              // Unpublished cleanings stay hidden from the team, reminders included.
+              const stale=!job || ["canceled","completed"].includes(job.status) || (job.status==="scheduled" && !job.published_at) || (!links?.length && job.assigned_to!==n.recipient_id) || (typeof n.payload.scheduled_start==="string" && Date.parse(n.payload.scheduled_start)!==Date.parse(job.scheduled_start));
               if(stale) {await supabaseAdmin.from("notifications").update({recalled_at:new Date().toISOString(),error:"suppressed: appointment changed"}).eq("id",n.id);processed++;continue;}
+            }
+            if((n.template_name==="push_job_assigned"||n.template_name==="push_job_rescheduled") && n.recipient_type==="employee" && typeof n.payload?.job_id==="string" && n.payload.job_id) {
+              const {data: job}=await supabaseAdmin.from("jobs").select("status,published_at").eq("id",n.payload.job_id).eq("tenant_id",n.tenant_id).maybeSingle();
+              if(!job || (job.status==="scheduled" && !job.published_at)) {await supabaseAdmin.from("notifications").update({recalled_at:new Date().toISOString(),error:"suppressed: appointment not published"}).eq("id",n.id);processed++;continue;}
             }
             // Template
             const { data: tpl } = await supabaseAdmin

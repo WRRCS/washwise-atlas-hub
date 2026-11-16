@@ -7,14 +7,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { SendClientScheduleButton } from "@/components/send-client-schedule-dialog";
-import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs, setCleanerHours, moveCleanerToDay, type CleanerHoursResult } from "@/lib/jobs.functions";
+import { listJobs, createJob, checkConflicts, moveJob, publishSchedule, listUnavailability, deleteJob, duplicateJobToEmployee, closeJobs, setCleanerHours, moveCleanerToDay, changeJobClient, updateJobAssignees, type CleanerHoursResult } from "@/lib/jobs.functions";
+import { shiftByDaysKeepTime, daysBetweenKeys } from "@/lib/schedule-publish";
 import { withOwnHours, needsSplitChoice } from "@/lib/cleaner-hours";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
 import { newJobPriceCents } from "@/lib/property-pricing";
-import { listClientProperties, upsertClientProperty } from "@/lib/client-properties.functions";
+import { listClientProperties, upsertClientProperty, listScheduleLocations } from "@/lib/client-properties.functions";
 import { claimOpenShift } from "@/lib/visits.functions";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -281,6 +282,77 @@ function SchedulePage() {
       return;
     }
     hoursMut.mutate({ jobId: j.id, employeeId, cleaner, start, end });
+  };
+
+  // Pop-up quick edits: who works the shift, which client it's for, and which day.
+  const fullJob = (j: any) => (jobs as any[]).find((x) => x.id === j.id) ?? j;
+  const cleanerName = (id: string) => cleaners.find((c: any) => c.id === id)?.full_name ?? "This cleaner";
+  const locationsFn = useServerFn(listScheduleLocations);
+  const { data: locations = [] } = useQuery({ queryKey: ["schedule-locations"], queryFn: () => locationsFn(), enabled: canManageSchedule });
+  const assigneesFn = useServerFn(updateJobAssignees);
+  const swapMut = useMutation({
+    mutationFn: async (v: { job: any; fromId: string; toId: string }) => {
+      const ids = (v.job.assignees ?? []).map((a: any) => (a.id === v.fromId ? v.toId : a.id));
+      await assigneesFn({ data: { id: v.job.id, employee_ids: ids, scope: "this" } });
+      // The new cleaner keeps the hours the old one had on a shared cleaning.
+      const link = (v.job.assignees ?? []).find((a: any) => a.id === v.fromId);
+      if (link?.scheduled_start && link?.scheduled_end) {
+        await hoursFn({ data: { job_id: v.job.id, employee_id: v.toId, scheduled_start: link.scheduled_start, scheduled_end: link.scheduled_end } });
+      }
+    },
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      setOpenShiftKey(null);
+      toast.success(`${cleanerName(v.toId)} now has this shift instead of ${cleanerName(v.fromId)}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not change the cleaner"),
+  });
+  const clientFn = useServerFn(changeJobClient);
+  const clientMut = useMutation({
+    mutationFn: (v: { jobId: string; employeeId: string; clientId: string; propertyId: string; scope: "all" | "this" }) =>
+      clientFn({ data: { id: v.jobId, employee_id: v.employeeId, client_id: v.clientId, property_id: v.propertyId, scope: v.scope } }),
+    onSuccess: (r, v) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      setOpenShiftKey(null);
+      if (r.result === "unchanged") return;
+      toast.success(r.result === "this"
+        ? `${cleanerName(v.employeeId)} moved to ${r.client}${r.placed?.result === "added" ? " — joined that cleaning" : ""}`
+        : `Cleaning changed to ${r.client}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not change the client"),
+  });
+  // Shared cleaning: ask whether a client or day change is for everyone on it or just this cleaner.
+  const [scopeAsk, setScopeAsk] = useState<{ title: string; cleaner: string; others: string; run: (scope: "all" | "this") => void } | null>(null);
+  const withScope = (j: any, employeeId: string, title: string, run: (scope: "all" | "this") => void) => {
+    const job = fullJob(j);
+    const team = (job.assignees ?? []) as any[];
+    if (team.length <= 1) { run("all"); return; }
+    setOpenShiftKey(null);
+    const first = (id: string) => firstNames.get(id) ?? cleanerName(id);
+    setScopeAsk({ title, cleaner: first(employeeId), others: team.map((a) => first(a.id)).join(", "), run });
+  };
+  const changeDay = (j: any, employeeId: string, targetKey: string) => {
+    const job = fullJob(j);
+    const own = withOwnHours(job, employeeId);
+    const delta = daysBetweenKeys(dayKeyTZ(own.scheduled_start, tz), targetKey);
+    if (!delta) return;
+    withScope(job, employeeId, `Move to ${format(new Date(`${targetKey}T12:00:00`), "EEEE, MMM d")}?`, (scope) => {
+      setOpenShiftKey(null);
+      if (scope === "all") {
+        const { start, end } = shiftByDaysKeepTime(job.scheduled_start, job.scheduled_end, delta, tz);
+        moveMut.mutate({ id: job.id, start, end });
+      } else {
+        const { start, end } = shiftByDaysKeepTime(own.scheduled_start, own.scheduled_end, delta, tz);
+        changeCleanerHours(job, employeeId, cleanerName(employeeId), start, end);
+      }
+    });
+  };
+  const changeClient = (j: any, employeeId: string, value: string) => {
+    const [clientId, propertyId] = value.split("|");
+    if (!clientId || !propertyId) return;
+    const loc = (locations as any[]).find((l) => l.property_id === propertyId);
+    withScope(j, employeeId, `Change to ${loc?.client_name ?? "this client"}?`, (scope) =>
+      clientMut.mutate({ jobId: j.id, employeeId, clientId, propertyId, scope }));
   };
 
   const dupFn = useServerFn(duplicateJobToEmployee);
@@ -566,6 +638,11 @@ function SchedulePage() {
         }
       />
 
+      {!canManageSchedule && headerPerms && !jobsFetching && jobs.length === 0 && addDays(anchor, 7).getTime() > Date.now() && (
+        <div className="mx-4 md:mx-6 mt-4 rounded-md border border-border/60 bg-clay-50 px-3 py-2 text-sm text-muted-foreground">
+          {tr("This week's schedule hasn't been published yet.")}
+        </div>
+      )}
       {view === "grid" ? (
         <div className="w-full px-4 md:px-6 py-4">
           <ZoomPanSurface scrollClassName={`schedule-scroll ${compactNames ? "schedule-compact-names" : ""}`}>
@@ -844,6 +921,71 @@ function SchedulePage() {
                                   </div>
                                   {canManageSchedule && (
                                     <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                                      {j.status === "scheduled" && (
+                                        <div className="space-y-2">
+                                          <label className="block">
+                                            <span className="text-[11px] font-medium">Cleaner</span>
+                                            <select
+                                              aria-label="Cleaner on this shift"
+                                              value={emp.id}
+                                              disabled={swapMut.isPending}
+                                              onChange={(ev) => {
+                                                const toId = ev.target.value;
+                                                if (toId && toId !== emp.id) swapMut.mutate({ job: fullJob(j), fromId: emp.id, toId });
+                                              }}
+                                              className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+                                            >
+                                              {cleaners.map((c: any) => {
+                                                const onIt = c.id !== emp.id && (j.assignees ?? []).some((a: any) => a.id === c.id);
+                                                return (
+                                                  <option key={c.id} value={c.id} disabled={onIt}>
+                                                    {c.full_name ?? c.email}{onIt ? " (already on it)" : ""}
+                                                  </option>
+                                                );
+                                              })}
+                                            </select>
+                                          </label>
+                                          <label className="block">
+                                            <span className="text-[11px] font-medium">Client</span>
+                                            <select
+                                              aria-label="Client for this shift"
+                                              value={clientId && propertyId ? `${clientId}|${propertyId}` : ""}
+                                              disabled={clientMut.isPending}
+                                              onChange={(ev) => changeClient(j, emp.id, ev.target.value)}
+                                              className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-[11px]"
+                                            >
+                                              {!(clientId && propertyId) && <option value="">Choose a client…</option>}
+                                              {(locations as any[]).map((l) => (
+                                                <option key={l.property_id} value={`${l.client_id}|${l.property_id}`}>
+                                                  {l.client_name}{l.label && l.label !== "Main address" && l.label !== l.client_name ? ` · ${l.label}` : ""}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </label>
+                                          <div>
+                                            <span className="text-[11px] font-medium">Day</span>
+                                            <div className="mt-0.5 grid grid-cols-7 gap-0.5" role="group" aria-label="Day of this shift">
+                                              {days.map((d) => {
+                                                const key = format(d, "yyyy-MM-dd");
+                                                const current = key === dayKey;
+                                                return (
+                                                  <button
+                                                    key={key}
+                                                    type="button"
+                                                    aria-pressed={current}
+                                                    title={format(d, "EEEE, MMM d")}
+                                                    disabled={moveMut.isPending || hoursMut.isPending || splitMut.isPending}
+                                                    onClick={() => { if (!current) changeDay(j, emp.id, key); }}
+                                                    className={`rounded-full py-1 text-[10px] font-medium border transition ${current ? "bg-brand text-brand-foreground border-brand" : "border-border/70 hover:bg-clay-100"}`}
+                                                  >
+                                                    {format(d, "EEE").slice(0, 2)}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
                                       <EditTimesInline
                                         tz={tz}
                                         startISO={j.scheduled_start}
@@ -1017,6 +1159,26 @@ function SchedulePage() {
           })}
         </div>
       )}
+
+      <AlertDialog open={!!scopeAsk} onOpenChange={(o) => { if (!o) setScopeAsk(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{scopeAsk?.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              This appointment has more than one cleaner ({scopeAsk?.others}). Should the change apply to all of them, or only {scopeAsk?.cleaner}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+            <Button onClick={() => { const a = scopeAsk; setScopeAsk(null); a?.run("all"); }}>
+              All cleaners at this appointment
+            </Button>
+            <Button variant="outline" onClick={() => { const a = scopeAsk; setScopeAsk(null); a?.run("this"); }}>
+              Only {scopeAsk?.cleaner}
+            </Button>
+            <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!splitAsk} onOpenChange={(o) => { if (!o && !splitMut.isPending) setSplitAsk(null); }}>
         <AlertDialogContent>

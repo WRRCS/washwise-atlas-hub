@@ -30,7 +30,7 @@ export async function enqueueActionReminders(db:Db,now=Date.now()) {
   let queued=0;
   for(const pref of prefs ?? []) {
     if(!pilots.some((p:any)=>p.tenant_id===pref.tenant_id && p.participant_ids.length===2 && p.participant_ids.includes(pref.user_id)))continue;
-    const {data:jobs,error:je}=await db.from("jobs").select("id").eq("tenant_id",pref.tenant_id).in("status",["scheduled","in_progress"]).gt("scheduled_end",new Date(now).toISOString()).lte("scheduled_start",new Date(now+120*60000).toISOString());
+    const {data:jobs,error:je}=await db.from("jobs").select("id").eq("tenant_id",pref.tenant_id).in("status",["scheduled","in_progress"]).or("published_at.not.is.null,status.eq.in_progress").gt("scheduled_end",new Date(now).toISOString()).lte("scheduled_start",new Date(now+120*60000).toISOString());
     if(je)throw new Error(je.message);
     for(const job of jobs ?? []) {
       const state=await loadActionState(db,job.id,pref.user_id);if(!state)continue;

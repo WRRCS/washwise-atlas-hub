@@ -400,6 +400,13 @@
       "when": 1794806406247,
       "tag": "0056_no_unapproved_client_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1794808813379,
+      "tag": "0057_employees_see_published_only",
+      "breakpoints": true
     }
   ]
 }

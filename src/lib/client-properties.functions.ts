@@ -121,3 +121,29 @@ export const deleteClientProperty = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export type ScheduleLocation = { client_id: string; property_id: string; label: string; client_name: string; address: string; color: string | null };
+
+/** Every active client property, for picking a cleaning's client on the schedule (owners/managers). */
+export const listScheduleLocations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ScheduleLocation[]> => {
+    const { data: allowed } = await context.supabase.rpc("is_owner_or_manager");
+    if (!allowed) return [];
+    const { data: rows, error } = await context.supabase
+      .from("client_properties")
+      .select("id, client_id, label, address, color, client:clients!inner(first_name, last_name, company_name, is_active)")
+      .eq("is_active", true)
+      .eq("client.is_active", true);
+    if (error) throw new Error(error.message);
+    return (rows ?? [])
+      .map((r: any) => ({
+        client_id: r.client_id,
+        property_id: r.id,
+        label: r.label,
+        address: r.address,
+        color: r.color ?? null,
+        client_name: r.client?.company_name?.trim() || [r.client?.first_name, r.client?.last_name].filter(Boolean).join(" ").trim() || "Client",
+      }))
+      .sort((a, b) => a.client_name.localeCompare(b.client_name) || a.label.localeCompare(b.label));
+  });

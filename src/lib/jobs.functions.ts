@@ -8,6 +8,8 @@ import { DEFAULT_TZ, dayKeyTZ } from "@/lib/tz";
 import { ownSopConfirmation } from "@/lib/sop-confirmation";
 import { canOpenAppointment } from "@/lib/appointment-access";
 import { requirePropertyType } from "@/lib/property-type";
+import { visibleToEmployees } from "@/lib/schedule-publish";
+import { newJobPriceCents } from "@/lib/property-pricing";
 import {
   addMonthsISO,
   generateOccurrences,
@@ -67,7 +69,9 @@ export const listJobs = createServerFn({ method: "POST" })
     if (data.to) q = q.lt("scheduled_start", data.to);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    const jobs = rows ?? [];
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+    // Employees never see unpublished cleanings (the database enforces this too).
+    const jobs = isMgr ? rows ?? [] : (rows ?? []).filter((j: any) => visibleToEmployees(j));
     const [assigneeMap, canViewPricing] = await Promise.all([
       loadAssignees(context.supabase, jobs.map((j: any) => j.id)),
       resolveCanViewPricing(context),
@@ -560,7 +564,8 @@ export const duplicateJobToEmployee = createServerFn({ method: "POST" })
   });
 
 
-type PlaceInput = { id: string; employee_id: string; scheduled_start?: string; scheduled_end?: string; mode: "auto" | "new"; exclude_source?: boolean };
+type LocationOverride = { client_id: string; property_id: string; service_address: string; service_location_label: string | null; price_cents: number };
+type PlaceInput = { id: string; employee_id: string; scheduled_start?: string; scheduled_end?: string; mode: "auto" | "new"; exclude_source?: boolean; location?: LocationOverride };
 type PlaceResult = { result: "already" | "added" | "created"; id: string; cleaner: string; client: string; start: string; cleaning?: CleanerHoursResult | null };
 
 /**
@@ -576,6 +581,10 @@ async function placeCleanerOnCleaning(sb: any, data: PlaceInput): Promise<PlaceR
       .maybeSingle();
     if (srcErr) throw new Error(srcErr.message);
     if (!src) throw new Error("Shift not found");
+    if (data.location) {
+      const { data: c } = await sb.from("clients").select("first_name, last_name").eq("id", data.location.client_id).maybeSingle();
+      Object.assign(src, { ...data.location, client: c ?? null });
+    }
 
     const roster = await staffDirectory(sb);
     const emp = roster.find((m) => m.id === data.employee_id);
@@ -702,37 +711,109 @@ export const moveCleanerToDay = createServerFn({ method: "POST" })
       const cleaning = await setHoursRpc(sb, data.job_id, data.employee_id, data.scheduled_start, data.scheduled_end);
       return { result: "same" as const, cleaning };
     }
-    const { data: job, error } = await sb.from("jobs").select("id, assigned_to, status").eq("id", data.job_id).maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!job) throw new Error("Appointment not found");
-    const [links, visits, times, photos, confirmations, checked] = await Promise.all([
-      sb.from("job_employees").select("employee_id").eq("job_id", data.job_id),
-      sb.from("job_visits").select("id").eq("job_id", data.job_id).eq("employee_id", data.employee_id).limit(1),
-      sb.from("time_entries").select("id").eq("job_id", data.job_id).eq("user_id", data.employee_id).limit(1),
-      sb.from("job_photos").select("id").eq("job_id", data.job_id).eq("uploaded_by", data.employee_id).limit(1),
-      sb.from("job_sop_confirmations").select("job_id").eq("job_id", data.job_id).eq("employee_id", data.employee_id).limit(1),
-      sb.from("job_sop_items").select("id").eq("job_id", data.job_id).eq("employee_id", data.employee_id).eq("completed", true).limit(1),
-    ]);
-    for (const r of [links, visits, times, photos, confirmations, checked]) if (r.error) throw new Error(r.error.message);
-    const current: string[] = (links.data ?? []).map((l: any) => l.employee_id);
-    if (!current.includes(data.employee_id)) throw new Error("That cleaner is not on this appointment");
-    if ([visits, times, photos, confirmations, checked].some((r) => (r.data ?? []).length)) {
-      throw new Error("This cleaner already recorded time, photos or checklist work on this day, so they stay on it. Paste them onto the other day instead.");
-    }
+    const detach = await prepareDetach(sb, data.job_id, data.employee_id,
+      "This cleaner already recorded time, photos or checklist work on this day, so they stay on it. Paste them onto the other day instead.");
     const placed = await placeCleanerOnCleaning(sb, {
       id: data.job_id, employee_id: data.employee_id,
       scheduled_start: data.scheduled_start, scheduled_end: data.scheduled_end,
       mode: "auto", exclude_source: true,
     });
-    const plan = planAssigneeChange(current, current.filter((id) => id !== data.employee_id), job.assigned_to ?? null);
-    const { error: delErr } = await sb.from("job_employees").delete().eq("job_id", data.job_id).eq("employee_id", data.employee_id);
+    await detach();
+    return { result: "separate" as const, placed, cleaning: placed.cleaning ?? null };
+  });
+
+/**
+ * Check a cleaner can leave a shared cleaning (no recorded work), and return
+ * the step that takes them off it once they've been placed elsewhere.
+ */
+async function prepareDetach(sb: any, jobId: string, employeeId: string, workedMessage: string) {
+  const { data: job, error } = await sb.from("jobs").select("id, assigned_to, status").eq("id", jobId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!job) throw new Error("Appointment not found");
+  const [links, visits, times, photos, confirmations, checked] = await Promise.all([
+    sb.from("job_employees").select("employee_id").eq("job_id", jobId),
+    sb.from("job_visits").select("id").eq("job_id", jobId).eq("employee_id", employeeId).limit(1),
+    sb.from("time_entries").select("id").eq("job_id", jobId).eq("user_id", employeeId).limit(1),
+    sb.from("job_photos").select("id").eq("job_id", jobId).eq("uploaded_by", employeeId).limit(1),
+    sb.from("job_sop_confirmations").select("job_id").eq("job_id", jobId).eq("employee_id", employeeId).limit(1),
+    sb.from("job_sop_items").select("id").eq("job_id", jobId).eq("employee_id", employeeId).eq("completed", true).limit(1),
+  ]);
+  for (const r of [links, visits, times, photos, confirmations, checked]) if (r.error) throw new Error(r.error.message);
+  const current: string[] = (links.data ?? []).map((l: any) => l.employee_id);
+  if (!current.includes(employeeId)) throw new Error("That cleaner is not on this appointment");
+  if ([visits, times, photos, confirmations, checked].some((r) => (r.data ?? []).length)) throw new Error(workedMessage);
+  return async () => {
+    const plan = planAssigneeChange(current, current.filter((id) => id !== employeeId), job.assigned_to ?? null);
+    const { error: delErr } = await sb.from("job_employees").delete().eq("job_id", jobId).eq("employee_id", employeeId);
     if (delErr) throw new Error(delErr.message);
-    await sb.from("job_sop_items").delete().eq("job_id", data.job_id).eq("employee_id", data.employee_id).eq("completed", false);
+    await sb.from("job_sop_items").delete().eq("job_id", jobId).eq("employee_id", employeeId).eq("completed", false);
     if (plan.primary !== (job.assigned_to ?? null)) {
-      const { error: upErr } = await sb.from("jobs").update({ assigned_to: plan.primary }).eq("id", data.job_id);
+      const { error: upErr } = await sb.from("jobs").update({ assigned_to: plan.primary }).eq("id", jobId);
       if (upErr) throw new Error(upErr.message);
     }
-    return { result: "separate" as const, placed, cleaning: placed.cleaning ?? null };
+  };
+}
+
+/**
+ * Owner/manager: change which client and property a scheduled cleaning is for.
+ * "all" changes the whole cleaning for everyone on it; "this" moves only one
+ * cleaner onto a cleaning for the new client (joining a matching one that day).
+ */
+export const changeJobClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      employee_id: z.string().uuid(),
+      client_id: z.string().uuid(),
+      property_id: z.string().uuid(),
+      scope: z.enum(["all", "this"]),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { data: allowed } = await sb.rpc("is_owner_or_manager");
+    if (!allowed) throw new Error("Only owners and managers can change the schedule");
+    const { data: job, error } = await sb.from("jobs")
+      .select("id, tenant_id, status, client_id, property_id, service_type_id, scheduled_start, scheduled_end").eq("id", data.id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!job) throw new Error("Appointment not found");
+    if (job.status !== "scheduled") throw new Error("This cleaning has already started or finished, so its client can't be changed here");
+    const { data: property } = await sb.from("client_properties")
+      .select("id, address, label, price_cents, pricing_type, client:clients(first_name, last_name)")
+      .eq("id", data.property_id).eq("client_id", data.client_id).eq("tenant_id", job.tenant_id).maybeSingle();
+    if (!property) throw new Error("Select a property belonging to that client");
+    if (!property.address?.trim()) throw new Error("That property has no service address yet. Add one on the client page first");
+    const { data: st } = await sb.from("service_types").select("default_price_cents").eq("id", job.service_type_id).maybeSingle();
+    const location: LocationOverride = {
+      client_id: data.client_id,
+      property_id: property.id,
+      service_address: property.address.trim(),
+      service_location_label: property.label ?? null,
+      price_cents: newJobPriceCents(property) ?? st?.default_price_cents ?? 0,
+    };
+    const clientName = [property.client?.first_name, property.client?.last_name].filter(Boolean).join(" ").trim() || property.label || "the new client";
+    const { data: links } = await sb.from("job_employees").select("employee_id, scheduled_start, scheduled_end").eq("job_id", data.id);
+    const shared = (links ?? []).length > 1;
+
+    if (data.scope === "all" || !shared) {
+      if (job.client_id === data.client_id && job.property_id === data.property_id) return { result: "unchanged" as const, client: clientName };
+      const { error: upErr } = await sb.from("jobs").update({ ...location, location_needs_review: false }).eq("id", data.id);
+      if (upErr) throw new Error(upErr.message);
+      return { result: "all" as const, client: clientName };
+    }
+
+    const link = (links ?? []).find((l: any) => l.employee_id === data.employee_id);
+    const detach = await prepareDetach(sb, data.id, data.employee_id,
+      "This cleaner already recorded time, photos or checklist work on this cleaning, so they stay on it.");
+    const placed = await placeCleanerOnCleaning(sb, {
+      id: data.id, employee_id: data.employee_id,
+      scheduled_start: link?.scheduled_start ?? job.scheduled_start,
+      scheduled_end: link?.scheduled_end ?? job.scheduled_end,
+      mode: "auto", exclude_source: true, location,
+    });
+    await detach();
+    return { result: "this" as const, client: clientName, placed };
   });
 
 /**

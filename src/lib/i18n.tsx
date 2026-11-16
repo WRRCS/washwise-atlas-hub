@@ -482,6 +482,7 @@ const UK: Record<string, string> = {
   "Timesheet": "Табель",
   "Tip tracker": "Облік чайових",
   "Today": "Сьогодні",
+  "This week's schedule hasn't been published yet.": "Розклад на цей тиждень ще не опубліковано.",
   "Total hours for the day": "Усього годин за день",
   "Total:": "Разом:",
   "Turn off notifications": "Вимкнути сповіщення",
