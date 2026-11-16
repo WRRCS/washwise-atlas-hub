@@ -122,3 +122,7 @@
 - [ ] Real save of the "Separate cleaning" choice not exercised on live data (would create a real cleaning); recurring series don't copy per-cleaner hours to future visits.
 - [x] Clients get no automatic schedule notices; "Send schedule to clients" button on Schedule emails each chosen client their upcoming cleanings (overall time only), skips repeats. Publish is team-only.
 - [x] Invoice emails now carry the card payment link (wrrcs.com/pay/<invoice id>); the emailed invoice said "pay via the link in this email" with no link at all. Email template updated in the database, live template render shows the link with no leftover placeholders, four payment-link tests pass, 236 tests total, build OK. Not published.
+
+- [x] Employees see only published cleanings (every published week); owner/manager edits to a published upcoming cleaning hide it until republished; no team alerts/reminders for unpublished cleanings. Verified as Masha: last week 41 cleanings, this week and next week empty with "not published yet" notice.
+- [x] Schedule pop-up: Cleaner, Client and Day pickers; shared cleanings ask all cleaners vs only this one (day split still asks invoice choice). Tested on a draft Nov 23 cleaning (move day and back, swap cleaner and back, change client and back) — restored exactly, no alerts created.
+- [ ] Leslie to publish the Nov 16–22 week so the team sees tomorrow's cleanings (21 unpublished).
