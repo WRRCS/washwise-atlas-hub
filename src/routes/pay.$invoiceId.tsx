@@ -4,11 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useState } from "react";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
-import { getPublicInvoice, createInvoiceCheckout } from "@/lib/invoice-checkout.functions";
+import { getPublicInvoice, previewPublicInvoice, createInvoiceCheckout } from "@/lib/invoice-checkout.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { formatDate, formatPhone } from "@/lib/invoice-email";
 
 export const Route = createFileRoute("/pay/$invoiceId")({
+  validateSearch: (search: Record<string, unknown>): { preview?: boolean } => ({
+    preview: search.preview === true || search.preview === 1 || search.preview === "1" ? true : undefined,
+  }),
   component: PayInvoicePage,
   ssr: false,
   head: () => ({
@@ -28,13 +31,15 @@ function money(cents: number, currency = "usd") {
 
 function PayInvoicePage() {
   const { invoiceId } = Route.useParams();
+  const { preview } = Route.useSearch();
   const getFn = useServerFn(getPublicInvoice);
+  const previewFn = useServerFn(previewPublicInvoice);
   const createFn = useServerFn(createInvoiceCheckout);
   const [confirmed, setConfirmed] = useState(false);
 
   const { data: inv, isLoading } = useQuery({
-    queryKey: ["public-invoice", invoiceId],
-    queryFn: () => getFn({ data: { id: invoiceId } }),
+    queryKey: ["public-invoice", invoiceId, !!preview],
+    queryFn: () => (preview ? previewFn : getFn)({ data: { id: invoiceId } }),
   });
 
   const fetchClientSecret = useCallback(async (): Promise<string> => {
@@ -58,8 +63,14 @@ function PayInvoicePage() {
 
   return (
     <>
-      <PaymentTestModeBanner />
-      <div className="min-h-screen bg-clay-50">
+      {preview ? (
+        <div className="w-full bg-warning/15 border-b border-warning/30 px-4 py-2 text-center text-sm text-foreground">
+          Preview — this is what your client will see. Payment buttons are turned off here.
+        </div>
+      ) : (
+        <PaymentTestModeBanner />
+      )}
+      <div className={`min-h-screen bg-clay-50 ${preview ? "[&_a[data-pay]]:pointer-events-none [&_button[data-pay]]:pointer-events-none" : ""}`}>
         <div className="max-w-2xl mx-auto px-6 py-10">
           <div className="text-center mb-6">
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Wash Rinse Repeat Cleaning</p>
@@ -133,6 +144,7 @@ function PayInvoicePage() {
           {!isPaid && !isDead && inv.venmo_link && !confirmed && (
             <a
               href={inv.venmo_link}
+              data-pay
               target="_blank"
               rel="noreferrer"
               className="block w-full mb-4 rounded-lg ring-1 ring-black/10 bg-card px-4 py-3 text-center text-sm font-medium hover:bg-muted"
@@ -164,7 +176,8 @@ function PayInvoicePage() {
                 Nothing is charged until you confirm.
               </p>
               <button
-                onClick={() => setConfirmed(true)}
+                data-pay
+                onClick={() => { if (!preview) setConfirmed(true); }}
                 className="w-full rounded-lg bg-brand text-brand-foreground px-4 py-3 text-sm font-medium hover:opacity-90"
               >
                 Confirm amount and continue to card payment

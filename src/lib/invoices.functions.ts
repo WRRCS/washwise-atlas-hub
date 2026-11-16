@@ -127,20 +127,21 @@ export const setInvoicePaymentOptions = createServerFn({ method: "POST" })
 
 // ============= Send =============
 
-export const sendInvoice = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ id: z.string().uuid(), to_email: z.string().trim().email().max(255).optional() }).parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const { data: inv, error: ge } = await context.supabase
+// ============= Compose invoice email =============
+
+/**
+ * Builds the exact email a client receives for an invoice. Shared by the
+ * review preview and the real send so what staff approve is what goes out.
+ */
+async function composeInvoiceEmail(supabase: any, invoiceId: string, toEmail?: string | null) {
+    const { data: inv, error: ge } = await supabase
       .from("invoices")
       .select("id, tenant_id, client_id, property_id, number, currency, issue_date, due_date, subtotal_cents, discount_cents, tax_cents, surcharge_cents, total_cents, allow_card, allow_venmo, client_message, terms_text, client:clients(first_name, last_name, company_name, pays_by_check), property:client_properties(label, address, property_type)")
-      .eq("id", data.id).maybeSingle();
+      .eq("id", invoiceId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!inv) throw new Error("Invoice not found");
 
-    const { data: items, error: ie } = await context.supabase
+    const { data: items, error: ie } = await supabase
       .from("invoice_line_items")
       .select("description, details, quantity, hours, unit_price_cents, line_total_cents, service_date")
       .eq("invoice_id", inv.id)
@@ -151,7 +152,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
     // Build Venmo pay link if the tenant has Venmo configured.
     let venmoLink = "";
     try {
-      const { data: venmoRow } = await context.supabase
+      const { data: venmoRow } = await supabase
         .from("integrations")
         .select("is_connected, settings")
         .eq("tenant_id", inv.tenant_id).eq("provider", "venmo").maybeSingle();
@@ -171,14 +172,13 @@ export const sendInvoice = createServerFn({ method: "POST" })
     const payLink = invoicePayUrl(getAppOrigin(), inv.id);
 
     // Recipient: the address typed in the Send box, else the client's saved email.
-    let to = data.to_email ?? null;
+    let to = toEmail ?? null;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (!to && inv.client_id) {
       const { data: cl } = await supabaseAdmin
         .from("clients").select("email").eq("id", inv.client_id).eq("tenant_id", inv.tenant_id).maybeSingle();
       to = ((cl as any)?.email as string | null) ?? null;
     }
-    if (!to) throw new Error("Enter an email address to send this invoice to.");
 
     const { data: biz } = await (supabaseAdmin as any)
       .from("tenants")
@@ -197,7 +197,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
       taxCents: inv.tax_cents ?? 0,
       surchargeCents: inv.surcharge_cents ?? 0,
       totalCents: inv.total_cents ?? 0,
-      lines: (items ?? []).map((l) => ({
+      lines: (items ?? []).map((l: any) => ({
         description: l.description ?? "",
         details: (l as any).details ?? null,
         quantity: l.quantity == null ? null : Number(l.quantity),
@@ -232,7 +232,7 @@ export const sendInvoice = createServerFn({ method: "POST" })
     // The personal note at the top is the "Invoice sent" wording on the Templates page.
     const vars = invoiceTemplateVars(emailInput);
     const rendered = await renderEmailForClientContext({
-      supabase: context.supabase,
+      supabase: supabase,
       tenantId: inv.tenant_id,
       event: "invoice_sent",
       clientId: inv.client_id,
@@ -244,17 +244,49 @@ export const sendInvoice = createServerFn({ method: "POST" })
     const html = buildInvoiceEmailHtml(emailInput, introHtml);
     const text = buildInvoiceEmailText(emailInput, introHtml);
 
+    return {
+      invoiceId: inv.id as string,
+      to: to as string | null,
+      subject: subject.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
+      html,
+      text,
+    };
+}
+
+/** Preview the client email for an invoice without sending anything. */
+export const previewInvoiceEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), to_email: z.string().trim().max(255).optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    if (!isMgr) throw new Error("Only owners and managers can preview invoice emails.");
+    const to = data.to_email && z.string().email().safeParse(data.to_email).success ? data.to_email : null;
+    const email = await composeInvoiceEmail(context.supabase, data.id, to);
+    return { to: email.to, subject: email.subject, html: email.html };
+  });
+
+export const sendInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: z.string().uuid(), to_email: z.string().trim().email().max(255).optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { to, subject, html, text, invoiceId } = await composeInvoiceEmail(context.supabase, data.id, data.to_email);
+    if (!to) throw new Error("Enter an email address to send this invoice to.");
+
     const { sendLovableEmail } = await import("@lovable.dev/email-js");
     const result: any = await sendLovableEmail(
       {
         to,
         from: "Wash Rinse Repeat Cleaning <info@washrinserepeatcleaning.com>",
         sender_domain: "notify.washrinserepeatcleaning.com",
-        subject: subject.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
+        subject,
         html,
         text,
         purpose: "transactional",
-        idempotency_key: `invoice-sent-${inv.id}-${Date.now()}`,
+        idempotency_key: `invoice-sent-${invoiceId}-${Date.now()}`,
         label: "invoice_sent",
       },
       { apiKey: process.env["LOVABLE_API_KEY"]!, sendUrl: process.env["LOVABLE_SEND_URL"] },

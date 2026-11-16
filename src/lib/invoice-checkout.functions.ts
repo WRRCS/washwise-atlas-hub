@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { type StripeEnv, createStripeClient, getStripeErrorMessage } from "@/lib/stripe.server";
 
 type CheckoutResult = { clientSecret: string } | { error: string };
@@ -30,10 +31,9 @@ type InvoiceSummary = {
   venmo_link: string | null;
 } | { error: string };
 
-// Public: fetch minimal invoice info by id for the pay page
-export const getPublicInvoice = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }): Promise<InvoiceSummary> => {
+// Shared loader for the client pay page. Drafts are only returned for staff previews.
+async function loadInvoiceSummary(id: string, opts: { allowDraft: boolean }): Promise<InvoiceSummary> {
+    const data = { id };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invoices")
@@ -42,7 +42,7 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) return { error: error.message };
     if (!inv) return { error: "Invoice not found" };
-    if (inv.status === "draft") return { error: "This invoice is not available for payment." };
+    if (inv.status === "draft" && !opts.allowDraft) return { error: "This invoice is not available for payment." };
     const { data: lineRows } = await supabaseAdmin
       .from("invoice_line_items")
       .select("description, details, quantity, hours, unit_price_cents, line_total_cents, service_date")
@@ -107,6 +107,24 @@ export const getPublicInvoice = createServerFn({ method: "POST" })
       terms_text: (inv as any).terms_text ?? null,
       line_items: (lineRows ?? []) as { description: string; details: string | null; quantity: number; hours: number | null; unit_price_cents: number; line_total_cents: number; service_date: string | null }[],
     };
+}
+
+// Public: fetch minimal invoice info by id for the pay page
+export const getPublicInvoice = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }): Promise<InvoiceSummary> => loadInvoiceSummary(data.id, { allowDraft: false }));
+
+// Staff only: show the client's pay page for an invoice before it is sent.
+export const previewPublicInvoice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<InvoiceSummary> => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    if (!isMgr) return { error: "Only owners and managers can preview invoices." };
+    // Must be an invoice the signed-in staff member can already see.
+    const { data: own } = await context.supabase.from("invoices").select("id").eq("id", data.id).maybeSingle();
+    if (!own) return { error: "Invoice not found" };
+    return loadInvoiceSummary(data.id, { allowDraft: true });
   });
 
 // Public: create a Stripe embedded checkout session for an invoice

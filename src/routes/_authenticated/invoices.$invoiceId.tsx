@@ -12,7 +12,7 @@ import { InvoicePhotosCard } from "@/components/invoice-photos-card";
 import { InvoiceEditor } from "@/components/invoice-editor";
 import { format } from "date-fns";
 import {
-  getInvoice, sendInvoice, unsendInvoice, markInvoicePaid, cancelInvoice, deleteInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours, setLineItemUnitPrice,
+  getInvoice, sendInvoice, previewInvoiceEmail, unsendInvoice, markInvoicePaid, cancelInvoice, deleteInvoice, setCardSurcharge, setInvoiceTerms, setInvoicePaymentOptions, setLineItemHours, setLineItemUnitPrice,
 } from "@/lib/invoices.functions";
 import { PAYMENT_TERMS, termsLabel } from "@/lib/payment-terms";
 import { listInvoicePayments, recordManualPayment } from "@/lib/payments.functions";
@@ -20,6 +20,8 @@ import { generateVenmoLink, markVenmoPaymentReceived } from "@/lib/venmo.functio
 import { ArrowLeft, Send, Check, X, Wallet, CreditCard, Building2, HandCoins, Copy, ExternalLink, Undo2, Trash2, Pencil } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/invoices/$invoiceId")({
   validateSearch: (search: Record<string, unknown>): { send?: boolean } => ({
@@ -68,6 +70,10 @@ function InvoiceDetailPage() {
   const [sendOpen, setSendOpen] = useState(false);
   const [sendTo, setSendTo] = useState("");
   const [sending, setSending] = useState(false);
+  const [approvedInvoice, setApprovedInvoice] = useState(false);
+  const [approvedEmail, setApprovedEmail] = useState(false);
+  const [reviewTab, setReviewTab] = useState<"email" | "invoice">("email");
+  const previewFn = useServerFn(previewInvoiceEmail);
   const [editing, setEditing] = useState(false);
   const toggleFn = useServerFn(setCardSurcharge);
   const payOptsFn = useServerFn(setInvoicePaymentOptions);
@@ -78,11 +84,27 @@ function InvoiceDetailPage() {
     queryFn: () => getFn({ data: { id: invoiceId } }),
   });
 
+  // The exact email the client will get, rebuilt each time the review opens.
+  const { data: emailPreview, isFetching: previewLoading, error: previewError } = useQuery({
+    queryKey: ["invoice-email-preview", invoiceId],
+    queryFn: () => previewFn({ data: { id: invoiceId } }),
+    enabled: sendOpen,
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const openReview = (email: string) => {
+    setSendTo(email);
+    setApprovedInvoice(false);
+    setApprovedEmail(false);
+    setReviewTab("email");
+    setSendOpen(true);
+  };
+
   // Consume the send request so canceling and editing again can reopen confirmation.
   useEffect(() => {
     if (sendParam && inv?.status === "draft") {
-      setSendTo(inv.client?.email ?? "");
-      setSendOpen(true);
+      openReview(inv.client?.email ?? "");
       void navigate({ to: "/invoices/$invoiceId", params: { invoiceId }, search: {}, replace: true });
     }
   }, [sendParam, inv?.id, inv?.status, invoiceId, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -341,10 +363,10 @@ function InvoiceDetailPage() {
             )}
             {inv.status === "draft" && (
               <Button
-                onClick={() => { setSendTo(inv.client?.email ?? ""); setSendOpen(true); }}
+                onClick={() => openReview(inv.client?.email ?? "")}
                 className="bg-brand text-brand-foreground hover:opacity-90"
               >
-                <Send className="size-4 mr-1.5" /> Send
+                <Send className="size-4 mr-1.5" /> Review &amp; send
               </Button>
             )}
             {(inv.status === "sent" || inv.status === "overdue") && (
@@ -420,31 +442,85 @@ function InvoiceDetailPage() {
 
         <InvoicePhotosCard invoiceId={inv.id} />
       <Dialog open={sendOpen} onOpenChange={setSendOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Send invoice {inv.number}</DialogTitle>
-            <DialogDescription>Change the email address if you want it to go somewhere else this time. The client's saved email isn't changed.</DialogDescription>
+            <DialogTitle>Review and send invoice {inv.number}</DialogTitle>
+            <DialogDescription>
+              Look over the email and the invoice exactly as your client will see them. Approve both to send.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="send-to">Send to</Label>
-            <Input id="send-to" type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="name@example.com" />
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="send-to">Send to</Label>
+                <Input id="send-to" type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="name@example.com" />
+                <p className="text-xs text-muted-foreground">Changing this doesn't change the client's saved email.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Subject</Label>
+                <p className="text-sm rounded-md border border-input px-3 py-2 min-h-9">{emailPreview?.subject ?? (previewLoading ? "Loading…" : "—")}</p>
+              </div>
+            </div>
+            <Tabs value={reviewTab} onValueChange={(v) => setReviewTab(v as "email" | "invoice")}>
+              <TabsList>
+                <TabsTrigger value="email">Email {approvedEmail && <Check className="size-3.5 ml-1 text-success" />}</TabsTrigger>
+                <TabsTrigger value="invoice">Invoice page {approvedInvoice && <Check className="size-3.5 ml-1 text-success" />}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="email" className="mt-2">
+                {previewError ? (
+                  <p className="text-sm text-destructive p-4">{(previewError as Error).message}</p>
+                ) : previewLoading || !emailPreview ? (
+                  <p className="text-sm text-muted-foreground p-4">Building the email preview…</p>
+                ) : (
+                  <iframe
+                    title="Invoice email preview"
+                    sandbox=""
+                    srcDoc={emailPreview.html}
+                    className="w-full h-[50vh] rounded-md border border-border bg-background"
+                  />
+                )}
+              </TabsContent>
+              <TabsContent value="invoice" className="mt-2">
+                <iframe
+                  title="Client invoice page preview"
+                  src={`/pay/${inv.id}?preview=1`}
+                  className="w-full h-[50vh] rounded-md border border-border bg-background"
+                />
+                <p className="text-xs text-muted-foreground mt-1">This is the page the Pay by card button opens.</p>
+              </TabsContent>
+            </Tabs>
+            <div className="flex flex-col gap-2 rounded-md bg-muted/50 p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={approvedEmail} onCheckedChange={(v) => setApprovedEmail(v === true)} />
+                I've reviewed the email and approve it
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={approvedInvoice} onCheckedChange={(v) => setApprovedInvoice(v === true)} />
+                I've reviewed the invoice and approve it
+              </label>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSendOpen(false)}>Cancel</Button>
-            <Button
-              disabled={sending || !sendTo.trim()}
-              className="bg-brand text-brand-foreground hover:opacity-90"
-              onClick={async () => {
-                setSending(true);
-                try {
-                  await sendFn({ data: { id: inv.id, to_email: sendTo.trim() } });
-                  toast.success("Invoice sent"); setSendOpen(false); refresh();
-                } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
-                finally { setSending(false); }
-              }}
-            >
-              <Send className="size-4 mr-1.5" /> Send
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="ghost" onClick={() => { setSendOpen(false); setEditing(true); }}>
+              <Pencil className="size-4 mr-1.5" /> Make changes
             </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setSendOpen(false)}>Not yet</Button>
+              <Button
+                disabled={sending || !sendTo.trim() || !approvedEmail || !approvedInvoice}
+                className="bg-brand text-brand-foreground hover:opacity-90"
+                onClick={async () => {
+                  setSending(true);
+                  try {
+                    await sendFn({ data: { id: inv.id, to_email: sendTo.trim() } });
+                    toast.success("Invoice sent"); setSendOpen(false); refresh();
+                  } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+                  finally { setSending(false); }
+                }}
+              >
+                <Send className="size-4 mr-1.5" /> {sending ? "Sending…" : "Approve & send"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
