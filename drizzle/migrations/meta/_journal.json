@@ -393,6 +393,13 @@
       "when": 1794805560363,
       "tag": "0055_month_end_bundle_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1794806406247,
+      "tag": "0056_no_unapproved_client_notices",
+      "breakpoints": true
     }
   ]
 }
