@@ -30,9 +30,9 @@ export async function loadCancelTextJob(jobId: string): Promise<CancelTextJob | 
 
 export async function textCleanersAboutCancellation(job: CancelTextJob | null, actorId: string | null): Promise<CancelTextResult> {
   const result: CancelTextResult = { texted: [], skipped: [] };
-  if (!job || !shouldTextOnCancel(job) || !job.cleaners.length) return result;
+  if (!job || !shouldTextOnCancel(job, new Date(), await tenantTz(job.tenant_id)) || !job.cleaners.length) return result;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { twilioConfigured, sendViaTwilio } = await import("@/lib/sms.server");
+  const { twilioConfigured, sendViaTwilio, businessTextNumber } = await import("@/lib/sms.server");
   const { normalizePhoneE164 } = await import("@/lib/phone");
   const { photoAlertClaimId } = await import("@/lib/photo-upload-alerts");
   const db = supabaseAdmin as any;
@@ -44,7 +44,7 @@ export async function textCleanersAboutCancellation(job: CancelTextJob | null, a
     db.from("profiles").select("id, full_name, phone, language, is_active, tenant_id").in("id", job.cleaners.map((c) => c.employee_id)),
   ]);
   const tz = tenant?.timezone || "America/Los_Angeles";
-  const from = normalizePhoneE164(cfg?.twilio_phone_number ?? null);
+  const from = normalizePhoneE164(await businessTextNumber(cfg?.twilio_phone_number ?? null));
   const clientName = [client?.first_name, client?.last_name].filter(Boolean).join(" ") || client?.company_name || "your client";
   const ready = twilioConfigured() && !!from;
   if (!ready) result.notSetUp = true;
@@ -76,4 +76,20 @@ export async function textCleanersAboutCancellation(job: CancelTextJob | null, a
     }
   }
   return result;
+}
+
+/** First names of the cleaners who would get the cancellation text (for the owner's Send/Skip box). */
+export async function cancelTextRecipients(job: CancelTextJob | null): Promise<string[]> {
+  if (!job || !shouldTextOnCancel(job, new Date(), await tenantTz(job.tenant_id)) || !job.cleaners.length) return [];
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { normalizePhoneE164 } = await import("@/lib/phone");
+  const { data: profs } = await (supabaseAdmin as any).from("profiles").select("full_name, phone, is_active, tenant_id").in("id", job.cleaners.map((c) => c.employee_id));
+  return (profs ?? []).filter((p: any) => p.tenant_id === job.tenant_id && p.is_active && normalizePhoneE164(p.phone))
+    .map((p: any) => (p.full_name ?? "Cleaner").split(" ")[0]);
+}
+
+async function tenantTz(tenantId: string): Promise<string> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await (supabaseAdmin as any).from("tenants").select("timezone").eq("id", tenantId).maybeSingle();
+  return data?.timezone || "America/Los_Angeles";
 }

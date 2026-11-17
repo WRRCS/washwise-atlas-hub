@@ -1,5 +1,6 @@
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
 import { cancelTextNote } from "@/lib/cancel-text";
+import { useAskCancelText } from "@/components/cancel-text-ask";
 import { LocalPhotoThumb } from "@/components/local-photo-thumb";
 import { closeJobs } from "@/lib/jobs.functions";
 import { jobLocation } from "@/lib/job-location";
@@ -130,6 +131,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
   const toggle = useServerFn(toggleSopItem);
   const confirmSop = useServerFn(confirmJobSop);
   const setStatus = useServerFn(updateJobStatus);
+  const { ask: askCancelText, dialog: cancelTextDialog } = useAskCancelText();
   const permsFn = useServerFn(myPermissions);
   const capsFn = useServerFn(myCapabilities);
 
@@ -198,7 +200,8 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
   };
   const onStatus = async (status: "in_progress" | "completed" | "canceled") => {
     if (status === "canceled" && !confirm("Cancel this job?")) return;
-    const res: any = await setStatus({ data: { id: jobId, status } });
+    const textCleaners = status === "canceled" ? await askCancelText(jobId) : false;
+    const res: any = await setStatus({ data: { id: jobId, status, text_cleaners: textCleaners } });
     const note = cancelTextNote(res?.cancelText);
     toast.success(status === "completed" ? "Job completed" : status === "canceled" ? "Job canceled" : "Job started", note ? { description: note } : undefined);
     qc.invalidateQueries({ queryKey: ["job", jobId] });
@@ -210,6 +213,7 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
 
   return (
     <>
+      {cancelTextDialog}
       <PageHeader
         back={onBack}
         title={t(job.service?.name ?? "Job")}

@@ -429,7 +429,7 @@ export const getJob = createServerFn({ method: "POST" })
 
 export const updateJobStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string; status: "scheduled" | "in_progress" | "completed" | "canceled" }) => input)
+  .inputValidator((input: { id: string; status: "scheduled" | "in_progress" | "completed" | "canceled"; text_cleaners?: boolean }) => input)
   .handler(async ({ data, context }) => {
     const nowIso = new Date().toISOString();
     const patch =
@@ -440,7 +440,7 @@ export const updateJobStatus = createServerFn({ method: "POST" })
           : { status: data.status };
     // Snapshot before canceling so cleaners on a published cleaning can be texted.
     let before: import("@/lib/cancel-text.server").CancelTextJob | null = null;
-    const { data: isMgr } = data.status === "canceled" ? await context.supabase.rpc("is_owner_or_manager") : { data: false };
+    const { data: isMgr } = data.status === "canceled" && data.text_cleaners ? await context.supabase.rpc("is_owner_or_manager") : { data: false };
     if (isMgr) {
       const { loadCancelTextJob } = await import("@/lib/cancel-text.server");
       before = await loadCancelTextJob(data.id);
@@ -451,6 +451,17 @@ export const updateJobStatus = createServerFn({ method: "POST" })
     const { textCleanersAboutCancellation } = await import("@/lib/cancel-text.server");
     const cancelText = await textCleanersAboutCancellation(before, context.userId).catch(() => null);
     return { ok: true, cancelText };
+  });
+
+/** Who would be texted if this cleaning were canceled now (owner/manager only). Sends nothing. */
+export const previewCancelTexts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isMgr) return { names: [] as string[] };
+    const { loadCancelTextJob, cancelTextRecipients } = await import("@/lib/cancel-text.server");
+    return { names: await cancelTextRecipients(await loadCancelTextJob(data.id)) };
   });
 
 export const moveJob = createServerFn({ method: "POST" })
@@ -515,7 +526,7 @@ export const extendRecurringNow = createServerFn({ method: "POST" })
  */
 export const deleteJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string; employee_id?: string }) => input)
+  .inputValidator((input: { id: string; employee_id?: string; text_cleaners?: boolean }) => input)
   .handler(async ({ data, context }) => {
     if (data.employee_id) {
       const { data: links } = await context.supabase
@@ -547,7 +558,7 @@ export const deleteJob = createServerFn({ method: "POST" })
     // Deleting a published cleaning removes it from cleaners' schedules: text them like a cancellation.
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
     const { loadCancelTextJob, textCleanersAboutCancellation } = await import("@/lib/cancel-text.server");
-    const before = isMgr ? await loadCancelTextJob(data.id) : null;
+    const before = isMgr && data.text_cleaners ? await loadCancelTextJob(data.id) : null;
     await context.supabase.from("job_employees").delete().eq("job_id", data.id);
     await context.supabase.from("job_sop_items").delete().eq("job_id", data.id);
     const { error } = await context.supabase.from("jobs").delete().eq("id", data.id);

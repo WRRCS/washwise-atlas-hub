@@ -10,8 +10,18 @@ export type CancelSnapshot = {
  * Cleaners are texted only when a cleaning they could already see on their
  * schedule (published, still scheduled, not yet over) is canceled.
  */
-export function shouldTextOnCancel(job: CancelSnapshot, now: Date = new Date()): boolean {
-  return job.status === "scheduled" && !!job.published_at && Date.parse(job.scheduled_end) > now.getTime();
+export function shouldTextOnCancel(job: CancelSnapshot & { scheduled_start?: string }, now: Date = new Date(), tz = "America/Los_Angeles"): boolean {
+  if (!(job.status === "scheduled" && !!job.published_at && Date.parse(job.scheduled_end) > now.getTime())) return false;
+  // Only the current Mon–Sun week (business time zone); later weeks send no text.
+  return weekStartKey(job.scheduled_start ?? job.scheduled_end, tz) === weekStartKey(now.toISOString(), tz);
+}
+
+/** yyyy-MM-dd of the Monday starting the week that contains this moment. */
+export function weekStartKey(iso: string, tz: string): string {
+  const key = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  const d = new Date(`${key}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
 }
 
 function fmtWhen(iso: string, tz: string, locale: string) {

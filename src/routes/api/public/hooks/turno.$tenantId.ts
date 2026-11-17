@@ -115,19 +115,13 @@ export const Route = createFileRoute("/api/public/hooks/turno/$tenantId")({
 
         // Cancellation → cancel matching job(s) if any
         if (reservation.event && /cancel/i.test(reservation.event)) {
-          const { data: toCancel } = await supabaseAdmin.from("jobs").select("id")
-            .eq("tenant_id", tenantId).eq("external_source", "turno")
-            .eq("external_id", reservation.reservation_id).neq("status", "completed");
-          const { loadCancelTextJob, textCleanersAboutCancellation } = await import("@/lib/cancel-text.server");
-          const snapshots = await Promise.all((toCancel ?? []).map((j: { id: string }) => loadCancelTextJob(j.id)));
           await supabaseAdmin.from("jobs")
             .update({ status: "canceled" })
             .eq("tenant_id", tenantId)
             .eq("external_source", "turno")
             .eq("external_id", reservation.reservation_id)
             .neq("status", "completed");
-          // Cleaners on a published cleaning get a cancellation text.
-          for (const snap of snapshots) await textCleanersAboutCancellation(snap, null).catch(() => null);
+          // No cancellation texts here: Leslie approves each text when she cancels in the app.
           return Response.json({ ok: true, action: "canceled" });
         }
 

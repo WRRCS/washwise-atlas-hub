@@ -1,5 +1,6 @@
 import { canSeeScheduleHours, scheduleFirstNames } from "@/lib/schedule-names";
 import { cancelTextNote } from "@/lib/cancel-text";
+import { useAskCancelText } from "@/components/cancel-text-ask";
 import { jobLocation } from "@/lib/job-location";
 import { ScheduleAppointmentDetails, scheduleColorText } from "@/components/schedule-appointment-details";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -393,9 +394,10 @@ function SchedulePage() {
   }, [jobs, tz]);
 
   const deleteFn = useServerFn(deleteJob);
+  const { ask: askCancelText, dialog: cancelTextDialog } = useAskCancelText();
   const deleteMut = useMutation({
-    mutationFn: (v: { id: string; employeeId?: string }) =>
-      deleteFn({ data: { id: v.id, employee_id: v.employeeId } }),
+    mutationFn: (v: { id: string; employeeId?: string; textCleaners?: boolean }) =>
+      deleteFn({ data: { id: v.id, employee_id: v.employeeId, text_cleaners: v.textCleaners } }),
     onSuccess: (r: any) => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
       const note = cancelTextNote(r?.cancelText);
@@ -559,6 +561,7 @@ function SchedulePage() {
 
   return (
     <>
+      {cancelTextDialog}
       <PageHeader
         title={tr("Schedule")}
         subtitleClassName="font-bold text-foreground"
@@ -1047,7 +1050,9 @@ function SchedulePage() {
                                           const msg = many
                                             ? `Remove ${emp.full_name ?? "this team member"} from this shift? Everyone else stays scheduled.`
                                             : "Delete this shift? This cannot be undone.";
-                                          if (window.confirm(msg)) deleteMut.mutate({ id: j.id, employeeId: emp.id });
+                                          if (!window.confirm(msg)) return;
+                                          if (many) { deleteMut.mutate({ id: j.id, employeeId: emp.id }); return; }
+                                          void askCancelText(j.id).then((textCleaners) => deleteMut.mutate({ id: j.id, employeeId: emp.id, textCleaners }));
                                         }}
                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 text-destructive text-[11px] font-medium py-1.5 hover:bg-destructive/10 disabled:opacity-50"
                                       >
