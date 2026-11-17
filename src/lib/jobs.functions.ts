@@ -438,9 +438,19 @@ export const updateJobStatus = createServerFn({ method: "POST" })
         : data.status === "completed"
           ? { status: data.status, actual_end: nowIso }
           : { status: data.status };
+    // Snapshot before canceling so cleaners on a published cleaning can be texted.
+    let before: import("@/lib/cancel-text.server").CancelTextJob | null = null;
+    const { data: isMgr } = data.status === "canceled" ? await context.supabase.rpc("is_owner_or_manager") : { data: false };
+    if (isMgr) {
+      const { loadCancelTextJob } = await import("@/lib/cancel-text.server");
+      before = await loadCancelTextJob(data.id);
+    }
     const { error } = await context.supabase.from("jobs").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
-    return { ok: true };
+    if (!before) return { ok: true, cancelText: null };
+    const { textCleanersAboutCancellation } = await import("@/lib/cancel-text.server");
+    const cancelText = await textCleanersAboutCancellation(before, context.userId).catch(() => null);
+    return { ok: true, cancelText };
   });
 
 export const moveJob = createServerFn({ method: "POST" })
@@ -534,11 +544,16 @@ export const deleteJob = createServerFn({ method: "POST" })
         return { ok: true, unassigned: true as const };
       }
     }
+    // Deleting a published cleaning removes it from cleaners' schedules: text them like a cancellation.
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+    const { loadCancelTextJob, textCleanersAboutCancellation } = await import("@/lib/cancel-text.server");
+    const before = isMgr ? await loadCancelTextJob(data.id) : null;
     await context.supabase.from("job_employees").delete().eq("job_id", data.id);
     await context.supabase.from("job_sop_items").delete().eq("job_id", data.id);
     const { error } = await context.supabase.from("jobs").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
-    return { ok: true, unassigned: false as const };
+    const cancelText = before ? await textCleanersAboutCancellation(before, context.userId).catch(() => null) : null;
+    return { ok: true, unassigned: false as const, cancelText };
   });
 
 /**

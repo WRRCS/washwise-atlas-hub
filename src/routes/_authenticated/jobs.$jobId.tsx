@@ -1,4 +1,5 @@
 import { EmployeeClockControls } from "@/components/employee-clock-controls";
+import { cancelTextNote } from "@/lib/cancel-text";
 import { LocalPhotoThumb } from "@/components/local-photo-thumb";
 import { closeJobs } from "@/lib/jobs.functions";
 import { jobLocation } from "@/lib/job-location";
@@ -197,8 +198,9 @@ export function JobDetailView({ jobId, employeeId, onBack }: { jobId: string; em
   };
   const onStatus = async (status: "in_progress" | "completed" | "canceled") => {
     if (status === "canceled" && !confirm("Cancel this job?")) return;
-    await setStatus({ data: { id: jobId, status } });
-    toast.success(status === "completed" ? "Job completed" : status === "canceled" ? "Job canceled" : "Job started");
+    const res: any = await setStatus({ data: { id: jobId, status } });
+    const note = cancelTextNote(res?.cancelText);
+    toast.success(status === "completed" ? "Job completed" : status === "canceled" ? "Job canceled" : "Job started", note ? { description: note } : undefined);
     qc.invalidateQueries({ queryKey: ["job", jobId] });
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };

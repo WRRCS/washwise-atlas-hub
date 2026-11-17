@@ -1,4 +1,5 @@
 import { canSeeScheduleHours, scheduleFirstNames } from "@/lib/schedule-names";
+import { cancelTextNote } from "@/lib/cancel-text";
 import { jobLocation } from "@/lib/job-location";
 import { ScheduleAppointmentDetails, scheduleColorText } from "@/components/schedule-appointment-details";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -397,7 +398,8 @@ function SchedulePage() {
       deleteFn({ data: { id: v.id, employee_id: v.employeeId } }),
     onSuccess: (r: any) => {
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      toast.success(r?.unassigned ? "Removed from this team member" : "Shift deleted");
+      const note = cancelTextNote(r?.cancelText);
+      toast.success(r?.unassigned ? "Removed from this team member" : "Shift deleted", note ? { description: note } : undefined);
     },
     onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
   });

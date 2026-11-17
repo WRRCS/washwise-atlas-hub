@@ -5,12 +5,12 @@ function fakeDb(){
   const records:Record<string,any[]>={
     employee_reminder_pilots:[{tenant_id:"test-business",participant_ids:["test-cleaner","second-cleaner"],delivery_enabled:true}],
     cleaner_action_reminder_settings:[{user_id:"test-cleaner",tenant_id:"test-business",enabled:true,channels:["push"],clock_in_minutes_before:15,arrival_minutes_after:5}],
-    jobs:[{id:"test-job",tenant_id:"test-business",assigned_to:null,status:"scheduled",scheduled_start:"2026-10-25T17:00:00Z",scheduled_end:"2026-10-25T19:00:00Z",service_location_label:"Fern",service_address:"12 Fern Road"}],
+    jobs:[{id:"test-job",tenant_id:"test-business",assigned_to:null,status:"scheduled",published_at:"2026-10-20T00:00:00Z",scheduled_start:"2026-10-25T17:00:00Z",scheduled_end:"2026-10-25T19:00:00Z",service_location_label:"Fern",service_address:"12 Fern Road"}],
     profiles:[{id:"test-cleaner",tenant_id:"test-business",is_active:true}],job_employees:[{id:"assignment",job_id:"test-job",employee_id:"test-cleaner"}],time_entries:[],work_clock_entries:[],job_visits:[],notifications:[],
   };
   const keys=new Set<string>();
   const db={from(table:string){let rows=[...(records[table]??[])];let single=false;let value:any;
-    const q:any={select(){return q;},eq(k:string,v:any){rows=rows.filter(r=>r[k]===v);return q;},in(k:string,v:any[]){rows=rows.filter(r=>v.includes(r[k]));return q;},gt(){return q;},lte(){return q;},is(k:string,v:any){rows=rows.filter(r=>(r[k]??null)===v);return q;},limit(n:number){rows=rows.slice(0,n);return q;},maybeSingle(){single=true;return q;},insert(row:any){if(keys.has(row.action_reminder_key))value={data:null,error:{code:"23505"}};else{keys.add(row.action_reminder_key);records.notifications.push(row);value={data:null,error:null};}return q;},then(resolve:any){return Promise.resolve(value??{data:single?rows[0]??null:rows,error:null}).then(resolve);}};return q;
+    const q:any={select(){return q;},eq(k:string,v:any){rows=rows.filter(r=>r[k]===v);return q;},in(k:string,v:any[]){rows=rows.filter(r=>v.includes(r[k]));return q;},gt(){return q;},lte(){return q;},or(){rows=rows.filter(r=>r.published_at||r.status==="in_progress");return q;},is(k:string,v:any){rows=rows.filter(r=>(r[k]??null)===v);return q;},limit(n:number){rows=rows.slice(0,n);return q;},maybeSingle(){single=true;return q;},insert(row:any){if(keys.has(row.action_reminder_key))value={data:null,error:{code:"23505"}};else{keys.add(row.action_reminder_key);records.notifications.push(row);value={data:null,error:null};}return q;},then(resolve:any){return Promise.resolve(value??{data:single?rows[0]??null:rows,error:null}).then(resolve);}};return q;
   }};return{db,records};
 }
 describe("no-send test cleaner delivery",()=>{
