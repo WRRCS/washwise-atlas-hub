@@ -10,19 +10,19 @@ import logo from "@/assets/wrrcs-logo.png.asset.json";
  * to avoid a flash on regular browser tabs.
  */
 export function AppSplash() {
-  const [visible, setVisible] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
+  // Start hidden on server and client alike so hydration matches; detect standalone after mount.
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
     try {
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
-        // iOS Safari legacy flag
-        // @ts-expect-error non-standard
+        // @ts-expect-error non-standard iOS flag
         window.navigator.standalone === true;
-      return standalone;
+      if (standalone) setVisible(true);
     } catch {
-      return false;
+      /* ignore */
     }
-  });
+  }, []);
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
