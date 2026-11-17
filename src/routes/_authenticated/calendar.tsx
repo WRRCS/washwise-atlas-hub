@@ -144,7 +144,7 @@ function SchedulePage() {
   const from = startOfDay(anchor).toISOString();
   const to = endOfDay(addDays(anchor, 6)).toISOString();
 
-  const { data: jobs = [], isFetching: jobsFetching } = useQuery({ queryKey: ["jobs", "week", from, to], queryFn: () => jobsFn({ data: { from, to } }) });
+  const { data: jobs = [], isFetching: jobsFetching } = useQuery({ queryKey: ["jobs", "week", from, to], queryFn: () => jobsFn({ data: { from, to, hide_canceled: true } }) });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
   const { data: unavailability = [] } = useQuery({ queryKey: ["unavail", from, to], queryFn: () => unavFn({ data: { from, to } }) });
 

@@ -100,6 +100,8 @@ export const listMyJobs = createServerFn({ method: "POST" })
       .from("jobs")
       .select("id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, notes, property:client_properties!jobs_property_id_fkey(label,address), client:clients(id,first_name,last_name,service_address), service:service_types(id,name,color)")
       .in("id", jobIds)
+      // A canceled cleaning comes off every assigned cleaner's schedule.
+      .neq("status", "canceled")
       .order("scheduled_start", { ascending: true });
     if (data.from) q = q.gt("scheduled_end", data.from);
     if (data.to) q = q.lt("scheduled_start", data.to);

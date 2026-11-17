@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { visibleToEmployees, shiftByDaysKeepTime, daysBetweenKeys } from "@/lib/schedule-publish";
+import { visibleToEmployees, showsOnSchedule, shiftByDaysKeepTime, daysBetweenKeys } from "@/lib/schedule-publish";
 
 const TZ = "America/Los_Angeles";
 
@@ -29,5 +29,14 @@ describe("changing the day of a cleaning", () => {
   });
   it("counts days between two dates in the same week", () => {
     expect(daysBetweenKeys("2026-11-25", "2026-11-23")).toBe(-2);
+  });
+});
+
+describe("canceled cleanings come off the schedule", () => {
+  it("removes a canceled cleaning", () => {
+    expect(showsOnSchedule({ status: "canceled" })).toBe(false);
+  });
+  it("keeps a scheduled cleaning", () => {
+    expect(showsOnSchedule({ status: "scheduled" })).toBe(true);
   });
 });

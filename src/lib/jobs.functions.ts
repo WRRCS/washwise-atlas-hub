@@ -8,7 +8,7 @@ import { DEFAULT_TZ, dayKeyTZ } from "@/lib/tz";
 import { ownSopConfirmation } from "@/lib/sop-confirmation";
 import { canOpenAppointment } from "@/lib/appointment-access";
 import { requirePropertyType } from "@/lib/property-type";
-import { visibleToEmployees } from "@/lib/schedule-publish";
+import { visibleToEmployees, showsOnSchedule } from "@/lib/schedule-publish";
 import { newJobPriceCents } from "@/lib/property-pricing";
 import {
   addMonthsISO,
@@ -58,7 +58,7 @@ async function loadAssignees(supabase: any, jobIds: string[]) {
 
 export const listJobs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { from?: string; to?: string }) => input)
+  .inputValidator((input: { from?: string; to?: string; hide_canceled?: boolean }) => input)
   .handler(async ({ data, context }): Promise<JobRow[]> => {
     let q = context.supabase
       .from("jobs")
@@ -71,7 +71,9 @@ export const listJobs = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
     // Employees never see unpublished cleanings (the database enforces this too).
-    const jobs = isMgr ? rows ?? [] : (rows ?? []).filter((j: any) => visibleToEmployees(j));
+    let jobs = isMgr ? rows ?? [] : (rows ?? []).filter((j: any) => visibleToEmployees(j));
+    // Schedules drop canceled cleanings for everyone assigned; the Jobs list keeps them as records.
+    if (data.hide_canceled) jobs = jobs.filter((j: any) => showsOnSchedule(j));
     const [assigneeMap, canViewPricing] = await Promise.all([
       loadAssignees(context.supabase, jobs.map((j: any) => j.id)),
       resolveCanViewPricing(context),

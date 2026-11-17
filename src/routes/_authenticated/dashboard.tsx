@@ -135,7 +135,7 @@ function DashboardPage() {
   const { data: stats } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => fetchStats() });
   const { data: today = [], isPending: todayPending, isError: todayError } = useQuery({
     queryKey: ["jobs", "dashboard-day", from, to],
-    queryFn: () => fetchJobs({ data: { from, to } }),
+    queryFn: () => fetchJobs({ data: { from, to, hide_canceled: true } }),
     refetchInterval: 5 * 60_000,
   });
   const { data: activity = [] } = useQuery({

@@ -7,6 +7,11 @@ export function visibleToEmployees(job: Publishable): boolean {
   return !!job.published_at || job.status === "in_progress" || job.status === "completed";
 }
 
+/** Canceled cleanings come off every schedule (owner's and every assigned cleaner's). */
+export function showsOnSchedule(job: { status: string }): boolean {
+  return job.status !== "canceled";
+}
+
 /** Add whole days to a yyyy-MM-dd key. */
 export function addDaysToKey(dayKey: string, days: number): string {
   const d = new Date(`${dayKey}T12:00:00Z`);
