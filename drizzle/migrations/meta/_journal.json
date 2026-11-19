@@ -407,6 +407,13 @@
       "when": 1794808813379,
       "tag": "0057_employees_see_published_only",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795112038743,
+      "tag": "0058_permission_check_allowlist",
+      "breakpoints": true
     }
   ]
 }
