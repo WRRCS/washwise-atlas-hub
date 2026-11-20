@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { clientContact, clientContactMap, staffDirectory } from "@/lib/privacy";
 import { accessState, type AccessState, type InviteRecordStatus } from "@/lib/staff-invite";
+import { signInAccessChange } from "@/lib/staff-access";
 
 // ============= Clients =============
 
@@ -697,9 +698,34 @@ export const updateEmployee = createServerFn({ method: "POST" })
     if (data.is_active !== undefined) patch.is_active = data.is_active;
     if (data.full_name !== undefined) patch.full_name = data.full_name;
     const { error } = await context.supabase.from("profiles").update(patch).eq("id", data.id);
-
     if (error) throw new Error(error.message);
-    return { ok: true };
+
+    // Archiving has to actually end access, so the auth account itself is
+    // blocked: no password sign-in, no one-tap link, no token refresh.
+    const { data: ownerRow } = await context.supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", data.id)
+      .eq("role", "owner")
+      .maybeSingle();
+    const change = signInAccessChange({ is_active: data.is_active, is_owner: !!ownerRow });
+    // null = nothing to do, true = sign-in updated, false = it could not be.
+    let signInUpdated: boolean | null = null;
+    if (change !== "none") {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { setStaffSignInAllowed, markStaffInviteRevoked } = await import("@/lib/staff-access.server");
+        await setStaffSignInAllowed(supabaseAdmin, { userId: data.id, allowed: change === "restore" });
+        if (change === "block") await markStaffInviteRevoked(supabaseAdmin, { userId: data.id });
+        signInUpdated = true;
+      } catch (err) {
+        // The archive itself already saved, so say that plainly instead of
+        // pretending the whole edit failed.
+        signInUpdated = false;
+        console.error("Could not change sign-in access for", data.id, err);
+      }
+    }
+    return { ok: true, sign_in_updated: signInUpdated };
   });
 
 /** Owner-only: private job details (start date, role, pay rate, address). */

@@ -24,6 +24,19 @@ export const Route = createFileRoute("/_authenticated")({
       passedGate = null;
       throw redirect({ to: "/auth", search: { redirect: location.href } });
     }
+    // Active status is checked on every navigation, never from the cache, so an
+    // archived person is turned away immediately. Accounts with no team record
+    // (super admins) fall through.
+    const { data: activeRow } = await supabase
+      .from("profiles")
+      .select("is_active")
+      .eq("id", sessionUser.id)
+      .maybeSingle();
+    if (activeRow && activeRow.is_active === false) {
+      passedGate = null;
+      await supabase.auth.signOut();
+      throw redirect({ to: "/auth" });
+    }
     if (
       passedGate && passedGate.userId === sessionUser.id &&
       Date.now() - passedGate.at < GATE_REUSE_MS &&

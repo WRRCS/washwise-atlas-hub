@@ -242,8 +242,12 @@ function Employees() {
   const deactivate = async (e: Employee) => {
     if (!confirm(`Archive ${e.full_name ?? e.email}? They keep all their history but can't sign in. You can restore them any time.`)) return;
     try {
-      await updateFn({ data: { id: e.id, is_active: false } });
-      toast.success("Moved to Archived");
+      const res = await updateFn({ data: { id: e.id, is_active: false } });
+      if (res?.sign_in_updated === false) {
+        toast.warning("Moved to Archived, but their sign-in wasn't blocked — press Archive again to retry.");
+      } else {
+        toast.success("Moved to Archived");
+      }
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -252,8 +256,12 @@ function Employees() {
 
   const reactivate = async (e: Employee) => {
     try {
-      await updateFn({ data: { id: e.id, is_active: true } });
-      toast.success("Restored");
+      const res = await updateFn({ data: { id: e.id, is_active: true } });
+      if (res?.sign_in_updated === false) {
+        toast.warning("Restored, but their sign-in wasn't re-enabled — press Restore again to retry.");
+      } else {
+        toast.success("Restored");
+      }
       qc.invalidateQueries({ queryKey: ["employees"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
