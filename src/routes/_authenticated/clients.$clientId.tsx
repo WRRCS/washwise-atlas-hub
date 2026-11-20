@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
+import { compressPhotoForUpload } from "@/lib/photo-compress";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listSops, getSop, type SopDetail } from "@/lib/sops.functions";
@@ -864,11 +865,12 @@ function DocumentsTab({ clientId, photos, onChanged }: {
   const [caption, setCaption] = useState("");
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (!picked) return;
     setUploading(true);
     try {
+      const file = picked.type.startsWith("image/") ? await compressPhotoForUpload(picked) : picked;
       const { path, token } = await getUrl({
         data: { client_id: clientId, file_name: file.name, content_type: file.type },
       });

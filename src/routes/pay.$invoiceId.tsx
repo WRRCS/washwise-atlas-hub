@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Images } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useState } from "react";
@@ -128,17 +129,22 @@ function PayInvoicePage() {
             <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 mb-6 text-sm whitespace-pre-wrap">{inv.client_message}</div>
           )}
 
-          {inv.photos?.length > 0 && (
-            <div className="bg-card rounded-xl ring-1 ring-black/5 p-6 mb-6">
-              <p className="text-sm font-medium mb-3">Photos from your service</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {inv.photos.map((p: { url: string; caption: string | null }, i: number) => (
-                  <a key={i} href={p.url} target="_blank" rel="noreferrer">
-                    <img src={p.url} alt={p.caption ?? "Service photo"} className="aspect-square w-full object-cover rounded-md" />
-                  </a>
-                ))}
-              </div>
-            </div>
+          {inv.photo_count > 0 && (
+            <Link
+              to="/pay/$invoiceId/photos"
+              params={{ invoiceId }}
+              search={preview ? { preview: true } : {}}
+              className="flex items-center justify-between gap-3 bg-card rounded-xl ring-1 ring-black/5 p-5 mb-6 hover:bg-muted"
+            >
+              <span className="flex items-center gap-3">
+                <Images className="size-5 text-muted-foreground" aria-hidden />
+                <span>
+                  <span className="block text-sm font-medium">Photos from your service</span>
+                  <span className="block text-xs text-muted-foreground">{inv.photo_count === 1 ? "1 photo" : `${inv.photo_count} photos`}</span>
+                </span>
+              </span>
+              <span className="text-sm font-medium">View photos →</span>
+            </Link>
           )}
 
           {!isPaid && !isDead && inv.venmo_link && !confirmed && (

@@ -26,7 +26,8 @@ type InvoiceSummary = {
   line_items: { description: string; details: string | null; quantity: number; hours: number | null; unit_price_cents: number; line_total_cents: number; service_date: string | null }[];
   business_phone: string | null;
   business_email: string | null;
-  photos: { url: string; caption: string | null; photo_type: string }[];
+  /** How many service photos are attached; the photos load only on the gallery page. */
+  photo_count: number;
   allow_card: boolean;
   venmo_link: string | null;
 } | { error: string };
@@ -51,16 +52,7 @@ async function loadInvoiceSummary(id: string, opts: { allowDraft: boolean }): Pr
       .order("service_date");
     const client = inv.client as { first_name: string | null; last_name: string | null; email: string | null } | null;
     const ids: string[] = ((inv as any).photo_ids ?? []) as string[];
-    let photos: { url: string; caption: string | null; photo_type: string }[] = [];
-    if (ids.length) {
-      const { data: rows } = await supabaseAdmin
-        .from("job_photos").select("id, storage_path, caption, photo_type, job:jobs!inner(client_id)").eq('tenant_id', inv.tenant_id).eq('job.client_id', inv.client_id).in("id", ids);
-      const signed = await Promise.all((rows ?? []).map(async (r) => {
-        const { data: s } = await supabaseAdmin.storage.from("job-photos").createSignedUrl(r.storage_path, 3600);
-        return s?.signedUrl ? { url: s.signedUrl, caption: r.caption, photo_type: r.photo_type as string } : null;
-      }));
-      photos = signed.filter((x): x is NonNullable<typeof x> => !!x);
-    }
+    const photo_count = ids.length ? (await invoicePhotoRows(inv.tenant_id, inv.client_id, ids)).length : 0;
     const allowCard = (inv as any).allow_card !== false;
     const allowVenmo = (inv as any).allow_venmo !== false;
     // Venmo goes straight to the business's own Venmo handle — no app processing fee.
@@ -84,7 +76,7 @@ async function loadInvoiceSummary(id: string, opts: { allowDraft: boolean }): Pr
     return {
       business_phone: (biz?.business_phone as string | null) ?? null,
       business_email: ((biz?.business_email as string | null) ?? null)?.toLowerCase() ?? null,
-      photos,
+      photo_count,
       allow_card: allowCard,
       venmo_link: venmoLink,
       id: inv.id,
@@ -108,6 +100,55 @@ async function loadInvoiceSummary(id: string, opts: { allowDraft: boolean }): Pr
       line_items: (lineRows ?? []) as { description: string; details: string | null; quantity: number; hours: number | null; unit_price_cents: number; line_total_cents: number; service_date: string | null }[],
     };
 }
+
+/** Photos on an invoice that really belong to that client's cleanings (in the invoice's chosen order). */
+async function invoicePhotoRows(tenantId: string, clientId: string | null, ids: string[]) {
+  if (!ids.length || !clientId) return [];
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: rows } = await supabaseAdmin
+    .from("job_photos").select("id, storage_path, caption, photo_type, job:jobs!inner(client_id)")
+    .eq("tenant_id", tenantId).eq("job.client_id", clientId).in("id", ids);
+  const order = new Map(ids.map((id, i) => [id, i]));
+  return (rows ?? []).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
+export type InvoicePhoto = { thumb_url: string | null; url: string; caption: string | null; photo_type: string };
+export type InvoicePhotosResult = { number: string | null; photos: InvoicePhoto[] } | { error: string };
+
+/** Small previews for the gallery grid, plus a full-size link that loads only when tapped. */
+async function loadInvoicePhotos(id: string, opts: { allowDraft: boolean }): Promise<InvoicePhotosResult> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: inv } = await supabaseAdmin.from("invoices").select("id, tenant_id, client_id, number, status, photo_ids").eq("id", id).maybeSingle();
+  if (!inv) return { error: "Invoice not found" };
+  if (inv.status === "draft" && !opts.allowDraft) return { error: "This invoice is not available." };
+  const rows = await invoicePhotoRows(inv.tenant_id, inv.client_id, ((inv as any).photo_ids ?? []) as string[]);
+  const bucket = supabaseAdmin.storage.from("job-photos");
+  const photos = await Promise.all(rows.map(async (r) => {
+    const [full, thumb] = await Promise.all([
+      bucket.createSignedUrl(r.storage_path, 3600),
+      bucket.createSignedUrl(r.storage_path, 3600, { transform: { width: 480, height: 480, resize: "cover", quality: 70 } }).catch(() => ({ data: null })),
+    ]);
+    return full.data?.signedUrl ? { url: full.data.signedUrl, thumb_url: thumb.data?.signedUrl ?? null, caption: r.caption, photo_type: r.photo_type as string } : null;
+  }));
+  return { number: inv.number, photos: photos.filter((p): p is InvoicePhoto => !!p) };
+}
+
+// Public: the invoice's photo gallery (same access as the pay page link).
+export const getPublicInvoicePhotos = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }): Promise<InvoicePhotosResult> => loadInvoicePhotos(data.id, { allowDraft: false }));
+
+// Staff only: gallery for an invoice that hasn't been sent yet.
+export const previewPublicInvoicePhotos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<InvoicePhotosResult> => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    if (!isMgr) return { error: "Only owners and managers can preview invoices." };
+    const { data: own } = await context.supabase.from("invoices").select("id").eq("id", data.id).maybeSingle();
+    if (!own) return { error: "Invoice not found" };
+    return loadInvoicePhotos(data.id, { allowDraft: true });
+  });
 
 // Public: fetch minimal invoice info by id for the pay page
 export const getPublicInvoice = createServerFn({ method: "POST" })

@@ -74,6 +74,7 @@ import { Route as AuthenticatedSettingsTemplatesRouteImport } from './routes/_au
 import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
 import { Route as AuthenticatedSuperAdminIndexRouteImport } from './routes/_authenticated/super-admin.index'
 import { Route as AuthenticatedSuperAdminAuditRouteImport } from './routes/_authenticated/super-admin.audit'
+import { Route as PayInvoiceIdPhotosRouteImport } from './routes/pay_.$invoiceId.photos'
 import { Route as AuthenticatedReportsAccountClientIdRouteImport } from './routes/_authenticated/reports.account.$clientId'
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
 import { Route as ApiPublicHooksExtendRecurringRouteImport } from './routes/api/public/hooks/extend-recurring'
@@ -441,6 +442,11 @@ const AuthenticatedSuperAdminAuditRoute =
     path: '/audit',
     getParentRoute: () => AuthenticatedSuperAdminRoute,
   } as any)
+const PayInvoiceIdPhotosRoute = PayInvoiceIdPhotosRouteImport.update({
+  id: '/pay_/$invoiceId/photos',
+  path: '/pay/$invoiceId/photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedReportsAccountClientIdRoute =
   AuthenticatedReportsAccountClientIdRouteImport.update({
     id: '/account/$clientId',
@@ -590,6 +596,7 @@ export interface FileRoutesByFullPath {
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/pay/$invoiceId/photos': typeof PayInvoiceIdPhotosRoute
   '/clients/': typeof AuthenticatedClientsIndexRoute
   '/invoices/': typeof AuthenticatedInvoicesIndexRoute
   '/jobs/': typeof AuthenticatedJobsIndexRoute
@@ -669,6 +676,7 @@ export interface FileRoutesByTo {
   '/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/pay/$invoiceId/photos': typeof PayInvoiceIdPhotosRoute
   '/clients': typeof AuthenticatedClientsIndexRoute
   '/invoices': typeof AuthenticatedInvoicesIndexRoute
   '/jobs': typeof AuthenticatedJobsIndexRoute
@@ -752,6 +760,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/templates': typeof AuthenticatedSettingsTemplatesRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRoute
   '/_authenticated/super-admin/audit': typeof AuthenticatedSuperAdminAuditRoute
+  '/pay_/$invoiceId/photos': typeof PayInvoiceIdPhotosRoute
   '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
   '/_authenticated/invoices/': typeof AuthenticatedInvoicesIndexRoute
   '/_authenticated/jobs/': typeof AuthenticatedJobsIndexRoute
@@ -835,6 +844,7 @@ export interface FileRouteTypes {
     | '/settings/templates'
     | '/settings/voice'
     | '/super-admin/audit'
+    | '/pay/$invoiceId/photos'
     | '/clients/'
     | '/invoices/'
     | '/jobs/'
@@ -914,6 +924,7 @@ export interface FileRouteTypes {
     | '/settings/templates'
     | '/settings/voice'
     | '/super-admin/audit'
+    | '/pay/$invoiceId/photos'
     | '/clients'
     | '/invoices'
     | '/jobs'
@@ -996,6 +1007,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/templates'
     | '/_authenticated/settings/voice'
     | '/_authenticated/super-admin/audit'
+    | '/pay_/$invoiceId/photos'
     | '/_authenticated/clients/'
     | '/_authenticated/invoices/'
     | '/_authenticated/jobs/'
@@ -1032,6 +1044,7 @@ export interface RootRouteChildren {
   PhotosShareIdRoute: typeof PhotosShareIdRoute
   PortalDashboardRoute: typeof PortalDashboardRoute
   PortalDemoRoute: typeof PortalDemoRoute
+  PayInvoiceIdPhotosRoute: typeof PayInvoiceIdPhotosRoute
   ApiPublicHooksExtendRecurringRoute: typeof ApiPublicHooksExtendRecurringRoute
   ApiPublicHooksProcessPushRoute: typeof ApiPublicHooksProcessPushRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -1504,6 +1517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSuperAdminAuditRouteImport
       parentRoute: typeof AuthenticatedSuperAdminRoute
     }
+    '/pay_/$invoiceId/photos': {
+      id: '/pay_/$invoiceId/photos'
+      path: '/pay/$invoiceId/photos'
+      fullPath: '/pay/$invoiceId/photos'
+      preLoaderRoute: typeof PayInvoiceIdPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/reports/account/$clientId': {
       id: '/_authenticated/reports/account/$clientId'
       path: '/account/$clientId'
@@ -1790,6 +1810,7 @@ const rootRouteChildren: RootRouteChildren = {
   PhotosShareIdRoute: PhotosShareIdRoute,
   PortalDashboardRoute: PortalDashboardRoute,
   PortalDemoRoute: PortalDemoRoute,
+  PayInvoiceIdPhotosRoute: PayInvoiceIdPhotosRoute,
   ApiPublicHooksExtendRecurringRoute: ApiPublicHooksExtendRecurringRoute,
   ApiPublicHooksProcessPushRoute: ApiPublicHooksProcessPushRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,

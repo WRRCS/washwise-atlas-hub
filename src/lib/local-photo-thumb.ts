@@ -6,7 +6,8 @@
  * Thirty of those crash iPhone Safari ("A problem repeatedly occurred"), and
  * because unsent photos are restored after a reload the crash repeats.
  * So previews are shrunk one photo at a time into a small JPEG and only that
- * small copy is ever displayed. The original file is uploaded untouched.
+ * small copy is ever displayed. Uploads are shrunk separately (photo-compress.ts)
+ * through the same one-at-a-time queue.
  */
 export const LOCAL_THUMB_MAX_PX = 320;
 
@@ -20,7 +21,7 @@ export function thumbDimensions(width: number, height: number, max = LOCAL_THUMB
 // One full-size decode at a time keeps peak memory to a single photo.
 let chain: Promise<unknown> = Promise.resolve();
 
-async function render(blob: Blob, max: number): Promise<Blob | null> {
+async function render(blob: Blob, max: number, quality = 0.72): Promise<Blob | null> {
   const src = URL.createObjectURL(blob);
   const img = new Image();
   img.decoding = "async";
@@ -36,7 +37,7 @@ async function render(blob: Blob, max: number): Promise<Blob | null> {
       const ctx = canvas.getContext("2d");
       if (!ctx) return null;
       ctx.drawImage(img, 0, 0, width, height);
-      return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.72));
+      return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
     } finally {
       // Release the canvas backing store right away (iOS keeps it otherwise).
       canvas.width = 0;
@@ -62,6 +63,17 @@ export function makeLocalThumbnail(blob: Blob, isCancelled: () => boolean = () =
     if (!small || isCancelled()) return null;
     return URL.createObjectURL(small);
   });
+  chain = job.catch(() => null);
+  return job;
+}
+
+/**
+ * Re-encode a photo as a JPEG no larger than `max` px on its long edge, using
+ * the same one-at-a-time queue as previews so only one full-size photo is ever
+ * decoded at once. Resolves null when the phone can't read the picture.
+ */
+export function shrinkPhoto(blob: Blob, max: number, quality: number): Promise<Blob | null> {
+  const job = chain.then(() => render(blob, max, quality));
   chain = job.catch(() => null);
   return job;
 }

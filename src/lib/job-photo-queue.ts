@@ -6,6 +6,7 @@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { translateNow as t } from "@/lib/i18n";
+import { compressPhotoForUpload } from "@/lib/photo-compress";
 import { photoUploadQueue, type UploadQueue } from "@/lib/photo-upload-queue";
 import { deleteOutboxItems, outboxScope, saveOutboxItem } from "@/lib/photo-outbox";
 import { createJobPhotoUploadUrl, finishPhotoUploadBatch, registerJobPhoto, type PhotoType } from "@/lib/photos.functions";
@@ -45,7 +46,8 @@ export function jobPhotoQueue(viewerId: string, jobId: string): UploadQueue<JobP
       if (session?.user.id !== viewerId) {
         throw Object.assign(new Error(t("Your login changed. Please reopen the appointment and upload again.")), { permanent: true });
       }
-      const file = item.file as File;
+      // Shrink just before sending; the phone keeps the original until the server has a copy.
+      const file = await compressPhotoForUpload(item.file as File);
       const { path, token } = await createJobPhotoUploadUrl({ data: { job_id: jobId, file_name: file.name || "photo.jpg" } });
       const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, { contentType: file.type || "image/jpeg" });
       if (error) throw new Error(error.message);
