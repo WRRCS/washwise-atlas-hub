@@ -1,3 +1,4 @@
+import { spotsAfterAdding } from "@/lib/open-shifts";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -31,6 +32,8 @@ export type JobRow = {
   recurrence_rule: string | null;
   recurrence_end: string | null;
   published_at: string | null;
+  /** Extra cleaners this cleaning still needs (Open shifts). */
+  open_spots?: number;
   service_address: string | null;
   service_location_label: string | null;
   location_needs_review: boolean;
@@ -62,7 +65,7 @@ export const listJobs = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<JobRow[]> => {
     let q = context.supabase
       .from("jobs")
-      .select("id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, client:clients(id,first_name,last_name,service_address,color), property:client_properties!jobs_property_id_fkey(id,label,address,color), service:service_types(id,kind,name,color)")
+      .select("id, service_address, service_location_label, location_needs_review, status, scheduled_start, scheduled_end, price_cents, notes, is_recurring, recurrence_rule, recurrence_end, published_at, open_spots, client:clients(id,first_name,last_name,service_address,color), property:client_properties!jobs_property_id_fkey(id,label,address,color), service:service_types(id,kind,name,color)")
       .order("scheduled_start", { ascending: true });
     // Overlap, not start: a cleaning that runs across days still shows its later cleaners.
     if (data.from) q = q.gt("scheduled_end", data.from);
@@ -954,7 +957,7 @@ export const updateJobAssignees = createServerFn({ method: "POST" })
 
     const [links, leads, visits, times, photos, confirmations, checked] = await Promise.all([
       sb.from("job_employees").select("job_id, employee_id").in("job_id", jobIds),
-      sb.from("jobs").select("id, assigned_to").in("id", jobIds),
+      sb.from("jobs").select("id, assigned_to, open_spots").in("id", jobIds),
       sb.from("job_visits").select("job_id, employee_id").in("job_id", jobIds),
       sb.from("time_entries").select("job_id, user_id").in("job_id", jobIds),
       sb.from("job_photos").select("job_id, uploaded_by").in("job_id", jobIds),
@@ -983,6 +986,7 @@ export const updateJobAssignees = createServerFn({ method: "POST" })
 
     // Validate every visit before changing any of them.
     const leadByJob = new Map<string, string | null>((leads.data ?? []).map((r: any) => [r.id, r.assigned_to]));
+    const spotsByJob = new Map<string, number>((leads.data ?? []).map((r: any) => [r.id, r.open_spots ?? 0]));
     const plans = jobIds.map((jobId) => ({ jobId, plan: planAssigneeChange(currentByJob.get(jobId) ?? [], requested, leadByJob.get(jobId) ?? null) }));
     for (const { jobId, plan } of plans) {
       const blocked = blockedRemovals(plan.remove, worked.get(jobId) ?? []);
@@ -1012,6 +1016,12 @@ export const updateJobAssignees = createServerFn({ method: "POST" })
       if (plan.primary !== (leadByJob.get(jobId) ?? null)) {
         const { error: upErr } = await sb.from("jobs").update({ assigned_to: plan.primary }).eq("id", jobId);
         if (upErr) throw new Error(upErr.message);
+      }
+      // Adding someone fills an open spot on that cleaning.
+      const spots = spotsByJob.get(jobId) ?? 0;
+      if (plan.add.length && spots > 0) {
+        const { error: spErr } = await sb.from("jobs").update({ open_spots: spotsAfterAdding(spots, plan.add.length) }).eq("id", jobId);
+        if (spErr) throw new Error(spErr.message);
       }
       if (plan.add.length || plan.remove.length) changed++;
     }

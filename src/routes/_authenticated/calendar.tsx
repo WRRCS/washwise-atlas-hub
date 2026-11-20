@@ -18,7 +18,8 @@ import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/
 import { myPermissions } from "@/lib/team.functions";
 import { newJobPriceCents } from "@/lib/property-pricing";
 import { listClientProperties, upsertClientProperty, listScheduleLocations } from "@/lib/client-properties.functions";
-import { claimOpenShift } from "@/lib/visits.functions";
+import { claimOpenShift, closeOpenSpot } from "@/lib/visits.functions";
+import { canPickUp, isOpenShift, openSpotsLeft } from "@/lib/open-shifts";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, differenceInMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -382,10 +383,20 @@ function SchedulePage() {
     onError: (e: any) => toast.error(e?.message ?? tr("Could not assign shift")),
   });
 
+  const closeSpotFn = useServerFn(closeOpenSpot);
+  const closeSpotMut = useMutation({
+    mutationFn: (jobId: string) => closeSpotFn({ data: { job_id: jobId } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success(tr("Open spot removed"));
+    },
+    onError: (e: any) => toast.error(e?.message ?? tr("Could not remove open spot")),
+  });
+
   const openByDay = useMemo(() => {
     const m = new Map<string, any[]>();
     for (const j of jobs as any[]) {
-      if ((j.assignees?.length ?? 0) > 0 || j.status === "canceled" || j.status === "completed") continue;
+      if (!isOpenShift(j)) continue;
       const k = dayKeyTZ(j.scheduled_start, tz);
       if (!m.has(k)) m.set(k, []);
       m.get(k)!.push(j);
@@ -526,9 +537,12 @@ function SchedulePage() {
     const dayKey = format(day, "yyyy-MM-dd");
     if (open) {
       if (!canManageSchedule) return;
+      const dropped = (jobs as any[]).find((x) => x.id === id);
+      const shared = (dropped?.assignees?.length ?? 0) > 0;
       claimMut.mutate({ job_id: id, employee_id: employeeId }, {
         onSuccess: () => {
-          if (dayKey === srcDayKey) return;
+          // Filling an open spot never moves the cleaning for the people already on it.
+          if (dayKey === srcDayKey || shared) return;
           const s = new Date(startISO), en = new Date(endISO);
           const { hour, minute } = hourMinuteTZ(s, tz);
           const ns = new Date(zonedToUTCISO(dayKey, `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`, tz));
@@ -691,14 +705,31 @@ function SchedulePage() {
                       >
                         <ScheduleAppointmentDetails job={j} tz={tz} compact />
                         <p className="mt-1 text-xs text-muted-foreground break-words">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || tr("Job")}</p>
+                        {(j.assignees?.length ?? 0) > 0 && (
+                          <p className="mt-1 text-xs font-medium break-words">
+                            {openSpotsLeft(j) === 1 ? tr("1 open spot") : `${openSpotsLeft(j)} ${tr("open spots")}`}
+                            <span className="font-normal text-muted-foreground"> · {tr("with")} {j.assignees.map((a: any) => (canManageSchedule ? a.full_name : firstNames.get(a.id) ?? a.full_name?.split(" ")[0]) ?? tr("Team member")).join(", ")}</span>
+                          </p>
+                        )}
                         {!canManageSchedule ? (
-                          <button
-                            className="mt-1 w-full rounded bg-brand text-brand-foreground py-0.5 font-medium disabled:opacity-50"
-                            disabled={claimMut.isPending}
-                            onClick={() => { if (confirm(tr("Pick up this shift?"))) claimMut.mutate({ job_id: j.id }); }}
-                          >{tr("Pick up")}</button>
+                          canPickUp(j, headerPerms?.userId) ? (
+                            <button
+                              className="mt-1 w-full rounded bg-brand text-brand-foreground py-0.5 font-medium disabled:opacity-50"
+                              disabled={claimMut.isPending}
+                              onClick={() => { if (confirm(tr("Pick up this shift?"))) claimMut.mutate({ job_id: j.id }); }}
+                            >{tr("Pick up")}</button>
+                          ) : null
                         ) : (
-                          <button className="mt-1 text-brand underline" onClick={() => setOpenJob({ jobId: j.id })}>{tr("Open")}</button>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                            <button className="text-brand underline" onClick={() => setOpenJob({ jobId: j.id })}>{tr("Open")}</button>
+                            {(j.assignees?.length ?? 0) > 0 && (
+                              <button
+                                className="text-muted-foreground underline disabled:opacity-50"
+                                disabled={closeSpotMut.isPending}
+                                onClick={() => { if (confirm(tr("Remove this open spot? The cleaners already on it keep it."))) closeSpotMut.mutate(j.id); }}
+                              >{tr("Remove spot")}</button>
+                            )}
+                          </div>
                         )}
                       </div>
                     ))}

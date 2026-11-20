@@ -237,7 +237,7 @@ export const getOpenShifts = createServerFn({ method: "GET" })
     const to = new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
     const { data: jobs, error } = await context.supabase
       .from("jobs")
-      .select("id, scheduled_start, scheduled_end, client:clients(first_name, last_name), property:client_properties!jobs_property_id_fkey(label), service:service_types(name)")
+      .select("id, scheduled_start, scheduled_end, open_spots, client:clients(first_name, last_name), property:client_properties!jobs_property_id_fkey(label), service:service_types(name)")
       .gte("scheduled_start", from.toISOString())
       .lt("scheduled_start", to.toISOString())
       .in("status", ["scheduled", "in_progress"])
@@ -254,7 +254,7 @@ export const getOpenShifts = createServerFn({ method: "GET" })
     const assigned = new Set((links ?? []).map((l: any) => l.job_id));
 
     return (jobs ?? [])
-      .filter((j: any) => !assigned.has(j.id))
+      .filter((j: any) => !assigned.has(j.id) || (j.open_spots ?? 0) > 0)
       .map((j: any) => ({
         id: j.id,
         scheduled_start: j.scheduled_start,

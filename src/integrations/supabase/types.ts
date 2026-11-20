@@ -2052,6 +2052,7 @@ export type Database = {
           is_recurring: boolean
           location_needs_review: boolean
           notes: string | null
+          open_spots: number
           price_cents: number
           property_id: string | null
           property_type: string | null
@@ -2083,6 +2084,7 @@ export type Database = {
           is_recurring?: boolean
           location_needs_review?: boolean
           notes?: string | null
+          open_spots?: number
           price_cents?: number
           property_id?: string | null
           property_type?: string | null
@@ -2114,6 +2116,7 @@ export type Database = {
           is_recurring?: boolean
           location_needs_review?: boolean
           notes?: string | null
+          open_spots?: number
           price_cents?: number
           property_id?: string | null
           property_type?: string | null
@@ -4508,6 +4511,10 @@ export type Database = {
         }
         Returns: string
       }
+      claim_open_shift: {
+        Args: { _employee: string; _job: string }
+        Returns: undefined
+      }
       client_contact_info: {
         Args: { _ids?: string[] }
         Returns: {
@@ -4716,6 +4723,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      release_staff_to_open_shifts: {
+        Args: { _employee: string }
+        Returns: number
       }
       reply_time_off_question: {
         Args: { _id: string; _reply: string }

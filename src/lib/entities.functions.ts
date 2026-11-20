@@ -711,6 +711,8 @@ export const updateEmployee = createServerFn({ method: "POST" })
     const change = signInAccessChange({ is_active: data.is_active, is_owner: !!ownerRow });
     // null = nothing to do, true = sign-in updated, false = it could not be.
     let signInUpdated: boolean | null = null;
+    let movedToOpen = 0;
+    let moveError: string | null = null;
     if (change !== "none") {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -725,7 +727,16 @@ export const updateEmployee = createServerFn({ method: "POST" })
         console.error("Could not change sign-in access for", data.id, err);
       }
     }
-    return { ok: true, sign_in_updated: signInUpdated };
+    // Archiving also frees their upcoming cleanings: they come off the
+    // schedule and each one gets an open spot someone else can pick up.
+    // Runs after sign-in is blocked so a failure here never leaves access on.
+    if (change === "block") {
+      const { data: moved, error: moveErr } = await (context.supabase as any)
+        .rpc("release_staff_to_open_shifts", { _employee: data.id });
+      if (moveErr) moveError = moveErr.message;
+      else movedToOpen = Number(moved ?? 0);
+    }
+    return { ok: true, sign_in_updated: signInUpdated, moved_to_open: movedToOpen, move_error: moveError };
   });
 
 /** Owner-only: private job details (start date, role, pay rate, address). */
@@ -1054,4 +1065,20 @@ export const setEmployeePermissions = createServerFn({ method: "POST" })
       );
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+/** Owner/manager: how many upcoming cleanings a person is on (shown before archiving). */
+export const countUpcomingCleanings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { data: links, error } = await sb.from("job_employees").select("job_id").eq("employee_id", data.id);
+    if (error) throw new Error(error.message);
+    const ids = (links ?? []).map((l: any) => l.job_id);
+    if (!ids.length) return { count: 0 };
+    const { count, error: cErr } = await sb.from("jobs").select("id", { count: "exact", head: true })
+      .in("id", ids).eq("status", "scheduled").gt("scheduled_start", new Date().toISOString());
+    if (cErr) throw new Error(cErr.message);
+    return { count: count ?? 0 };
   });

@@ -21,26 +21,29 @@ export const claimOpenShift = createServerFn({ method: "POST" })
     z.object({ job_id: z.string().uuid(), employee_id: z.string().uuid().optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const tenantId = await tenantOf(context);
-    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
-    const employeeId = data.employee_id ?? context.userId;
-    if (!isMgr && employeeId !== context.userId) throw new Error("You can only pick up shifts for yourself");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: job } = await supabaseAdmin
-      .from("jobs").select("id, tenant_id, assigned_to, status").eq("id", data.job_id).maybeSingle();
-    if (!job || job.tenant_id !== tenantId) throw new Error("Shift not found");
-    const { count } = await supabaseAdmin
-      .from("job_employees").select("job_id", { count: "exact", head: true }).eq("job_id", data.job_id);
-    if (job.assigned_to || (count ?? 0) > 0) throw new Error("Someone already has this shift");
-    const { data: emp } = await supabaseAdmin
-      .from("profiles").select("tenant_id").eq("id", employeeId).maybeSingle();
-    if (!emp || emp.tenant_id !== tenantId) throw new Error("Employee not found");
-
-    const { error: je } = await supabaseAdmin.from("job_employees").insert({ job_id: data.job_id, employee_id: employeeId, tenant_id: tenantId });
-    if (je) throw new Error(je.message);
-    const { error } = await supabaseAdmin.from("jobs").update({ assigned_to: employeeId }).eq("id", data.job_id);
+    // One locked database step: checks permission, visibility and that a spot
+    // is still free, so two people can never take the same spot.
+    const { error } = await (context.supabase as any).rpc("claim_open_shift", {
+      _job: data.job_id,
+      _employee: data.employee_id ?? context.userId,
+    });
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Owner/manager: close an open spot nobody needs to fill. */
+export const closeOpenSpot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ job_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isMgr) throw new Error("Only owners and managers can change open spots");
+    const sb = context.supabase as any;
+    const { data: job, error } = await sb.from("jobs").select("open_spots").eq("id", data.job_id).maybeSingle();
+    if (error || !job) throw new Error("Cleaning not found");
+    const { error: upErr } = await sb.from("jobs")
+      .update({ open_spots: Math.max(0, (job.open_spots ?? 0) - 1) }).eq("id", data.job_id);
+    if (upErr) throw new Error(upErr.message);
     return { ok: true };
   });
 

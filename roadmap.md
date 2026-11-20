@@ -129,3 +129,6 @@
 
 - [x] Archiving a team member now actually ends their access: their sign-in account is blocked (no password, one-tap link or token refresh), their invite is marked revoked, and Restore re-enables them. Owners can't be locked out; roster-only people with no sign-in account archive cleanly. Every navigation re-checks active status and signs an archived person out.
 - [x] Five staff-access unit tests pass (319 total); build OK. Signed in as Zoe: archived a throwaway roster-only employee (no error, moved to Archived, then deleted) and archived Romeo Kheo — his account is now blocked until 2036 and his invite reads revoked. Not exercised: a live sign-in attempt by an archived person. Romeo's 3 published cleanings this week and 26 unpublished Chuckanut dates still carry his name and need reassigning. Preview-only, not published.
+
+- [x] Archiving a cleaner takes them off upcoming not-started cleanings and opens a spot on each (partners stay; publish state kept; no notices). Romeo's 26 Chuckanut dates moved. Open shifts row shows shared open spots with Pick up / Remove spot; claims are locked so one spot = one person. 7 open-shift tests pass; owner schedule view checked.
+- [ ] Real pick-up tap by a cleaner — not tried, so no real staff got assigned or notified.

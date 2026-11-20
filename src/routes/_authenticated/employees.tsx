@@ -21,6 +21,7 @@ import {
   listEmployees, inviteEmployee, updateEmployee, impersonateEmployee, setRole,
   listEmployeePermissions, setEmployeePermissions, myCapabilities, deleteEmployee,
   sendMagicLinkInvite, revokeEmployeeInvite, getEmployeeJobDetails, updateEmployeeJobDetails,
+  countUpcomingCleanings,
 } from "@/lib/entities.functions";
 import { STAFF_APP_URL, inviteResultMessage, type AccessState, type InviteSendStatus } from "@/lib/staff-invite";
 import { AddEmployeeDialog } from "@/components/add-employee-dialog";
@@ -70,6 +71,7 @@ function Employees() {
   const listFn = useServerFn(listEmployees);
   const inviteFn = useServerFn(inviteEmployee);
   const updateFn = useServerFn(updateEmployee);
+  const countUpcomingFn = useServerFn(countUpcomingCleanings);
   const impersonateFn = useServerFn(impersonateEmployee);
   const roleFn = useServerFn(setRole);
   const capsFn = useServerFn(myCapabilities);
@@ -240,15 +242,23 @@ function Employees() {
   };
 
   const deactivate = async (e: Employee) => {
-    if (!confirm(`Archive ${e.full_name ?? e.email}? They keep all their history but can't sign in. You can restore them any time.`)) return;
+    const upcoming = await countUpcomingFn({ data: { id: e.id } }).then((r) => r.count).catch(() => null);
+    const moveNote = upcoming
+      ? `\n\nThey're on ${upcoming} upcoming cleaning${upcoming === 1 ? "" : "s"}. They'll be taken off, and each one goes to Open shifts so someone else can pick it up. Anyone sharing those cleanings stays on.`
+      : "";
+    if (!confirm(`Archive ${e.full_name ?? e.email}? They keep all their history but can't sign in. You can restore them any time.${moveNote}`)) return;
     try {
       const res = await updateFn({ data: { id: e.id, is_active: false } });
+      const moved = res?.moved_to_open ?? 0;
+      const movedText = moved ? ` ${moved} cleaning${moved === 1 ? "" : "s"} moved to Open shifts.` : "";
       if (res?.sign_in_updated === false) {
-        toast.warning("Moved to Archived, but their sign-in wasn't blocked — press Archive again to retry.");
+        toast.warning(`Moved to Archived, but their sign-in wasn't blocked — press Archive again to retry.${movedText}`);
       } else {
-        toast.success("Moved to Archived");
+        toast.success(`Moved to Archived.${movedText}`);
       }
+      if (res?.move_error) toast.error(`Their cleanings could not be moved to Open shifts: ${res.move_error}`);
       qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
     }

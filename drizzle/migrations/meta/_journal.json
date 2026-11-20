@@ -414,6 +414,20 @@
       "when": 1795112038743,
       "tag": "0058_permission_check_allowlist",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795212175353,
+      "tag": "0059_open_spots_for_archived_staff",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795212330763,
+      "tag": "0060_move_archived_staff_cleanings_to_open",
+      "breakpoints": true
     }
   ]
 }
