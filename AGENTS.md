@@ -45,3 +45,4 @@
 - Paste/cross-cleaner drag joins a findPasteTarget match (same client/property/service/day, overlapping) else creates a job. Per-cleaner hours: job_employees times (null=follow job), set only via set_cleaner_hours (pins teammates, job window only grows).
 - Clients learn schedules only via sendClientSchedules (manager click, deduped by client_schedule_sends); triggers never notify clients.
 - Property inventory: lists in property_inventory_items; per-visit values shared by the appointment's cleaners in job_inventory_checks, written only via save_job_inventory (rechecks assignment and item type).
+- Archiving staff must revoke access at the auth layer (ban/unban the account, mark the invite revoked) and re-check profiles.is_active on every navigation; never rely on picker filtering alone, and never block an owner.
