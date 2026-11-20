@@ -194,7 +194,6 @@ function SchedulePage() {
   const [popOffset, setPopOffset] = useState({ x: 0, y: 0 });
   const popDrag = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   useEffect(() => { setPopOffset({ x: 0, y: 0 }); }, [openShiftKey]);
-  const firstNames = useMemo(() => scheduleFirstNames(cleaners), [cleaners]);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
   // "Today" follows the business time zone, not the device clock.
@@ -289,7 +288,7 @@ function SchedulePage() {
 
   // Pop-up quick edits: who works the shift, which client it's for, and which day.
   const fullJob = (j: any) => (jobs as any[]).find((x) => x.id === j.id) ?? j;
-  const cleanerName = (id: string) => cleaners.find((c: any) => c.id === id)?.full_name ?? "This cleaner";
+  const cleanerName = (id: string) => employees.find((c: any) => c.id === id)?.full_name ?? "This cleaner";
   const locationsFn = useServerFn(listScheduleLocations);
   const { data: locations = [] } = useQuery({ queryKey: ["schedule-locations"], queryFn: () => locationsFn(), enabled: canManageSchedule });
   const assigneesFn = useServerFn(updateJobAssignees);
@@ -459,6 +458,16 @@ function SchedulePage() {
     return m;
   }, [jobs, tz]);
 
+  // Archived people are never offered as cleaners, but any week where they
+  // still have cleanings (their past work) keeps their row so history stays visible.
+  const scheduleRows = useMemo(() => {
+    const activeIds = new Set(cleaners.map((c: any) => c.id));
+    const archivedWithWork = employees.filter((e: any) => !activeIds.has(e.id) && jobsByEmpDay.has(e.id));
+    return [...cleaners, ...archivedWithWork];
+  }, [cleaners, employees, jobsByEmpDay]);
+  const isArchivedRow = (id: string) => !cleaners.some((c: any) => c.id === id);
+  const firstNames = useMemo(() => scheduleFirstNames(scheduleRows), [scheduleRows]);
+
   const unavByEmpDay = useMemo(() => {
     const m = new Map<string, Map<string, any[]>>();
     for (const u of unavailability) {
@@ -477,7 +486,7 @@ function SchedulePage() {
       const dayKey = format(d, "yyyy-MM-dd");
       let hours = 0;
       let wages = 0;
-      for (const emp of cleaners) {
+      for (const emp of scheduleRows) {
         const rate = (emp.hourly_rate_cents ?? 0) / 100;
         const list = jobsByEmpDay.get(emp.id)?.get(dayKey) ?? [];
         for (const j of list) {
@@ -488,7 +497,7 @@ function SchedulePage() {
       }
       return { dayKey, hours, wages };
     });
-  }, [days, cleaners, jobsByEmpDay]);
+  }, [days, scheduleRows, jobsByEmpDay]);
 
   const weekTotals = useMemo(
     () =>
@@ -498,7 +507,7 @@ function SchedulePage() {
 
   const empWeekTotals = useMemo(() => {
     const m = new Map<string, { hours: number; wages: number }>();
-    for (const emp of cleaners) {
+    for (const emp of scheduleRows) {
       const rate = (emp.hourly_rate_cents ?? 0) / 100;
       let hours = 0;
       const dm = jobsByEmpDay.get(emp.id);
@@ -506,7 +515,7 @@ function SchedulePage() {
       m.set(emp.id, { hours, wages: hours * rate });
     }
     return m;
-  }, [cleaners, jobsByEmpDay]);
+  }, [scheduleRows, jobsByEmpDay]);
 
   const draftCount = jobs.filter((j: any) => !j.published_at).length;
   const pastOpenIds = jobs
@@ -742,35 +751,36 @@ function SchedulePage() {
             {cleaners.length === 0 && (
               <div className="p-6 text-sm text-muted-foreground">{tr("No employees yet. Add employees to see the schedule grid.")}</div>
             )}
-            {cleaners.map((emp: any) => {
+            {scheduleRows.map((emp: any) => {
               const totals = empWeekTotals.get(emp.id) ?? { hours: 0, wages: 0 };
+              const canReorder = canManageSchedule && !isArchivedRow(emp.id);
               return (
                 <div
                   key={emp.id}
                   className={`schedule-row grid w-full border-t border-border/60 ${memberDrag?.id === emp.id ? (memberDrag?.place === "before" ? "!border-t-2 !border-t-brand" : "border-b-2 border-b-brand") : ""}`}
-                  onDragOver={canManageSchedule ? (e) => {
+                  onDragOver={canReorder ? (e) => {
                     if (!e.dataTransfer.types.includes("application/x-atlas-member")) return;
                     e.preventDefault();
                     const place = memberDropPlace(e);
                     if (memberDrag?.id !== emp.id || memberDrag?.place !== place) setMemberDrag({ id: emp.id, place });
                   } : undefined}
-                  onDragLeave={canManageSchedule ? (e) => {
+                  onDragLeave={canReorder ? (e) => {
                     if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) setMemberDrag((m) => (m?.id === emp.id ? null : m));
                   } : undefined}
-                  onDrop={canManageSchedule ? (e) => onMemberDrop(e, emp.id) : undefined}
+                  onDrop={canReorder ? (e) => onMemberDrop(e, emp.id) : undefined}
                 >
                   <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                     {!compactNames && (
                       <div
-                        draggable={canManageSchedule}
-                        onDragStart={canManageSchedule ? (e) => {
+                        draggable={canReorder}
+                        onDragStart={canReorder ? (e) => {
                           e.dataTransfer.setData("application/x-atlas-member", emp.id);
                           e.dataTransfer.effectAllowed = "move";
                         } : undefined}
                         onDragEnd={() => setMemberDrag(null)}
-                        title={canManageSchedule ? "Drag to move this person up or down" : undefined}
-                        aria-label={canManageSchedule ? `Move ${emp.full_name ?? "team member"}` : undefined}
-                        className={`size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0 ${canManageSchedule ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-brand/40" : ""}`}
+                        title={canReorder ? "Drag to move this person up or down" : undefined}
+                        aria-label={canReorder ? `Move ${emp.full_name ?? "team member"}` : undefined}
+                        className={`size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0 ${canReorder ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-brand/40" : ""}`}
                       >
                         {initials(emp.full_name)}
                       </div>
@@ -971,6 +981,9 @@ function SchedulePage() {
                                               }}
                                               className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-[11px]"
                                             >
+                                              {isArchivedRow(emp.id) && (
+                                                <option value={emp.id}>{emp.full_name ?? emp.email} (archived)</option>
+                                              )}
                                               {cleaners.map((c: any) => {
                                                 const onIt = c.id !== emp.id && (j.assignees ?? []).some((a: any) => a.id === c.id);
                                                 return (
