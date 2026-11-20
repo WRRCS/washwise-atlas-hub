@@ -67,8 +67,8 @@
      desktop admin tracks remove day minimums and divide the actual container width. */
   --week-columns: minmax(150px, 1.4fr) repeat(7, minmax(180px, 1fr));
   --week-min-width: 1480px;
-  --admin-week-columns: minmax(140px, 160px) repeat(7, minmax(100px, 1fr));
-  --admin-week-min-width: 860px;
+  --admin-week-columns: minmax(132px, 148px) repeat(7, minmax(116px, 1fr));
+  --admin-week-min-width: 944px;
   --schedule-ink: #000000;
   --schedule-paper: #ffffff;
   --radius: 0.75rem;

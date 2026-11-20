@@ -11,9 +11,10 @@ export function ScheduleAppointmentDetails({ job, tz, compact = false, brief = f
   const location = jobLocation(job);
   const t = useT();
   if (brief) return <div className="schedule-details schedule-brief min-w-0 text-[15px] leading-tight">
-    <p className="schedule-time flex items-center gap-1 font-semibold tabular-nums whitespace-nowrap overflow-hidden">
-      {icons}
-      <span className="truncate">{fmtTimeTZ(job.scheduled_start, tz)}–{fmtTimeTZ(job.scheduled_end, tz)}</span>
+    <p className="schedule-time flex flex-wrap items-center font-semibold tabular-nums">
+      {icons && <span className="mr-1 inline-flex items-center gap-1">{icons}</span>}
+      <span className="whitespace-nowrap">{fmtTimeTZ(job.scheduled_start, tz)}–</span>
+      <span className="whitespace-nowrap">{fmtTimeTZ(job.scheduled_end, tz)}</span>
     </p>
     {location.label && <p className="schedule-location font-semibold line-clamp-2 [overflow-wrap:anywhere]">{location.label}</p>}
     {!location.address && <p className="schedule-address font-medium">{t("Location needs review")}</p>}

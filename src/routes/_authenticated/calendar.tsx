@@ -679,7 +679,7 @@ function SchedulePage() {
             <div className="schedule-row schedule-head grid w-full">
               <div className="sticky left-0 z-20 px-2 py-1.5 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
-                <Users className="size-4 shrink-0" /> {compactNames ? <span className="truncate">{cleaners.length}</span> : <>{tr("Team members")} ({cleaners.length})</>}
+                <Users className="size-4 shrink-0" /> {compactNames ? <span className="truncate">{cleaners.length}</span> : <span className="text-xs whitespace-nowrap truncate">{tr("Team members")} ({cleaners.length})</span>}
               </div>
               {days.map((d) => {
                 const today = format(d, "yyyy-MM-dd") === todayKeyTZ;
@@ -808,7 +808,7 @@ function SchedulePage() {
                         key={dayKey}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => onDropOnCell(e, emp.id, d)}
-                        className={`schedule-cell group/cell relative min-w-0 border-l border-border/60 p-1 space-y-1 transition-colors ${compactNames ? "min-h-[100px]" : "min-h-[48px]"} ${canManageSchedule && (shifts.length > 0 || unavs.length > 0) ? "pb-5" : ""} ${today ? (flashToday ? "bg-brand/10" : "bg-brand/[0.02]") : ""}`}
+                        className={`schedule-cell group/cell relative min-w-0 border-l border-border/60 p-1 space-y-1 transition-colors ${compactNames ? "min-h-[100px]" : "min-h-[48px]"} ${canManageSchedule && (shifts.length > 0 || unavs.length > 0) ? "pb-4" : ""} ${today ? (flashToday ? "bg-brand/10" : "bg-brand/[0.02]") : ""}`}
                       >
                         {unavs.map((u: any) => (
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
@@ -1132,7 +1132,7 @@ function SchedulePage() {
                             className={
                               shifts.length === 0 && unavs.length === 0
                                 ? "schedule-add-empty w-full h-full min-h-[40px] opacity-0 hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 grid place-items-center text-muted-foreground text-lg"
-                                : "absolute inset-x-1 bottom-0.5 h-4 rounded grid place-items-center text-muted-foreground opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 hover:bg-brand/10 hover:text-brand transition"
+                                : "absolute inset-x-1 bottom-0 h-4 rounded grid place-items-center text-muted-foreground opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 hover:bg-brand/10 hover:text-brand transition"
                             }
                           >
                             <Plus className="size-3.5" />
