@@ -316,6 +316,7 @@ const UK: Record<string, string> = {
   "Open": "Відкрити",
   "Open job": "Відкрити роботу",
   "Open shifts": "Вільні зміни",
+  "Overlaps another shift": "Накладається на іншу зміну",
   "Other": "Інше",
   "Pacific time": "тихоокеанський час",
   "Paid": "Виплачено",

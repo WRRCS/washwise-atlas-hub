@@ -1,15 +1,26 @@
+import type { ReactNode } from "react";
 import { jobLocation } from "@/lib/job-location";
 import { fmtTimeTZ } from "@/lib/tz";
 import { useT } from "@/lib/i18n";
 
 type Appointment = Parameters<typeof jobLocation>[0] & { scheduled_start: string; scheduled_end: string };
 
-/** Keep essential details shared between compact roster cells and appointment lists. */
-export function ScheduleAppointmentDetails({ job, tz, compact = false }: { job: Appointment; tz: string; compact?: boolean }) {
+/** Keep essential details shared between compact roster cells and appointment lists.
+ *  `brief` (manager week grid) shows only time + place name; the full address lives in the tooltip and the opened appointment. */
+export function ScheduleAppointmentDetails({ job, tz, compact = false, brief = false, icons }: { job: Appointment; tz: string; compact?: boolean; brief?: boolean; icons?: ReactNode }) {
   const location = jobLocation(job);
   const t = useT();
+  if (brief) return <div className="schedule-details schedule-brief min-w-0 text-[15px] leading-tight">
+    <p className="schedule-time flex items-center gap-1 font-semibold tabular-nums whitespace-nowrap overflow-hidden">
+      {icons}
+      <span className="truncate">{fmtTimeTZ(job.scheduled_start, tz)}–{fmtTimeTZ(job.scheduled_end, tz)}</span>
+    </p>
+    {location.label && <p className="schedule-location font-semibold line-clamp-2 [overflow-wrap:anywhere]">{location.label}</p>}
+    {!location.address && <p className="schedule-address font-medium">{t("Location needs review")}</p>}
+  </div>;
   return <div className={`schedule-details space-y-1 ${compact ? "text-[15px]" : "text-[16px]"} leading-snug`}>
-    <p className="schedule-time flex flex-wrap gap-x-1 font-semibold tabular-nums">
+    <p className="schedule-time flex flex-wrap items-center gap-x-1 font-semibold tabular-nums">
+      {icons}
       <span className="whitespace-nowrap">{fmtTimeTZ(job.scheduled_start, tz)}</span>
       <span aria-hidden="true">–</span>
       <span className="whitespace-nowrap">{fmtTimeTZ(job.scheduled_end, tz)}</span>

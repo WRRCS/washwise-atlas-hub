@@ -586,6 +586,7 @@ function SchedulePage() {
     <>
       {cancelTextDialog}
       <PageHeader
+        dense
         title={tr("Schedule")}
         subtitleClassName="font-bold text-foreground"
         subtitle={`${format(anchor, dateLocaleOpts() ? "d MMM" : "MMM d", dateLocaleOpts())} — ${format(addDays(anchor, 6), dateLocaleOpts() ? "d MMM yyyy" : "MMM d, yyyy", dateLocaleOpts())}`}
@@ -672,20 +673,20 @@ function SchedulePage() {
         </div>
       )}
       {view === "grid" ? (
-        <div className="w-full px-4 md:px-6 py-4">
+        <div className="w-full px-2 md:px-3 py-2">
           <ZoomPanSurface scrollClassName={`schedule-scroll ${compactNames ? "schedule-compact-names" : ""}`}>
             {/* Header row */}
             <div className="schedule-row schedule-head grid w-full">
-              <div className="sticky left-0 z-20 px-2 py-2 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
+              <div className="sticky left-0 z-20 px-2 py-1.5 text-sm font-semibold text-muted-foreground border-b border-border/60 bg-clay-50 flex items-center gap-1.5">
 
                 <Users className="size-4 shrink-0" /> {compactNames ? <span className="truncate">{cleaners.length}</span> : <>{tr("Team members")} ({cleaners.length})</>}
               </div>
               {days.map((d) => {
                 const today = format(d, "yyyy-MM-dd") === todayKeyTZ;
                 return (
-                  <div key={d.toISOString()} data-schedule-today={today ? "" : undefined} aria-current={today ? "date" : undefined} className={`min-w-0 px-1 py-2 text-center border-b border-l border-border/60 transition-shadow ${today ? "bg-brand/5" : "bg-clay-50"} ${today && flashToday ? "ring-2 ring-inset ring-brand" : ""}`}>
-                    <p className={`text-[9px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE", dateLocaleOpts())}</p>
-                    <p className={`text-base font-semibold ${today ? "text-brand" : ""}`}>{format(d, "d")}</p>
+                  <div key={d.toISOString()} data-schedule-today={today ? "" : undefined} aria-current={today ? "date" : undefined} className={`min-w-0 px-1 py-1.5 flex items-baseline justify-center gap-1.5 border-b border-l border-border/60 transition-shadow ${today ? "bg-brand/5" : "bg-clay-50"} ${today && flashToday ? "ring-2 ring-inset ring-brand" : ""}`}>
+                    <span className={`text-[11px] uppercase ${today ? "text-brand font-semibold" : "text-muted-foreground"}`}>{format(d, "EEE", dateLocaleOpts())}</span>
+                    <span className={`text-base font-semibold leading-none ${today ? "text-brand" : ""}`}>{format(d, "d")}</span>
                   </div>
                 );
               })}
@@ -693,10 +694,10 @@ function SchedulePage() {
 
             {/* Open shifts row — jobs nobody is assigned to yet */}
             <div className="schedule-row grid w-full border-t border-border/60 bg-accent/10">
-              <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
-                {!compactNames && <div className="size-9 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>}
+              <div className="sticky left-0 z-10 min-w-0 px-2 py-1 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
+                {!compactNames && <div className="size-7 rounded-full bg-accent/30 grid place-items-center shrink-0"><Clock className="size-3.5" /></div>}
                 <div className="min-w-0">
-                  <p className={`schedule-employee font-medium ${compactNames ? "text-sm break-words" : "text-base truncate"}`}>{tr("Open shifts")}</p>
+                  <p className="schedule-employee font-medium text-sm break-words">{tr("Open shifts")}</p>
                   {!compactNames && <p className="text-xs text-muted-foreground truncate">{tr(canManageSchedule ? "Drag onto a person" : "Tap to pick up")}</p>}
                 </div>
               </div>
@@ -704,18 +705,19 @@ function SchedulePage() {
                 const dayKey = format(d, "yyyy-MM-dd");
                 const open = openByDay.get(dayKey) ?? [];
                 return (
-                  <div key={dayKey} className="min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[44px]">
+                  <div key={dayKey} className="min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[36px]">
                     {open.map((j: any) => (
                       <div
                         key={j.id}
                         draggable={canManageSchedule}
                         onDragStart={(e) => e.dataTransfer.setData("application/x-atlas-shift", JSON.stringify({ id: j.id, srcDayKey: dayKey, open: true, startISO: j.scheduled_start, endISO: j.scheduled_end }))}
-                        className="rounded-md border border-dashed border-border bg-card text-card-foreground px-2 py-2 text-xs leading-snug"
+                        className={`schedule-card rounded-md border border-dashed border-border bg-card text-card-foreground text-xs leading-snug ${compactNames ? "px-2 py-2" : "px-1.5 py-1"}`}
+                        title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}`}
                       >
-                        <ScheduleAppointmentDetails job={j} tz={tz} compact />
-                        <p className="mt-1 text-xs text-muted-foreground break-words">{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || tr("Job")}</p>
+                        <ScheduleAppointmentDetails job={j} tz={tz} compact brief={!compactNames} />
+                        {(compactNames || !jobLocation(j).label) && <p className={compactNames ? "mt-1 text-xs text-muted-foreground break-words" : "text-xs text-muted-foreground line-clamp-1 break-words"}>{[j.client?.first_name, j.client?.last_name].filter(Boolean).join(" ") || tr("Job")}</p>}
                         {(j.assignees?.length ?? 0) > 0 && (
-                          <p className="mt-1 text-xs font-medium break-words">
+                          <p className={`${compactNames ? "mt-1" : "mt-0.5"} text-xs font-medium break-words`}>
                             {openSpotsLeft(j) === 1 ? tr("1 open spot") : `${openSpotsLeft(j)} ${tr("open spots")}`}
                             <span className="font-normal text-muted-foreground"> · {tr("with")} {j.assignees.map((a: any) => (canManageSchedule ? a.full_name : firstNames.get(a.id) ?? a.full_name?.split(" ")[0]) ?? tr("Team member")).join(", ")}</span>
                           </p>
@@ -729,7 +731,7 @@ function SchedulePage() {
                             >{tr("Pick up")}</button>
                           ) : null
                         ) : (
-                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
                             <button className="text-brand underline" onClick={() => setOpenJob({ jobId: j.id })}>{tr("Open")}</button>
                             {(j.assignees?.length ?? 0) > 0 && (
                               <button
@@ -769,7 +771,7 @@ function SchedulePage() {
                   } : undefined}
                   onDrop={canReorder ? (e) => onMemberDrop(e, emp.id) : undefined}
                 >
-                  <div className="sticky left-0 z-10 min-w-0 px-2 py-2 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
+                  <div className="sticky left-0 z-10 min-w-0 px-2 py-1 flex items-center gap-1.5 bg-clay-50 border-r border-border/60">
                     {!compactNames && (
                       <div
                         draggable={canReorder}
@@ -780,13 +782,13 @@ function SchedulePage() {
                         onDragEnd={() => setMemberDrag(null)}
                         title={canReorder ? "Drag to move this person up or down" : undefined}
                         aria-label={canReorder ? `Move ${emp.full_name ?? "team member"}` : undefined}
-                        className={`size-9 rounded-full bg-brand/15 text-brand grid place-items-center text-xs font-semibold shrink-0 ${canReorder ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-brand/40" : ""}`}
+                        className={`size-7 rounded-full bg-brand/15 text-brand grid place-items-center text-[11px] font-semibold shrink-0 ${canReorder ? "cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-brand/40" : ""}`}
                       >
                         {initials(emp.full_name)}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className={`schedule-employee font-medium ${compactNames ? "text-sm break-words" : "text-base truncate"}`} title={emp.full_name ?? undefined}>
+                      <p className="schedule-employee font-medium text-sm break-words leading-tight" title={emp.full_name ?? undefined}>
                         {compactNames ? firstNames.get(emp.id) : emp.full_name ?? emp.email}
                       </p>
                       {canSeeScheduleHours(hoursViewer, emp.id) && (
@@ -806,7 +808,7 @@ function SchedulePage() {
                         key={dayKey}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => onDropOnCell(e, emp.id, d)}
-                        className={`schedule-cell min-w-0 border-l border-border/60 p-1 space-y-1 min-h-[100px] transition-colors ${today ? (flashToday ? "bg-brand/10" : "bg-brand/[0.02]") : ""}`}
+                        className={`schedule-cell group/cell relative min-w-0 border-l border-border/60 p-1 space-y-1 transition-colors ${compactNames ? "min-h-[100px]" : "min-h-[48px]"} ${canManageSchedule && (shifts.length > 0 || unavs.length > 0) ? "pb-5" : ""} ${today ? (flashToday ? "bg-brand/10" : "bg-brand/[0.02]") : ""}`}
                       >
                         {unavs.map((u: any) => (
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
@@ -833,21 +835,23 @@ function SchedulePage() {
                             const s = new Date(j.scheduled_start).getTime();
                             const e = new Date(j.scheduled_end).getTime();
                             const conflict = shifts.some((k: any) => k.id !== j.id && new Date(k.scheduled_start).getTime() < e && new Date(k.scheduled_end).getTime() > s);
+                            const statusIcons = j.status === "completed" || conflict ? (
+                              <>
+                                {j.status === "completed" && <CheckCircle2 aria-label={tr("Completed")} className="size-3.5 shrink-0" />}
+                                {conflict && <AlertTriangle aria-label={tr("Overlaps another shift")} className="size-3 shrink-0" />}
+                              </>
+                            ) : null;
                             const cardBody = (
                               <>
-                                <div className="flex items-center gap-1 font-semibold">
-                                  {j.status === "completed" && <CheckCircle2 aria-label={tr("Completed")} className="size-3.5 shrink-0" />}
-                                  {conflict && <AlertTriangle className="size-3 shrink-0" />}
-                                </div>
-                                <ScheduleAppointmentDetails job={j} tz={tz} compact />
-                                {!jobLocation(j).label && <p className="mt-1 text-xs font-medium break-words">{label}</p>}
+                                <ScheduleAppointmentDetails job={j} tz={tz} compact brief={!compactNames} icons={statusIcons} />
+                                {!jobLocation(j).label && <p className={compactNames ? "mt-1 text-xs font-medium break-words" : "schedule-location font-semibold line-clamp-2 break-words leading-tight"}>{label}</p>}
                               </>
                             );
                             if (!canManageSchedule && !canOpen(j, emp.id)) {
                               return (
                                 <div
                                   key={j.id}
-                                  className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
+                                  className={`schedule-card w-full h-auto text-left block rounded-md text-xs leading-snug ${compactNames ? "px-2 py-2" : "px-1.5 py-1"} ${scheduleColorText(c)} ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                   style={{ backgroundColor: c }}
                                   title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? ` (${tr("draft")})` : ""}`}
                                 >
@@ -861,7 +865,7 @@ function SchedulePage() {
                                   key={j.id}
                                   type="button"
                                   onClick={() => setOpenJob({ jobId: j.id, employeeId: emp.id })}
-                                  className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
+                                  className={`schedule-card w-full h-auto text-left block rounded-md text-xs leading-snug ${compactNames ? "px-2 py-2" : "px-1.5 py-1"} ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                   style={{ backgroundColor: c }}
                                   title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? ` (${tr("draft")})` : ""}`}
                                 >
@@ -882,7 +886,7 @@ function SchedulePage() {
                                       );
                                       ev.dataTransfer.effectAllowed = "move";
                                     }}
-                                    className={`schedule-card w-full h-auto text-left block rounded-md px-2 py-2 text-xs leading-snug ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
+                                    className={`schedule-card w-full h-auto text-left block rounded-md text-xs leading-snug ${compactNames ? "px-2 py-2" : "px-1.5 py-1"} ${scheduleColorText(c)} cursor-pointer hover:opacity-95 transition ${draft ? "ring-2 ring-dashed ring-border" : ""}`}
                                     style={{ backgroundColor: c }}
                                     title={`${fmtTimeTZ(j.scheduled_start, tz)}-${fmtTimeTZ(j.scheduled_end, tz)} — ${jobLocation(j).display}${jobLocation(j).label ? "" : ` — ${label}`}${draft ? ` (${tr("draft")})` : ""}`}
                                   >
@@ -1124,13 +1128,14 @@ function SchedulePage() {
                            <button
                              onClick={() => setDialogSeed({ date: d, employeeId: emp.id })}
                             title={`Add a shift for ${emp.full_name ?? "this team member"}`}
+                            aria-label={`Add a shift for ${emp.full_name ?? "this team member"}`}
                             className={
                               shifts.length === 0 && unavs.length === 0
-                                ? "schedule-add-empty w-full h-full min-h-[100px] opacity-0 hover:opacity-100 grid place-items-center text-muted-foreground text-xs"
-                                : "w-full rounded-md border border-dashed border-border/70 text-muted-foreground text-[10px] py-1 opacity-60 hover:opacity-100 hover:border-brand hover:text-brand transition"
+                                ? "schedule-add-empty w-full h-full min-h-[40px] opacity-0 hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 grid place-items-center text-muted-foreground text-lg"
+                                : "absolute inset-x-1 bottom-0.5 h-4 rounded grid place-items-center text-muted-foreground opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 hover:bg-brand/10 hover:text-brand transition"
                             }
                           >
-                            + Add shift
+                            <Plus className="size-3.5" />
                           </button>
                         )}
                       </div>

@@ -336,7 +336,19 @@ function AppShellInner({ children }: { children: ReactNode }) {
   );
 }
 
-export function PageHeader({ title, subtitle, subtitleClassName, action, back }: { title: string; subtitle?: string; subtitleClassName?: string; action?: ReactNode; back?: () => void }) {
+export function PageHeader({ title, subtitle, subtitleClassName, action, back, dense }: { title: string; subtitle?: string; subtitleClassName?: string; action?: ReactNode; back?: () => void; dense?: boolean }) {
+  // Dense: full-width single toolbar row for data-heavy screens (Schedule) so the content gets the height.
+  if (dense) return (
+    <header className="bg-clay-50 border-b border-border/60 sticky top-0 z-10 backdrop-blur">
+      <div className="px-3 md:px-4 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="min-w-0 flex items-baseline gap-x-3 flex-wrap">
+          <h1 className="text-xl font-medium tracking-tight">{title}</h1>
+          {subtitle && <p className={`text-sm ${subtitleClassName ?? "text-muted-foreground"}`}>{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+    </header>
+  );
   return (
     <header className="bg-clay-50 border-b border-border/60 sticky top-0 z-10 backdrop-blur">
       {back && (
