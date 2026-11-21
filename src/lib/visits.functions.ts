@@ -230,10 +230,13 @@ export type DailyTimesheet = {
   clockRecords: (ClockRecord & {employee_id: string})[];
 };
 
+const isoInstant = z.string().max(40).refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date").transform((v) => new Date(v).toISOString());
+
 /** One row per cleaner per job for a single day: scheduled vs. actual arrive/leave, plus drive time between jobs. */
 export const listDailyTimesheet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ from: z.string(), to: z.string() }).parse(input))
+  // Dates are re-serialized as plain ISO timestamps so they can never change the query filter.
+  .inputValidator((input: unknown) => z.object({ from: isoInstant, to: isoInstant }).parse(input))
   .handler(async ({ data, context }): Promise<DailyTimesheet> => {
     const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
     const sb = context.supabase as any;

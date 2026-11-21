@@ -169,7 +169,8 @@ async function composeInvoiceEmail(supabase: any, invoiceId: string, toEmail?: s
 
     // Card-payment link: the app's own public pay page for this invoice.
     const { getAppOrigin } = await import("@/lib/app-url.server");
-    const payLink = invoicePayUrl(getAppOrigin(), inv.id);
+    const { data: tokenRow } = await (supabase as any).from("invoices").select("pay_token").eq("id", inv.id).maybeSingle();
+    const payLink = invoicePayUrl(getAppOrigin(), inv.id, (tokenRow?.pay_token as string | undefined) ?? null);
 
     // Recipient: the address typed in the Send box, else the client's saved email.
     let to = toEmail ?? null;
@@ -273,8 +274,21 @@ export const sendInvoice = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), to_email: z.string().trim().email().max(255).optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager" as never);
+    if (!isMgr) throw new Error("Only owners and managers can send invoices.");
     const { to, subject, html, text, invoiceId } = await composeInvoiceEmail(context.supabase, data.id, data.to_email);
     if (!to) throw new Error("Enter an email address to send this invoice to.");
+    // Invoices go only to an address saved on the invoice's client (main or secondary email).
+    {
+      const { data: invRow } = await context.supabase.from("invoices").select("client_id, tenant_id").eq("id", data.id).maybeSingle();
+      if (!invRow?.client_id) throw new Error("Add a client to this invoice before sending it.");
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: cl } = await (supabaseAdmin as any)
+        .from("clients").select("email, secondary_email").eq("id", invRow.client_id).eq("tenant_id", invRow.tenant_id).maybeSingle();
+      const allowed = [cl?.email, cl?.secondary_email].filter(Boolean).map((e: string) => e.trim().toLowerCase());
+      if (!allowed.includes(to.trim().toLowerCase()))
+        throw new Error("Invoices can only be sent to the client's saved email. Update the client's email first to use a different address.");
+    }
 
     const { sendLovableEmail } = await import("@lovable.dev/email-js");
     const result: any = await sendLovableEmail(

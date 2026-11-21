@@ -14,8 +14,8 @@ export function normalizeAppOrigin(raw: string | null | undefined): string {
   return /^https?:\/\/[^/\s]+$/.test(value) ? value : "";
 }
 
-/** Public card-payment page for one invoice. */
-export function invoicePayUrl(origin: string | null | undefined, invoiceId: string): string {
+/** Public card-payment page for one invoice; the private code is what lets a client open it. */
+export function invoicePayUrl(origin: string | null | undefined, invoiceId: string, payToken?: string | null): string {
   const base = normalizeAppOrigin(origin) || FALLBACK_APP_ORIGIN;
-  return `${base}/pay/${invoiceId}`;
+  return `${base}/pay/${invoiceId}${payToken ? `?k=${encodeURIComponent(payToken)}` : ""}`;
 }

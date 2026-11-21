@@ -33,4 +33,8 @@ describe("invoice card-payment link", () => {
     expect(normalizeAppOrigin("not a url")).toBe("");
     expect(normalizeAppOrigin(null)).toBe("");
   });
+
+  it("adds the invoice's private code to the link", () => {
+    expect(invoicePayUrl("https://wrrcs.com", INVOICE_ID, "abc123")).toBe(`https://wrrcs.com/pay/${INVOICE_ID}?k=abc123`);
+  });
 });

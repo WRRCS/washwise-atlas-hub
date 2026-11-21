@@ -1,3 +1,4 @@
+import { isAppUrl } from "@/lib/app-origin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -351,7 +352,9 @@ export const sendTestLeadWebhook = createServerFn({ method: "POST" })
     if (!token) throw new Error("Generate the webhook URL first.");
     if (!integ?.is_connected) throw new Error("Enable the GoDaddy integration first.");
 
-    const url = `${data.origin}/api/public/hooks/lead/${tenantId}?token=${token}`;
+    // Only ever post to this app's own lead endpoint — never a caller-chosen server.
+    if (!isAppUrl(data.origin)) throw new Error("Invalid origin");
+    const url = `${new URL(data.origin).origin}/api/public/hooks/lead/${tenantId}?token=${encodeURIComponent(token)}`;
     const resp = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },

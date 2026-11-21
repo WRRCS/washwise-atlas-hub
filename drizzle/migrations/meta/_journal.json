@@ -428,6 +428,20 @@
       "when": 1795212330763,
       "tag": "0060_move_archived_staff_cleanings_to_open",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1795224979640,
+      "tag": "0061_security_hardening_portal_billing_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795225047707,
+      "tag": "0062_security_hardening_apply",
+      "breakpoints": true
     }
   ]
 }

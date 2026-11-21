@@ -1,3 +1,4 @@
+import { csvCell } from "@/lib/csv";
 import { useT, translateNow as tn, activeLocales, dateLocaleOpts } from "@/lib/i18n";
 import { TimesheetCorrectionDialog } from "@/components/timesheet-correction-dialog";
 import { DeleteLineConfirm, TimesheetLineDialog } from "@/components/timesheet-line-dialog";
@@ -96,11 +97,11 @@ function TimesheetPage() {
         r.employee_name, r.client, r.property ?? "", time(r.scheduled_start), time(r.scheduled_end),
         time(r.arrived_at), time(r.left_at), r.arrived_at ? shortDur(mins(r.arrived_at, r.left_at)) : "",
         shortDur(r.drive_min), issueOf(r) ?? "",
-      ].map((v) => `"${v}"`).join(","));
+      ].map(csvCell).join(","));
     }
     lines.push("", "Employee,Record,Start,End,Paid minutes,Unpaid lunch minutes,Description");
-    for (const e of entries) lines.push([e.employee_name,"Paid work",e.started_at,e.ended_at ?? "",dailyIntervalMinutes(e, { from, to }),0,""].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
-    for (const e of q.data?.clockRecords ?? []) if(e.kind === "lunch") lines.push([e.employee_name,"Unpaid lunch",e.started_at,e.ended_at ?? "",0,dailyIntervalMinutes(e, { from, to }),e.description].map(v=>`"${String(v).replaceAll('"','""')}"`).join(","));
+    for (const e of entries) lines.push([e.employee_name,"Paid work",e.started_at,e.ended_at ?? "",dailyIntervalMinutes(e, { from, to }),0,""].map(csvCell).join(","));
+    for (const e of q.data?.clockRecords ?? []) if(e.kind === "lunch") lines.push([e.employee_name,"Unpaid lunch",e.started_at,e.ended_at ?? "",0,dailyIntervalMinutes(e, { from, to }),e.description].map(csvCell).join(","));
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
     a.download = `timesheet-${format(day, "yyyy-MM-dd")}.csv`;
@@ -402,11 +403,11 @@ function WeekView({ day, who, isMgr, picker, time, onBack, onPickDay, setDay }: 
         const row = [g.name, format(days[l.dayIndex], "EEE MM/dd"), l.other ? "Drive / other work" : `${l.client}${l.property ? ` · ${l.property}` : ""}`,
           g.rateCents ? (g.rateCents / 100).toFixed(2) : "", lineTime(l), hours2(l.scheduledMin), hours2(l.paidMin)];
         if (rates) row.push(l.cents != null ? (l.cents / 100).toFixed(2) : "");
-        lines.push(row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(","));
+        lines.push(row.map(csvCell).join(","));
       }
       const tot = [g.name, "Total", "", "", cardText(g.timeCards), hours2(g.scheduledMin), hours2(g.paidMin)];
       if (rates) tot.push(g.cents != null ? (g.cents / 100).toFixed(2) : "");
-      lines.push(tot.map((v) => `"${v}"`).join(","));
+      lines.push(tot.map(csvCell).join(","));
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));

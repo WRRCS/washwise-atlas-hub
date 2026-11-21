@@ -10,8 +10,9 @@ import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { formatDate, formatPhone } from "@/lib/invoice-email";
 
 export const Route = createFileRoute("/pay/$invoiceId")({
-  validateSearch: (search: Record<string, unknown>): { preview?: boolean } => ({
+  validateSearch: (search: Record<string, unknown>): { preview?: boolean; k?: string } => ({
     preview: search.preview === true || search.preview === 1 || search.preview === "1" ? true : undefined,
+    k: typeof search.k === "string" && search.k ? search.k : undefined,
   }),
   component: PayInvoicePage,
   ssr: false,
@@ -32,21 +33,22 @@ function money(cents: number, currency = "usd") {
 
 function PayInvoicePage() {
   const { invoiceId } = Route.useParams();
-  const { preview } = Route.useSearch();
+  const { preview, k } = Route.useSearch();
   const getFn = useServerFn(getPublicInvoice);
   const previewFn = useServerFn(previewPublicInvoice);
   const createFn = useServerFn(createInvoiceCheckout);
   const [confirmed, setConfirmed] = useState(false);
 
   const { data: inv, isLoading } = useQuery({
-    queryKey: ["public-invoice", invoiceId, !!preview],
-    queryFn: () => (preview ? previewFn : getFn)({ data: { id: invoiceId } }),
+    queryKey: ["public-invoice", invoiceId, !!preview, k ?? ""],
+    queryFn: () => (preview ? previewFn({ data: { id: invoiceId } }) : getFn({ data: { id: invoiceId, k: k ?? "" } })),
   });
 
   const fetchClientSecret = useCallback(async (): Promise<string> => {
     const result = await createFn({
       data: {
         invoice_id: invoiceId,
+        k: k ?? "",
         return_url: `${window.location.origin}/pay/return`,
         environment: getStripeEnvironment(),
       },
@@ -54,7 +56,7 @@ function PayInvoicePage() {
     if ("error" in result) throw new Error(result.error);
     if (!result.clientSecret) throw new Error("Could not start checkout");
     return result.clientSecret;
-  }, [createFn, invoiceId]);
+  }, [createFn, invoiceId, k]);
 
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   if (!inv || "error" in inv) return <div className="max-w-md mx-auto p-8 text-sm text-red-700">{(inv as { error: string })?.error ?? "Invoice not found"}</div>;
@@ -133,7 +135,7 @@ function PayInvoicePage() {
             <Link
               to="/pay/$invoiceId/photos"
               params={{ invoiceId }}
-              search={preview ? { preview: true } : {}}
+              search={preview ? { preview: true } : { k }}
               className="flex items-center justify-between gap-3 bg-card rounded-xl ring-1 ring-black/5 p-5 mb-6 hover:bg-muted"
             >
               <span className="flex items-center gap-3">

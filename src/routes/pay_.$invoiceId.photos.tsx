@@ -4,8 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { getPublicInvoicePhotos, previewPublicInvoicePhotos, type InvoicePhoto } from "@/lib/invoice-checkout.functions";
 
 export const Route = createFileRoute("/pay_/$invoiceId/photos")({
-  validateSearch: (search: Record<string, unknown>): { preview?: boolean } => ({
+  validateSearch: (search: Record<string, unknown>): { preview?: boolean; k?: string } => ({
     preview: search.preview === true || search.preview === 1 || search.preview === "1" ? true : undefined,
+    k: typeof search.k === "string" && search.k ? search.k : undefined,
   }),
   component: InvoicePhotosPage,
   ssr: false,
@@ -27,17 +28,17 @@ const TYPE_LABEL: Record<string, string> = { before: "Before", after: "After", d
 
 function InvoicePhotosPage() {
   const { invoiceId } = Route.useParams();
-  const { preview } = Route.useSearch();
+  const { preview, k } = Route.useSearch();
   const getFn = useServerFn(getPublicInvoicePhotos);
   const previewFn = useServerFn(previewPublicInvoicePhotos);
   const { data, isLoading } = useQuery({
-    queryKey: ["public-invoice-photos", invoiceId, !!preview],
-    queryFn: () => (preview ? previewFn : getFn)({ data: { id: invoiceId } }),
+    queryKey: ["public-invoice-photos", invoiceId, !!preview, k ?? ""],
+    queryFn: () => (preview ? previewFn({ data: { id: invoiceId } }) : getFn({ data: { id: invoiceId, k: k ?? "" } })),
     staleTime: 30 * 60_000,
   });
 
   const back = (
-    <Link to="/pay/$invoiceId" params={{ invoiceId }} search={preview ? { preview: true } : {}} className="text-sm font-medium underline underline-offset-4">
+    <Link to="/pay/$invoiceId" params={{ invoiceId }} search={preview ? { preview: true } : { k }} className="text-sm font-medium underline underline-offset-4">
       ← Back to invoice
     </Link>
   );

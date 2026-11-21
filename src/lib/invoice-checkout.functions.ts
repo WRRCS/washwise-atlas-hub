@@ -1,3 +1,4 @@
+import { isAppUrl } from "@/lib/app-origin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -32,17 +33,28 @@ type InvoiceSummary = {
   venmo_link: string | null;
 } | { error: string };
 
+// The public pay link carries the invoice's private code; without the matching code nothing is shown.
+const payTokenSchema = z.string().trim().max(128).default("");
+const EXPIRED_LINK = "This payment link is not valid. Please contact Wash Rinse Repeat Cleaning for a current link.";
+function payTokenMatches(stored: string | null | undefined, given: string): boolean {
+  if (!stored || !given || stored.length !== given.length) return false;
+  let diff = 0;
+  for (let i = 0; i < stored.length; i++) diff |= stored.charCodeAt(i) ^ given.charCodeAt(i);
+  return diff === 0;
+}
+
 // Shared loader for the client pay page. Drafts are only returned for staff previews.
-async function loadInvoiceSummary(id: string, opts: { allowDraft: boolean }): Promise<InvoiceSummary> {
+async function loadInvoiceSummary(id: string, opts: { allowDraft: boolean; payToken?: string }): Promise<InvoiceSummary> {
     const data = { id };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invoices")
-      .select("id, tenant_id, client_id, number, status, subject, total_cents, subtotal_cents, discount_cents, tax_cents, surcharge_cents, card_surcharge, allow_card, allow_venmo, currency, issue_date, due_date, photo_ids, client_message, terms_text, client:clients(first_name, last_name, email), property:client_properties(label, address)")
+      .select("id, tenant_id, client_id, pay_token, number, status, subject, total_cents, subtotal_cents, discount_cents, tax_cents, surcharge_cents, card_surcharge, allow_card, allow_venmo, currency, issue_date, due_date, photo_ids, client_message, terms_text, client:clients(first_name, last_name, email), property:client_properties(label, address)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) return { error: error.message };
     if (!inv) return { error: "Invoice not found" };
+    if (opts.payToken !== undefined && !payTokenMatches((inv as any).pay_token, opts.payToken)) return { error: EXPIRED_LINK };
     if (inv.status === "draft" && !opts.allowDraft) return { error: "This invoice is not available for payment." };
     const { data: lineRows } = await supabaseAdmin
       .from("invoice_line_items")
@@ -116,10 +128,11 @@ export type InvoicePhoto = { thumb_url: string | null; url: string; caption: str
 export type InvoicePhotosResult = { number: string | null; photos: InvoicePhoto[] } | { error: string };
 
 /** Small previews for the gallery grid, plus a full-size link that loads only when tapped. */
-async function loadInvoicePhotos(id: string, opts: { allowDraft: boolean }): Promise<InvoicePhotosResult> {
+async function loadInvoicePhotos(id: string, opts: { allowDraft: boolean; payToken?: string }): Promise<InvoicePhotosResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: inv } = await supabaseAdmin.from("invoices").select("id, tenant_id, client_id, number, status, photo_ids").eq("id", id).maybeSingle();
+  const { data: inv } = await supabaseAdmin.from("invoices").select("id, tenant_id, client_id, pay_token, number, status, photo_ids").eq("id", id).maybeSingle();
   if (!inv) return { error: "Invoice not found" };
+  if (opts.payToken !== undefined && !payTokenMatches((inv as any).pay_token, opts.payToken)) return { error: EXPIRED_LINK };
   if (inv.status === "draft" && !opts.allowDraft) return { error: "This invoice is not available." };
   const rows = await invoicePhotoRows(inv.tenant_id, inv.client_id, ((inv as any).photo_ids ?? []) as string[]);
   const bucket = supabaseAdmin.storage.from("job-photos");
@@ -135,8 +148,8 @@ async function loadInvoicePhotos(id: string, opts: { allowDraft: boolean }): Pro
 
 // Public: the invoice's photo gallery (same access as the pay page link).
 export const getPublicInvoicePhotos = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }): Promise<InvoicePhotosResult> => loadInvoicePhotos(data.id, { allowDraft: false }));
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid(), k: payTokenSchema }).parse(input))
+  .handler(async ({ data }): Promise<InvoicePhotosResult> => loadInvoicePhotos(data.id, { allowDraft: false, payToken: data.k }));
 
 // Staff only: gallery for an invoice that hasn't been sent yet.
 export const previewPublicInvoicePhotos = createServerFn({ method: "POST" })
@@ -152,8 +165,8 @@ export const previewPublicInvoicePhotos = createServerFn({ method: "POST" })
 
 // Public: fetch minimal invoice info by id for the pay page
 export const getPublicInvoice = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }): Promise<InvoiceSummary> => loadInvoiceSummary(data.id, { allowDraft: false }));
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid(), k: payTokenSchema }).parse(input))
+  .handler(async ({ data }): Promise<InvoiceSummary> => loadInvoiceSummary(data.id, { allowDraft: false, payToken: data.k }));
 
 // Staff only: show the client's pay page for an invoice before it is sent.
 export const previewPublicInvoice = createServerFn({ method: "POST" })
@@ -169,20 +182,13 @@ export const previewPublicInvoice = createServerFn({ method: "POST" })
   });
 
 // Public: create a Stripe embedded checkout session for an invoice
-const ALLOWED_RETURN_HOSTS = ["wrrcs.com", "lovable.app", "lovableproject.com", "localhost"];
-function isAllowedReturnUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw);
-    if (u.protocol !== "https:" && !(u.protocol === "http:" && u.hostname === "localhost")) return false;
-    const host = u.hostname.toLowerCase();
-    return ALLOWED_RETURN_HOSTS.some((h) => host === h || host.endsWith("." + h));
-  } catch { return false; }
-}
+const isAllowedReturnUrl = isAppUrl;
 
 export const createInvoiceCheckout = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
       invoice_id: z.string().uuid(),
+      k: payTokenSchema,
       return_url: z.string().url(),
       environment: z.enum(["sandbox", "live"]),
     }).parse(input),
@@ -193,11 +199,12 @@ export const createInvoiceCheckout = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: inv, error } = await supabaseAdmin
         .from("invoices")
-        .select("id, tenant_id, number, status, total_cents, currency, allow_card, client:clients(first_name, last_name, email)")
+        .select("id, tenant_id, pay_token, number, status, total_cents, currency, allow_card, client:clients(first_name, last_name, email)")
         .eq("id", data.invoice_id)
         .maybeSingle();
-      if (error) return { error: error.message };
+      if (error) return { error: "Could not load this invoice." };
       if (!inv) return { error: "Invoice not found" };
+      if (!payTokenMatches((inv as any).pay_token, data.k)) return { error: EXPIRED_LINK };
       if (inv.status === "paid") return { error: "This invoice is already paid" };
       if (inv.status === "cancelled" || inv.status === "void") return { error: "This invoice is no longer payable" };
       if (inv.status === "draft") return { error: "This invoice is not available for payment." };

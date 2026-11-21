@@ -687,6 +687,14 @@ export const updateEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: allowed } = await context.supabase.rpc("has_employee_permission", { _flag: "can_manage_clients_employees" });
     if (!allowed) throw new Error("You don't have permission to edit employees");
+    // The person being edited must belong to the caller's own business before anything changes,
+    // because archiving also blocks their sign-in through a privileged account call.
+    const { supabaseAdmin: adminForCheck } = await import("@/integrations/supabase/client.server");
+    const [{ data: me }, { data: target }] = await Promise.all([
+      context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle(),
+      adminForCheck.from("profiles").select("tenant_id").eq("id", data.id).maybeSingle(),
+    ]);
+    if (!me?.tenant_id || !target?.tenant_id || target.tenant_id !== me.tenant_id) throw new Error("Team member not found");
     const patch: { phone?: string | null; email?: string | null; address?: string | null; is_active?: boolean; full_name?: string | null } = {};
     if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.email !== undefined) patch.email = data.email || null;
@@ -702,11 +710,12 @@ export const updateEmployee = createServerFn({ method: "POST" })
 
     // Archiving has to actually end access, so the auth account itself is
     // blocked: no password sign-in, no one-tap link, no token refresh.
-    const { data: ownerRow } = await context.supabase
+    const { data: ownerRow } = await adminForCheck
       .from("user_roles")
       .select("user_id")
       .eq("user_id", data.id)
       .eq("role", "owner")
+      .limit(1)
       .maybeSingle();
     const change = signInAccessChange({ is_active: data.is_active, is_owner: !!ownerRow });
     // null = nothing to do, true = sign-in updated, false = it could not be.

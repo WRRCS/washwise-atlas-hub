@@ -1,3 +1,5 @@
+import { useServerFn } from "@tanstack/react-start";
+import { requestPortalSignIn } from "@/lib/portal-signin.functions";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +25,7 @@ function PortalSignIn() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const requestSignIn = useServerFn(requestPortalSignIn);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -35,21 +38,8 @@ function PortalSignIn() {
     setLoading(true);
     try {
       const clean = email.trim().toLowerCase();
-      const { data: known, error: rpcErr } = await supabase.rpc("portal_email_is_client", { _email: clean });
-      if (rpcErr) throw rpcErr;
-      if (!known) {
-        toast.error("We don't recognize that email. Please contact us if you're an existing client.");
-        return;
-      }
-      const { error } = await supabase.auth.signInWithOtp({
-        email: clean,
-        options: {
-          shouldCreateUser: true,
-          data: { portal_client: true },
-          emailRedirectTo: `${window.location.origin}/portal/dashboard`,
-        },
-      });
-      if (error) throw error;
+      // Same answer whether or not the email is a client's — the server only sends a link to real clients.
+      await requestSignIn({ data: { email: clean, origin: window.location.origin } });
       setSent(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not send sign-in link");
@@ -76,8 +66,8 @@ function PortalSignIn() {
             <div className="space-y-3 text-center">
               <h1 className="text-lg font-medium">Check your email</h1>
               <p className="text-sm text-muted-foreground">
-                We sent a sign-in link to <span className="font-medium text-foreground">{email}</span>.
-                Click it to access your portal.
+                If <span className="font-medium text-foreground">{email}</span> is the email we have on file for you,
+                a sign-in link is on its way. Click it to access your portal. Not getting it? Contact us so we can check your email.
               </p>
               <Button variant="ghost" size="sm" onClick={() => { setSent(false); setEmail(""); }}>
                 Use a different email

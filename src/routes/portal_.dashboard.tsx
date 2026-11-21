@@ -36,7 +36,7 @@ type PortalData = {
   clients: Array<{ id: string; tenant_id: string; first_name: string | null; last_name: string | null; email: string | null; phone: string | null; service_address: string | null }>;
   tenants: Array<{ id: string; name: string; business_email: string | null; business_phone: string | null; logo_url: string | null; primary_color: string | null }>;
   jobs: Array<{ id: string; client_id: string; status: string; scheduled_start: string; scheduled_end: string; actual_end: string | null; service_name: string | null; price_cents: number }>;
-  invoices: Array<{ id: string; number: string; status: string; total_cents: number; issue_date: string; due_date: string | null; paid_at: string | null; pay_link: string | null; client_id: string }>;
+  invoices: Array<{ id: string; number: string; status: string; total_cents: number; issue_date: string; due_date: string | null; paid_at: string | null; pay_link: string | null; pay_token?: string | null; client_id: string }>;
   messages: Array<{ id: string; client_id: string; sender_type: "client" | "business"; body: string; created_at: string; read_at: string | null }>;
   requests: Array<{ id: string; client_id: string; status: string; requested_date: string | null; notes: string | null; service_type_id: string | null; created_at: string }>;
 };
@@ -221,7 +221,7 @@ function PortalDashboard() {
                   <div className="text-right">
                     <div className="text-base font-medium">{money(inv.total_cents)}</div>
                     {inv.status !== "paid" && (
-                      <Link to="/pay/$invoiceId" params={{ invoiceId: inv.id }} className="text-xs text-brand hover:underline">
+                      <Link to="/pay/$invoiceId" params={{ invoiceId: inv.id }} search={{ k: inv.pay_token ?? undefined }} className="text-xs text-brand hover:underline">
                         Pay now →
                       </Link>
                     )}

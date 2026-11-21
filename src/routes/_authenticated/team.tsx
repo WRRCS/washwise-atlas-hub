@@ -1,3 +1,4 @@
+import { csvCell } from "@/lib/csv";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -154,7 +155,7 @@ function RosterView({ canManage }: { canManage: boolean }) {
   const exportRoster = () => {
     const columns = ["Team member", ...(canShowContact ? ["Email", "Phone"] : []), "Access level", "Status"];
     const rows = filtered.map((m) => [m.full_name ?? "", ...(canShowContact ? [m.email ?? "", m.phone ?? ""] : []), m.role, m.is_active ? "Active" : "Terminated"]);
-    const csv = [columns, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\r\n");
+    const csv = [columns, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;

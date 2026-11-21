@@ -1,3 +1,5 @@
+import { invoicePayUrl } from "@/lib/invoice-pay-link";
+import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -569,7 +571,15 @@ function PaymentLinksCard({ invoiceId, status, totalCents, onPaid }: { invoiceId
   const isPaid = status === "paid";
   const isCancelled = status === "cancelled";
 
-  const payUrl = typeof window !== "undefined" ? `${window.location.origin}/pay/${invoiceId}` : "";
+  // The client link includes the invoice's private code (staff can read it; the public page requires it).
+  const { data: payToken } = useQuery({
+    queryKey: ["invoice-pay-token", invoiceId],
+    queryFn: async () => {
+      const { data } = await supabase.from("invoices").select("pay_token").eq("id", invoiceId).maybeSingle();
+      return (data?.pay_token as string | undefined) ?? null;
+    },
+  });
+  const payUrl = typeof window !== "undefined" && payToken ? invoicePayUrl(window.location.origin, invoiceId, payToken) : "";
 
   const copyPayLink = async () => {
     await navigator.clipboard.writeText(payUrl);

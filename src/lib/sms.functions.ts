@@ -123,7 +123,8 @@ export const getUnreadCount = createServerFn({ method: "GET" })
 const threadSchema = z
   .object({
     client_id: z.string().uuid().nullable().optional(),
-    counterparty_number: z.string().nullable().optional(),
+    // Phone numbers only (digits with an optional leading +), so the value can never alter the query filter.
+    counterparty_number: z.string().trim().regex(/^\+?\d{3,20}$/, "Invalid phone number").nullable().optional(),
   })
   .refine(
     (v) => !!v.client_id || !!v.counterparty_number,
@@ -179,7 +180,7 @@ export const markThreadRead = createServerFn({ method: "POST" })
 const sendSchema = z
   .object({
     client_id: z.string().uuid().nullable().optional(),
-    to_number: z.string().min(3).nullable().optional(),
+    to_number: z.string().trim().min(3).max(32).nullable().optional(),
     body: z.string().min(1).max(1600),
   })
   .refine((v) => !!v.client_id || !!v.to_number, "client_id or to_number required");
@@ -189,6 +190,10 @@ export const sendSms = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => sendSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { tenantId, twilioNumber } = await getTenantAndNumber(context);
+    // Texting as the business is an owner/manager action, never an employee one.
+    const { data: canText, error: roleErr } = await context.supabase.rpc("is_owner_or_manager");
+    if (roleErr) throw new Error("Could not verify your access.");
+    if (!canText) throw new Error("Only owners and managers can send texts.");
     if (!twilioNumber)
       throw new Error("No business SMS number configured. Set it under Settings → Voice AI.");
 
@@ -212,6 +217,18 @@ export const sendSms = createServerFn({ method: "POST" })
 
     const to = normalizePhoneE164(destinationRaw);
     if (!to) throw new Error("Invalid destination phone number.");
+    if (!clientId) {
+      // Without a client record, only reply to a number that has already texted this business.
+      const { data: prior, error: priorErr } = await (context.supabase as any)
+        .from("sms_messages")
+        .select("id")
+        .eq("tenant_id", tenantId)
+        .eq("direction", "inbound")
+        .eq("from_number", to)
+        .limit(1);
+      if (priorErr) throw new Error("Could not verify this conversation.");
+      if (!prior?.length) throw new Error("You can only reply to numbers that have texted the business, or text a saved client.");
+    }
     const from = normalizePhoneE164(twilioNumber);
     if (!from) throw new Error("Invalid business phone number configured.");
 

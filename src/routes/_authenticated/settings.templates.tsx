@@ -1,3 +1,4 @@
+import { safeHtml } from "@/lib/safe-html";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -242,10 +243,10 @@ function QuoteEditor({ initial, services, onClose, onSave }: {
           <div className="space-y-2">
             <Label className="text-xs">Live preview</Label>
             <div className="border rounded-lg bg-white p-6 text-sm min-h-[400px] prose prose-sm max-w-none">
-              <div dangerouslySetInnerHTML={{ __html: preview.header }} />
-              <div dangerouslySetInnerHTML={{ __html: preview.body }} />
+              <div dangerouslySetInnerHTML={{ __html: safeHtml(preview.header) }} />
+              <div dangerouslySetInnerHTML={{ __html: safeHtml(preview.body) }} />
               <hr className="my-4" />
-              <div className="text-xs text-muted-foreground" dangerouslySetInnerHTML={{ __html: preview.footer }} />
+              <div className="text-xs text-muted-foreground" dangerouslySetInnerHTML={{ __html: safeHtml(preview.footer) }} />
             </div>
           </div>
         </div>
@@ -371,7 +372,7 @@ function EmailTemplateCard({ tpl, onSave }: {
             <Label className="text-xs">Preview (with sample data)</Label>
             <div className="border rounded-lg bg-white p-4 text-sm">
               <p className="font-medium mb-2 text-sm">{preview.subject}</p>
-              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: preview.body }} />
+              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: safeHtml(preview.body) }} />
             </div>
           </div>
         </div>

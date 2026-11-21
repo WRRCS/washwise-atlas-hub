@@ -1,3 +1,4 @@
+import { safeHtml } from "@/lib/safe-html";
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { compressPhotoForUpload } from "@/lib/photo-compress";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1021,7 +1022,7 @@ function ClientTemplatesCard({ client }: { client: { id: string; first_name: str
         {preview && (
           <div className="border rounded-lg bg-white p-3 mb-3 text-sm">
             <p className="font-medium mb-2">{preview.subject}</p>
-            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: preview.body }} />
+            <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: safeHtml(preview.body) }} />
           </div>
         )}
         <div className="flex justify-end">

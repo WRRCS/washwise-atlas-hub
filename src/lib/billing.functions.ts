@@ -1,3 +1,4 @@
+import { isAppUrl } from "@/lib/app-origin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -82,16 +83,7 @@ export const previewPlanChange = createServerFn({ method: "POST" })
     return res as PlanChangePreview;
   });
 
-const CHECKOUT_ALLOWED_HOSTS = ["wrrcs.com", "lovable.app", "lovableproject.com", "localhost"];
-function safeReturnUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw);
-    if (u.protocol !== "https:" && !(u.protocol === "http:" && u.hostname === "localhost")) return false;
-    return CHECKOUT_ALLOWED_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith("." + h));
-  } catch {
-    return false;
-  }
-}
+const safeReturnUrl = isAppUrl;
 
 async function requireOwnerTenant(context: any) {
   const { data: isOwner } = await context.supabase.rpc("has_role", {
@@ -242,14 +234,14 @@ export const changePlan = createServerFn({ method: "POST" })
       await stripe.subscriptions.update(sub.stripe_subscription_id, {
         items: [{ id: itemId, price: newPrice.id }],
         proration_behavior: "always_invoice",
+        payment_behavior: "error_if_incomplete",
         metadata: {
           tenant_id: profile.tenant_id,
           plan_tier: plan.plan_tier,
           userId: context.userId,
         },
       });
-      // Webhook will sync the DB; also mirror plan_tier immediately for UI snappiness.
-      await supabaseAdmin.from("tenants").update({ plan_tier: plan.plan_tier }).eq("id", profile.tenant_id);
+      // The new tier is applied only by the verified payment webhook, after Stripe confirms the subscription.
       return { ok: true };
     } catch (error) {
       return { error: getStripeErrorMessage(error) };
@@ -313,9 +305,9 @@ export const openBillingPortal = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data, context }): Promise<{ url: string } | { error: string }> => {
     try {
-      const { data: profile } = await context.supabase
-        .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
-      if (!profile?.tenant_id) return { error: "No workspace" };
+      if (!safeReturnUrl(data.return_url)) return { error: "Invalid return URL" };
+      // Billing is owner-only: the portal can change payment methods and the subscription.
+      const profile = await requireOwnerTenant(context);
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: tenant } = await supabaseAdmin
         .from("tenants").select("stripe_customer_id").eq("id", profile.tenant_id).maybeSingle();

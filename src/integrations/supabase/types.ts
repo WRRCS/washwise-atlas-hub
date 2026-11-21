@@ -1606,6 +1606,7 @@ export type Database = {
           number: string
           paid_at: string | null
           pay_link: string | null
+          pay_token: string
           payment_terms_days: number | null
           photo_ids: string[]
           property_id: string | null
@@ -1640,6 +1641,7 @@ export type Database = {
           number: string
           paid_at?: string | null
           pay_link?: string | null
+          pay_token?: string
           payment_terms_days?: number | null
           photo_ids?: string[]
           property_id?: string | null
@@ -1674,6 +1676,7 @@ export type Database = {
           number?: string
           paid_at?: string | null
           pay_link?: string | null
+          pay_token?: string
           payment_terms_days?: number | null
           photo_ids?: string[]
           property_id?: string | null
@@ -4692,6 +4695,7 @@ export type Database = {
         }
         Returns: Json
       }
+      portal_verified_email: { Args: never; Returns: string }
       preview_plan_change: { Args: { _target_tier: string }; Returns: Json }
       publish_schedule: {
         Args: {
