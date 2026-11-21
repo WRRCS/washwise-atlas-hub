@@ -41,6 +41,9 @@ async function getTenantAndNumber(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!profile?.tenant_id) throw new Error("No tenant");
+  // Business text conversations are for owners and managers only.
+  const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+  if (!isMgr) throw new Error("Only owners and managers can use business texts");
   const { data: cfg } = await context.supabase
     .from("voice_agent_config")
     .select("twilio_phone_number")
@@ -107,6 +110,8 @@ export const listConversations = createServerFn({ method: "GET" })
 export const getUnreadCount = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<number> => {
+    const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+    if (!isMgr) return 0;
     const { tenantId } = await getTenantAndNumber(context);
     const { count, error } = await (context.supabase as any)
       .from("sms_messages")

@@ -61,6 +61,8 @@ export async function sendViaTwilio(opts: {
 
 /** Text a client from the business number and log it. Caller must already be authorized. */
 export async function sendClientSms(context: any, clientId: string, body: string): Promise<void> {
+  const { data: isMgr } = await context.supabase.rpc("is_owner_or_manager");
+  if (!isMgr) throw new Error("Only owners and managers can text clients");
   const { normalizePhoneE164 } = await import("@/lib/phone");
   const { data: profile } = await context.supabase.from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
   if (!profile?.tenant_id) throw new Error("No tenant");
