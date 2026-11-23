@@ -4841,6 +4841,10 @@ export type Database = {
           status: string
         }[]
       }
+      resync_employee_appointment_reminders: {
+        Args: { _user_ids: string[] }
+        Returns: number
+      }
       save_job_inventory: {
         Args: { _item: string; _job: string; _level: string; _quantity: number }
         Returns: undefined

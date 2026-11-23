@@ -45,6 +45,13 @@ export const Route = createFileRoute("/api/public/hooks/process-push")({
         // The staged pilot replaces legacy action enqueueing; unrelated push queues stay unchanged.
         const { dispatchPilotReminders } = await import("@/lib/employee-reminder-pilot.server");
         await dispatchPilotReminders(supabaseAdmin);
+        // Team schedule reminders set to Text (employees only; never clients).
+        try {
+          const { dispatchEmployeeReminderTexts } = await import("@/lib/employee-reminder-sms.server");
+          await dispatchEmployeeReminderTexts(supabaseAdmin);
+        } catch (e) {
+          console.error("employee reminder texts failed", e);
+        }
 
         // Fetch batch of pending push notifications
         const { data: pending, error } = await supabaseAdmin

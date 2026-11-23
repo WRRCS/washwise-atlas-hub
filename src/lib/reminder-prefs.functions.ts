@@ -74,6 +74,9 @@ export const upsertMyReminderPrefs = createServerFn({ method: "POST" })
         { onConflict: "tenant_id,user_id" },
       );
     if (error) throw new Error(error.message);
+    // Apply the new settings to cleanings already on the schedule.
+    const { error: rErr } = await context.supabase.rpc("resync_employee_appointment_reminders", { _user_ids: [context.userId] });
+    if (rErr) throw new Error(rErr.message);
     return { ok: true };
   });
 
@@ -155,5 +158,8 @@ export const bulkUpsertReminderPrefs = createServerFn({ method: "POST" })
       .from("reminder_preferences")
       .upsert(rows, { onConflict: "tenant_id,user_id" });
     if (error) throw new Error(error.message);
+    // Apply the new settings to cleanings already on the schedule.
+    const { error: rErr } = await context.supabase.rpc("resync_employee_appointment_reminders", { _user_ids: targets });
+    if (rErr) throw new Error(rErr.message);
     return { ok: true, updated: targets.length };
   });

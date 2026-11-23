@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] Fix "Apply to employees" reminder-settings save error (no unique match). Verified upsert twice.
+- [ ] Team schedule reminders by text: cleaners set to Text get an SMS before each published cleaning; changed settings apply to upcoming cleanings. Needs a texting number on the connected Twilio account (currently none).
+- [ ] Client portal reminder-choices save shows the same error — awaiting Leslie's yes/no (she asked "What error?").
+
 - [x] End the Dalton/Barbra reminder pilot; clock-in/arrival reminders now on for all current employees (7), push channel, same stages and limits. Verified settings screen signed in as owner; 35 reminder tests pass. Real-phone receipt not observed; goes live on publish.
 
 - [x] Job pop-up: top address opens directions; Copy/Complete/Delete icons replace the repeated name; nothing remains below Save times. Verified signed in as Zoe at 1280px and 890px, including Copy closing the pop-up; 21 schedule/location tests pass, build OK. No real cleaning changes or messages; preview only.
