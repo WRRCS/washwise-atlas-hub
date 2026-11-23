@@ -3421,6 +3421,9 @@ export type Database = {
           sent_at: string | null
           status: string
           tenant_id: string
+          token_expires_at: string | null
+          token_hash: string | null
+          token_issued_at: string | null
         }
         Insert: {
           email: string
@@ -3433,6 +3436,9 @@ export type Database = {
           sent_at?: string | null
           status: string
           tenant_id: string
+          token_expires_at?: string | null
+          token_hash?: string | null
+          token_issued_at?: string | null
         }
         Update: {
           email?: string
@@ -3445,6 +3451,9 @@ export type Database = {
           sent_at?: string | null
           status?: string
           tenant_id?: string
+          token_expires_at?: string | null
+          token_hash?: string | null
+          token_issued_at?: string | null
         }
         Relationships: [
           {

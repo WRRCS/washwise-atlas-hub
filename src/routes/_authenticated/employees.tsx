@@ -60,7 +60,7 @@ function outcomeFromError(err: unknown, email: string): InviteOutcome {
 
 function toastOutcome(o: InviteOutcome) {
   const text = inviteResultMessage(o.status, o.email);
-  if (o.status === "sent") toast.success(text);
+  if (o.status === "sent") toast.success(text, { description: "The email service accepted it. The link works for 24 hours, until they use it to sign in." });
   else if (o.status === "failed") toast.error(o.error ? `${text}: ${o.error}` : text);
   else toast.warning(`${text} — check the Access column before resending`);
 }

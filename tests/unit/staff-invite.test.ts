@@ -1,15 +1,52 @@
 import { describe, expect, it } from "vitest";
 import {
-  accessState, buildInviteLink, classifySendOutcome, inviteResultMessage, welcomeLinkProblem,
+  INVITE_LINK_TTL_HOURS, accessState, buildInviteLink, classifySendOutcome, inviteFailureReason,
+  inviteLinkState, inviteResultMessage, welcomeLinkProblem,
 } from "@/lib/staff-invite";
 import { deliverStaffInvite } from "@/lib/staff-invite.server";
 
 describe("invite link", () => {
-  it("points at the published WRRCS welcome page with the single-use token", () => {
+  it("points at the published WRRCS welcome page with the invite code", () => {
     const u = new URL(buildInviteLink("abc123"));
     expect(u.origin).toBe("https://wrrcs.com");
     expect(u.pathname).toBe("/welcome");
-    expect(u.searchParams.get("token_hash")).toBe("abc123");
+    expect(u.searchParams.get("invite")).toBe("abc123");
+  });
+});
+
+describe("invite link lifetime", () => {
+  const issued = "2026-11-23T08:00:00Z";
+  const base = {
+    issuedAt: issued,
+    expiresAt: new Date(Date.parse(issued) + INVITE_LINK_TTL_HOURS * 3600_000).toISOString(),
+    revoked: false, banned: false, active: true, lastSignInAt: null,
+  };
+  it("lasts 24 hours", () => {
+    expect(INVITE_LINK_TTL_HOURS).toBe(24);
+    expect(inviteLinkState({ ...base, now: Date.parse("2026-11-24T07:59:00Z") })).toBe("usable");
+    expect(inviteLinkState({ ...base, now: Date.parse("2026-11-24T08:01:00Z") })).toBe("expired");
+  });
+  it("stops working once they have signed in after it was sent", () => {
+    const now = Date.parse("2026-11-23T09:00:00Z");
+    expect(inviteLinkState({ ...base, lastSignInAt: "2026-11-23T08:30:00Z", now })).toBe("used");
+    expect(inviteLinkState({ ...base, lastSignInAt: "2026-11-20T08:30:00Z", now })).toBe("usable");
+  });
+  it("is dead when cancelled or the person is archived", () => {
+    const now = Date.parse("2026-11-23T09:00:00Z");
+    expect(inviteLinkState({ ...base, revoked: true, now })).toBe("revoked");
+    expect(inviteLinkState({ ...base, active: false, now })).toBe("revoked");
+  });
+});
+
+describe("invite failure wording", () => {
+  it("never shows a raw '{}' from the sign-in service", () => {
+    const msg = inviteFailureReason("account", { message: "{}", status: 500 });
+    expect(msg).not.toContain("{}");
+    expect(msg).toContain("error 500");
+  });
+  it("names specific email refusals", () => {
+    expect(inviteFailureReason("email", { code: "recipient_suppressed", status: 403 })).toMatch(/unsubscribed or bounced/);
+    expect(inviteFailureReason("email", { status: 429 })).toMatch(/Wait a minute/);
   });
 });
 
@@ -53,37 +90,55 @@ describe("welcome page problems", () => {
   });
 });
 
-function fakeAdmin(hashed: string | null) {
+function fakeAdmin(saveError: { message: string } | null = null) {
   const upserts: any[] = [];
+  const updates: any[] = [];
   const admin: any = {
-    auth: { admin: { generateLink: async () => ({ data: { properties: { hashed_token: hashed } }, error: hashed ? null : { message: "nope" } }) } },
-    from: () => ({ upsert: async (row: any) => { upserts.push(row); return { error: null }; } }),
+    from: () => ({
+      upsert: async (row: any) => { upserts.push(row); return { error: saveError }; },
+      update: (row: any) => ({ eq: async () => { updates.push(row); return { error: null }; } }),
+    }),
   };
-  return { admin, upserts };
+  return { admin, upserts, updates };
 }
 const who = { profileId: "p1", tenantId: "t1", email: "New@Example.com", fullName: "Test Person", invitedBy: "o1" };
 
 describe("deliverStaffInvite", () => {
-  it("never sends a password and records 'sent' when accepted", async () => {
-    const { admin, upserts } = fakeAdmin("tok");
+  it("never sends a password, links a 24-hour code and records 'sent' when accepted", async () => {
+    const { admin, upserts, updates } = fakeAdmin();
     let payload: any;
     const r = await deliverStaffInvite(admin, who, async (p) => { payload = p; return { success: true, message_id: "m1" }; });
     expect(r.status).toBe("sent");
     expect(payload.to).toBe("new@example.com");
     expect(payload.html).toContain("Sign in to WRRCS");
-    expect(payload.html).toContain("https://wrrcs.com/welcome?token_hash=tok");
+    expect(payload.html).toContain("https://wrrcs.com/welcome?invite=");
+    expect(payload.html).toContain("24 hours");
     expect(JSON.stringify(payload).toLowerCase()).not.toContain("password:");
-    expect(upserts[0].status).toBe("sent");
+    const saved = upserts[0];
+    const code = new URL(payload.text.match(/https:\/\/\S+/)[0]).searchParams.get("invite")!;
+    expect(saved.token_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(saved.token_hash).not.toContain(code);
+    expect(Date.parse(saved.token_expires_at) - Date.parse(saved.token_issued_at)).toBe(24 * 3600_000);
+    expect(updates[0].status).toBe("sent");
   });
   it("records 'failed' on a refusal and 'unknown' after a dropped connection", async () => {
-    const a = fakeAdmin("tok");
+    const a = fakeAdmin();
     const failed = await deliverStaffInvite(a.admin, who, async () => { throw Object.assign(new Error("bad"), { status: 422 }); });
     expect(failed.status).toBe("failed");
-    const b = fakeAdmin("tok");
+    expect(a.updates[0].token_hash).toBeNull();
+    const b = fakeAdmin();
     let calls = 0;
     const unknown = await deliverStaffInvite(b.admin, who, async () => { calls += 1; throw new TypeError("fetch failed"); });
     expect(unknown.status).toBe("unknown");
     expect(calls).toBe(2);
-    expect(b.upserts[0].status).toBe("unknown");
+    expect(b.updates[0].status).toBe("unknown");
+  });
+  it("sends nothing when the link can't be saved", async () => {
+    const { admin } = fakeAdmin({ message: "db down" });
+    let sent = false;
+    const r = await deliverStaffInvite(admin, who, async () => { sent = true; return { success: true }; });
+    expect(r.status).toBe("failed");
+    expect(sent).toBe(false);
+    expect(r.error).not.toContain("db down");
   });
 });

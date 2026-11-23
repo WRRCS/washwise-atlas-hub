@@ -562,6 +562,32 @@ async function inviterTenant(context: { supabase: any; userId: string }) {
   return me.tenant_id as string;
 }
 
+/**
+ * Run an invite and always answer with a clear outcome: known problems keep
+ * their owner-facing wording; anything unexpected is logged and summarized
+ * without exposing internals.
+ */
+async function safeInvite(
+  email: string,
+  profileId: string | null,
+  run: () => Promise<{ status: "sent" | "failed" | "unknown"; email: string; employee_id: string; error?: string }>,
+) {
+  try {
+    return await run();
+  } catch (err) {
+    const { InviteError } = await import("@/lib/staff-invite.server");
+    if (!(err instanceof InviteError)) console.error("[staff-invite] unexpected failure", err);
+    return {
+      status: "failed" as const,
+      email: email.trim().toLowerCase(),
+      employee_id: profileId ?? "",
+      error: err instanceof InviteError
+        ? err.message
+        : "Something went wrong before the email was sent. Nothing was emailed — it's safe to retry.",
+    };
+  }
+}
+
 async function sendViaLovable(payload: any, options: any) {
   const { sendLovableEmail } = await import("@lovable.dev/email-js");
   return sendLovableEmail(payload, options);
@@ -585,13 +611,15 @@ export const inviteEmployee = createServerFn({ method: "POST" })
     const tenantId = await inviterTenant(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { ensureStaffAccount, deliverStaffInvite } = await import("@/lib/staff-invite.server");
-    const account = await ensureStaffAccount(supabaseAdmin, {
-      tenantId, invitedBy: context.userId, email: data.email, fullName: data.full_name,
-      phone: data.phone || null, profileId: data.profile_id,
+    return safeInvite(data.email, data.profile_id ?? null, async () => {
+      const account = await ensureStaffAccount(supabaseAdmin, {
+        tenantId, invitedBy: context.userId, email: data.email, fullName: data.full_name,
+        phone: data.phone || null, profileId: data.profile_id,
+      });
+      return deliverStaffInvite(supabaseAdmin, {
+        profileId: account.id, tenantId, email: data.email, fullName: account.fullName, invitedBy: context.userId,
+      }, sendViaLovable);
     });
-    return deliverStaffInvite(supabaseAdmin, {
-      profileId: account.id, tenantId, email: data.email, fullName: account.fullName, invitedBy: context.userId,
-    }, sendViaLovable);
   });
 
 /** Resend: email a fresh one-tap link; any earlier unused link stops working. */
@@ -606,12 +634,15 @@ export const sendMagicLinkInvite = createServerFn({ method: "POST" })
     if (!emp || emp.tenant_id !== tenantId) throw new Error("Employee not found in your business");
     if (!emp.email) throw new Error("This employee has no email address — add one first");
     const { ensureStaffAccount, deliverStaffInvite } = await import("@/lib/staff-invite.server");
-    const account = await ensureStaffAccount(supabaseAdmin, {
-      tenantId, invitedBy: context.userId, email: emp.email, fullName: emp.full_name ?? emp.email, profileId: emp.id,
+    const email = emp.email;
+    return safeInvite(email, emp.id, async () => {
+      const account = await ensureStaffAccount(supabaseAdmin, {
+        tenantId, invitedBy: context.userId, email, fullName: emp.full_name ?? email, profileId: emp.id,
+      });
+      return deliverStaffInvite(supabaseAdmin, {
+        profileId: account.id, tenantId, email, fullName: account.fullName, invitedBy: context.userId,
+      }, sendViaLovable);
     });
-    return deliverStaffInvite(supabaseAdmin, {
-      profileId: account.id, tenantId, email: emp.email, fullName: account.fullName, invitedBy: context.userId,
-    }, sendViaLovable);
   });
 
 /** Cancel an invite nobody has used yet. */

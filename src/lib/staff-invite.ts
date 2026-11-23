@@ -10,16 +10,62 @@ export type InviteSendStatus = "sent" | "failed" | "unknown";
 export type InviteRecordStatus = InviteSendStatus | "revoked";
 export type AccessState = "activated" | "pending" | "revoked" | "none";
 
+/** An unused invite link keeps working this long after it is emailed. */
+export const INVITE_LINK_TTL_HOURS = 24;
+
 /**
- * Link in the welcome email. It opens our own /welcome page, which redeems the
- * single-use token in the browser — so a mail scanner that merely fetches the
- * link cannot use it up before the employee taps it.
+ * Link in the welcome email. It opens our own /welcome page, which exchanges
+ * the private invite code for a sign-in in the browser — so a mail scanner
+ * that merely fetches the link cannot use it up before the employee taps it.
  */
-export function buildInviteLink(hashedToken: string, base: string = STAFF_APP_URL) {
+export function buildInviteLink(inviteCode: string, base: string = STAFF_APP_URL) {
   const u = new URL("/welcome", base);
-  u.searchParams.set("token_hash", hashedToken);
-  u.searchParams.set("type", "magiclink");
+  u.searchParams.set("invite", inviteCode);
   return u.toString();
+}
+
+export type InviteLinkState = "usable" | "expired" | "used" | "revoked";
+
+/**
+ * Whether an emailed invite link can still sign someone in: within 24 hours of
+ * being sent, not cancelled, and nobody has signed in to that account since.
+ */
+export function inviteLinkState(input: {
+  issuedAt: string | null;
+  expiresAt: string | null;
+  revoked: boolean;
+  banned: boolean;
+  active: boolean;
+  lastSignInAt: string | null;
+  now?: number;
+}): InviteLinkState {
+  if (input.revoked || input.banned || !input.active) return "revoked";
+  const now = input.now ?? Date.now();
+  if (!input.issuedAt || !input.expiresAt || now > Date.parse(input.expiresAt)) return "expired";
+  if (input.lastSignInAt && Date.parse(input.lastSignInAt) >= Date.parse(input.issuedAt)) return "used";
+  return "usable";
+}
+
+/**
+ * Owner-facing reason an invite didn't go out. Never echoes raw provider
+ * bodies (which can be "{}" or contain internals).
+ */
+export function inviteFailureReason(
+  step: "account" | "link" | "email",
+  err: { message?: string | null; status?: number | null; code?: string | null } | null | undefined,
+): string {
+  const code = err?.code ?? null;
+  const status = typeof err?.status === "number" ? err.status : null;
+  if (step === "email") {
+    if (code === "recipient_suppressed") return "This address has unsubscribed or bounced before, so the email service blocked it. Ask them for another email.";
+    if (code === "domain_not_verified") return "The sending email domain isn't verified yet, so nothing was sent.";
+    if (code === "emails_disabled") return "App emails are turned off for this project, so nothing was sent.";
+    if (status === 429) return "Too many emails were sent in the last hour. Wait a minute and retry.";
+    if (status !== null && status >= 400 && status < 500) return `The email service refused the message (error ${status}). Nothing was sent.`;
+    return "The email service didn't confirm the send. Check the Access column before retrying.";
+  }
+  const what = step === "account" ? "create their sign-in account" : "create their sign-in link";
+  return `The sign-in service couldn't ${what}${status ? ` (error ${status})` : ""}. Nothing was emailed — it's safe to retry.`;
 }
 
 /**

@@ -3,8 +3,12 @@
 // first and pass the privileged client loaded inside their handler.
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import {
+  INVITE_LINK_TTL_HOURS,
   buildInviteLink,
   classifySendOutcome,
+  inviteFailureReason,
+  inviteLinkState,
+  type InviteLinkState,
   type InviteSendStatus,
 } from "@/lib/staff-invite";
 
@@ -15,7 +19,10 @@ export class InviteError extends Error {}
 async function findAuthUserByEmail(admin: Admin, email: string): Promise<User | null> {
   for (let page = 1; page <= 20; page += 1) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[staff-invite] listUsers failed", error.status, error.message);
+      throw new InviteError(inviteFailureReason("account", error as any));
+    }
     const users = data?.users ?? [];
     const match = users.find((u) => (u.email ?? "").toLowerCase() === email);
     if (match) return match;
@@ -40,7 +47,23 @@ export async function ensureStaffAccount(
   if (tpErr) throw new Error(tpErr.message);
   const profiles = (tenantProfiles ?? []) as Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }>;
   const byEmail = profiles.find((p) => (p.email ?? "").toLowerCase() === email) ?? null;
-  const authUser = await findAuthUserByEmail(admin, email);
+  let authUser = await findAuthUserByEmail(admin, email);
+
+  // A never-confirmed, never-used account that nobody invited (for example a
+  // self sign-up attempt with this email) has no team record or role. Remove
+  // it so the invite creates a clean passwordless account instead of
+  // confirming one whose password someone else chose.
+  if (authUser && !authUser.email_confirmed_at && !authUser.last_sign_in_at) {
+    const [{ data: orphanProfile }, { data: orphanRoles }] = await Promise.all([
+      admin.from("profiles").select("id").eq("id", authUser.id).maybeSingle(),
+      admin.from("user_roles").select("role").eq("user_id", authUser.id),
+    ]);
+    if (!orphanProfile && (orphanRoles ?? []).length === 0) {
+      const { error: delErr } = await admin.auth.admin.deleteUser(authUser.id);
+      if (delErr) throw new InviteError(inviteFailureReason("account", delErr as any));
+      authUser = null;
+    }
+  }
 
   let targetId: string | undefined;
   if (authUser) {
@@ -116,7 +139,8 @@ export async function ensureStaffAccount(
       if (error && /already been registered|email_exists/i.test(error.message)) {
         throw new InviteError("That email was just registered by another request. Wait a moment and try again.");
       }
-      throw new Error(error?.message ?? "Could not create the sign-in account");
+      console.error("[staff-invite] createUser failed", error?.name, error?.status, error?.message);
+      throw new InviteError(inviteFailureReason("account", error as any));
     }
     id = created.user.id;
     createdAccount = true;
@@ -125,10 +149,18 @@ export async function ensureStaffAccount(
     // revoked invite and confirming an email that was never confirmed.
     const patch: Record<string, unknown> = {};
     if (authUser.banned_until && Date.parse(authUser.banned_until) > Date.now()) patch.ban_duration = "none";
-    if (!authUser.email_confirmed_at) patch.email_confirm = true;
+    if (!authUser.email_confirmed_at) {
+      // Linked to a team record but never confirmed: confirm it and replace
+      // any password set before the invite, so only the emailed link works.
+      patch.email_confirm = true;
+      patch.password = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+    }
     if (Object.keys(patch).length) {
       const { error } = await admin.auth.admin.updateUserById(authUser.id, patch as any);
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("[staff-invite] updateUser failed", error.status, error.message);
+        throw new InviteError(inviteFailureReason("account", error as any));
+      }
     }
   }
   if (!id) throw new Error("Could not create the sign-in account");
@@ -165,7 +197,7 @@ function welcomeEmail(firstName: string, url: string) {
       <h1 style="font-size:20px;margin:0 0 16px">Welcome to WRRCS, ${firstName}!</h1>
       <p>You've been added to the Wash Rinse Repeat Cleaning team app. Tap the button on your phone to open your jobs — no password or code needed.</p>
       <p style="margin:28px 0"><a href="${url}" style="background:#0e8fc0;color:#ffffff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">Sign in to WRRCS</a></p>
-      <p style="color:#64748b;font-size:12px">This link works once and expires soon. If it stops working, open wrrcs.com/auth and choose "Email me a sign-in link", or ask your manager to resend the invite.</p>
+      <p style="color:#64748b;font-size:12px">This link works for ${INVITE_LINK_TTL_HOURS} hours, until you use it to sign in. If it stops working, open wrrcs.com/welcome and choose "Email me a new sign-in link", or ask your manager to resend the invite.</p>
     </div>`;
   const text = [
     `Welcome to WRRCS, ${firstName}!`,
@@ -173,14 +205,27 @@ function welcomeEmail(firstName: string, url: string) {
     "Open this link on your phone to sign in — no password needed:",
     url,
     "",
-    "The link works once and expires soon. If it stops working, open wrrcs.com/auth and choose \"Email me a sign-in link\".",
+    `The link works for ${INVITE_LINK_TTL_HOURS} hours, until you use it to sign in. If it stops working, open wrrcs.com/welcome and choose "Email me a new sign-in link".`,
   ].join("\n");
   return { html, text };
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function newInviteCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  let bin = "";
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 /**
- * Generate a fresh single-use link (this replaces any earlier pending link)
- * and email it. Records the outcome so the Employees screen can show it.
+ * Email a fresh invite link (this replaces any earlier pending link) that
+ * stays valid for 24 hours until used. Records the outcome so the Employees
+ * screen can show it.
  */
 export async function deliverStaffInvite(
   admin: Admin,
@@ -188,37 +233,39 @@ export async function deliverStaffInvite(
   send: (payload: any, options: any) => Promise<{ success: boolean; message_id?: string }>,
 ): Promise<DeliverResult> {
   const email = input.email.toLowerCase();
-  const record = async (status: InviteSendStatus, extra: { message_id?: string; error?: string } = {}) => {
-    const now = new Date().toISOString();
-    await admin.from("staff_invites").upsert({
-      profile_id: input.profileId,
-      tenant_id: input.tenantId,
-      email,
-      status,
-      last_attempt_at: now,
-      sent_at: status === "sent" ? now : null,
-      message_id: extra.message_id ?? null,
-      error: extra.error ?? null,
-      invited_by: input.invitedBy,
-      revoked_at: null,
-    } as any, { onConflict: "profile_id" });
-  };
+  const code = newInviteCode();
+  const issuedAt = new Date();
+  const expiresAt = new Date(issuedAt.getTime() + INVITE_LINK_TTL_HOURS * 3600_000);
 
-  const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-  const hashed = link?.properties?.hashed_token;
-  if (linkErr || !hashed) {
-    const msg = linkErr?.message ?? "Could not create the sign-in link";
-    await record("failed", { error: msg });
+  // Save the (hashed) code before emailing, so the link works the moment it arrives.
+  const { error: saveErr } = await admin.from("staff_invites").upsert({
+    profile_id: input.profileId,
+    tenant_id: input.tenantId,
+    email,
+    status: "unknown",
+    last_attempt_at: issuedAt.toISOString(),
+    sent_at: null,
+    message_id: null,
+    error: null,
+    invited_by: input.invitedBy,
+    revoked_at: null,
+    token_hash: await sha256Hex(code),
+    token_issued_at: issuedAt.toISOString(),
+    token_expires_at: expiresAt.toISOString(),
+  } as any, { onConflict: "profile_id" });
+  if (saveErr) {
+    console.error("[staff-invite] could not save invite", saveErr.message);
+    const msg = inviteFailureReason("link", null);
     return { status: "failed", email, employee_id: input.profileId, error: msg };
   }
 
   const firstName = (input.fullName ?? "").trim().split(/\s+/)[0] || "there";
-  const { html, text } = welcomeEmail(firstName, buildInviteLink(hashed));
+  const { html, text } = welcomeEmail(firstName, buildInviteLink(code));
   // One key per attempt: a retry after a dropped connection can't send twice.
   const idempotencyKey = `staff-invite-${input.profileId}-${crypto.randomUUID()}`;
   const payload = {
     to: email,
-    from: "Wash Rinse Repeat Cleaning <info@washrinserepeatcleaning.com>",
+    from: { name: "Wash Rinse Repeat Cleaning", address: "info@washrinserepeatcleaning.com" },
     sender_domain: "notify.washrinserepeatcleaning.com",
     subject: "Welcome to WRRCS — tap to sign in",
     html,
@@ -237,15 +284,61 @@ export async function deliverStaffInvite(
       const res = await send(payload, options);
       status = classifySendOutcome({ ok: true, success: !!res?.success });
       messageId = res?.message_id;
-      errorMsg = status === "failed" ? "The email service did not accept the message" : undefined;
+      errorMsg = status === "failed" ? "The email service did not accept the message. Nothing was sent." : undefined;
     } catch (err: any) {
       status = classifySendOutcome({ ok: false, status: typeof err?.status === "number" ? err.status : null });
-      errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("[staff-invite] send failed", err?.status, err?.code, err?.message);
+      errorMsg = inviteFailureReason("email", err);
     }
     if (status !== "unknown") break;
   }
-  await record(status, { message_id: messageId, error: errorMsg });
+  const { error: recErr } = await admin.from("staff_invites").update({
+    status,
+    sent_at: status === "sent" ? new Date().toISOString() : null,
+    message_id: messageId ?? null,
+    error: errorMsg ?? null,
+    // A refused email leaves no working link behind.
+    ...(status === "failed" ? { token_hash: null, token_expires_at: null } : {}),
+  } as any).eq("profile_id", input.profileId);
+  if (recErr) console.error("[staff-invite] could not record outcome", recErr.message);
   return { status, email, employee_id: input.profileId, ...(errorMsg ? { error: errorMsg } : {}) };
+}
+
+export type RedeemResult = { ok: true; tokenHash: string } | { ok: false; reason: Exclude<InviteLinkState, "usable"> };
+
+/**
+ * Exchange an emailed invite code for a fresh single-use sign-in token, which
+ * the employee's browser redeems immediately. Only the code's holder gets in.
+ */
+export async function redeemStaffInvite(admin: Admin, code: string): Promise<RedeemResult> {
+  const { data: inv } = await admin
+    .from("staff_invites")
+    .select("profile_id, status, revoked_at, token_issued_at, token_expires_at")
+    .eq("token_hash", await sha256Hex(code))
+    .maybeSingle();
+  if (!inv) return { ok: false, reason: "expired" };
+  const [{ data: userData }, { data: profile }] = await Promise.all([
+    admin.auth.admin.getUserById((inv as any).profile_id),
+    admin.from("profiles").select("is_active").eq("id", (inv as any).profile_id).maybeSingle(),
+  ]);
+  const user = userData?.user;
+  if (!user?.email) return { ok: false, reason: "expired" };
+  const state = inviteLinkState({
+    issuedAt: (inv as any).token_issued_at,
+    expiresAt: (inv as any).token_expires_at,
+    revoked: !!(inv as any).revoked_at || (inv as any).status === "revoked",
+    banned: !!user.banned_until && Date.parse(user.banned_until) > Date.now(),
+    active: (profile as any)?.is_active !== false,
+    lastSignInAt: user.last_sign_in_at ?? null,
+  });
+  if (state !== "usable") return { ok: false, reason: state };
+  const { data: link, error } = await admin.auth.admin.generateLink({ type: "magiclink", email: user.email });
+  const hashed = link?.properties?.hashed_token;
+  if (error || !hashed) {
+    console.error("[staff-invite] generateLink failed", error?.status, error?.message);
+    return { ok: false, reason: "expired" };
+  }
+  return { ok: true, tokenHash: hashed };
 }
 
 /**
@@ -267,6 +360,7 @@ export async function revokeStaffInvite(
   await admin.from("staff_invites").upsert({
     profile_id: input.profileId, tenant_id: input.tenantId, email: input.email.toLowerCase(),
     status: "revoked", last_attempt_at: now, revoked_at: now, invited_by: input.invitedBy,
+    token_hash: null, token_expires_at: null,
   } as any, { onConflict: "profile_id" });
   return { ok: true as const };
 }

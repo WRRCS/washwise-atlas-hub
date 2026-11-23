@@ -45,6 +45,6 @@ export async function markStaffInviteRevoked(
   const now = new Date().toISOString();
   await admin
     .from("staff_invites")
-    .update({ status: "revoked", revoked_at: now, last_attempt_at: now })
+    .update({ status: "revoked", revoked_at: now, last_attempt_at: now, token_hash: null, token_expires_at: null } as any)
     .eq("profile_id", input.userId);
 }

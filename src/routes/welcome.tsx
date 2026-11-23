@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import wrrcLogo from "@/assets/wrrcs-logo.png.asset.json";
+import { useServerFn } from "@tanstack/react-start";
 import { STAFF_HOME_PATH, welcomeLinkProblem } from "@/lib/staff-invite";
+import { redeemInviteLink } from "@/lib/staff-invite.functions";
 
-type WelcomeSearch = { token_hash?: string; type?: string };
+type WelcomeSearch = { invite?: string; token_hash?: string; type?: string };
 
 export const Route = createFileRoute("/welcome")({
   ssr: false,
@@ -23,6 +25,7 @@ export const Route = createFileRoute("/welcome")({
     ],
   }),
   validateSearch: (s: Record<string, unknown>): WelcomeSearch => ({
+    invite: typeof s.invite === "string" ? s.invite : undefined,
     token_hash: typeof s.token_hash === "string" ? s.token_hash : undefined,
     type: typeof s.type === "string" ? s.type : undefined,
   }),
@@ -37,7 +40,8 @@ type View =
 
 function WelcomePage() {
   const navigate = useNavigate();
-  const { token_hash } = Route.useSearch();
+  const { invite, token_hash } = Route.useSearch();
+  const redeemFn = useServerFn(redeemInviteLink);
   const [view, setView] = useState<View>({ kind: "working" });
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -49,6 +53,26 @@ function WelcomePage() {
     started.current = true;
     const goHome = () => navigate({ to: STAFF_HOME_PATH, replace: true });
     (async () => {
+      if (invite) {
+        // 24-hour invite link: swap the code for a one-time sign-in, then use it here.
+        try {
+          const res = await redeemFn({ data: { code: invite } });
+          if (res.ok) {
+            const { data, error: verifyError } = await supabase.auth.verifyOtp({ token_hash: res.tokenHash, type: "email" });
+            if (!verifyError && data.session) return goHome();
+            setView({ kind: "problem", reason: welcomeLinkProblem(verifyError?.message) });
+            return;
+          }
+          if (res.reason === "used") {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) return goHome();
+          }
+          setView({ kind: "problem", reason: res.reason === "revoked" ? "revoked" : "expired" });
+        } catch {
+          setView({ kind: "problem", reason: "expired" });
+        }
+        return;
+      }
       if (token_hash) {
         // Redeem the single-use link here, in the employee's own browser.
         const { data, error: verifyError } = await supabase.auth.verifyOtp({ token_hash, type: "email" });
@@ -66,7 +90,7 @@ function WelcomePage() {
       }
       setView({ kind: "request" });
     })();
-  }, [token_hash, navigate]);
+  }, [invite, token_hash, navigate, redeemFn]);
 
   const requestLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +135,7 @@ function WelcomePage() {
               <p className="text-sm text-muted-foreground">
                 {view.reason === "revoked"
                   ? "Ask your manager to send you a new invite."
-                  : "Each link works once and only for a short time. Get a new one below — it arrives by email in a minute."}
+                  : "Invite links work for 24 hours, until you sign in with them. Get a new one below — it arrives by email in a minute."}
               </p>
             </div>
           )}
