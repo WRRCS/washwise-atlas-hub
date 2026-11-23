@@ -25,7 +25,7 @@
 - Daily timesheets return original clock timestamps and null open ends; clip only duration calculations to the returned day window, so overnight edits cannot overwrite real times and weekly totals cannot double-count intervals.
 - EmployeeClockControls belongs above employee appointment content independent of appointment queries; admin timesheets expose record management rather than self-clock controls, so an empty schedule never blocks employee clock-in.
 - Cleaner action reminders reuse the private-secret push scheduler and arrival handlers; opt-in settings, unique occurrence/action keys, at-most-once claims and fresh pre-send checks prevent stale or duplicate alerts.
-- Employee reminders: employee_reminder_pilots.rollout_all = all active employee accounts, resolved at send time; claim_employee_reminder locks and rechecks role/eligibility, so owners and archived staff never get them.
+- Employee reminders: rollout_all = all active employee accounts at send time; claim_employee_reminder rechecks role/eligibility, so owners and archived staff are excluded.
 - Offline registration keeps root scope while Web Push uses a distinct messaging scope and verified browser registration; signed-in ownership checks and sign-out cleanup prevent worker replacement and shared-device identity reuse.
 - Admin desktop density is scoped through admin-layout and shared CSS sizing tokens; keep mobile employee typography unchanged and preserve schedule drag/drop handlers.
 - Week-grid columns live only in .schedule-row CSS tokens (no inline templates/row min-w); desktop minmax(0,1fr), narrow screens keep minimums with overflow arrows, min-width:0 children in a bounded .schedule-scroll so Sunday stays visible.
