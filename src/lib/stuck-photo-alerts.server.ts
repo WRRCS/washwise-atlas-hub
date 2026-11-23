@@ -34,6 +34,14 @@ export async function alertStuckPhotos(db: SupabaseClient<Database>, now = Date.
     const mine = new Set((claimed ?? []).map((c) => c.id));
     const fresh = claims.filter((c) => mine.has(c.id));
     if (!fresh.length) continue;
+    // One email per cleaner per cleaning: later stuck photos for the same visit are logged, not emailed.
+    const onceId = await photoAlertClaimId(`stuck-photo-once:${group.tenantId}:${group.jobId}:${group.uploaderId}`);
+    const { error: onceError } = await db.from("activity_log").insert({ id: onceId, tenant_id: group.tenantId, actor_id: group.uploaderId, entity_type: "job", entity_id: group.jobId, action_type: "system:stuck-photo-email-once", description: JSON.stringify({ photoCount: fresh.length }) });
+    if (onceError?.code === "23505") {
+      await db.from("activity_log").update({ action_type: "system:stuck-photo-email-skipped", description: JSON.stringify({ status: "skipped", reason: "already emailed for this cleaner and cleaning" }) }).in("id", fresh.map((c) => c.id));
+      continue;
+    }
+    if (onceError) throw new Error(onceError.message);
 
     const [{ data: job }, { data: cleaner }] = await Promise.all([
       db.from("jobs").select("id,service_address,service_location_label,scheduled_start,client:clients(first_name,last_name)").eq("id", group.jobId).eq("tenant_id", group.tenantId).maybeSingle(),

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import { groupPhotoUploads, photoAlertData, photoAlertKey, photoAlertClaimId, PHOTO_UPLOAD_QUIET_MS } from './photo-upload-alerts';
+import { photoAlertData, photoAlertKey, photoAlertOnceKey, photoAlertClaimId, PHOTO_UPLOAD_QUIET_MS } from './photo-upload-alerts';
 const SETTING = 'system:photo-upload-email-settings';
 type Settings = { enabled: boolean; recipient_id: string | null; starts_at: string; provider?: 'managed'|'outlook'; confirmed?: boolean };
 export async function manager(context: { supabase: SupabaseClient<Database>; userId: string }) {
@@ -60,10 +60,11 @@ export async function notifySavedPhotoBatch(db: SupabaseClient<Database>, tenant
   if (deliveredError) throw new Error(deliveredError.message);
   const alreadyNotified = new Set((delivered ?? []).flatMap(event => (JSON.parse(event.description).photoIds ?? []) as string[]));
   const sendTemplateEmail = dependencies?.send ?? (await import('./email-templates/send-email')).sendTemplateEmail;
-  for (const groupedBatches of groupPhotoUploads(completedRows)) {
+  // One email per cleaner per cleaning: once anything was emailed for this cleaner here, later uploads stay quiet.
+  for (const groupedBatches of alreadyNotified.size ? [] : [completedRows]) {
     const ids = [...new Set(groupedBatches.flatMap(batch => batch.photoIds))].filter(id => !alreadyNotified.has(id) && rows.some(row => row.id === id));
     if (!ids.length) continue;
-    const key = photoAlertKey(tenantId,jobId,uploaderId,ids);
+    const key = photoAlertOnceKey(tenantId,jobId,uploaderId);
     // Deterministic primary key prevents concurrent claims and refresh duplicates.
     const id = await photoAlertClaimId(key);
     const { error: claim } = await supabaseAdmin.from('activity_log').insert({ id,tenant_id:tenantId,actor_id:uploaderId,entity_type:'job',entity_id:jobId,action_type:'system:photo-upload-email-sending',description:JSON.stringify({ status:'sending',photoCount:ids.length }) });

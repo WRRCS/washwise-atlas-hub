@@ -13,6 +13,10 @@ export function groupPhotoUploads<T extends { id: string; uploaded_at: string; u
 export function photoAlertKey(tenantId: string, jobId: string, uploaderId: string, photoIds: string[]) {
   return `photo-upload:${tenantId}:${jobId}:${uploaderId}:${[...new Set(photoIds)].sort().join(",")}`;
 }
+/** Owner photo emails go out once per cleaner per cleaning, never once per upload. */
+export function photoAlertOnceKey(tenantId: string, jobId: string, uploaderId: string) {
+  return `photo-upload-once:${tenantId}:${jobId}:${uploaderId}`;
+}
 export async function photoAlertClaimId(key: string) {
   const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)));
   const hex = Array.from(bytes.slice(0, 16), b => b.toString(16).padStart(2, '0')).join('');

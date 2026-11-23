@@ -69,4 +69,10 @@ describe('saved photo delivery',()=>{
     failed.created_at='2026-10-20T00:00:00Z';state.fail=false;
     await notifySavedPhotoBatch(db,'tenant','job','cleaner',['p0','p1','p2']);expect(state.sends).toHaveLength(1);
   });
+  it('a later upload by the same cleaner on the same cleaning sends no second email',async()=>{
+    await notifySavedPhotoBatch(db,'tenant','job','cleaner',['p0','p1','p2']);
+    state.photos.push({id:'p3',job_id:'job',uploaded_by:'cleaner',uploaded_at:'2026-10-24T11:00:00.000Z'});
+    await notifySavedPhotoBatch(db,'tenant','job','cleaner',['p3']);
+    expect(state.sends).toHaveLength(1);
+  });
 });
