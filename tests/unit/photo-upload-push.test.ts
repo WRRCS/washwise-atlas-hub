@@ -55,6 +55,12 @@ describe('photo upload app notifications', () => {
     await pushSavedPhotoBatch(db, 'tenant', 'job', 'cleaner', ['p2'], deps);
     expect(state.sends).toHaveLength(1);
   });
+  it('a later upload by the same cleaner on the same cleaning sends no second alert', async () => {
+    await pushSavedPhotoBatch(db, 'tenant', 'job', 'cleaner', ['p0', 'p1', 'p2'], deps);
+    state.photos.push({ id: 'p3', job_id: 'job', uploaded_by: 'cleaner', uploaded_at: old(60) });
+    await pushSavedPhotoBatch(db, 'tenant', 'job', 'cleaner', ['p3'], deps);
+    expect(state.sends).toHaveLength(1);
+  });
   it('sends nothing when the owner has not turned photo notifications on', async () => {
     state.logs.push({ tenant_id: 'tenant', actor_id: 'owner', action_type: 'system:photo-upload-push-pref', description: JSON.stringify({ enabled: false, starts_at: old(10) }), created_at: old(10) });
     await pushSavedPhotoBatch(db, 'tenant', 'job', 'cleaner', ['p0'], deps);

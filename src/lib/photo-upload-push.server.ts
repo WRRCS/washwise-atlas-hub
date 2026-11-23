@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import { photoAlertClaimId, photoAlertData, photoAlertKey, PHOTO_UPLOAD_QUIET_MS } from './photo-upload-alerts';
+import { photoAlertClaimId, photoAlertData, photoAlertOnceKey, PHOTO_UPLOAD_QUIET_MS } from './photo-upload-alerts';
 import { latestPhotoPushPrefs, photoPushMessage, PHOTO_PUSH_PREF, PHOTO_PUSH_RECORD_TYPES, unannouncedPhotoIds } from './photo-upload-push';
 import type { PushPayload, PushTarget } from './push.server';
 
@@ -58,9 +58,11 @@ export async function pushSavedPhotoBatch(db: SupabaseClient<Database>, tenantId
   const parsed = (records ?? []).map(r => { try { return JSON.parse(r.description) as { recipient_id?: string; photoIds?: string[] }; } catch { return {}; } });
   for (const [recipientId, startsAt] of recipients) {
     const announced = new Set(parsed.filter(r => r.recipient_id === recipientId).flatMap(r => r.photoIds ?? []));
+    // One phone alert per cleaner per cleaning: once announced here, later uploads stay quiet.
+    if (announced.size) continue;
     const ids = unannouncedPhotoIds(rows, startsAt, announced);
     if (!ids.length) continue;
-    const id = await photoAlertClaimId(`push:${recipientId}:${photoAlertKey(tenantId, jobId, uploaderId, ids)}`);
+    const id = await photoAlertClaimId(`push:${recipientId}:${photoAlertOnceKey(tenantId, jobId, uploaderId)}`);
     const { error: claim } = await admin.from('activity_log').insert({ id, tenant_id: tenantId, actor_id: uploaderId, entity_type: 'job', entity_id: jobId, action_type: 'system:photo-upload-push-sending', description: JSON.stringify({ recipient_id: recipientId, photoIds: ids }) });
     if (claim?.code === '23505') continue; // Another request already owns this notification.
     if (claim) throw new Error(claim.message);
