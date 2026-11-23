@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Job pop-up: top address opens directions; Copy/Complete/Delete icons replace the repeated name; nothing remains below Save times. Verified signed in as Zoe at 1280px and 890px, including Copy closing the pop-up; 21 schedule/location tests pass, build OK. No real cleaning changes or messages; preview only.
+
 - [x] New-hire cleaner training in English and Ukrainian: in-app Training page (menu item, language switch, download/print) plus two printable PDFs with sample-data phone screenshots. Captured from a temporary practice workspace that was deleted afterward; real data untouched. Fixed the Leaving photo dialog being cut off on narrow phones.
 
 - [x] Fix existing draft saves to notify the parent and exit editing; accept the boolean send flag and consume it after opening confirmation so repeat attempts work. Eleven invoice tests pass; build OK. No emails sent.

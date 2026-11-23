@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, ExternalLink, Clock, Trash2, Copy, ClipboardPaste, X, GripHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { useT, dateLocaleOpts } from "@/lib/i18n";
@@ -913,8 +914,53 @@ function SchedulePage() {
                                   >
                                     <GripHorizontal className="size-4" />
                                   </div>
-                                  <div className="mb-3"><ScheduleAppointmentDetails job={j} tz={tz} /></div>
-                                  <p className="text-xs text-muted-foreground mb-2 break-words">{label}</p>
+                                  <div className="mb-3"><ScheduleAppointmentDetails job={j} tz={tz} linkAddress /></div>
+                                  {canManageSchedule && (
+                                    <TooltipProvider delayDuration={200}>
+                                      <div className="mb-2 flex items-center gap-1" role="group" aria-label="Shift actions">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button type="button" variant="ghost" size="icon" className="size-8" aria-label="Copy shift" onClick={() => {
+                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label, mode: "auto" });
+                                           setOpenShiftKey(null);
+                                           toast.success("Shift copied — tap \"Paste here\" on a team member to add them to this cleaning.");
+                                         }}>
+                                              <Copy className="size-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>Copy shift</TooltipContent>
+                                        </Tooltip>
+                                        {(j.status === "scheduled" || j.status === "in_progress") && (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label="Mark complete" disabled={closeMut.isPending} onClick={() => {
+                                            if (window.confirm("Mark this job complete? Its invoice is created, and anyone still clocked in on it is clocked out of the job.")) closeMut.mutate([j.id]);
+                                          }}>
+                                                <CheckCircle2 className="size-4" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Mark complete</TooltipContent>
+                                          </Tooltip>
+                                        )}
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button type="button" variant="ghost" size="icon" className="size-8 text-destructive hover:text-destructive" aria-label={(j.assignees?.length ?? 0) > 1 ? "Remove from this person" : "Delete shift"} disabled={deleteMut.isPending} onClick={() => {
+                                          const many = (j.assignees?.length ?? 0) > 1;
+                                          const msg = many
+                                            ? `Remove ${emp.full_name ?? "this team member"} from this shift? Everyone else stays scheduled.`
+                                            : "Delete this shift? This cannot be undone.";
+                                          if (!window.confirm(msg)) return;
+                                          if (many) { deleteMut.mutate({ id: j.id, employeeId: emp.id }); return; }
+                                          void askCancelText(j.id).then((textCleaners) => deleteMut.mutate({ id: j.id, employeeId: emp.id, textCleaners }));
+                                        }}>
+                                              <Trash2 className="size-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>{(j.assignees?.length ?? 0) > 1 ? "Remove from this person" : "Delete shift"}</TooltipContent>
+                                        </Tooltip>
+                                      </div>
+                                    </TooltipProvider>
+                                  )}
                                   {canManageSchedule && colorEditId === j.id && (
                                     <>
                                   <p className="text-[11px] text-muted-foreground mb-2">
@@ -1048,65 +1094,6 @@ function SchedulePage() {
                                           changeCleanerHours((jobs as any[]).find((x) => x.id === j.id) ?? j, emp.id, emp.full_name ?? "This cleaner", new Date(startISO), new Date(endISO))
                                         }
                                       />
-                                      {(j.assignees?.length ?? 0) > 1 && (
-                                        <p className="text-[11px] text-muted-foreground">
-                                          Changes only {firstNames.get(emp.id) ?? emp.full_name ?? "this cleaner"}'s hours. Whole cleaning: {fmtTimeTZ(j.job_start, tz)}–{fmtTimeTZ(j.job_end, tz)}
-                                        </p>
-                                      )}
-                                       <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                                         <Copy className="size-3" /> Drag onto another team member to add them to this cleaning.
-                                       </p>
-                                       <button
-                                         type="button"
-                                         onClick={() => {
-                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label, mode: "auto" });
-                                           setOpenShiftKey(null);
-                                           toast.success("Shift copied — tap \"Paste here\" on a team member to add them to this cleaning.");
-                                         }}
-                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
-                                       >
-                                         <Copy className="size-3" /> Copy shift
-                                       </button>
-                                       <button
-                                         type="button"
-                                         onClick={() => {
-                                           setCopiedShift({ id: j.id, startISO: j.scheduled_start, endISO: j.scheduled_end, label, mode: "new" });
-                                           setOpenShiftKey(null);
-                                           toast.success("Ready to duplicate — tap \"Paste here\" to create a separate new job.");
-                                         }}
-                                         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border/70 text-[11px] font-medium py-1.5 hover:bg-clay-100"
-                                       >
-                                         <Plus className="size-3" /> Duplicate job
-                                       </button>
-                                      {(j.status === "scheduled" || j.status === "in_progress") && (
-                                        <button
-                                          type="button"
-                                          disabled={closeMut.isPending}
-                                          onClick={() => {
-                                            if (window.confirm("Mark this job complete? Its invoice is created, and anyone still clocked in on it is clocked out of the job.")) closeMut.mutate([j.id]);
-                                          }}
-                                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-foreground text-background text-[11px] font-medium py-1.5 hover:opacity-90 disabled:opacity-50"
-                                        >
-                                          <CheckCircle2 className="size-3" /> Mark complete
-                                        </button>
-                                      )}
-                                      <button
-                                        type="button"
-                                        disabled={deleteMut.isPending}
-                                        onClick={() => {
-                                          const many = (j.assignees?.length ?? 0) > 1;
-                                          const msg = many
-                                            ? `Remove ${emp.full_name ?? "this team member"} from this shift? Everyone else stays scheduled.`
-                                            : "Delete this shift? This cannot be undone.";
-                                          if (!window.confirm(msg)) return;
-                                          if (many) { deleteMut.mutate({ id: j.id, employeeId: emp.id }); return; }
-                                          void askCancelText(j.id).then((textCleaners) => deleteMut.mutate({ id: j.id, employeeId: emp.id, textCleaners }));
-                                        }}
-                                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/40 text-destructive text-[11px] font-medium py-1.5 hover:bg-destructive/10 disabled:opacity-50"
-                                      >
-                                        <Trash2 className="size-3" />
-                                        {(j.assignees?.length ?? 0) > 1 ? "Remove from this person" : "Delete shift"}
-                                      </button>
                                     </div>
                                   )}
                                 </PopoverContent>
