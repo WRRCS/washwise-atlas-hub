@@ -5,14 +5,27 @@ export async function pilotState(db:Db,jobId:string,userId:string) {
  const state=await loadActionState(db,jobId,userId,true);
  return state;
 }
+/** Who may receive reminders: every active employee on full rollout, else the two pilot participants. */
+export async function reminderRecipients(db:Db,p:PilotSettings & {tenant_id:string}):Promise<Set<string>> {
+ if(!p.rollout_all)return new Set(p.participant_ids.length===2?p.participant_ids:[]);
+ const {data:people,error}=await db.from('profiles').select('id').eq('tenant_id',p.tenant_id).eq('is_active',true);if(error)throw new Error(error.message);
+ const ids=(people ?? []).map((x:{id:string})=>x.id);if(!ids.length)return new Set();
+ const {data:roles,error:re}=await db.from('user_roles').select('user_id').eq('role','employee').in('user_id',ids);if(re)throw new Error(re.message);
+ return new Set((roles ?? []).map((r:{user_id:string})=>r.user_id));
+}
+export function jobCleaners(job:{assigned_to:string|null;job_employees:{employee_id:string}[]|null}) {
+ return [...new Set([job.assigned_to,...(job.job_employees ?? []).map(e=>e.employee_id)].filter((x):x is string=>!!x))];
+}
 export async function dispatchPilotReminders(db:Db,now=Date.now()) {
  const {data:pilots,error}=await db.from('employee_reminder_pilots').select('*').eq('delivery_enabled',true);
  if(error)throw new Error(error.message);
  for(const p of (pilots ?? []) as (PilotSettings & {tenant_id:string})[]) {
-  if(p.participant_ids.length!==2)continue;
-  const {data:jobs,error:je}=await db.from('jobs').select('id').eq('tenant_id',p.tenant_id).in('status',['scheduled','in_progress']).gt('scheduled_end',new Date(now).toISOString()).lte('scheduled_start',new Date(now+120*60000).toISOString()).order('scheduled_start');
+  const recipients=await reminderRecipients(db,p);
+  if(!recipients.size)continue;
+  const {data:jobs,error:je}=await db.from('jobs').select('id,assigned_to,job_employees(employee_id)').eq('tenant_id',p.tenant_id).in('status',['scheduled','in_progress']).or('published_at.not.is.null,status.eq.in_progress').gt('scheduled_end',new Date(now).toISOString()).lte('scheduled_start',new Date(now+120*60000).toISOString()).order('scheduled_start');
   if(je)throw new Error(je.message);
-  for(const userId of p.participant_ids)for(const job of jobs ?? []) {
+  // Only the cleaners on each cleaning are checked, so a full team rollout stays light.
+  for(const job of (jobs ?? []) as {id:string;assigned_to:string|null;job_employees:{employee_id:string}[]|null}[])for(const userId of jobCleaners(job).filter(id=>recipients.has(id))) {
    const s=await pilotState(db,job.id,userId);if(!s)continue;
    const reminder=pilotReminder(s,p,now);if(!reminder)continue;
    const {data:claim,error:ce}=await db.rpc('claim_employee_reminder',{_tenant:p.tenant_id,_user:userId,_job:job.id,_start:s.job.scheduled_start,_key:reminder.key,_stage:reminder.stage,_action:reminder.action,_channel:p.channel});
@@ -24,12 +37,12 @@ export async function dispatchPilotReminders(db:Db,now=Date.now()) {
     let accepted=false;
     if(p.channel==='email') {
      const {data:person,error:pe}=await db.from('profiles').select('email').eq('id',userId).eq('tenant_id',p.tenant_id).eq('is_active',true).maybeSingle();if(pe)throw new Error(pe.message);
-     if(!person?.email)throw new Error('Pilot employee has no email address');
+     if(!person?.email)throw new Error('Employee has no email address');
      const {sendOutlookAlert}=await import('@/lib/outlook-email.server');
      await sendOutlookAlert(person.email,`WRRCS · ${valid.title}`,`${valid.body}\n\nhttps://wrrcs.com${valid.url}`);accepted=true;
     } else {
      const {data:subs,error:se}=await db.from('push_subscriptions').select('id,device_id,endpoint,p256dh,auth').eq('tenant_id',p.tenant_id).eq('user_id',userId);if(se)throw new Error(se.message);
-     if(!subs?.length)throw new Error('No registered device for this pilot employee');
+     if(!subs?.length)throw new Error('No registered device for this employee');
      const {sendWebPush}=await import('@/lib/push.server');
      for(const sub of subs) {
       const state=await pilotState(db,job.id,userId);const {data:latest}=await db.from('employee_reminder_pilots').select('*').eq('tenant_id',p.tenant_id).maybeSingle();

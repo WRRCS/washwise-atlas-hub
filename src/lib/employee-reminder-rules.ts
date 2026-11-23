@@ -1,8 +1,12 @@
 export type ReminderStage = 'before' | 'start' | 'followup';
-export type PilotSettings = { participant_ids: string[]; delivery_enabled: boolean; before_enabled: boolean; start_enabled: boolean; followup_enabled: boolean; before_minutes: number; followup_minutes: number; channel: 'push' | 'email' };
+export type PilotSettings = { participant_ids: string[]; rollout_all?: boolean | null; delivery_enabled: boolean; before_enabled: boolean; start_enabled: boolean; followup_enabled: boolean; before_minutes: number; followup_minutes: number; channel: 'push' | 'email' };
 export type PilotState = { job: { id: string; tenant_id: string; scheduled_start: string; scheduled_end: string; status: string; service_location_label: string | null; service_address: string | null }; userId: string; assigned: boolean; active: boolean; clockedIn: boolean; onLunch: boolean; arrived: boolean };
+/** Full rollout covers every current employee (the caller and database confirm the employee role); the legacy pilot covers exactly two chosen people. */
+export function reminderParticipant(p: Pick<PilotSettings,'participant_ids'|'rollout_all'>, userId: string) {
+ return p.rollout_all ? true : p.participant_ids.length === 2 && p.participant_ids.includes(userId);
+}
 export function pilotEligible(s: PilotState, p: PilotSettings) {
- return p.participant_ids.length === 2 && p.participant_ids.includes(s.userId) && s.assigned && s.active && !s.onLunch && !s.arrived && ['scheduled','in_progress'].includes(s.job.status);
+ return reminderParticipant(p, s.userId) && s.assigned && s.active && !s.onLunch && !s.arrived && ['scheduled','in_progress'].includes(s.job.status);
 }
 export function pilotReminder(s: PilotState,p: PilotSettings,now: number,delivery=true) {
  if (!pilotEligible(s,p) || (delivery && !p.delivery_enabled)) return null;

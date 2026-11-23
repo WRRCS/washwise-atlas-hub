@@ -1203,6 +1203,7 @@ export type Database = {
           followup_enabled: boolean
           followup_minutes: number
           participant_ids: string[]
+          rollout_all: boolean
           start_enabled: boolean
           tenant_id: string
           updated_at: string
@@ -1215,6 +1216,7 @@ export type Database = {
           followup_enabled?: boolean
           followup_minutes?: number
           participant_ids?: string[]
+          rollout_all?: boolean
           start_enabled?: boolean
           tenant_id: string
           updated_at?: string
@@ -1227,6 +1229,7 @@ export type Database = {
           followup_enabled?: boolean
           followup_minutes?: number
           participant_ids?: string[]
+          rollout_all?: boolean
           start_enabled?: boolean
           tenant_id?: string
           updated_at?: string
