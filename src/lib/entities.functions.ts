@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { clientContact, clientContactMap, staffDirectory } from "@/lib/privacy";
-import { accessState, type AccessState, type InviteRecordStatus } from "@/lib/staff-invite";
+import { accessState, signInServiceError, type AccessState, type InviteRecordStatus } from "@/lib/staff-invite";
 import { signInAccessChange } from "@/lib/staff-access";
 
 // ============= Clients =============
@@ -910,7 +910,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.id);
     await supabaseAdmin.from("profiles").delete().eq("id", data.id);
     const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(data.id);
-    if (authErr && !/not found/i.test(authErr.message)) throw new Error(authErr.message);
+    if (authErr && !/not found/i.test(authErr.message)) throw new Error(signInServiceError("remove their sign-in account", authErr as any));
     return { ok: true as const };
   });
 
@@ -947,7 +947,7 @@ export const impersonateEmployee = createServerFn({ method: "POST" })
       email: prof.email,
       options: { redirectTo: data.redirect_to },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(signInServiceError("create a view-as link", error as any));
     return { url: link.properties?.action_link ?? null };
   });
 

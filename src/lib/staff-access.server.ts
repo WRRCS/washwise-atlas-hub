@@ -2,6 +2,7 @@
 // Callers must verify the requester's permission first and pass the privileged
 // client loaded inside their own handler.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { signInServiceError } from "@/lib/staff-invite";
 
 type Admin = SupabaseClient<any, any, any>;
 
@@ -24,13 +25,13 @@ export async function setStaffSignInAllowed(
 ): Promise<{ hadAccount: boolean }> {
   const { data, error } = await admin.auth.admin.getUserById(input.userId);
   if (!data?.user) {
-    if (error && !/not found/i.test(error.message)) throw new Error(error.message);
+    if (error && !/not found/i.test(error.message)) throw new Error(signInServiceError("look up this account", error as any));
     return { hadAccount: false };
   }
   const { error: updateError } = await admin.auth.admin.updateUserById(input.userId, {
     ban_duration: input.allowed ? NOT_BLOCKED : BLOCKED,
   } as any);
-  if (updateError) throw new Error(updateError.message);
+  if (updateError) throw new Error(signInServiceError(input.allowed ? "turn sign-in back on" : "block sign-in", updateError as any));
   return { hadAccount: true };
 }
 

@@ -107,3 +107,19 @@ export function inviteResultMessage(status: InviteSendStatus, email: string) {
   if (status === "failed") return "Invitation failed — retry";
   return "Send status unknown";
 }
+
+/**
+ * Plain-words message for a sign-in service error. Its replies can be empty
+ * ("{}") or raw JSON when the service has a problem; never show those.
+ */
+export function signInServiceError(
+  action: string,
+  err: { message?: string | null; status?: number | null } | null | undefined,
+): string {
+  const msg = (err?.message ?? "").trim();
+  const status = typeof err?.status === "number" && err.status > 0 ? err.status : null;
+  if (!msg || /^[{[]/.test(msg)) {
+    return `The sign-in service couldn't ${action}${status ? ` (error ${status})` : ""}. Nothing was changed — please try again.`;
+  }
+  return msg;
+}

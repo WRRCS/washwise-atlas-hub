@@ -8,6 +8,7 @@ import {
   classifySendOutcome,
   inviteFailureReason,
   inviteLinkState,
+  signInServiceError,
   type InviteLinkState,
   type InviteSendStatus,
 } from "@/lib/staff-invite";
@@ -355,7 +356,7 @@ export async function revokeStaffInvite(
   if (user.last_sign_in_at) throw new InviteError("They already signed in, so there's no pending invite to revoke. Archive them to remove access.");
   await admin.auth.admin.generateLink({ type: "magiclink", email: (user.email ?? input.email).toLowerCase() });
   const { error } = await admin.auth.admin.updateUserById(user.id, { ban_duration: "87600h" } as any);
-  if (error) throw new Error(error.message);
+  if (error) throw new InviteError(signInServiceError("cancel the invite", error as any));
   const now = new Date().toISOString();
   await admin.from("staff_invites").upsert({
     profile_id: input.profileId, tenant_id: input.tenantId, email: input.email.toLowerCase(),

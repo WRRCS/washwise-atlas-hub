@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   INVITE_LINK_TTL_HOURS, accessState, buildInviteLink, classifySendOutcome, inviteFailureReason,
-  inviteLinkState, inviteResultMessage, welcomeLinkProblem,
+  inviteLinkState, inviteResultMessage, signInServiceError, welcomeLinkProblem,
 } from "@/lib/staff-invite";
 import { deliverStaffInvite } from "@/lib/staff-invite.server";
 
@@ -35,6 +35,18 @@ describe("invite link lifetime", () => {
     const now = Date.parse("2026-11-23T09:00:00Z");
     expect(inviteLinkState({ ...base, revoked: true, now })).toBe("revoked");
     expect(inviteLinkState({ ...base, active: false, now })).toBe("revoked");
+  });
+});
+
+describe("sign-in service errors elsewhere (archive, revoke, delete, view as)", () => {
+  it("replaces empty or raw replies with plain words", () => {
+    expect(signInServiceError("block sign-in", { message: "{}", status: 500 })).toBe(
+      "The sign-in service couldn't block sign-in (error 500). Nothing was changed — please try again.",
+    );
+    expect(signInServiceError("block sign-in", { message: "", status: 0 })).not.toContain("error 0");
+  });
+  it("keeps readable messages", () => {
+    expect(signInServiceError("block sign-in", { message: "User not found", status: 404 })).toBe("User not found");
   });
 });
 
