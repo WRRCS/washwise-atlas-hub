@@ -2,7 +2,9 @@
 
 - [x] Fix "Apply to employees" reminder-settings save error (no unique match). Verified upsert twice.
 - [x] Team schedule reminders by text built (employees only, published cleanings, 30-min lateness cutoff); settings changes rebuild upcoming reminders. Tests pass, DB checks rolled back.
-- [ ] Texts actually going out — blocked: connected Twilio account (Leslie's Twilio) has no phone number; needs one bought/moved there, then publish.
+- [x] Business texting number (360) 685-1260 saved in app settings; it is on the connected Twilio account (SMS-capable).
+- [ ] Carrier registration (A2P 10DLC) for the number — Leslie in Twilio Console; can't be checked from here (key lacks permission).
+- [ ] Incoming text replies into the app — needs Twilio Auth Token + number's incoming-message link; awaiting Leslie.
 - [x] Client portal reminder-choices save error fixed; saving twice verified (rolled back).
 
 - [x] End the Dalton/Barbra reminder pilot; clock-in/arrival reminders now on for all current employees (7), push channel, same stages and limits. Verified settings screen signed in as owner; 35 reminder tests pass. Real-phone receipt not observed; goes live on publish.
