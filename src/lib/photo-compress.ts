@@ -36,8 +36,11 @@ function jpegName(name: string) {
  * photo is sent as-is. After two such crashes this phone stops shrinking.
  */
 export type ShrinkStore = { get(key: string): string | null; set(key: string, value: string): void; remove(key: string): void };
-const PENDING_KEY = "wrrcs-photo-shrink-pending";
-const CRASHES_KEY = "wrrcs-photo-shrink-crashes";
+/** "upload" shrinks photos before sending; "preview" makes the small on-phone previews. */
+export type ShrinkKind = "upload" | "preview";
+const keys = (kind: ShrinkKind) => kind === "upload"
+  ? { pending: "wrrcs-photo-shrink-pending", crashes: "wrrcs-photo-shrink-crashes" }
+  : { pending: "wrrcs-photo-preview-pending", crashes: "wrrcs-photo-preview-crashes" };
 export const SHRINK_CRASH_LIMIT = 2;
 
 function readList(store: ShrinkStore, key: string): string[] {
@@ -45,7 +48,8 @@ function readList(store: ShrinkStore, key: string): string[] {
 }
 
 /** Decides whether to shrink this photo, recording any earlier crash it caused. */
-export function beginShrink(store: ShrinkStore, photoId: string): boolean {
+export function beginShrink(store: ShrinkStore, photoId: string, kind: ShrinkKind = "upload"): boolean {
+  const { pending: PENDING_KEY, crashes: CRASHES_KEY } = keys(kind);
   const pending = readList(store, PENDING_KEY);
   let crashes = Number(store.get(CRASHES_KEY) ?? "0") || 0;
   if (pending.includes(photoId)) {
@@ -60,11 +64,12 @@ export function beginShrink(store: ShrinkStore, photoId: string): boolean {
 }
 
 /** Clears the note once shrinking finished (or failed without crashing). */
-export function endShrink(store: ShrinkStore, photoId: string): void {
+export function endShrink(store: ShrinkStore, photoId: string, kind: ShrinkKind = "upload"): void {
+  const { pending: PENDING_KEY } = keys(kind);
   store.set(PENDING_KEY, JSON.stringify(readList(store, PENDING_KEY).filter((id) => id !== photoId)));
 }
 
-function browserStore(): ShrinkStore | null {
+export function browserShrinkStore(): ShrinkStore | null {
   try {
     const ls = window.localStorage;
     return { get: (k) => ls.getItem(k), set: (k, v) => ls.setItem(k, v), remove: (k) => ls.removeItem(k) };
@@ -76,7 +81,7 @@ function browserStore(): ShrinkStore | null {
 /** Returns a smaller JPEG copy of the photo, or the original when that is better or impossible. */
 export async function compressPhotoForUpload(file: File, photoId?: string): Promise<File> {
   if (typeof document === "undefined" || !shouldCompress(file)) return file;
-  const store = photoId ? browserStore() : null;
+  const store = photoId ? browserShrinkStore() : null;
   if (store && photoId && !beginShrink(store, photoId)) return file;
   try {
     const small = await shrinkPhoto(file, UPLOAD_MAX_PX, UPLOAD_JPEG_QUALITY);

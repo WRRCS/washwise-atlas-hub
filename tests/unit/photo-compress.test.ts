@@ -49,3 +49,12 @@ describe("a photo that crashed the app while shrinking is sent as-is", () => {
     expect(beginShrink(s, "c")).toBe(false);
   });
 });
+
+describe("a preview that crashed the app is skipped next time", () => {
+  it("tracks previews separately from uploads", () => {
+    const s = memoryStore();
+    expect(beginShrink(s, "a", "preview")).toBe(true); // app dies while making the preview
+    expect(beginShrink(s, "a", "preview")).toBe(false);
+    expect(beginShrink(s, "a", "upload")).toBe(true);
+  });
+});

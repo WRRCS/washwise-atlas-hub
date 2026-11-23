@@ -56,12 +56,20 @@ async function render(blob: Blob, max: number, quality = 0.72): Promise<Blob | n
  * read the picture. `isCancelled` lets an unmounted preview skip its turn.
  * The caller revokes the returned URL.
  */
-export function makeLocalThumbnail(blob: Blob, isCancelled: () => boolean = () => false, max = LOCAL_THUMB_MAX_PX): Promise<string | null> {
+export function makeLocalThumbnail(blob: Blob, isCancelled: () => boolean = () => false, max = LOCAL_THUMB_MAX_PX, photoKey?: string): Promise<string | null> {
   const job = chain.then(async () => {
     if (isCancelled()) return null;
-    const small = await render(blob, max);
-    if (!small || isCancelled()) return null;
-    return URL.createObjectURL(small);
+    // A preview that crashed the app last time is skipped (placeholder shown) so the crash can't repeat.
+    const { beginShrink, endShrink, browserShrinkStore } = await import("@/lib/photo-compress");
+    const store = photoKey ? browserShrinkStore() : null;
+    if (store && photoKey && !beginShrink(store, photoKey, "preview")) return null;
+    try {
+      const small = await render(blob, max);
+      if (!small || isCancelled()) return null;
+      return URL.createObjectURL(small);
+    } finally {
+      if (store && photoKey) endShrink(store, photoKey, "preview");
+    }
   });
   chain = job.catch(() => null);
   return job;

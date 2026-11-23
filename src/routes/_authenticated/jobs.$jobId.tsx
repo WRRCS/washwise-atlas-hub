@@ -742,7 +742,7 @@ function ScopedPhotosTab({ jobId, viewerId, employeeId, cleanerName, readOnly, e
         <div className="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-2">
           {pendingTiles.map((it) => (
             <div key={it.id} className="relative aspect-square rounded-md overflow-hidden bg-clay-200 ring-1 ring-border">
-              <LocalPhotoThumb file={it.file} className="w-full h-full object-cover" dimmed={it.status === "failed" ? "opacity-40" : "opacity-70"} />
+              <LocalPhotoThumb file={it.file} photoKey={it.id} className="w-full h-full object-cover" dimmed={it.status === "failed" ? "opacity-40" : "opacity-70"} />
               {it.status === "failed" ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-1">
                   <button type="button" onClick={() => queue.retry(it.id)} className="text-[10px] font-medium rounded bg-brand text-brand-foreground px-1.5 py-0.5">{t("Retry")}</button>

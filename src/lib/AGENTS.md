@@ -3,4 +3,4 @@
 - Public /pay links need the invoice's pay_token (?k=); build them only with invoicePayUrl(origin, id, token), so an invoice id alone never reveals details.
 - Cleaners can write jobs only to move status forward and stamp actual_start/actual_end at the current time (guard_employee_job_billing allowlist); add any new cleaner-side job write as a checked SECURITY DEFINER RPC, so cleaning details stay manager-only.
 - Business texts (sms_messages, sms.functions, sendClientSms) are owner/manager-only at both the database and server level, so cleaners never see client conversations.
-- Photo upload shrinking keeps a per-photo pending marker and sends the original when a previous shrink never finished (two crashes disable shrinking on that phone), and the outbox resend starts a few seconds after launch, so a memory crash can't repeat on every app open.
+- Photo upload shrinking and on-phone previews keep a per-photo pending marker and sends the original when a previous shrink never finished (two crashes disable shrinking on that phone), and the outbox resend starts a few seconds after launch, so a memory crash can't repeat on every app open.
