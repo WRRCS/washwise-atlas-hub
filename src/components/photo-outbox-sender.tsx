@@ -10,6 +10,8 @@ import { resumeAllPhotoQueues } from "@/lib/photo-upload-queue";
  * no signal, or handed off from the Leaving screen) are put back in line and
  * sent as soon as signal returns, whichever page the cleaner is on.
  */
+const OUTBOX_START_DELAY_MS = 3000;
+
 export function PhotoOutboxSender() {
   const qc = useQueryClient();
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -27,7 +29,8 @@ export function PhotoOutboxSender() {
   useEffect(() => {
     if (!viewerId) return;
     let cancelled = false;
-    void loadViewerOutbox<JobPhotoMeta>(viewerId).then((kept) => {
+    // Let the first screen open before the phone starts working through saved photos.
+    const start = window.setTimeout(() => void loadViewerOutbox<JobPhotoMeta>(viewerId).then((kept) => {
       if (cancelled) return;
       const byJob = new Map<string, typeof kept>();
       for (const r of kept) {
@@ -42,11 +45,12 @@ export function PhotoOutboxSender() {
         );
       }
       void rescueLeavingPhotos(viewerId, kept, () => cancelled);
-    });
+    }), OUTBOX_START_DELAY_MS);
     const timer = window.setInterval(() => { if (navigator.onLine !== false) resumeAllPhotoQueues(); }, 20_000);
     window.addEventListener("online", resumeAllPhotoQueues);
     return () => {
       cancelled = true;
+      window.clearTimeout(start);
       window.clearInterval(timer);
       window.removeEventListener("online", resumeAllPhotoQueues);
     };

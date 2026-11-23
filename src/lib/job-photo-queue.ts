@@ -47,7 +47,7 @@ export function jobPhotoQueue(viewerId: string, jobId: string): UploadQueue<JobP
         throw Object.assign(new Error(t("Your login changed. Please reopen the appointment and upload again.")), { permanent: true });
       }
       // Shrink just before sending; the phone keeps the original until the server has a copy.
-      const file = await compressPhotoForUpload(item.file as File);
+      const file = await compressPhotoForUpload(item.file as File, item.id);
       const { path, token } = await createJobPhotoUploadUrl({ data: { job_id: jobId, file_name: file.name || "photo.jpg" } });
       const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, { contentType: file.type || "image/jpeg" });
       if (error) throw new Error(error.message);
