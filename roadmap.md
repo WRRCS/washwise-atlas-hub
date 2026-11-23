@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] End the Dalton/Barbra reminder pilot; clock-in/arrival reminders now on for all current employees (7), push channel, same stages and limits. Verified settings screen signed in as owner; 35 reminder tests pass. Real-phone receipt not observed; goes live on publish.
+
 - [x] Job pop-up: top address opens directions; Copy/Complete/Delete icons replace the repeated name; nothing remains below Save times. Verified signed in as Zoe at 1280px and 890px, including Copy closing the pop-up; 21 schedule/location tests pass, build OK. No real cleaning changes or messages; preview only.
 
 - [x] New-hire cleaner training in English and Ukrainian: in-app Training page (menu item, language switch, download/print) plus two printable PDFs with sample-data phone screenshots. Captured from a temporary practice workspace that was deleted afterward; real data untouched. Fixed the Leaving photo dialog being cut off on narrow phones.
@@ -9,8 +11,7 @@
 
 - [x] Prepare Dalton/Barbra-only reminder pilot: manager participant selection, backend enforcement, delivery locked off, staged clock/arrival rules, banner, per-device readiness, separate push/offline scopes, authenticated registration checks, account-change cleanup and separate Outlook fallback. No notification attempts created; no SMS added; unrelated queues preserved.
 - [x] Thirty-three no-send reminder/registration tests pass; signed in as Dalton and Barbra, clock and device recheck controls render with no runtime errors and employee pilot-management controls absent. Latest build OK.
-- [ ] Signed-in manager participant-save and due-banner/appointment-link browser checks — waiting for an authorized manager session and controlled appointment setup; employee screens and no-send eligibility rules verified.
-- [ ] Controlled real-phone receipt, locked-screen appointment links and suppression — awaiting Leslie's test authorization and physical-phone observations; broader rollout stays disabled.
+- [x] Pilot superseded by full rollout (Leslie, Nov 22).
 
 - [ ] Prepare Outlook owner/admin photo-batch and work-session clock alerts, separate recipient/enable controls, confirmation gate, saved-event deduplication and honest provider-status logs. Preserve existing email routing and client hold.
 - [ ] Confirm sender/test recipient, verify deployed delivery, then activate only explicitly confirmed notification types — awaiting Leslie's confirmation and publication.
