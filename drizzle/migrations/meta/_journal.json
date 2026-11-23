@@ -477,6 +477,13 @@
       "when": 1795414388331,
       "tag": "0067_resync_employee_appointment_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795416043125,
+      "tag": "0068_reminder_prefs_full_client_unique",
+      "breakpoints": true
     }
   ]
 }

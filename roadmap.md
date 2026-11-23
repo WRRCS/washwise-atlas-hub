@@ -3,7 +3,7 @@
 - [x] Fix "Apply to employees" reminder-settings save error (no unique match). Verified upsert twice.
 - [x] Team schedule reminders by text built (employees only, published cleanings, 30-min lateness cutoff); settings changes rebuild upcoming reminders. Tests pass, DB checks rolled back.
 - [ ] Texts actually going out — blocked: connected Twilio account (Leslie's Twilio) has no phone number; needs one bought/moved there, then publish.
-- [ ] Client portal reminder-choices save shows the same error — awaiting Leslie's yes/no (she asked "What error?").
+- [x] Client portal reminder-choices save error fixed; saving twice verified (rolled back).
 
 - [x] End the Dalton/Barbra reminder pilot; clock-in/arrival reminders now on for all current employees (7), push channel, same stages and limits. Verified settings screen signed in as owner; 35 reminder tests pass. Real-phone receipt not observed; goes live on publish.
 
