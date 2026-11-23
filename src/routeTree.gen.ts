@@ -79,6 +79,7 @@ import { Route as AuthenticatedReportsAccountClientIdRouteImport } from './route
 import { Route as AuthenticatedSuperAdminTenantsTenantIdRouteImport } from './routes/_authenticated/super-admin.tenants.$tenantId'
 import { Route as ApiPublicHooksExtendRecurringRouteImport } from './routes/api/public/hooks/extend-recurring'
 import { Route as ApiPublicHooksProcessPushRouteImport } from './routes/api/public/hooks/process-push'
+import { Route as ApiPublicHooksStuckPhotosRouteImport } from './routes/api/public/hooks/stuck-photos'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -471,6 +472,12 @@ const ApiPublicHooksProcessPushRoute =
     path: '/api/public/hooks/process-push',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksStuckPhotosRoute =
+  ApiPublicHooksStuckPhotosRouteImport.update({
+    id: '/api/public/hooks/stuck-photos',
+    path: '/api/public/hooks/stuck-photos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -606,6 +613,7 @@ export interface FileRoutesByFullPath {
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
+  '/api/public/hooks/stuck-photos': typeof ApiPublicHooksStuckPhotosRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -686,6 +694,7 @@ export interface FileRoutesByTo {
   '/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
+  '/api/public/hooks/stuck-photos': typeof ApiPublicHooksStuckPhotosRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -770,6 +779,7 @@ export interface FileRoutesById {
   '/_authenticated/super-admin/tenants/$tenantId': typeof AuthenticatedSuperAdminTenantsTenantIdRoute
   '/api/public/hooks/extend-recurring': typeof ApiPublicHooksExtendRecurringRoute
   '/api/public/hooks/process-push': typeof ApiPublicHooksProcessPushRoute
+  '/api/public/hooks/stuck-photos': typeof ApiPublicHooksStuckPhotosRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -854,6 +864,7 @@ export interface FileRouteTypes {
     | '/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
+    | '/api/public/hooks/stuck-photos'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -934,6 +945,7 @@ export interface FileRouteTypes {
     | '/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
+    | '/api/public/hooks/stuck-photos'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1017,6 +1029,7 @@ export interface FileRouteTypes {
     | '/_authenticated/super-admin/tenants/$tenantId'
     | '/api/public/hooks/extend-recurring'
     | '/api/public/hooks/process-push'
+    | '/api/public/hooks/stuck-photos'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1047,6 +1060,7 @@ export interface RootRouteChildren {
   PayInvoiceIdPhotosRoute: typeof PayInvoiceIdPhotosRoute
   ApiPublicHooksExtendRecurringRoute: typeof ApiPublicHooksExtendRecurringRoute
   ApiPublicHooksProcessPushRoute: typeof ApiPublicHooksProcessPushRoute
+  ApiPublicHooksStuckPhotosRoute: typeof ApiPublicHooksStuckPhotosRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -1552,6 +1566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessPushRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/stuck-photos': {
+      id: '/api/public/hooks/stuck-photos'
+      path: '/api/public/hooks/stuck-photos'
+      fullPath: '/api/public/hooks/stuck-photos'
+      preLoaderRoute: typeof ApiPublicHooksStuckPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -1813,6 +1834,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayInvoiceIdPhotosRoute: PayInvoiceIdPhotosRoute,
   ApiPublicHooksExtendRecurringRoute: ApiPublicHooksExtendRecurringRoute,
   ApiPublicHooksProcessPushRoute: ApiPublicHooksProcessPushRoute,
+  ApiPublicHooksStuckPhotosRoute: ApiPublicHooksStuckPhotosRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,

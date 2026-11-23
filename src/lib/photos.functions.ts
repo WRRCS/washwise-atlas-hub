@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ownsPhotoUpload, photoUploadPrefix, photoReadScope } from "@/lib/photo-ownership";
+import { ownsPhotoUpload, photoUploadPrefix, photoUploadStem, photoReadScope } from "@/lib/photo-ownership";
 
 export type PhotoType = "before" | "after" | "other" | "damage";
 
@@ -61,9 +61,11 @@ export const createJobPhotoUploadUrl = createServerFn({ method: "POST" })
     z.object({
       job_id: z.string().uuid(),
       file_name: z.string().trim().min(1).max(200),
+      /** The phone's own id for this photo, so a resend reuses the copy already stored. */
+      upload_id: z.string().regex(/^[A-Za-z0-9-]{6,64}$/).optional(),
     }).parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<{ path: string; token: string | null; signedUrl: string | null; already_stored: boolean }> => {
     const { data: prof } = await context.supabase
       .from("profiles").select("tenant_id").eq("id", context.userId).maybeSingle();
     if (!prof) throw new Error("No profile");
@@ -77,13 +79,22 @@ export const createJobPhotoUploadUrl = createServerFn({ method: "POST" })
     if (!job || job.tenant_id !== prof.tenant_id) throw new Error("Job not found");
     if (!assigned && !isMgr) throw new Error("You're not assigned to this job");
     const safe = data.file_name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${photoUploadPrefix(prof.tenant_id, data.job_id, context.userId)}${assigned?.id ?? "staff"}-${crypto.randomUUID()}-${safe}`;
+    const folder = photoUploadPrefix(prof.tenant_id, data.job_id, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // "-p-" marks phone-tracked uploads: a resend finds and reuses its stored copy, and
+    // the stuck-photo check only reports these, never old random-name retries.
+    const stem = data.upload_id ? photoUploadStem(assigned?.id ?? null, data.upload_id) : `${assigned?.id ?? "staff"}-${crypto.randomUUID()}`;
+    if (data.upload_id) {
+      const { data: found } = await supabaseAdmin.storage.from("job-photos").list(folder.slice(0, -1), { search: stem, limit: 10 });
+      const stored = found?.find((f) => f.name.startsWith(`${stem}-`) && Number(f.metadata?.["size"] ?? 0) > 0);
+      if (stored) return { path: `${folder}${stored.name}`, token: null, signedUrl: null, already_stored: true };
+    }
+    const path = `${folder}${stem}-${safe}`;
     const { data: signed, error } = await supabaseAdmin.storage
       .from("job-photos")
-      .createSignedUploadUrl(path);
+      .createSignedUploadUrl(path, { upsert: true });
     if (error) throw new Error(error.message);
-    return { path, token: signed.token, signedUrl: signed.signedUrl };
+    return { path, token: signed.token, signedUrl: signed.signedUrl, already_stored: false };
   });
 
 export const registerJobPhoto = createServerFn({ method: "POST" })

@@ -4863,6 +4863,13 @@ export type Database = {
           tenant_id: string
         }[]
       }
+      stuck_job_photo_uploads: {
+        Args: { p_after: string; p_before: string }
+        Returns: {
+          created_at: string
+          name: string
+        }[]
+      }
     }
     Enums: {
       app_role: "owner" | "employee" | "super_admin" | "manager"

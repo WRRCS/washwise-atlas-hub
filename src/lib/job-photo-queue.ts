@@ -48,9 +48,12 @@ export function jobPhotoQueue(viewerId: string, jobId: string): UploadQueue<JobP
       }
       // Shrink just before sending; the phone keeps the original until the server has a copy.
       const file = await compressPhotoForUpload(item.file as File, item.id);
-      const { path, token } = await createJobPhotoUploadUrl({ data: { job_id: jobId, file_name: file.name || "photo.jpg" } });
-      const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, { contentType: file.type || "image/jpeg" });
-      if (error) throw new Error(error.message);
+      const { path, token, already_stored } = await createJobPhotoUploadUrl({ data: { job_id: jobId, file_name: file.name || "photo.jpg", upload_id: item.id } });
+      // A resend after a dropped connection reuses the copy the server already has.
+      if (!already_stored && token) {
+        const { error } = await supabase.storage.from("job-photos").uploadToSignedUrl(path, token, file, { contentType: file.type || "image/jpeg" });
+        if (error) throw new Error(error.message);
+      }
       const saved = await registerJobPhoto({
         data: {
           job_id: jobId,

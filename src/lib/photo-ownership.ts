@@ -2,6 +2,10 @@
 export function photoUploadPrefix(tenantId: string, jobId: string, userId: string) {
   return `${tenantId}/${jobId}/${userId}/`;
 }
+/** File-name start for a phone-tracked upload; the same photo always gets the same stem. */
+export function photoUploadStem(assignmentId: string | null, uploadId: string) {
+  return `${assignmentId ?? "staff"}-p-${uploadId}`;
+}
 export function ownsPhotoUpload(path: string, tenantId: string, jobId: string, userId: string) {
   if (!tenantId || !jobId || !userId) return false;
   const prefix = photoUploadPrefix(tenantId, jobId, userId);
