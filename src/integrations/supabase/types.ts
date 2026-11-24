@@ -1244,6 +1244,98 @@ export type Database = {
           },
         ]
       }
+      employee_time_off: {
+        Row: {
+          all_day: boolean
+          category: string
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_date: string
+          end_time: string | null
+          ends_at: string
+          hours: number
+          id: string
+          note: string | null
+          reason: string
+          start_date: string
+          start_time: string | null
+          starts_at: string
+          tenant_id: string
+          time_off_request_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          end_date: string
+          end_time?: string | null
+          ends_at: string
+          hours?: number
+          id?: string
+          note?: string | null
+          reason?: string
+          start_date: string
+          start_time?: string | null
+          starts_at: string
+          tenant_id: string
+          time_off_request_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          end_date?: string
+          end_time?: string | null
+          ends_at?: string
+          hours?: number
+          id?: string
+          note?: string | null
+          reason?: string
+          start_date?: string
+          start_time?: string | null
+          starts_at?: string
+          tenant_id?: string
+          time_off_request_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_time_off_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_time_off_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_time_off_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_time_off_time_off_request_id_fkey"
+            columns: ["time_off_request_id"]
+            isOneToOne: true
+            referencedRelation: "time_off_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_unavailability: {
         Row: {
           all_day: boolean

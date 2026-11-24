@@ -145,6 +145,8 @@ export const decideTimeOff = createServerFn({ method: "POST" })
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    const { syncApprovedTimeOff } = await import("@/lib/time-off-schedule.functions");
+    await syncApprovedTimeOff(context.supabase, context.userId, data.id, data.decision);
     return { ok: true };
   });
 

@@ -33,6 +33,9 @@ import { Plus, AlertTriangle, Send, Users, LayoutGrid, List as ListIcon, Check, 
 import { toast } from "sonner";
 import { useT, dateLocaleOpts } from "@/lib/i18n";
 import { useBusinessTz } from "@/hooks/use-business-tz";
+import { ScheduleAddTabs, TimeOffDialog } from "@/components/time-off-dialog";
+import { listScheduleTimeOff, type ScheduleTimeOff } from "@/lib/time-off-schedule.functions";
+import { timeOffCoversDay, timeOffReasonLabel, timeOffCategoryLabel } from "@/lib/time-off";
 import { dayKeyTZ, fmtTimeTZ, fmtDateTZ, hourMinuteTZ, zonedToUTCISO } from "@/lib/tz";
 import { ZoomPanSurface } from "@/components/zoom-pan-surface";
 import { RecurrenceFields, defaultRecurrence, effectiveStartDate, recurrenceEndValue, type RecurrenceValue } from "@/components/recurrence-fields";
@@ -106,11 +109,12 @@ function SchedulePage() {
   const [flashToday, setFlashToday] = useState(false);
   const handledTodayJump = useRef(0);
   const autoJumpedToToday = useRef(false);
-  const [dialogSeed, setDialogSeed] = useState<{ date: Date; employeeId?: string } | null>(null);
+  const [dialogSeed, setDialogSeed] = useState<{ date: Date; employeeId?: string; timeOff?: ScheduleTimeOff } | null>(null);
 
   const jobsFn = useServerFn(listJobs);
   const empFn = useServerFn(listEmployees);
   const unavFn = useServerFn(listUnavailability);
+  const timeOffFn = useServerFn(listScheduleTimeOff);
   const moveFn = useServerFn(moveJob);
   const publishFn = useServerFn(publishSchedule);
   const setColorFn = useServerFn(setClientColor);
@@ -151,6 +155,7 @@ function SchedulePage() {
   const { data: jobs = [], isFetching: jobsFetching } = useQuery({ queryKey: ["jobs", "week", from, to], queryFn: () => jobsFn({ data: { from, to, hide_canceled: true } }) });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => empFn({}) });
   const { data: unavailability = [] } = useQuery({ queryKey: ["unavail", from, to], queryFn: () => unavFn({ data: { from, to } }) });
+  const { data: timeOffRows = [] } = useQuery({ queryKey: ["schedule-time-off", from, to], queryFn: () => timeOffFn({ data: { from, to } }) });
 
   const orderFn = useServerFn(getScheduleTeamOrder);
   const saveOrderFn = useServerFn(saveScheduleTeamOrder);
@@ -481,6 +486,23 @@ function SchedulePage() {
     return m;
   }, [unavailability, tz]);
 
+  // Time off appears on every day it covers (whole days) or its one day (part days).
+  const timeOffByEmpDay = useMemo(() => {
+    const m = new Map<string, Map<string, ScheduleTimeOff[]>>();
+    for (const t of timeOffRows) {
+      for (const d of days) {
+        const dayKey = format(d, "yyyy-MM-dd");
+        if (!timeOffCoversDay(t, dayKey)) continue;
+        if (!m.has(t.employee_id)) m.set(t.employee_id, new Map());
+        const dm = m.get(t.employee_id)!;
+        if (!dm.has(dayKey)) dm.set(dayKey, []);
+        dm.get(dayKey)!.push(t);
+      }
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeOffRows, anchor]);
+
   // Wages / hours per day, per employee (aggregate)
   const dailyTotals = useMemo(() => {
     return days.map((d) => {
@@ -803,13 +825,14 @@ function SchedulePage() {
                     const dayKey = format(d, "yyyy-MM-dd");
                     const shifts = jobsByEmpDay.get(emp.id)?.get(dayKey) ?? [];
                     const unavs = unavByEmpDay.get(emp.id)?.get(dayKey) ?? [];
+                    const offs = timeOffByEmpDay.get(emp.id)?.get(dayKey) ?? [];
                     const today = format(d, "yyyy-MM-dd") === todayKeyTZ;
                     return (
                       <div
                         key={dayKey}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => onDropOnCell(e, emp.id, d)}
-                        className={`schedule-cell group/cell relative min-w-0 border-l border-border/60 p-1 space-y-1 transition-colors ${compactNames ? "min-h-[100px]" : "min-h-[48px]"} ${canManageSchedule && (shifts.length > 0 || unavs.length > 0) ? "pb-4" : ""} ${today ? (flashToday ? "bg-brand/10" : "bg-brand/[0.02]") : ""}`}
+                        className={`schedule-cell group/cell relative min-w-0 border-l border-border/60 p-1 space-y-1 transition-colors ${compactNames ? "min-h-[100px]" : "min-h-[48px]"} ${canManageSchedule && (shifts.length > 0 || unavs.length > 0 || offs.length > 0) ? "pb-4" : ""} ${today ? (flashToday ? "bg-brand/10" : "bg-brand/[0.02]") : ""}`}
                       >
                         {unavs.map((u: any) => (
                           <div key={u.id} className="rounded-md bg-clay-200/70 border-l-2 border-clay-400 px-2 py-1 text-[10px] leading-tight">
@@ -819,6 +842,30 @@ function SchedulePage() {
                             </p>
                           </div>
                         ))}
+                        {offs.map((t) => {
+                          const body = (
+                            <>
+                              <p className="font-semibold text-foreground truncate">{tr("Time off")}</p>
+                              <p className="text-muted-foreground truncate">{t.all_day ? tr("All Day") : `${fmtTimeTZ(t.starts_at, tz)}-${fmtTimeTZ(t.ends_at, tz)}`}</p>
+                              <p className="text-muted-foreground truncate">{tr(timeOffCategoryLabel(t.category))} · {tr(timeOffReasonLabel(t.reason))}</p>
+                            </>
+                          );
+                          const cls = "schedule-time-off block w-full text-left rounded-md border border-dashed border-muted-foreground/50 bg-muted px-2 py-1 text-[10px] leading-tight";
+                          return canManageSchedule ? (
+                            <button
+                              key={t.id}
+                              type="button"
+                              className={`${cls} hover:border-foreground/60 transition`}
+                              onClick={() => setDialogSeed({ date: d, employeeId: emp.id, timeOff: t })}
+                              title={t.note ? `${tr("Time off")}: ${t.note}` : tr("Time off")}
+                              aria-label={`${tr("Time off")} ${emp.full_name ?? ""}`}
+                            >
+                              {body}
+                            </button>
+                          ) : (
+                            <div key={t.id} className={cls}>{body}</div>
+                          );
+                        })}
                         {shifts
                           .sort((a: any, b: any) => a.scheduled_start.localeCompare(b.scheduled_start))
                           .map((j: any) => {
@@ -1117,7 +1164,7 @@ function SchedulePage() {
                             title={`Add a shift for ${emp.full_name ?? "this team member"}`}
                             aria-label={`Add a shift for ${emp.full_name ?? "this team member"}`}
                             className={
-                              shifts.length === 0 && unavs.length === 0
+                              shifts.length === 0 && unavs.length === 0 && offs.length === 0
                                 ? "schedule-add-empty w-full h-full min-h-[40px] opacity-0 hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 grid place-items-center text-muted-foreground text-lg"
                                 : "absolute inset-x-1 bottom-0 h-4 rounded grid place-items-center text-muted-foreground opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 hover:bg-brand/10 hover:text-brand transition"
                             }
@@ -1263,7 +1310,15 @@ function SchedulePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {dialogSeed && (
+      {dialogSeed?.timeOff && (
+        <TimeOffDialog
+          date={dialogSeed.timeOff.start_date}
+          existing={dialogSeed.timeOff}
+          people={scheduleRows}
+          onClose={() => setDialogSeed(null)}
+        />
+      )}
+      {dialogSeed && !dialogSeed.timeOff && (
         <NewJobDialog
           date={dialogSeed.date}
           employeeId={dialogSeed.employeeId}
@@ -1349,6 +1404,8 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   const [saving, setSaving] = useState(false);
   const [conflicts, setConflicts] = useState<{ employee_id: string }[] | null>(null);
+  const [timeOffClash, setTimeOffClash] = useState<{ employee_id: string }[]>([]);
+  const [mode, setMode] = useState<"shift" | "time_off">("shift");
 
   const [propertyId, setPropertyId] = useState("");
   const [typeDraft, setTypeDraft] = useState<PropertyTypeDraft>({ key: "", value: "" });
@@ -1435,6 +1492,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
   const toggleAssignee = (id: string) => {
     setAssignees((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     setConflicts(null);
+    setTimeOffClash([]);
   };
 
   const doSave = async (force = false, addAnother = false) => {
@@ -1445,8 +1503,9 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
     try {
       if (!force && assignees.length) {
         const res = await check({ data: { employee_ids: assignees, scheduled_start: startISO, scheduled_end: endISO } });
-        if (res.conflicts.length) {
+        if (res.conflicts.length || res.timeOff.length) {
           setConflicts(res.conflicts);
+          setTimeOffClash(res.timeOff);
           setSaving(false);
           return;
         }
@@ -1475,6 +1534,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
       if (addAnother) {
         // Keep date + assigned team members; clear the rest for the next shift.
         setConflicts(null);
+        setTimeOffClash([]);
         setClientId("");
         setPropertyId(""); setTypeDraft({ key: "", value: "" });
         setServiceId(""); setSaveDefaults(false);
@@ -1494,12 +1554,28 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
     }
   };
 
+  if (mode === "time_off") {
+    return (
+      <TimeOffDialog
+        date={dateStr}
+        employeeId={assignees[0] ?? employeeId}
+        people={cleaners.filter((c: any) => c.is_active !== false)}
+        onClose={onClose}
+        onSwitchToShift={() => setMode("shift")}
+      />
+    );
+  }
+
+  const offNames = timeOffClash.map((c) => employees.find((e: any) => e.id === c.employee_id)?.full_name?.split(" ")[0] ?? "Someone");
+  const hasClash = (conflicts?.length ?? 0) > 0 || timeOffClash.length > 0;
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Job</DialogTitle>
         </DialogHeader>
+        <ScheduleAddTabs mode="shift" onChange={setMode} />
 
         {clients.length === 0 && (
           <div className="rounded-lg bg-warning/10 text-sm p-3">
@@ -1594,21 +1670,27 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
         <RecurrenceFields value={recur} onChange={setRecur} startDate={dateStr} />
 
 
-        {conflicts && conflicts.length > 0 && (
+        {hasClash && (
           <div className="rounded-md bg-destructive/10 text-destructive p-3 text-sm flex items-start gap-2">
             <AlertTriangle className="size-4 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium">Scheduling conflict</p>
-              <p className="text-xs">
-                {conflicts.length} of the selected cleaners already have overlapping job(s). Save anyway?
-              </p>
+              {conflicts && conflicts.length > 0 && (
+                <p className="text-xs">
+                  {conflicts.length} of the selected cleaners already have overlapping job(s).
+                </p>
+              )}
+              {offNames.length > 0 && (
+                <p className="text-xs">{offNames.join(", ")} {offNames.length === 1 ? "has" : "have"} time off during this shift.</p>
+              )}
+              <p className="text-xs">Save anyway?</p>
             </div>
           </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          {conflicts && conflicts.length > 0 ? (
+          {hasClash ? (
             <>
               <Button variant="outline" onClick={() => doSave(true, true)} disabled={saving}>
                 Save anyway & add another

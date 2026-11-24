@@ -111,7 +111,7 @@ export const checkConflicts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { employee_ids: string[]; scheduled_start: string; scheduled_end: string; ignore_job_id?: string }) => input)
   .handler(async ({ data, context }) => {
-    if (!data.employee_ids.length) return { conflicts: [] as { employee_id: string; job_id: string }[] };
+    if (!data.employee_ids.length) return { conflicts: [] as { employee_id: string; job_id: string }[], timeOff: [] as { employee_id: string }[] };
     const { data: links } = await context.supabase
       .from("job_employees")
       .select("employee_id, scheduled_start, scheduled_end, job:jobs!inner(id, scheduled_start, scheduled_end, status)")
@@ -128,7 +128,15 @@ export const checkConflicts = createServerFn({ method: "POST" })
       const je = new Date(own.end).getTime();
       if (js < e && je > s) conflicts.push({ employee_id: (l as any).employee_id, job_id: j.id, scheduled_start: own.start, scheduled_end: own.end });
     }
-    return { conflicts };
+    // Time off that overlaps the new shift (owners/managers can read everyone's).
+    const { data: off } = await context.supabase
+      .from("employee_time_off")
+      .select("employee_id")
+      .in("employee_id", data.employee_ids)
+      .lt("starts_at", data.scheduled_end)
+      .gt("ends_at", data.scheduled_start);
+    const timeOff = [...new Set((off ?? []).map((r: any) => r.employee_id as string))].map((employee_id) => ({ employee_id }));
+    return { conflicts, timeOff };
   });
 
 export const createJob = createServerFn({ method: "POST" })

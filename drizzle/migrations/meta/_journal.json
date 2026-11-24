@@ -491,6 +491,13 @@
       "when": 1795418402206,
       "tag": "0069_staff_invite_confirm_order_and_24h_links",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1795485104011,
+      "tag": "0070_employee_time_off",
+      "breakpoints": true
     }
   ]
 }
