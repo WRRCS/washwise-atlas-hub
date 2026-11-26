@@ -4836,6 +4836,10 @@ export type Database = {
         Args: { _employee: string }
         Returns: number
       }
+      release_time_off_to_open_shifts: {
+        Args: { _employee: string; _jobs: string[] }
+        Returns: number
+      }
       reply_time_off_question: {
         Args: { _id: string; _reply: string }
         Returns: string

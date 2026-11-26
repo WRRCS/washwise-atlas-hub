@@ -95,6 +95,7 @@ export function TimeOffDialog({
     enabled: !!who && !inputError,
   });
   const overlaps: TimeOffOverlap[] = overlapsQ.data?.overlaps ?? [];
+  const [releaseOverlaps, setReleaseOverlaps] = useState(true);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["schedule-time-off"] });
@@ -111,13 +112,20 @@ export function TimeOffDialog({
           reason: reason as any,
           note: note.trim() || null,
           hours: Number.isFinite(hoursValue) ? Math.max(0, hoursValue) : suggested,
+          release_overlaps: releaseOverlaps && overlaps.length > 0,
         },
       }),
     onSuccess: (res) => {
       refresh();
+      qc.invalidateQueries();
       const n = res.overlaps.length;
+      const m = res.released;
+      const parts = [
+        m ? `${m} cleaning${m === 1 ? "" : "s"} moved to Open shifts.` : "",
+        n ? `${n} cleaning${n === 1 ? "" : "s"} already started or past stayed as is.` : "",
+      ].filter(Boolean).join(" ");
       toast.success(existing ? "Time off updated" : "Time off added", {
-        description: n ? `${n} cleaning${n === 1 ? "" : "s"} during this time still need someone else.` : undefined,
+        description: parts || undefined,
       });
       onClose();
     },
@@ -228,7 +236,11 @@ export function TimeOffDialog({
                   ))}
                   {overlaps.length > 8 && <li>…and {overlaps.length - 8} more</li>}
                 </ul>
-                <p className="text-xs text-muted-foreground">Saving won't change these cleanings. Reassign them on the schedule.</p>
+                <label className="flex items-center gap-2 text-xs pt-1 cursor-pointer">
+                  <input type="checkbox" checked={releaseOverlaps} onChange={(e) => setReleaseOverlaps(e.target.checked)} />
+                  Move {personName.split(" ")[0]}'s spot on these cleanings to Open shifts when I save
+                </label>
+                <p className="text-xs text-muted-foreground">Partners stay on. Nothing is sent to anyone.</p>
               </div>
             </div>
           )}

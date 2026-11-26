@@ -498,6 +498,13 @@
       "when": 1795485104011,
       "tag": "0070_employee_time_off",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795720317037,
+      "tag": "0071_time_off_open_shifts",
+      "breakpoints": true
     }
   ]
 }

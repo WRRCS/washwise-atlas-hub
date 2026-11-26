@@ -115,6 +115,7 @@ export const saveScheduleTimeOff = createServerFn({ method: "POST" })
       reason: z.enum(["vacation", "sick", "personal", "appointment", "family", "other"]),
       note: z.string().trim().max(1000).nullable().optional(),
       hours: z.number().min(0).max(2000).nullable().optional(),
+      release_overlaps: z.boolean().optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -143,8 +144,17 @@ export const saveScheduleTimeOff = createServerFn({ method: "POST" })
       : context.supabase.from("employee_time_off").insert({ ...row, created_by: context.userId }).select(COLS).single();
     const { data: saved, error } = await q;
     if (error) throw new Error(error.message);
-    const overlaps = await findOverlaps(context.supabase, data.employee_id, w.starts_at, w.ends_at);
-    return { timeOff: normalize(saved), overlaps };
+    let overlaps = await findOverlaps(context.supabase, data.employee_id, w.starts_at, w.ends_at);
+    let released = 0;
+    if (data.release_overlaps && overlaps.length) {
+      const { data: n, error: relErr } = await context.supabase.rpc("release_time_off_to_open_shifts", {
+        _employee: data.employee_id, _jobs: overlaps.map((o) => o.job_id),
+      });
+      if (relErr) throw new Error(`Time off saved, but cleanings didn't move: ${relErr.message}`);
+      released = Number(n ?? 0);
+      overlaps = await findOverlaps(context.supabase, data.employee_id, w.starts_at, w.ends_at);
+    }
+    return { timeOff: normalize(saved), overlaps, released };
   });
 
 export const deleteScheduleTimeOff = createServerFn({ method: "POST" })
