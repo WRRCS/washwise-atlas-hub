@@ -51,4 +51,23 @@ describe("schedule property-first selection", () => {
     );
     expect(options.filter((option) => option.address === "10 Main St")).toHaveLength(1);
   });
+
+  it("hides the main address when the client has a saved property", () => {
+    const options = schedulePropertyOptions(
+      [{ id: "c1", company_name: "Birch Bay Water & Sewer", service_address: "Point Whitehorn Road, Birch Bay, Washington" }],
+      [{ client_id: "c1", property_id: "p1", label: "BBWSD", client_name: "Birch Bay Water & Sewer", address: "Point Whitehorn Road, Birch Bay" }],
+    );
+    expect(options.map((o) => o.label)).toEqual(["BBWSD"]);
+  });
+
+  it("sorts alphabetically by the short property name", () => {
+    const options = schedulePropertyOptions(
+      [{ id: "c2", first_name: "Audrey", last_name: "Fine", service_address: "1 A St" }],
+      [
+        { client_id: "c1", property_id: "p1", label: "Chuckanut", client_name: "Chuckanut Bay Foods", address: "x" },
+        { client_id: "c3", property_id: "p3", label: "BBWSD", client_name: "Birch Bay Water & Sewer", address: "y" },
+      ],
+    );
+    expect(options.map((o) => o.label)).toEqual(["Audrey Fine", "BBWSD", "Chuckanut"]);
+  });
 });

@@ -1616,7 +1616,7 @@ function NewJobDialog({ date, employeeId, locations, locationsLoaded, onClose, o
                 <option value="">{locationsLoaded ? "Select…" : "Loading properties…"}</option>
                 {propertyOptions.map((p) => (
                   <option key={schedulePropertyValue(p.clientId, p.propertyId)} value={schedulePropertyValue(p.clientId, p.propertyId)}>
-                    {p.label} — {p.address.replace(/\n/g, ", ")} ({p.clientName})
+                    {p.label} — {p.address.replace(/\n/g, ", ")}
                   </option>
                 ))}
                 <option value="__new" disabled={!clientId}>+ Add another property…</option>

@@ -48,21 +48,21 @@ export function schedulePropertyOptions(
   for (const client of clients) {
     const address = client.service_address?.trim();
     if (!address) continue;
-    const alreadyListed = locations.some(
-      (location) => location.client_id === client.id && location.address.trim() === address,
-    );
-    if (alreadyListed) continue;
+    // A client with any saved property already has its place listed; the main
+    // address is usually that same place written differently, so skip it.
+    if (locations.some((location) => location.client_id === client.id)) continue;
     options.push({
       clientId: client.id,
       propertyId: "__main",
-      label: "Main address",
+      label: clientName(client),
       address,
       clientName: clientName(client),
     });
   }
 
   return options.sort((a, b) =>
-    a.clientName.localeCompare(b.clientName)
+    a.label.localeCompare(b.label, undefined, { sensitivity: "base", numeric: true })
+    || a.clientName.localeCompare(b.clientName)
     || a.label.localeCompare(b.label)
     || a.address.localeCompare(b.address));
 }
