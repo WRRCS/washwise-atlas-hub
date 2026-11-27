@@ -17,7 +17,8 @@ import { CheckCircle2 } from "lucide-react";
 import { listClients, listServiceTypes, listEmployees, setClientColor } from "@/lib/entities.functions";
 import { myPermissions } from "@/lib/team.functions";
 import { newJobPriceCents } from "@/lib/property-pricing";
-import { listClientProperties, upsertClientProperty, listScheduleLocations } from "@/lib/client-properties.functions";
+import { listClientProperties, upsertClientProperty, listScheduleLocations, type ScheduleLocation } from "@/lib/client-properties.functions";
+import { schedulePropertyOptions, schedulePropertySelection, schedulePropertyValue } from "@/lib/schedule-property-options";
 import { claimOpenShift, closeOpenSpot } from "@/lib/visits.functions";
 import { canPickUp, isOpenShift, openSpotsLeft } from "@/lib/open-shifts";
 import { startOfWeek, addDays, format, startOfDay, endOfDay, differenceInMinutes } from "date-fns";
@@ -296,7 +297,7 @@ function SchedulePage() {
   const fullJob = (j: any) => (jobs as any[]).find((x) => x.id === j.id) ?? j;
   const cleanerName = (id: string) => employees.find((c: any) => c.id === id)?.full_name ?? "This cleaner";
   const locationsFn = useServerFn(listScheduleLocations);
-  const { data: locations = [] } = useQuery({ queryKey: ["schedule-locations"], queryFn: () => locationsFn(), enabled: canManageSchedule });
+  const { data: locations = [], isSuccess: locationsLoaded } = useQuery({ queryKey: ["schedule-locations"], queryFn: () => locationsFn(), enabled: canManageSchedule });
   const assigneesFn = useServerFn(updateJobAssignees);
   const swapMut = useMutation({
     mutationFn: async (v: { job: any; fromId: string; toId: string }) => {
@@ -1322,6 +1323,8 @@ function SchedulePage() {
         <NewJobDialog
           date={dialogSeed.date}
           employeeId={dialogSeed.employeeId}
+          locations={locations}
+          locationsLoaded={locationsLoaded}
           onClose={() => setDialogSeed(null)}
           onSaved={(savedDate) => {
             // Jump the schedule to the week containing the date that was saved,
@@ -1372,7 +1375,7 @@ function SchedulePage() {
   );
 }
 
-function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; employeeId?: string; onClose: () => void; onSaved?: (savedDate: string) => void }) {
+function NewJobDialog({ date, employeeId, locations, locationsLoaded, onClose, onSaved }: { date: Date; employeeId?: string; locations: ScheduleLocation[]; locationsLoaded: boolean; onClose: () => void; onSaved?: (savedDate: string) => void }) {
   const qc = useQueryClient();
   const tz = useBusinessTz();
   const clientsFn = useServerFn(listClients);
@@ -1416,7 +1419,8 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
   const propertyType = selectedPropertyType(typeKey, selectedProperty?.property_type, typeDraft);
   const selectedClient = clients.find((c: any) => c.id === clientId);
   const mainAddress: string = (selectedClient?.service_address ?? "").trim();
-  const showMainOption = !!mainAddress && !properties.some((p) => p.address.trim() === mainAddress);
+  const propertyOptions = useMemo(() => schedulePropertyOptions(clients, locations), [clients, locations]);
+  const selectedPropertyValue = clientId && propertyId ? schedulePropertyValue(clientId, propertyId) : "";
   useEffect(() => {
     if (!clientId || !propsLoaded) return;
     if (propertyId === "__main" || (propertyId && properties.some((p) => p.id === propertyId))) return;
@@ -1433,6 +1437,7 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
     try {
       const { id } = await upsertPropFn({ data: { client_id: clientId, label: newPropLabel.trim(), address: newPropAddress.trim() } });
       await qc.invalidateQueries({ queryKey: ["client-properties", clientId] });
+      await qc.invalidateQueries({ queryKey: ["schedule-locations"] });
       setPropertyId(id);
       setAddingProp(false); setNewPropLabel(""); setNewPropAddress("");
       toast.success("Property added");
@@ -1466,13 +1471,11 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
 
   // Pre-fill the price from the property's set price when one is selected.
   useEffect(() => {
-    // Flat-rate properties carry their price; hourly ones stay blank so the cleaning bills by the hour.
-    if (selectedProperty) {
-      const cents = newJobPriceCents(selectedProperty);
-      setPriceStr(cents != null ? String(cents / 100) : "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [propertyId]);
+    // Wait for a real property to load; main addresses and hourly properties stay blank.
+    if (propertyId && propertyId !== "__main" && !selectedProperty) return;
+    const cents = newJobPriceCents(selectedProperty);
+    setPriceStr(cents != null ? String(cents / 100) : "");
+  }, [propertyId, selectedProperty]);
 
   // Load the selected property's saved service default; switching properties
   // replaces (never retains) the previous property's value.
@@ -1584,8 +1587,48 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Property">
+            {addingProp ? (
+              <div className="space-y-2">
+                <Input value={newPropLabel} onChange={(e) => setNewPropLabel(e.target.value)} placeholder="Property name (e.g. Beach house)" />
+                <Input value={newPropAddress} onChange={(e) => setNewPropAddress(e.target.value)} placeholder="Address" />
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" onClick={saveNewProperty} disabled={savingProp}>{savingProp ? "Saving…" : "Save property"}</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setAddingProp(false)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <select
+                aria-label="Property"
+                disabled={!locationsLoaded}
+                value={selectedPropertyValue}
+                onChange={(e) => {
+                  setTypeDraft({ key: "", value: "" });
+                  if (e.target.value === "__new") { setAddingProp(true); return; }
+                  const selected = schedulePropertySelection(propertyOptions, e.target.value);
+                  if (!selected) return;
+                  setClientId(selected.clientId);
+                  setPropertyId(selected.propertyId);
+                  setAddingProp(false);
+                }}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">{locationsLoaded ? "Select…" : "Loading properties…"}</option>
+                {propertyOptions.map((p) => (
+                  <option key={schedulePropertyValue(p.clientId, p.propertyId)} value={schedulePropertyValue(p.clientId, p.propertyId)}>
+                    {p.label} — {p.address.replace(/\n/g, ", ")} ({p.clientName})
+                  </option>
+                ))}
+                <option value="__new" disabled={!clientId}>+ Add another property…</option>
+              </select>
+            )}
+          </Field>
+          <Field label="Property type">
+            <PropertyTypeField value={propertyType} saved={!!selectedProperty?.property_type?.trim()} disabled={!propertyId || addingProp || (propertyId !== "__main" && !propsLoaded)}
+              onChange={(value) => setTypeDraft({ key: typeKey, value })} />
+          </Field>
           <Field label="Client">
-            <select value={clientId} onChange={(e) => { setClientId(e.target.value); setPropertyId(""); setTypeDraft({ key: "", value: "" }); setAddingProp(false); }} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <select aria-label="Client" value={clientId} onChange={(e) => { setClientId(e.target.value); setPropertyId(""); setTypeDraft({ key: "", value: "" }); setAddingProp(false); }} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
               <option value="">Select…</option>
               {clients.map((c: any) => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(" ")}</option>)}
             </select>
@@ -1601,35 +1644,6 @@ function NewJobDialog({ date, employeeId, onClose, onSaved }: { date: Date; empl
                 Save as this property's defaults
               </label>
             )}
-          </Field>
-          <Field label="Property">
-            {!clientId ? (
-              <Input value="" disabled placeholder="Pick a client first" />
-            ) : addingProp ? (
-              <div className="space-y-2">
-                <Input value={newPropLabel} onChange={(e) => setNewPropLabel(e.target.value)} placeholder="Property name (e.g. Beach house)" />
-                <Input value={newPropAddress} onChange={(e) => setNewPropAddress(e.target.value)} placeholder="Address" />
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" onClick={saveNewProperty} disabled={savingProp}>{savingProp ? "Saving…" : "Save property"}</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setAddingProp(false)}>Cancel</Button>
-                </div>
-              </div>
-            ) : (
-              <select
-                value={propertyId}
-                onChange={(e) => { setTypeDraft({ key: "", value: "" }); if (e.target.value === "__new") setAddingProp(true); else setPropertyId(e.target.value); }}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {showMainOption && <option value="__main">Main address — {mainAddress}</option>}
-                {!showMainOption && !properties.length && <option value="">No address on file</option>}
-                {properties.map((p) => <option key={p.id} value={p.id}>{p.label} — {p.address.replace(/\n/g, ", ")}</option>)}
-                <option value="__new">+ Add another property…</option>
-              </select>
-            )}
-          </Field>
-          <Field label="Property type">
-            <PropertyTypeField value={propertyType} saved={!!selectedProperty?.property_type?.trim()} disabled={!clientId || addingProp || !propsLoaded}
-              onChange={(value) => setTypeDraft({ key: typeKey, value })} />
           </Field>
           <Field label="Date">
             <Input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} />
